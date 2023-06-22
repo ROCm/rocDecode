@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #ifndef ROCDECAPI
 #if defined(_WIN32)
-#define ROCDECAPI __stdcall
+#define ROCDECAPI __stdcall       // for future: only linux is supported in this version
 #else
 #define ROCDECAPI
 #endif
@@ -52,8 +52,7 @@ typedef void *rocDecDecoderHandle;
 //! These enums are used in all API calls to rocDecoder
 /*********************************************************************************/
 
-typedef enum rocDecStatus_enum
-{
+typedef enum rocDecStatus_enum{
     ROCDEC_DEVICE_INVALID = -1,
     ROCDEC_CONTEXT_INVALID = -2,
     ROCDEC_RUNTIME_ERROR  = 3,
@@ -117,8 +116,7 @@ typedef enum rocDecVideoChromaFormat_enum {
 //! Decode status enums
 //! These enums are used in ROCDECGETDECODESTATUS structure
 /*************************************************************************/
-typedef enum rocDecodeStatus_enum
-{
+typedef enum rocDecodeStatus_enum {
     rocDecodeStatus_Invalid         = 0,   // Decode status is not valid
     rocDecodeStatus_InProgress      = 1,   // Decode is in progress
     rocDecodeStatus_Success         = 2,   // Decode is completed without any errors
@@ -131,8 +129,7 @@ typedef enum rocDecodeStatus_enum
 //! \struct rocDecDECODECAPS;
 //! This structure is used in rocDecGetDecoderCaps API
 /**************************************************************************************************************/
-typedef struct _ROCDECDECODECAPS
-{
+typedef struct _ROCDECDECODECAPS {
     rocDecVideoCodec          eCodecType;                 /**< IN: rocDecVideoCodec_XXX                                             */
     rocDecVideoChromaFormat   eChromaFormat;              /**< IN: rocDecVideoChromaFormat_XXX                                      */
     unsigned int              nBitDepthMinus8;            /**< IN: The Value "BitDepth minus 8"                                   */
@@ -152,8 +149,7 @@ typedef struct _ROCDECDECODECAPS
 //! \struct ROCDECDECODECREATEINFO
 //! This structure is used in rocDecCreateDecoder API
 /**************************************************************************************************************/
-typedef struct _ROCDECDECODECREATEINFO
-{
+typedef struct _ROCDECDECODECREATEINFO {
     unsigned long ulWidth;                /**< IN: Coded sequence width in pixels                                             */
     unsigned long ulHeight;               /**< IN: Coded sequence height in pixels                                            */
     unsigned long ulNumDecodeSurfaces;    /**< IN: Maximum number of internal decode surfaces                                 */
@@ -203,8 +199,7 @@ typedef struct _ROCDECDECODECREATEINFO
 //! Struct for reporting decode status.
 //! This structure is used in rocDecGetDecodeStatus API.
 /*********************************************************************************************************/
-typedef struct _ROCDECGETDECODESTATUS
-{
+typedef struct _ROCDECGETDECODESTATUS {
     rocDecDecodeStatus decodeStatus;
     unsigned int reserved[31];
     void *pReserved[8];
@@ -215,8 +210,7 @@ typedef struct _ROCDECGETDECODESTATUS
 //! Struct for decoder reset
 //! This structure is used in rocDecReconfigureDecoder() API
 /****************************************************/
-typedef struct _ROCDECRECONFIGUREDECODERINFO
-{
+typedef struct _ROCDECRECONFIGUREDECODERINFO {
     unsigned int ulWidth;             /**< IN: Coded sequence width in pixels, MUST be < = ulMaxWidth defined at ROCDECDECODECREATEINFO  */
     unsigned int ulHeight;            /**< IN: Coded sequence height in pixels, MUST be < = ulMaxHeight defined at ROCDECDECODECREATEINFO  */
     unsigned int ulTargetWidth;       /**< IN: Post processed output width */
@@ -249,8 +243,7 @@ typedef struct _ROCDECRECONFIGUREDECODERINFO
 //! JPEG picture parameters
 //! This structure is used in ROCDECPICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECJPEGPICPARAMS
-{
+typedef struct _ROCDECJPEGPICPARAMS {
     int Reserved;
 } ROCDECJPEGPICPARAMS;
 
@@ -259,8 +252,7 @@ typedef struct _ROCDECJPEGPICPARAMS
 //! JPEG picture parameters
 //! This structure is used in ROCDECMPEG2PICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECMPEG2PICPARAMS
-{
+typedef struct _ROCDECMPEG2PICPARAMS {
     int Reserved;
 } ROCDECMPEG2PICPARAMS;
 
@@ -269,8 +261,7 @@ typedef struct _ROCDECMPEG2PICPARAMS
 //! JPEG picture parameters
 //! This structure is used in ROCDECH264PICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECH264PICPARAMS
-{
+typedef struct _ROCDECH264PICPARAMS {
     int Reserved;
 } ROCDECH264PICPARAMS;
 
@@ -279,8 +270,7 @@ typedef struct _ROCDECH264PICPARAMS
 //! JPEG picture parameters
 //! This structure is used in ROCDECHEVCPICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECHEVCPICPARAMS
-{
+typedef struct _ROCDECHEVCPICPARAMS {
     int Reserved;
 } ROCDECHEVCPICPARAMS;
 
@@ -289,8 +279,7 @@ typedef struct _ROCDECHEVCPICPARAMS
 //! JPEG picture parameters
 //! This structure is used in ROCDECVC1PICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECVC1PICPARAMS
-{
+typedef struct _ROCDECVC1PICPARAMS {
     int Reserved;
 } ROCDECVC1PICPARAMS;
 
@@ -301,8 +290,7 @@ typedef struct _ROCDECVC1PICPARAMS
 //! This structure is used in rocDecDecodePicture API
 //! IN  for rocDecDecodePicture
 /******************************************************************************************/
-typedef struct _ROCDECPICPARAMS
-{
+typedef struct _ROCDECPICPARAMS {
     int PicWidth;                         /**< IN: Coded frame width                                        */
     int PicHeight;                        /**< IN: Coded frame height                                       */
     int CurrPicIdx;                        /**< IN: Output index of the current picture                       */
