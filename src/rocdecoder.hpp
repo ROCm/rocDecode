@@ -30,5 +30,4 @@ THE SOFTWARE.
 #include <sstream>
 #include <string.h>
 #include "../api/rocdecode.h"
-#include "../utils/ffmpeg_demux.h"
 #include <map>
