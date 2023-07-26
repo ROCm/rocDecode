@@ -28,4 +28,4 @@ Please follow the instructions below to build and install the vcndecode library.
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
 
 ## Docker:
-Docker files to build vcnDECODE containers are available [here](docker/)
+Docker files to build rocDecode containers are available [here](docker/)

@@ -1,4 +1,4 @@
-# rocDecoder Docker
+# rocDecode Docker
 
 ## Build - dockerfiles
 
