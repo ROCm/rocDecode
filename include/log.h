@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+#pragma once
+
+#define TOSTR(X) std::to_string(static_cast<int>(X))
+#define STR(X) std::string(X)
+
+#include <iostream>
+#if DBGINFO
+#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define INFO(X) ;
+#endif
+#if DBGLOG
+#define LOG(X) std::clog << "[LOG] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define LOG(X) ;
+#endif
+#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+#if WRNLOG
+#define WRN(X) std::clog << "[WRN] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define WRN(X) ;
+#endif

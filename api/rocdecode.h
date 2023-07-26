@@ -258,7 +258,7 @@ typedef struct _ROCDECMPEG2PICPARAMS {
 
 /***********************************************************/
 //! \struct ROCDECH264PICPARAMS placeholder
-//! JPEG picture parameters
+//! H.264 picture parameters
 //! This structure is used in ROCDECH264PICPARAMS structure
 /***********************************************************/
 typedef struct _ROCDECH264PICPARAMS {
@@ -267,16 +267,16 @@ typedef struct _ROCDECH264PICPARAMS {
 
 /***********************************************************/
 //! \struct ROCDECHEVCPICPARAMS placeholder
-//! JPEG picture parameters
+//! HEVC picture parameters
 //! This structure is used in ROCDECHEVCPICPARAMS structure
 /***********************************************************/
-typedef struct _ROCDECHEVCPICPARAMS {
+typedef struct _ROCDECHEVCPICPARAMS {  
     int Reserved;
 } ROCDECHEVCPICPARAMS;
 
 /***********************************************************/
 //! \struct ROCDECVC1PICPARAMS placeholder
-//! JPEG picture parameters
+//! VC1 picture parameters
 //! This structure is used in ROCDECVC1PICPARAMS structure
 /***********************************************************/
 typedef struct _ROCDECVC1PICPARAMS {

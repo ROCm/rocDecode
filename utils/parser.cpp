@@ -19,3 +19,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+#include "parser.h"
+
+BitStreamParserPtr BitStreamParser::Create(uint8_t* pStream, rocDecVideoCodec type, int nSize, int64_t pts){
+    BitStreamParserPtr pParser;
+
+    switch(type)
+    {
+    case rocDecVideoCodec_H264:
+        //pParser = BitStreamParserPtr(CreateH264Parser(pStream, pContext));
+        ERR ( STR ("Parser: H264 not supported codec type yet!"));
+        break;
+    case rocDecVideoCodec_HEVC:
+        pParser = BitStreamParserPtr(CreateHEVCParser(pStream, nSize, pts));
+        break;
+    default:
+        ERR ( STR ("Parser: unsupported codec type "));
+    }
+    return pParser;
+}
