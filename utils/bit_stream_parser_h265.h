@@ -20,22 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "parser.h"
+#pragma once
 
-BitStreamParserPtr BitStreamParser::Create(uint8_t* pStream, rocDecVideoCodec type, int nSize, int64_t pts){
-    BitStreamParserPtr pParser;
+#include "bit_stream_parser.h"
 
-    switch(type)
-    {
-    case rocDecVideoCodec_H264:
-        //pParser = BitStreamParserPtr(CreateH264Parser(pStream, pContext));
-        ERR ( STR ("Parser: H264 not supported codec type yet!"));
-        break;
-    case rocDecVideoCodec_HEVC:
-        pParser = BitStreamParserPtr(CreateHEVCParser(pStream, nSize, pts));
-        break;
-    default:
-        ERR ( STR ("Parser: unsupported codec type "));
-    }
-    return pParser;
-}
+BitStreamParser* CreateHEVCParser(DataStream* pStream, int nSize, int64_t pts);

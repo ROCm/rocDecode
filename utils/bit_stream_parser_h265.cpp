@@ -20,11 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "parserH265.h"
+#include "bit_stream_parser_h265.h"
+
+#include <vector>
+#include <map>
+#include <algorithm>
 
 class HevcParser : public BitStreamParser {
 public:
-    HevcParser(amf::AMFDataStream* stream, amf::AMFContext* pContext);
+    HevcParser(DataStream *stream, int nSize, int64_t pts);
     virtual ~HevcParser();
 
     virtual int                     GetOffsetX() const;
@@ -34,14 +38,14 @@ public:
     virtual int                     GetAlignedWidth() const;
     virtual int                     GetAlignedHeight() const;
 
-    virtual void                    SetMaxFramesNumber(size_t num) { m_maxFramesNumber = num; }
+    virtual void                    SetMaxFramesNumber(size_t num) { m_maxFramesNumber_ = num; }
 
     virtual const unsigned char*    GetExtraData() const;
     virtual size_t                  GetExtraDataSize() const;
     virtual void                    SetUseStartCodes(bool bUse);
     virtual void                    SetFrameRate(double fps);
     virtual double                  GetFrameRate()  const;
-    virtual rocDecStatus            ReInit();
+    virtual PARSER_RESULT           ReInit();
 
     // TODO: Find equivalent input for AMF
     //virtual void                    GetFrameRate(AMFRate *frameRate) const;
@@ -465,39 +469,45 @@ protected:
 
 typedef     int64_t           pts;     // in 100 nanosecs
 
-    AMFByteArray   m_ReadData;
-    AMFByteArray   m_Extradata;
+    AMFByteArray   m_ReadData_;
+    AMFByteArray   m_Extradata_;
     
-    AMFByteArray   m_EBSPtoRBSPData;
+    AMFByteArray   m_EBSPtoRBSPData_;
 
-    bool           m_bUseStartCodes;
-    pts        m_currentFrameTimestamp;
-    amf::AMFDataStreamPtr m_pStream;
-    std::map<uint32_t,SpsData> m_SpsMap;
-    std::map<uint32_t,PpsData> m_PpsMap;
-    size_t       m_PacketCount;
-    bool            m_bEof;
-    double          m_fps;
-    size_t        m_maxFramesNumber;
-    amf::AMFContext* m_pContext;
+    bool           m_bUseStartCodes_;
+    pts            m_currentFrameTimestamp_;
+    DataStreamPtr  m_pStream_;
+    std::map<uint32_t,SpsData> m_SpsMap_;
+    std::map<uint32_t,PpsData> m_PpsMap_;
+    size_t         m_PacketCount_;
+    bool           m_bEof_;
+    double         m_fps_;
+    size_t         m_maxFramesNumber_;
 };
 
-//-------------------------------------------------------------------------------------------------
-BitStreamParser* CreateHEVCParser(uint8_t* pStream, int nSize, int64_t pts) {
+BitStreamParser* CreateHEVCParser(DataStream* pStream, int nSize, int64_t pts) {
     return new HevcParser(pStream, nSize, pts);
 }
 
-//-------------------------------------------------------------------------------------------------
-HevcParser::HevcParser(pStream, nSize, pts) :
-    m_bUseStartCodes(false),
-    m_currentFrameTimestamp(0),
-    m_pStream(stream),
-    m_PacketCount(0),
-    m_bEof(false),
-    m_fps(0),
-    m_maxFramesNumber(0),
-    m_pContext(pContext)
+HevcParser::HevcParser(DataStream *stream, int nSize, int64_t pts) :
+    m_bUseStartCodes_(false),
+    m_currentFrameTimestamp_(0),
+    m_pStream_(stream),
+    m_PacketCount_(0),
+    m_bEof_(false),
+    m_fps_(0),
+    m_maxFramesNumber_(0) {
+    stream->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    //FindSPSandPPS();
+}
+
+HevcParser::~HevcParser() {}
+
+PARSER_RESULT HevcParser::ReInit()
 {
-    stream->Seek(amf::AMF_SEEK_BEGIN, 0, NULL);
-    FindSPSandPPS();
+    m_currentFrameTimestamp_ = 0;
+    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_PacketCount_ = 0;
+    m_bEof_ = false;
+    return PARSER_OK;
 }

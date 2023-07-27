@@ -40,10 +40,20 @@ THE SOFTWARE.
 #include <iomanip>
 #include <memory>
 #include <hip/hip_runtime.h>
-#include "../api/rocdecode.h"
-#include "../include/log.h"
+#include "log.h"
+#include "result.h"
+#include "data_stream.h"
 
-rocDecVideoCodec getCodecType(const wchar_t* path);
+enum BitStreamType {
+    BitStreamH264AnnexB = 0,
+    BitStreamH264AvcC,
+    BitStreamMpeg2,
+    BitStreamMpeg4part2,
+    BitStreamVC1,
+    BitStream265AnnexB,
+	BitStreamIVF,
+    BitStreamUnknown
+};
 
 class BitStreamParser;
 typedef std::shared_ptr<BitStreamParser> BitStreamParserPtr;
@@ -68,15 +78,15 @@ public:
     virtual void                    SetUseStartCodes(bool bUse) = 0;
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
-    virtual rocDecStatus            ReInit() = 0;
+    virtual PARSER_RESULT           ReInit() = 0;
 
     // TODO: Find equivalent input for AMF
     //virtual void                    GetFrameRate(AMFRate *frameRate) const = 0;
-    //virtual rocDecStatus            QueryOutput(amf::AMFData** ppData) = 0;
+    //virtual PARSER_RESULT            QueryOutput(amf::AMFData** ppData) = 0;
     
 
 public:
-    static BitStreamParserPtr       Create(uint8_t* pStream, rocDecVideoCodec type, int nSize, int64_t pts);
+    static BitStreamParserPtr       Create(DataStream* pStream, BitStreamType type, int nSize, int64_t pts);
 };
 
 // helpers

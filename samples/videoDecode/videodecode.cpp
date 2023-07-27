@@ -29,7 +29,8 @@ THE SOFTWARE.
 #include <libgen.h>
 #include <filesystem>
 #include "videoDemuxer.hpp"
-#include "rocdecode.h"
+//#include "rocdecode.h"
+#include "../../utils/bit_stream_parser.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -77,7 +78,9 @@ int main(int argc, char **argv) {
         }
         ShowHelpAndExit(argv[i]);
     }
-
+   
+    BitStreamParserPtr parser;
+    DataStream datastream(nullptr);
     VideoDemuxer demuxer(inputFilePath.c_str());
     //VideoDecode viddec(deviceId);
 
@@ -104,6 +107,9 @@ int main(int argc, char **argv) {
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.demux(&pVideo, &nVideoBytes, &pts);
+        datastream = DataStream(pVideo);
+        parser = BitStreamParser::Create(&datastream, BitStream265AnnexB, nVideoBytes, pts);
+
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
