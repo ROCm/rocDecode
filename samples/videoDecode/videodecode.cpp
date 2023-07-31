@@ -80,10 +80,12 @@ int main(int argc, char **argv) {
     }
    
     BitStreamParserPtr parser;
-    DataStream datastream(nullptr);
+    DataStream *datastream;
+    PARSER_RESULT res;
     VideoDemuxer demuxer(inputFilePath.c_str());
     //VideoDecode viddec(deviceId);
 
+    //res = DataStream::OpenDataStream(&datastream);
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
 
@@ -107,8 +109,8 @@ int main(int argc, char **argv) {
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.demux(&pVideo, &nVideoBytes, &pts);
-        datastream = DataStream(pVideo);
-        parser = BitStreamParser::Create(&datastream, BitStream265AnnexB, nVideoBytes, pts);
+        res = DataStream::OpenDataStream(&datastream, pVideo, static_cast<size_t> (nVideoBytes));
+        parser = BitStreamParser::Create(datastream, BitStream265AnnexB, nVideoBytes, pts);
 
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -128,8 +130,8 @@ int main(int argc, char **argv) {
             }
         }
         nFrame += nFrameReturned;
+        //printf("i am here\n");
     } while (nVideoBytes);
-
      // Flush last frames from the decoder if any
     do {
         // send null packet to decoder to flush out

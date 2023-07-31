@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include <cstddef>
 #include <memory>
 #include <algorithm>
+#include <unistd.h>
 
 enum PARSER_SEEK_ORIGIN {
     PARSER_SEEK_BEGIN          = 0,
@@ -48,7 +49,7 @@ enum PARSER_SEEK_ORIGIN {
 
 class DataStream {
 public:
-    DataStream(uint8_t *pData);
+    DataStream();
     virtual ~DataStream();
     // interface
     virtual PARSER_RESULT           Open() { return PARSER_OK; };
@@ -59,6 +60,7 @@ public:
     virtual PARSER_RESULT           GetPosition(int64_t* pPosition);
     virtual PARSER_RESULT           GetSize(int64_t* pSize);
     virtual bool                    IsSeekable();
+    static PARSER_RESULT            OpenDataStream(DataStream** str, uint8_t *pData, size_t pSize);
 
 protected:
     PARSER_RESULT Realloc(size_t iSize);
@@ -67,10 +69,12 @@ protected:
     size_t m_uiMemorySize_;
     size_t m_uiAllocatedSize_;
     size_t m_pos_;
+private:
+    DataStream(const DataStream&);
+    DataStream& operator=(const DataStream&);
 };
-//----------------------------------------------------------------------------------------------
+
 // smart pointer
-//----------------------------------------------------------------------------------------------
 typedef std::shared_ptr<DataStream> DataStreamPtr;
-//----------------------------------------------------------------------------------------------
+
 #endif // DATASTREAM_H

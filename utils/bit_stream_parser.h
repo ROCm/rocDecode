@@ -43,6 +43,8 @@ THE SOFTWARE.
 #include "log.h"
 #include "result.h"
 #include "data_stream.h"
+#include "byte_array.h"
+#include "platform.h"
 
 enum BitStreamType {
     BitStreamH264AnnexB = 0,
@@ -79,9 +81,9 @@ public:
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
     virtual PARSER_RESULT           ReInit() = 0;
+    virtual void                    GetFrameRate(ParserRate *frameRate) const = 0;
 
     // TODO: Find equivalent input for AMF
-    //virtual void                    GetFrameRate(AMFRate *frameRate) const = 0;
     //virtual PARSER_RESULT            QueryOutput(amf::AMFData** ppData) = 0;
     
 

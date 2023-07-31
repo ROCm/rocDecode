@@ -20,25 +20,46 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "bit_stream_parser.h"
-#include "bit_stream_parser_h265.h"
+/*!
+ * \file
+ * \brief The rocDecode Platform.
+ *
+ * \defgroup group_rocdecode_parser Parser definitions.
+ * \brief The extra structs/classes for Bit Stream Parser platform.
+ */
 
-BitStreamParser::~BitStreamParser() {}
+#ifndef PLATFORM_H
+#define PLATFORM_H
+#pragma once
 
-BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType type, int nSize, int64_t pts) {
-    BitStreamParserPtr pParser;
+#include <cstdint>
 
-    switch(type)
+typedef struct ParserRect
+{
+    int32_t left;
+    int32_t top;
+    int32_t right;
+    int32_t bottom;
+#if defined(__cplusplus)
+    bool operator==(const ParserRect& other) const
     {
-    case BitStreamH264AnnexB:
-        //pParser = BitStreamParserPtr(CreateH264Parser(pStream, pContext));
-        ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));
-        break;
-    case BitStream265AnnexB:
-        pParser = BitStreamParserPtr(CreateHEVCParser(pStream, nSize, pts));
-        break;
-    default:
-        ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_SUPPORTED)));
+         return left == other.left && top == other.top && right == other.right && bottom == other.bottom; 
     }
-    return pParser;
-}
+    __inline__ bool operator!=(const ParserRect& other) const { return !operator==(other); }
+    int32_t Width() const { return right - left; }
+    int32_t Height() const { return bottom - top; }
+#endif
+} ParserRect;
+
+typedef struct ParserRate {
+    uint32_t num;
+    uint32_t den;
+#if defined(__cplusplus)
+    bool operator==(const ParserRate& other) const {
+         return num == other.num && den == other.den; 
+    }
+    __inline__ bool operator!=(const ParserRate& other) const { return !operator==(other); }
+#endif
+} ParserRate;
+
+#endif // PLATFORM_H

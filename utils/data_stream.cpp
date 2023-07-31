@@ -30,25 +30,60 @@ THE SOFTWARE.
 
 #include "data_stream.h"
 
-DataStream::DataStream(uint8_t *pData) :
+DataStream::DataStream() :
     m_pMemory_(NULL),
     m_uiMemorySize_(0),
     m_uiAllocatedSize_(0),
     m_pos_(0) {}
 
+PARSER_RESULT DataStream::OpenDataStream(DataStream** str, uint8_t* pData, size_t pSize) {
+    DataStream *ptr;
+    PARSER_RESULT res;
+    ptr = new DataStream();
+    res = ptr->Open();
+    if (res != PARSER_OK) {
+        return res;
+    }
+    ptr->m_pMemory_ = pData;
+    ptr->m_uiMemorySize_ = pSize;
+    *str = ptr;
+    ptr = NULL;
+    return PARSER_OK;
+}
 
 DataStream::~DataStream() {
     Close();
 }
 
 PARSER_RESULT DataStream::Close() {
-    if(m_pMemory_ != NULL) {
+    /*if(m_pMemory_ != NULL) {
         delete m_pMemory_;
-    }
+    }*/
     m_pMemory_ = NULL,
     m_uiMemorySize_ = 0,
     m_uiAllocatedSize_ = 0,
     m_pos_ = 0;
+    return PARSER_OK;
+}
+
+PARSER_RESULT DataStream::Realloc(size_t iSize) {
+    if(iSize > m_uiMemorySize_) {
+        uint8_t* pNewMemory = new uint8_t [iSize];
+        if(pNewMemory == NULL) {
+            return PARSER_OUT_OF_MEMORY;
+        }
+        m_uiAllocatedSize_ = iSize;
+        if(m_pMemory_ != NULL) {
+            memcpy(pNewMemory, m_pMemory_, m_uiMemorySize_);
+            delete m_pMemory_;
+        }
+
+        m_pMemory_ = pNewMemory;
+    }
+    m_uiMemorySize_ = iSize;
+    if(m_pos_ > m_uiMemorySize_) {
+        m_pos_ = m_uiMemorySize_;
+    }
     return PARSER_OK;
 }
 
