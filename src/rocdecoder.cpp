@@ -144,8 +144,8 @@ void ROCDecode::GetDeviceinfo(std::string &device_name, std::string &gcn_arch_na
     drm_node = drm_nodes_[device_id_];
 }
 
-void GetDecoderCaps(ROCDECDECODECAPS &decoder_caps) {
-
+void ROCDecode::GetDecoderCaps(ROCDECDECODECAPS &decoder_caps) {
+    //TODO implement the GetDecoderCaps function
 
 }
 
