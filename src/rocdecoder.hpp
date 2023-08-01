@@ -79,21 +79,22 @@ class ROCDecode {
     public:
        ROCDecode(int device_id = 0);
        ~ROCDecode();
-       bool Decode(uint8_t *data, size_t size, int64_t pts = 0);
+       bool DecodeFrame(uint8_t *data, size_t size, int64_t pts = 0);
        uint8_t* GetFrame(int64_t *pts);
        bool ReleaseFrame(int64_t pts);
        void SaveImage(std::string output_file_name, void* dev_mem, OutputImageInfo* image_info, bool is_output_RGB = 0);
        void GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id, std::string &drm_node);
+       void GetDecoderCaps(ROCDECDECODECAPS &decoder_caps);
        std::string GetPixFmtName(RocDecImageFormat subsampling);
        uint32_t GetWidth() { assert(width_); return width_;}
        uint32_t GetHeight() { assert(height_); return height_; }
        uint32_t GetBitDepth() { assert(bit_depth_); return bit_depth_; }
        uint32_t GetBytePerPixel() { assert(byte_per_pixel_); return byte_per_pixel_; }
-       size_t GetSurfaceSize() {assert(surface_size_); return surface_size_; }
-       uint32_t GetSurfaceStride() {assert(surface_stride_); return surface_stride_; }
+       size_t GetSurfaceSize() { assert(surface_size_); return surface_size_; }
+       uint32_t GetSurfaceStride() { assert(surface_stride_); return surface_stride_; }
        RocDecImageFormat GetSubsampling() { return subsampling_; }
-       int GetSurfaceWidth() {assert(surface_width_); return surface_width_;}
-       int GetSurfaceHeight() {assert(surface_height_); return surface_height_;}
+       int GetSurfaceWidth() { assert(surface_width_); return surface_width_;}
+       int GetSurfaceHeight() { assert(surface_height_); return surface_height_;}
        std::string GetCodecFmtName(rocDecVideoCodec codec_id);
        bool GetOutputImageInfo(OutputImageInfo **image_info);
 

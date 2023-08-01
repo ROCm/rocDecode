@@ -53,8 +53,8 @@ ROCDecode::~ROCDecode() {
     }
 }
 
-bool ROCDecode::Decode(uint8_t *data, size_t size, int64_t pts) {
-    //TODO implement the Decode function
+bool ROCDecode::DecodeFrame(uint8_t *data, size_t size, int64_t pts) {
+    //TODO implement the DecodeFrame function
     return false;
 }
 
@@ -142,6 +142,11 @@ void ROCDecode::GetDeviceinfo(std::string &device_name, std::string &gcn_arch_na
     pci_domain_id = hip_dev_prop_.pciDomainID;
     pci_device_id = hip_dev_prop_.pciDeviceID;
     drm_node = drm_nodes_[device_id_];
+}
+
+void GetDecoderCaps(ROCDECDECODECAPS &decoder_caps) {
+
+
 }
 
 std::string ROCDecode::GetPixFmtName(RocDecImageFormat subsampling) {
