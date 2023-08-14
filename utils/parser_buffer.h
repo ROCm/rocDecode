@@ -20,8 +20,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifndef PARSERBUFFER_H
+#define PARSERBUFFER_H
 #pragma once
 
-#include "bit_stream_parser.h"
+#include "parser_data.h"
 
-BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext *pContext);
+class ParserBuffer : public ParserData
+{
+public:
+    virtual PARSER_RESULT     SetSize(size_t newSize) = 0;
+    virtual size_t            GetSize() = 0;
+    virtual void*             GetNative() = 0;
+};
+
+// smart pointer
+typedef std::shared_ptr<ParserBuffer> ParserBufferPtr;
+
+#endif // PARSERBUFFER_H

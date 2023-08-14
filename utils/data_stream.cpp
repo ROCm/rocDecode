@@ -30,13 +30,14 @@ THE SOFTWARE.
 
 #include "data_stream.h"
 
-DataStream::DataStream() :
-    m_pMemory_(NULL),
-    m_uiMemorySize_(0),
-    m_uiAllocatedSize_(0),
-    m_pos_(0) {}
+DataStream::DataStream() {
+    m_pMemory_ = new uint8_t [DATA_STREAM_SIZE];
+    m_uiAllocatedSize_ = DATA_STREAM_SIZE;
+    m_uiMemorySize_ = sizeof(m_pMemory_);
+    m_pos_ = 0;
+}
 
-PARSER_RESULT DataStream::OpenDataStream(DataStream** str, uint8_t* pData, size_t pSize) {
+PARSER_RESULT DataStream::OpenDataStream(DataStream** str) {
     DataStream *ptr;
     PARSER_RESULT res;
     ptr = new DataStream();
@@ -44,8 +45,8 @@ PARSER_RESULT DataStream::OpenDataStream(DataStream** str, uint8_t* pData, size_
     if (res != PARSER_OK) {
         return res;
     }
-    ptr->m_pMemory_ = pData;
-    ptr->m_uiMemorySize_ = pSize;
+    //ptr->m_pMemory_ = pData;
+    //ptr->m_uiMemorySize_ = pSize;
     *str = ptr;
     ptr = NULL;
     return PARSER_OK;
@@ -88,10 +89,10 @@ PARSER_RESULT DataStream::Realloc(size_t iSize) {
 }
 
 PARSER_RESULT DataStream::Read(void* pData, size_t iSize, size_t* pRead) {
-    if (pData != NULL) {
+    if (pData == NULL) {
         return PARSER_INVALID_POINTER;
     }
-    if (m_pMemory_ != NULL) {
+    if (m_pMemory_ == NULL) {
         return PARSER_NOT_INITIALIZED;
     }
     size_t toRead = std::min(iSize, m_uiMemorySize_ - m_pos_);
@@ -106,7 +107,7 @@ PARSER_RESULT DataStream::Read(void* pData, size_t iSize, size_t* pRead) {
 
 PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritten)
 {
-    if (pData != NULL) {
+    if (pData == NULL) {
         return PARSER_INVALID_POINTER;
     }
     if (Realloc(m_pos_ + iSize)) {

@@ -33,7 +33,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cstdint>
-
+#define PARSER_SECOND          10000000L    // 1 second in 100 nanoseconds
 typedef struct ParserRect
 {
     int32_t left;

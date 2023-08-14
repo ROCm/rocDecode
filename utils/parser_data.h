@@ -20,8 +20,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifndef PARSERDATA_H
+#define PARSERDATA_H
 #pragma once
 
-#include "bit_stream_parser.h"
+#include <cstdint>
+#include <cstring>
+#include <memory>
 
-BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext *pContext);
+typedef enum PARSER_MEMORY_TYPE
+{
+    PARSER_MEMORY_UNKNOWN          = 0,
+    PARSER_MEMORY_HOST             = 1,
+    PARSER_MEMORY_HIP              = 2,
+} PARSER_MEMORY_TYPE;
+
+class ParserData {
+public:
+    virtual bool           IsReusable() = 0;
+    virtual void           SetPts(int64_t pts) = 0;
+    virtual int64_t        GetPts() = 0;
+    virtual void           SetDuration(int64_t duration) = 0;
+    virtual int64_t        GetDuration() = 0;
+};
+
+// smart pointer
+typedef std::shared_ptr<ParserData> ParserDataPtr;
+
+#endif // PARSERDATA_H

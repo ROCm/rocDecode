@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 BitStreamParser::~BitStreamParser() {}
 
-BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType type, int nSize, int64_t pts) {
+BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType type, ParserContext* pContext) {
     BitStreamParserPtr pParser;
 
     switch(type)
@@ -35,7 +35,7 @@ BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType ty
         ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));
         break;
     case BitStream265AnnexB:
-        pParser = BitStreamParserPtr(CreateHEVCParser(pStream, nSize, pts));
+        pParser = BitStreamParserPtr(CreateHEVCParser(pStream, pContext));
         break;
     default:
         ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_SUPPORTED)));

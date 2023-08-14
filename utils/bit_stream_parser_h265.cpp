@@ -35,7 +35,7 @@ extern int scaling_list_default_3[1][2][64];
 
 class HevcParser : public BitStreamParser {
 public:
-    HevcParser(DataStream *stream, int nSize, int64_t pts);
+    HevcParser(DataStream *stream, ParserContext* context);
     virtual ~HevcParser();
 
     virtual int                     GetOffsetX() const;
@@ -54,9 +54,8 @@ public:
     virtual double                  GetFrameRate()  const;
     virtual PARSER_RESULT           ReInit();
     virtual void                    GetFrameRate(ParserRate *frameRate) const;
-    // TODO: Find equivalent input for AMF
-    
-    //virtual rocDecStatus              QueryOutput(amf::AMFData** ppData);
+    virtual PARSER_RESULT           QueryOutput(ParserData** ppData);
+    virtual void                    FindFirstFrameSPSandPPS();
 
 protected:
     // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
@@ -490,21 +489,28 @@ typedef     int64_t           pts;     // in 100 nanosecs
     bool           m_bEof_;
     double         m_fps_;
     size_t         m_maxFramesNumber_;
+    ParserContext* m_pContext_;
 };
 
-BitStreamParser* CreateHEVCParser(DataStream* pStream, int nSize, int64_t pts) {
-    return new HevcParser(pStream, nSize, pts);
+BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext* pContext) {
+    return new HevcParser(pStream, pContext);
 }
 
-HevcParser::HevcParser(DataStream *stream, int nSize, int64_t pts) :
+HevcParser::HevcParser(DataStream *stream, ParserContext* pContext) :
     m_bUseStartCodes_(false),
     m_currentFrameTimestamp_(0),
     m_pStream_(stream),
     m_PacketCount_(0),
     m_bEof_(false),
     m_fps_(0),
-    m_maxFramesNumber_(0) {
-    stream->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_maxFramesNumber_(0),
+    m_pContext_(pContext) {
+    //stream->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    //FindSPSandPPS();
+}
+
+void HevcParser::FindFirstFrameSPSandPPS() {
+    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
     FindSPSandPPS();
 }
 
@@ -700,6 +706,151 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
     *size = *offset - *nalu;
     // get NAL type
     return GetNaluUnitType(m_ReadData_.GetData() + *nalu);
+}
+
+PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
+{
+    /*if(m_bFrozen)
+    {
+        return AMF_OK;
+    }*/
+    if((m_bEof_ && m_ReadData_.GetSize() == 0) || m_maxFramesNumber_ && m_PacketCount_ >= m_maxFramesNumber_) {
+        return PARSER_EOF;
+    }
+    bool newPictureDetected = false;
+    size_t packetSize = 0;
+    size_t readSize = 0;
+    std::vector<size_t> naluStarts;
+    std::vector<size_t> naluSizes;
+    size_t dataOffset = 0;
+    bool bSliceFound = false;
+    uint32_t prev_slice_nal_unit_type = 0;
+
+    do {
+        size_t naluSize = 0;
+        size_t naluOffset = 0;
+        size_t naluAnnexBOffset = dataOffset;
+        NalUnitHeader   naluHeader = ReadNextNaluUnit(&dataOffset, &naluOffset, &naluSize);
+        if (bSliceFound == true) {
+            if (prev_slice_nal_unit_type != naluHeader.nal_unit_type) {
+                newPictureDetected = true;
+            }
+        }
+
+        if(NAL_UNIT_ACCESS_UNIT_DELIMITER == naluHeader.nal_unit_type) {
+            if(packetSize > 0)
+            {
+                newPictureDetected = true;
+            }
+        }
+        else if(NAL_UNIT_PREFIX_SEI == naluHeader.nal_unit_type) {
+            if(bSliceFound) {
+                newPictureDetected = true;
+            }
+        }
+        else if (
+        NAL_UNIT_CODED_SLICE_TRAIL_R == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TRAIL_N == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TLA_R == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TSA_N == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_R == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_N == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_LP == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_RADL == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_N_LP == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_W_RADL == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_N_LP == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_CRA == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_N == naluHeader.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_R == naluHeader.nal_unit_type
+       || NAL_UNIT_CODED_SLICE_RASL_N == naluHeader.nal_unit_type
+       || NAL_UNIT_CODED_SLICE_RASL_R == naluHeader.nal_unit_type
+        ) {
+
+            if (bSliceFound == true) {
+                if (prev_slice_nal_unit_type != naluHeader.nal_unit_type) {
+                    newPictureDetected = true;
+                }
+                else {
+                    AccessUnitSigns naluAccessUnitsSigns;
+                    naluAccessUnitsSigns.Parse(m_ReadData_.GetData() + naluOffset, naluSize, m_SpsMap_, m_PpsMap_);
+                    newPictureDetected = naluAccessUnitsSigns.IsNewPicture() && bSliceFound;
+                }
+                bSliceFound = true;
+                prev_slice_nal_unit_type = naluHeader.nal_unit_type;
+            }
+            else {
+                AccessUnitSigns naluAccessUnitsSigns;
+                naluAccessUnitsSigns.Parse(m_ReadData_.GetData() + naluOffset, naluSize, m_SpsMap_, m_PpsMap_);
+                newPictureDetected = naluAccessUnitsSigns.IsNewPicture() && bSliceFound;
+                bSliceFound = true;
+                prev_slice_nal_unit_type = naluHeader.nal_unit_type;
+            }
+
+        }
+
+		if (naluSize > 0 && !newPictureDetected ) {
+            packetSize += naluSize;
+            if(!m_bUseStartCodes_) {
+                packetSize += NalUnitLengthSize;
+                naluStarts.push_back(naluOffset);
+                naluSizes.push_back(naluSize);
+            }
+            else {
+                size_t startCodeSize = naluOffset - naluAnnexBOffset;
+                packetSize += startCodeSize;
+            }
+        }
+        if(!newPictureDetected) {
+            readSize = dataOffset;
+        }
+        if(naluHeader.nal_unit_type == NAL_UNIT_INVALID) {
+	  		break;
+        }
+    } while (!newPictureDetected);
+
+    ParserBuffer* pictureBuffer;
+    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize, &pictureBuffer);
+    if (ar != PARSER_OK) {
+        return ar;
+    }
+
+    uint8_t *data = (uint8_t*)pictureBuffer->GetNative();
+    if(m_bUseStartCodes_) {
+        memcpy(data, m_ReadData_.GetData(), packetSize);
+    }
+    else {
+        for( size_t i=0; i < naluStarts.size(); i++) {
+            // copy size
+            uint32_t naluSize= (uint32_t)naluSizes[i];
+            *data++ = (naluSize >> 24);
+            *data++ = static_cast<uint8_t>(((naluSize & 0x00FF0000) >> 16));
+            *data++ = ((naluSize & 0x0000FF00) >> 8);
+            *data++ = ((naluSize & 0x000000FF));
+
+            memcpy(data, m_ReadData_.GetData() + naluStarts[i], naluSize);
+            data += naluSize;
+        }
+    }
+
+    pictureBuffer->SetPts(m_currentFrameTimestamp_);
+    int64_t frameDuration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
+    pictureBuffer->SetDuration(frameDuration);
+    m_currentFrameTimestamp_ += frameDuration;
+
+//    if (newPictureDetected)
+    {
+    // shift remaining data in m_ReadData
+        size_t remainingData = m_ReadData_.GetSize() - readSize;
+        memmove(m_ReadData_.GetData(), m_ReadData_.GetData()+readSize, remainingData);
+        m_ReadData_.SetSize(remainingData);
+    }
+    //*ppData = pictureBuffer.Detach();
+    *ppData = static_cast<ParserData*>(pictureBuffer);
+    pictureBuffer = NULL;
+
+    m_PacketCount_++;
+    return PARSER_OK;
 }
 
 void HevcParser::FindSPSandPPS() {

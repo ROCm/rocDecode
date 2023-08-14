@@ -46,7 +46,7 @@ enum PARSER_SEEK_ORIGIN {
     PARSER_SEEK_END            = 2,
 };
 
-
+#define DATA_STREAM_SIZE    20*1024*1024    // allocating buffer to hold video stream
 class DataStream {
 public:
     DataStream();
@@ -60,7 +60,7 @@ public:
     virtual PARSER_RESULT           GetPosition(int64_t* pPosition);
     virtual PARSER_RESULT           GetSize(int64_t* pSize);
     virtual bool                    IsSeekable();
-    static PARSER_RESULT            OpenDataStream(DataStream** str, uint8_t *pData, size_t pSize);
+    static PARSER_RESULT            OpenDataStream(DataStream** str);
 
 protected:
     PARSER_RESULT Realloc(size_t iSize);

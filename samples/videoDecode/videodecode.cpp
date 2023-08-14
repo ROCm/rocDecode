@@ -79,10 +79,15 @@ int main(int argc, char **argv) {
         ShowHelpAndExit(argv[i]);
     }
    
+    ParserContext* context;
     BitStreamParserPtr parser;
     DataStream *datastream;
     PARSER_RESULT res;
     VideoDemuxer demuxer(inputFilePath.c_str());
+
+    // initializing parser
+    res = DataStream::OpenDataStream(&datastream);
+    parser = BitStreamParser::Create(datastream, BitStream265AnnexB, context);
     //VideoDecode viddec(deviceId);
 
     //res = DataStream::OpenDataStream(&datastream);
@@ -106,11 +111,29 @@ int main(int argc, char **argv) {
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
 
+    ParserData* data;
+    bool bNeedNewInput = true;
+    bool firstFrame = true;
+
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.demux(&pVideo, &nVideoBytes, &pts);
-        res = DataStream::OpenDataStream(&datastream, pVideo, static_cast<size_t> (nVideoBytes));
-        parser = BitStreamParser::Create(datastream, BitStream265AnnexB, nVideoBytes, pts);
+        res = datastream->Write(pVideo, nVideoBytes, 0);
+        if (res != PARSER_OK) {
+            std::cerr << "ERROR: Write to datastream failed" << res << std::endl;
+            return res; 
+        }
+        if (firstFrame) {
+            parser->FindFirstFrameSPSandPPS();
+            firstFrame = false;
+        }
+        if(bNeedNewInput) {
+            data = NULL;
+            res = parser->QueryOutput(&data); // read compressed frame into buffer
+            /*if(res == PARSER_EOF || data == NULL) {
+                break;// end of file
+            }*/
+        }
 
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -130,7 +153,7 @@ int main(int argc, char **argv) {
             }
         }
         nFrame += nFrameReturned;
-        //printf("i am here\n");
+        printf("i am here\n");
     } while (nVideoBytes);
      // Flush last frames from the decoder if any
     do {

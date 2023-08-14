@@ -20,8 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifndef PARSERCONTEXT_H
+#define PARSERCONTEXT_H
 #pragma once
 
-#include "bit_stream_parser.h"
+#include "parser_buffer.h"
 
-BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext *pContext);
+class ParserContext {
+public:
+    virtual PARSER_RESULT          Terminate() = 0;
+    virtual PARSER_RESULT          AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** ppBuffer) = 0;
+};
+
+#endif // PARSERCONTEXT_H
