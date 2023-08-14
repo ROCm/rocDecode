@@ -47,7 +47,11 @@ find_package(HIP QUIET)
 find_package(Libva QUIET)
 
 if(HIP_FOUND AND Libva_FOUND)
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} src/rocdecode_api.cpp src/rocdecoder.cpp)
+    include_directories(./api
+                        ./src
+                        ./src/vaapi
+                        )       
+    file(GLOB_RECURSE SOURCES "./src/*.cpp")
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} Libva::va Libva::va_drm hip::device)
