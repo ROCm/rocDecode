@@ -29,9 +29,25 @@ THE SOFTWARE.
 class ParserBuffer : public ParserData
 {
 public:
-    virtual PARSER_RESULT     SetSize(size_t newSize) = 0;
-    virtual size_t            GetSize() = 0;
-    virtual void*             GetNative() = 0;
+    ParserBuffer();
+    virtual ~ParserBuffer();
+
+    virtual PARSER_RESULT     SetSize(size_t newSize);
+    virtual size_t            GetSize();
+    virtual void*             GetNative();
+
+    //parser data functions
+    virtual bool              IsReusable();
+    virtual void              SetPts(int64_t pts);
+    virtual int64_t           GetPts() const;
+    virtual void              SetDuration(int64_t duration);
+    virtual int64_t           GetDuration() const;
+
+private:
+    int64_t     m_currentTimestamp_;
+    int64_t     m_duration_;
+    size_t      m_packetSize_;
+    uint8_t*    m_buffer_;
 };
 
 // smart pointer

@@ -130,9 +130,9 @@ int main(int argc, char **argv) {
         if(bNeedNewInput) {
             data = NULL;
             res = parser->QueryOutput(&data); // read compressed frame into buffer
-            /*if(res == PARSER_EOF || data == NULL) {
+            if(res == PARSER_EOF || data == NULL) {
                 break;// end of file
-            }*/
+            }
         }
 
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);

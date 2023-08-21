@@ -77,7 +77,6 @@ typedef enum PARSER_RESULT
     PARSER_INVALID_RESOLUTION                      ,//invalid resolution (width or height)
     PARSER_CODEC_NOT_SUPPORTED                     ,//codec not supported
     PARSER_SURFACE_FORMAT_NOT_SUPPORTED            ,//surface format not supported
-    PARSER_SURFACE_MUST_BE_SHARED                  ,//surface should be shared (DX11: (MiscFlags & D3D11_RESOURCE_MISC_SHARED) == 0, DX9: No shared handle found)
 } PARSER_RESULT;
 
 #endif /* RESULT_H */

@@ -27,6 +27,9 @@ THE SOFTWARE.
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <ctime>
+#include <chrono>
+#include "result.h"
 
 typedef enum PARSER_MEMORY_TYPE
 {
@@ -39,9 +42,9 @@ class ParserData {
 public:
     virtual bool           IsReusable() = 0;
     virtual void           SetPts(int64_t pts) = 0;
-    virtual int64_t        GetPts() = 0;
+    virtual int64_t        GetPts() const = 0;
     virtual void           SetDuration(int64_t duration) = 0;
-    virtual int64_t        GetDuration() = 0;
+    virtual int64_t        GetDuration() const = 0;
 };
 
 // smart pointer

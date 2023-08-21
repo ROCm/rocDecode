@@ -473,15 +473,13 @@ protected:
     size_t EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos);
     ParserRect GetCropRect() const;
 
-typedef     int64_t           pts;     // in 100 nanosecs
-
     ByteArray   m_ReadData_;
     ByteArray   m_Extradata_;
     
     ByteArray   m_EBSPtoRBSPData_;
 
     bool           m_bUseStartCodes_;
-    pts            m_currentFrameTimestamp_;
+    int64_t        m_currentFrameTimestamp_;
     DataStreamPtr  m_pStream_;
     std::map<uint32_t,SpsData> m_SpsMap_;
     std::map<uint32_t,PpsData> m_PpsMap_;
@@ -514,7 +512,9 @@ void HevcParser::FindFirstFrameSPSandPPS() {
     FindSPSandPPS();
 }
 
-HevcParser::~HevcParser() {}
+HevcParser::~HevcParser() {
+    std::cout << "parsed frames: " << m_PacketCount_ << std::endl;
+}
 
 PARSER_RESULT HevcParser::ReInit()
 {
@@ -647,7 +647,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
     while(!newNalFound) {
         // read next portion if needed
         size_t ready = m_ReadData_.GetSize() - *offset;
-        //printf("ReadNextNaluUnit: remaining data size for read: %d\n", ready);
+        printf("ReadNextNaluUnit: remaining data size for read: %zu\n", ready);
         if (ready == 0) {
             if (m_bEof_ == false) {
                 m_ReadData_.SetSize(m_ReadData_.GetSize() + m_ReadSize_);
@@ -810,11 +810,11 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
     } while (!newPictureDetected);
 
     ParserBuffer* pictureBuffer;
-    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize, &pictureBuffer);
+    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize/*, &pictureBuffer*/);
     if (ar != PARSER_OK) {
         return ar;
     }
-
+    
     uint8_t *data = (uint8_t*)pictureBuffer->GetNative();
     if(m_bUseStartCodes_) {
         memcpy(data, m_ReadData_.GetData(), packetSize);
@@ -909,8 +909,8 @@ void HevcParser::FindSPSandPPS() {
         }
     } while (true);
 
-    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
-    m_ReadData_.SetSize(0);
+    //m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    //m_ReadData_.SetSize(0);
     // It will fail if SPS or PPS are absent
     extraDataBuilder.GetExtradata(m_Extradata_);
 }

@@ -39,6 +39,8 @@ THE SOFTWARE.
 #include <queue>
 #include <iomanip>
 #include <memory>
+#include <chrono>
+#include <ctime>
 #include <hip/hip_runtime.h>
 #include "log.h"
 #include "result.h"

@@ -1,4 +1,4 @@
-/*
+/*amf_ptsdure
 Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,17 +20,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef PARSERCONTEXT_H
-#define PARSERCONTEXT_H
-#pragma once
+#include "context.h"
 
-#include "parser_buffer.h"
+ParserContext::ParserContext () {
+    ParserBuffer *pNewBuffer;
+}
 
-class ParserContext {
-public:
-    ParserContext();
-    virtual PARSER_RESULT          Terminate();
-    virtual PARSER_RESULT          AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*, ParserBuffer** ppBuffer*/);
-};
+PARSER_RESULT ParserContext::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*, ParserBuffer** ppBuffer*/) {
+    PARSER_RESULT res = PARSER_OK;
+    /*switch(type) { 
+        case PARSER_MEMORY_HOST: {
+            ParserBuffer* pNewBuffer;
+            if (ppBuffer != NULL) {
+                ppBuffer = &pNewBuffer;
+                (*ppBuffer)->SetSize(size);
+            }
+            res = PARSER_OK;
+        }
+        break;
+        case PARSER_MEMORY_HIP: {
+            res = PARSER_NOT_IMPLEMENTED;
+        }
+        break;
+        case PARSER_MEMORY_UNKNOWN:{
+            res = PARSER_NOT_IMPLEMENTED;
+        }
+        break;
+        default: {
+            res = PARSER_INVALID_ARG;
+        }
+        break;       
+    }*/
+    return res;
+}
 
-#endif // PARSERCONTEXT_H
+PARSER_RESULT ParserContext::Terminate() {
+    return PARSER_OK;
+}

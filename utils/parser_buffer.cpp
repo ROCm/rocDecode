@@ -1,4 +1,4 @@
-/*
+/*amf_ptsdure
 Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,17 +20,50 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef PARSERCONTEXT_H
-#define PARSERCONTEXT_H
-#pragma once
-
 #include "parser_buffer.h"
 
-class ParserContext {
-public:
-    ParserContext();
-    virtual PARSER_RESULT          Terminate();
-    virtual PARSER_RESULT          AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*, ParserBuffer** ppBuffer*/);
-};
+ParserBuffer::ParserBuffer() {
+    m_buffer_ = new uint8_t[1];
+    m_packetSize_ = 0;
+    m_duration_ = 0;
+    m_currentTimestamp_ = 0;
+}
 
-#endif // PARSERCONTEXT_H
+ParserBuffer::~ParserBuffer () {
+    if (m_buffer_) {
+        delete [] m_buffer_;
+    }
+    m_buffer_ = NULL;
+    m_packetSize_ = 0;
+    m_duration_ = 0;
+    m_currentTimestamp_ = 0;
+}
+
+int64_t ParserBuffer::GetPts() const { return m_currentTimestamp_; }
+
+void ParserBuffer::SetPts(int64_t pts) {
+    if (pts == m_currentTimestamp_) {
+        return;
+    }
+    m_currentTimestamp_ = pts;
+}
+
+int64_t ParserBuffer::GetDuration() const { return m_duration_; }
+
+void ParserBuffer::SetDuration(int64_t duration) { 
+    m_duration_ = duration; 
+}
+
+bool ParserBuffer::IsReusable() { return PARSER_NOT_IMPLEMENTED; }
+
+PARSER_RESULT ParserBuffer::SetSize(size_t newSize) {
+    if (newSize > m_packetSize_) {
+        return PARSER_INVALID_ARG;
+    }
+    m_packetSize_ = newSize;
+    return PARSER_OK;
+}
+
+size_t ParserBuffer::GetSize() { return m_packetSize_; }
+
+void* ParserBuffer::GetNative() { return m_buffer_; }
