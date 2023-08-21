@@ -37,8 +37,7 @@ THE SOFTWARE.
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
 
-class rocDecodeException : public std::exception
-{
+class rocDecodeException : public std::exception {
 public:
 
     explicit rocDecodeException(const std::string& message):_message(message){}

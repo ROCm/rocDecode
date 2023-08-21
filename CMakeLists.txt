@@ -47,9 +47,9 @@ find_package(HIP QUIET)
 find_package(Libva QUIET)
 
 if(HIP_FOUND AND Libva_FOUND)
-    include_directories(./api
-                        ./src
-                        ./src/vaapi
+    include_directories(api
+                        src
+                        src/vaapi
                         )       
     file(GLOB_RECURSE SOURCES "./src/*.cpp")
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
