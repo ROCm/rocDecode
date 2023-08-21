@@ -22,16 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <assert.h>
-#include <stdint.h>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <string.h>
-
-#include "commons.h"
-#include "vaapi_videodecoder.h"
 
 // class implementing highlevel vaapi decoder
 /***********************************************************************************************************/

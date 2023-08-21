@@ -41,10 +41,8 @@ class rocDecodeException : public std::exception
 {
 public:
 
-    explicit rocDecodeException(const std::string& message):_message(message)
-    {}
-    virtual const char* what() const throw() override
-    {
+    explicit rocDecodeException(const std::string& message):_message(message){}
+    virtual const char* what() const throw() override {
         return _message.c_str();
     }
 private:

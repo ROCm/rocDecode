@@ -34,10 +34,10 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 
 
-class rocDecoder {
+class RocDecoder {
 public:
-    rocDecoder(int device_id, int num_devices);
-    ~rocDecoder();
+    RocDecoder(int device_id, int num_devices);
+    ~RocDecoder();
     rocDecStatus getDecoderCaps(ROCDECDECODECAPS *pdc);
     rocDecStatus decodeFrame(ROCDECPICPARAMS *pPicParams);
     rocDecStatus getDecodeStatus(int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);

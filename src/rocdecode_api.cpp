@@ -31,10 +31,9 @@ rocDecStatus ROCDECAPI
 rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci) {
     rocDecDecoderHandle handle = nullptr;
     try {
-        handle = new decHandle();
+        handle = new DecHandle();
     } 
-    catch(const std::exception& e)
-    {
+    catch(const std::exception& e) {
         ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
     }
     *phDecoder = handle;
@@ -47,7 +46,7 @@ rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     delete handle;
     return ROCDEC_SUCCESS;
 }
@@ -61,7 +60,7 @@ rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
 /**********************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->getDecoderCaps(pdc);
@@ -81,7 +80,7 @@ rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc) {
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->decodeFrame(pPicParams);
@@ -102,7 +101,7 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams) {
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->getDecodeStatus(nPicIdx, pDecodeStatus);
@@ -122,7 +121,7 @@ rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODE
 /*********************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->reconfigureDecoder(pDecReconfigParams);
@@ -145,7 +144,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERI
 rocDecStatus ROCDECAPI 
 rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
                     void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], ROCDECPROCPARAMS *pVidPostprocParams) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->mapVideoFrame(nPicIdx, pDevMemPtr, pHorizontalPitch, pVidPostprocParams);
@@ -164,7 +163,7 @@ rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr) {
-    auto handle = static_cast<decHandle *> (hDecoder);
+    auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
         ret = handle->roc_decoder->unMapVideoFrame(pMappedDevPtr);

@@ -20,15 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma once
+
 #include <memory>
 #include <string>
-#include "rocdecoder.h"
 
-struct decHandle {
+#include "roc_decoder.h"
 
-    explicit decHandle();   //constructor
-    ~decHandle() { clear_errors(); }
-    std::shared_ptr<rocDecoder> roc_decoder;    // class intantiation
+struct DecHandle {
+
+    explicit DecHandle();   //constructor
+    ~DecHandle() { clear_errors(); }
+    std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
     bool no_error() { return error.empty(); }
     const char* error_msg() { return error.c_str(); }
     void capture_error(const std::string& err_msg) { error = err_msg; }
