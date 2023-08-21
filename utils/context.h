@@ -30,7 +30,10 @@ class ParserContext {
 public:
     ParserContext();
     virtual PARSER_RESULT          Terminate();
-    virtual PARSER_RESULT          AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*, ParserBuffer** ppBuffer*/);
+    virtual PARSER_RESULT          AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** ppBuffer);
+
+private:
+    ParserBufferPtr parser_buffer;
 };
 
 #endif // PARSERCONTEXT_H

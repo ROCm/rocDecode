@@ -810,7 +810,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
     } while (!newPictureDetected);
 
     ParserBuffer* pictureBuffer;
-    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize/*, &pictureBuffer*/);
+    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize, &pictureBuffer);
     if (ar != PARSER_OK) {
         return ar;
     }
@@ -846,7 +846,8 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
         m_ReadData_.SetSize(remainingData);
     }
     //*ppData = pictureBuffer.Detach();
-    *ppData = static_cast<ParserData*>(pictureBuffer);
+    //TODO: check how to convert Shared_ptr
+    //*ppData = static_cast<ParserData*>(pictureBuffer);
     pictureBuffer = NULL;
 
     m_PacketCount_++;

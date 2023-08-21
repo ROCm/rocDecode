@@ -23,19 +23,22 @@ THE SOFTWARE.
 #include "context.h"
 
 ParserContext::ParserContext () {
-    ParserBuffer *pNewBuffer;
+    parser_buffer = std::make_shared<ParserBuffer>();
 }
 
-PARSER_RESULT ParserContext::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*, ParserBuffer** ppBuffer*/) {
+PARSER_RESULT ParserContext::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** ppBuffer) {
     PARSER_RESULT res = PARSER_OK;
-    /*switch(type) { 
+    switch(type) { 
         case PARSER_MEMORY_HOST: {
-            ParserBuffer* pNewBuffer;
-            if (ppBuffer != NULL) {
-                ppBuffer = &pNewBuffer;
-                (*ppBuffer)->SetSize(size);
+            ParserBuffer* pNewBuffer = new ParserBuffer;
+            if (pNewBuffer != NULL) {
+                pNewBuffer->SetNative(size);
+                res = pNewBuffer->SetSize(size);
+                if(res != PARSER_OK) {
+                    return res;
+                }
+                *ppBuffer = pNewBuffer;
             }
-            res = PARSER_OK;
         }
         break;
         case PARSER_MEMORY_HIP: {
@@ -50,7 +53,7 @@ PARSER_RESULT ParserContext::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size/*,
             res = PARSER_INVALID_ARG;
         }
         break;       
-    }*/
+    }
     return res;
 }
 

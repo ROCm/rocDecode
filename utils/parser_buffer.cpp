@@ -22,30 +22,29 @@ THE SOFTWARE.
 
 #include "parser_buffer.h"
 
-ParserBuffer::ParserBuffer() {
-    m_buffer_ = new uint8_t[1];
-    m_packetSize_ = 0;
-    m_duration_ = 0;
-    m_currentTimestamp_ = 0;
-}
+ParserBuffer::ParserBuffer() :
+            m_buffer_(NULL),
+            m_packet_size_(0),
+            m_duration_(0),
+            m_current_timestamp_(0) {}
 
 ParserBuffer::~ParserBuffer () {
     if (m_buffer_) {
-        delete [] m_buffer_;
+        delete m_buffer_;
     }
     m_buffer_ = NULL;
-    m_packetSize_ = 0;
+    m_packet_size_ = 0;
     m_duration_ = 0;
-    m_currentTimestamp_ = 0;
+    m_current_timestamp_ = 0;
 }
 
-int64_t ParserBuffer::GetPts() const { return m_currentTimestamp_; }
+int64_t ParserBuffer::GetPts() const { return m_current_timestamp_; }
 
 void ParserBuffer::SetPts(int64_t pts) {
-    if (pts == m_currentTimestamp_) {
+    if (pts == m_current_timestamp_) {
         return;
     }
-    m_currentTimestamp_ = pts;
+    m_current_timestamp_ = pts;
 }
 
 int64_t ParserBuffer::GetDuration() const { return m_duration_; }
@@ -57,13 +56,17 @@ void ParserBuffer::SetDuration(int64_t duration) {
 bool ParserBuffer::IsReusable() { return PARSER_NOT_IMPLEMENTED; }
 
 PARSER_RESULT ParserBuffer::SetSize(size_t newSize) {
-    if (newSize > m_packetSize_) {
+    /*if (newSize > m_packet_size_) {
         return PARSER_INVALID_ARG;
-    }
-    m_packetSize_ = newSize;
+    }*/
+    m_packet_size_ = newSize;
     return PARSER_OK;
 }
 
-size_t ParserBuffer::GetSize() { return m_packetSize_; }
+size_t ParserBuffer::GetSize() { return m_packet_size_; }
 
-void* ParserBuffer::GetNative() { return m_buffer_; }
+void* ParserBuffer::GetNative() { return &m_buffer_; }
+
+void ParserBuffer::SetNative(size_t size) { 
+    m_buffer_ = new uint8_t[size];
+}

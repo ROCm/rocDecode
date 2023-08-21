@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
-#include "videoDemuxer.hpp"
+#include "video_demuxer.hpp"
 //#include "rocdecode.h"
 #include "../../utils/bit_stream_parser.h"
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
         ShowHelpAndExit(argv[i]);
     }
    
-    ParserContext* context;
+    ParserContext context;
     BitStreamParserPtr parser;
     DataStream *datastream;
     PARSER_RESULT res;
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
     // initializing parser
     res = DataStream::OpenDataStream(&datastream);
-    parser = BitStreamParser::Create(datastream, BitStream265AnnexB, context);
+    parser = BitStreamParser::Create(datastream, BitStream265AnnexB, &context);
     //VideoDecode viddec(deviceId);
 
     //res = DataStream::OpenDataStream(&datastream);

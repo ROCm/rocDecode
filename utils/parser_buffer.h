@@ -35,6 +35,7 @@ public:
     virtual PARSER_RESULT     SetSize(size_t newSize);
     virtual size_t            GetSize();
     virtual void*             GetNative();
+    virtual void              SetNative(size_t size);
 
     //parser data functions
     virtual bool              IsReusable();
@@ -44,9 +45,9 @@ public:
     virtual int64_t           GetDuration() const;
 
 private:
-    int64_t     m_currentTimestamp_;
+    int64_t     m_current_timestamp_;
     int64_t     m_duration_;
-    size_t      m_packetSize_;
+    size_t      m_packet_size_;
     uint8_t*    m_buffer_;
 };
 
