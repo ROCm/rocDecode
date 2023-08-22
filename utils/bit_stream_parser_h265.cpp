@@ -846,8 +846,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
         m_ReadData_.SetSize(remainingData);
     }
     //*ppData = pictureBuffer.Detach();
-    //TODO: check how to convert Shared_ptr
-    //*ppData = static_cast<ParserData*>(pictureBuffer);
+    *ppData = static_cast<ParserData*>(pictureBuffer);
     pictureBuffer = NULL;
 
     m_PacketCount_++;
