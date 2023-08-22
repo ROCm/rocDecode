@@ -28,6 +28,9 @@ THE SOFTWARE.
 #endif
 #endif
 
+#pragma once
+#include "hip/hip_runtime.h"
+
 /*****************************************************************************************************/
 //! \file rocdecode.h
 //! rocDecode API provides video decoding interface to AMD GPU devices.
@@ -55,9 +58,10 @@ typedef void *rocDecDecoderHandle;
 typedef enum rocDecStatus_enum{
     ROCDEC_DEVICE_INVALID = -1,
     ROCDEC_CONTEXT_INVALID = -2,
-    ROCDEC_RUNTIME_ERROR  = 3,
+    ROCDEC_RUNTIME_ERROR  = -3,
     ROCDEC_OUTOF_MEMORY = -4,
     ROCDEC_INVALID_PARAMETER = -5,
+    ROCDEC_NOT_IMPLEMENTED = -6,
     ROCDEC_SUCCESS = 0,
 }rocDecStatus;
 
@@ -317,6 +321,29 @@ typedef struct _ROCDECPICPARAMS {
     } CodecSpecific;
 } ROCDECPICPARAMS;
 
+/******************************************************/
+//! \struct ROCDECPROCPARAMS
+//! Picture parameters for postprocessing
+//! This structure is used in rocDecMapVideoFrame API
+/******************************************************/
+typedef struct _ROCDECPROCPARAMS
+{
+    int progressive_frame;                        /**< IN: Input is progressive (deinterlace_mode will be ignored)                */
+    int top_field_first;                          /**< IN: Input frame is top field first (1st field is top, 2nd field is bottom) */
+    unsigned int reserved_flags[2];                  /**< Reserved for future use (set to zero)                                      */
+
+    // The fields below are used for raw YUV input
+    unsigned long long raw_input_dptr;            /**< IN: Input HIP device ptr for raw YUV extensions                               */
+    unsigned int raw_input_pitch;                 /**< IN: pitch in bytes of raw YUV input (should be aligned appropriately)      */
+    unsigned int raw_input_format;                /**< IN: Input YUV format (rocDecVideoCodec_enum)                                 */
+    unsigned long long raw_output_dptr;           /**< IN: Output HIP device mem ptr for raw YUV extensions                              */
+    unsigned int raw_output_pitch;                /**< IN: pitch in bytes of raw YUV output (should be aligned appropriately)     */
+    unsigned int raw_output_format;                /**< IN: Output YUV format (rocDecVideoCodec_enum)                                 */
+    hipStream_t output_hstream;                   /**< IN: stream object used by rocDecMapVideoFrame                               */
+    unsigned int Reserved[16];                    /**< Reserved for future use (set to zero)                                      */
+} ROCDECPROCPARAMS;
+
+
 
 /***********************************************************************************************************/
 //! ROCVIDEO_DECODER
@@ -343,15 +370,6 @@ typedef struct _ROCDECPICPARAMS {
 //!   in the decode queue
 /***********************************************************************************************************/
 
-/**********************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(ROCDECDECODECAPS *pdc)
-//! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
-//! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of ROCDECDECODECAPS structure
-//! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
-//!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
-/**********************************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecGetDecoderCaps(ROCDECDECODECAPS *pdc);
-
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci)
 //! Create the decoder object based on pdci. A handle to the created decoder is returned
@@ -363,6 +381,15 @@ extern rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder
 //! Destroy the decoder object
 /*****************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle hDecoder);
+
+/**********************************************************************************************************************/
+//! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(ROCDECDECODECAPS *pdc)
+//! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
+//! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of ROCDECDECODECAPS structure
+//! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
+//!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
+/**********************************************************************************************************************/
+extern rocDecStatus ROCDECAPI rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc);
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams)
@@ -386,6 +413,22 @@ extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder
 /*********************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams);
 
+/************************************************************************************************************************/
+//! \fn extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
+//!                                           unsigned int *pDevMemPtr, unsigned int *pHorizontalPitch,
+//!                                           ROCDECPROCPARAMS *pVidPostprocParams);
+//! Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
+//! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately
+/************************************************************************************************************************/
+extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
+                                           void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3],
+                                           ROCDECPROCPARAMS *pVidPostprocParams);
+
+/*****************************************************************************************************/
+//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr)
+//! Unmap a previously mapped video frame with the associated mapped raw pointer (pMappedDevPtr) 
+/*****************************************************************************************************/
+extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr);
 
 #ifdef  __cplusplus
 }
