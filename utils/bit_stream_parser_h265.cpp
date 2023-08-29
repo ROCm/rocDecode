@@ -56,6 +56,7 @@ public:
     virtual void                    GetFrameRate(ParserRate *frameRate) const;
     virtual PARSER_RESULT           QueryOutput(ParserData** ppData);
     virtual void                    FindFirstFrameSPSandPPS();
+    virtual bool                    CheckDataStreamEof(int nVideoBytes);
 
 protected:
     // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
@@ -661,7 +662,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
                 if (m_bEof_ == false)
                 m_ReadData_.SetSize(m_ReadData_.GetSize() - m_ReadSize_);
 
-                m_bEof_ = true;
+                //m_bEof_ = true;
                 newNalFound = startOffset != *offset; 
                 *offset = m_ReadData_.GetSize();
                 break; // EOF
@@ -832,7 +833,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
             data += naluSize;
         }
     }
-
+    
     pictureBuffer->SetPts(m_currentFrameTimestamp_);
     int64_t frameDuration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
     pictureBuffer->SetDuration(frameDuration);
@@ -845,11 +846,10 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
         memmove(m_ReadData_.GetData(), m_ReadData_.GetData()+readSize, remainingData);
         m_ReadData_.SetSize(remainingData);
     }
-    //*ppData = pictureBuffer.Detach();
     *ppData = static_cast<ParserData*>(pictureBuffer);
-    pictureBuffer = NULL;
-
+    pictureBuffer = NULL;    
     m_PacketCount_++;
+
     return PARSER_OK;
 }
 
@@ -1501,6 +1501,14 @@ bool HevcParser::ExtraDataBuilder::GetExtradata(ByteArray &extradata) {
     memcpy(data, m_PPSs_.GetData(), m_PPSs_.GetSize());
     data += m_PPSs_.GetSize();
     return true;
+}
+
+bool HevcParser::CheckDataStreamEof(int nVideoBytes) {
+    if (nVideoBytes <= 0) {
+        m_bEof_ = true;
+        return true;
+    }
+    return false;
 }
 
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix

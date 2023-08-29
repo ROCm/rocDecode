@@ -46,7 +46,7 @@ enum PARSER_SEEK_ORIGIN {
     PARSER_SEEK_END            = 2,
 };
 
-#define DATA_STREAM_SIZE    20*1024*1024    // allocating buffer to hold video stream
+#define DATA_STREAM_SIZE    10*1024    // allocating buffer to hold video stream
 class DataStream {
 public:
     DataStream();

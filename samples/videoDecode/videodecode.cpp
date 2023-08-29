@@ -118,15 +118,18 @@ int main(int argc, char **argv) {
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.demux(&pVideo, &nVideoBytes, &pts);
+        if (parser->CheckDataStreamEof(nVideoBytes)) {
+            break;
+        }
         res = datastream->Write(pVideo, nVideoBytes, 0);
         if (res != PARSER_OK) {
             std::cerr << "ERROR: Write to datastream failed" << res << std::endl;
             return res; 
         }
-        if (firstFrame) {
+        //if (firstFrame) {
             parser->FindFirstFrameSPSandPPS();
-            firstFrame = false;
-        }
+            //firstFrame = false;
+        //}
         if(bNeedNewInput) {
             data = NULL;
             res = parser->QueryOutput(&data); // read compressed frame into buffer
@@ -144,15 +147,15 @@ int main(int argc, char **argv) {
             break;
         }*/
 
-        if (dumpOutputFrames) {
+        /*if (dumpOutputFrames) {
             for (int i = 0; i < nFrameReturned; i++) {
-                /*pFrame = viddec.getFrame(&pts);
+                pFrame = viddec.getFrame(&pts);
                 viddec.saveImage(outputFilePath, pFrame, pImageInfo, false);
                 // release frame
-                viddec.releaseFrame(pts);*/
+                viddec.releaseFrame(pts);
             }
         }
-        nFrame += nFrameReturned;
+        nFrame += nFrameReturned;*/
         printf("i am here\n");
     } while (nVideoBytes);
      // Flush last frames from the decoder if any

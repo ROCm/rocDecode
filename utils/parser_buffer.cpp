@@ -30,7 +30,7 @@ ParserBuffer::ParserBuffer() :
 
 ParserBuffer::~ParserBuffer () {
     if (m_buffer_) {
-        delete m_buffer_;
+        delete[] m_buffer_;
     }
     m_buffer_ = NULL;
     m_packet_size_ = 0;
@@ -65,8 +65,9 @@ PARSER_RESULT ParserBuffer::SetSize(size_t newSize) {
 
 size_t ParserBuffer::GetSize() { return m_packet_size_; }
 
-void* ParserBuffer::GetNative() { return &m_buffer_; }
+void* ParserBuffer::GetNative() { return m_buffer_; }
 
 void ParserBuffer::SetNative(size_t size) { 
     m_buffer_ = new uint8_t[size];
+    //m_packet_size_ = size * sizeof(uint8_t);
 }

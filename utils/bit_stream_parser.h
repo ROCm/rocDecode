@@ -91,6 +91,7 @@ public:
     virtual PARSER_RESULT           QueryOutput(ParserData** ppData) = 0;
     static BitStreamParserPtr       Create(DataStream* pStream, BitStreamType type, ParserContext* pContext);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
+    virtual bool                    CheckDataStreamEof(int nVideoBytes) = 0;
 };
 
 // helpers
