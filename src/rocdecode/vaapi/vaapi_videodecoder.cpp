@@ -28,5 +28,5 @@ THE SOFTWARE.
 #include <sstream>
 #include <string.h>
 
-#include "commons.h"
+#include "../commons.h"
 #include "vaapi_videodecoder.h"

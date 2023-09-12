@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "commons.h"
+#include "../commons.h"
 #include "roc_decoder.h"
 
 RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, num_devices_{num_devices} {

@@ -62,6 +62,7 @@ typedef enum rocDecStatus_enum{
     ROCDEC_OUTOF_MEMORY = -4,
     ROCDEC_INVALID_PARAMETER = -5,
     ROCDEC_NOT_IMPLEMENTED = -6,
+    ROCDEC_NOT_SUPPORTED = -7,
     ROCDEC_SUCCESS = 0,
 }rocDecStatus;
 
@@ -242,6 +243,84 @@ typedef struct _ROCDECRECONFIGUREDECODERINFO {
     unsigned int reserved2[11]; /**< Reserved for future use. Set to Zero */
 } ROCDECRECONFIGUREDECODERINFO; 
 
+/*********************************************************/
+//! \struct ROCDECH264PICTURE
+//! H.264 Picture Entry
+//! This structure is used in ROCDECH264PICPARAMS structure
+/*********************************************************/
+typedef struct _ROCDECH264PICTURE
+{
+    int PicIdx;                 /**< picture index of reference frame    */
+    int FrameIdx;               /**< frame_num(short-term) or LongTermFrameIdx(long-term)  */
+    unsigned int RefFlags;              /**< See below for definitions  */
+    int TopFieldOrderCnt;               /**< field order count of top field  */
+    int BottomFieldOrderCnt;            /**< field order count of bottom field   */
+} ROCDECH264PICTURE;
+
+/* flags in ROCDECH264PICTURE could be OR of the following */
+#define ROCDECH264PICTURE_FLAGS_INVALID			        0x00000001
+#define ROCDECH264PICTURE_FLAGS_TOP_FIELD		        0x00000002
+#define ROCDECH264PICTURE_FLAGS_BOTTOM_FIELD		    0x00000004
+#define ROCDECH264PICTURE_FLAGS_SHORT_TERM_REFERENCE	0x00000008
+#define ROCDECH264PICTURE_FLAGS_LONG_TERM_REFERENCE	    0x00000010
+#define ROCDECH264PICTURE_FLAGS_NON_EXISTING		    0x00000020
+
+/*********************************************************/
+//! \struct ROCDECHEVCPICTURE
+//! HEVC Picture Entry
+//! This structure is used in ROCDECHEVCPICPARAMS structure
+/*********************************************************/
+typedef struct _ROCDECHEVCPICTURE
+{
+    int PicIdx;                 /**< reconstructed picture surface ID    */
+    /** \brief picture order count.
+     * in HEVC, POCs for top and bottom fields of same picture should
+     * take different values.
+     */
+    int POC;
+    unsigned int Flags;              /**< See below for definitions  */
+    unsigned int Reserved[4];        /**< reserved for future; must be zero  */
+} ROCDECHEVCPICTURE;
+
+/* flags in ROCDECHEVCPICTURE could be OR of the following */
+#define ROCDECHEVCPICTURE_INVALID                 0x00000001
+/** \brief indication of interlace scan picture.
+ * should take same value for all the pictures in sequence.
+ */
+#define ROCDECHEVCPICTURE_FIELD_PIC               0x00000002
+/** \brief polarity of the field picture.
+ * top field takes even lines of buffer surface.
+ * bottom field takes odd lines of buffer surface.
+ */
+#define ROCDECHEVCPICTURE_BOTTOM_FIELD            0x00000004
+/** \brief Long term reference picture */
+#define ROCDECHEVCPICTURE_LONG_TERM_REFERENCE     0x00000008
+/**
+ * ROCDECHEVCPICTURE_ST_CURR_BEFORE, ROCDECHEVCPICTURE_RPS_ST_CURR_AFTER
+ * and ROCDECHEVCPICTURE_RPS_LT_CURR of any picture in ReferenceFrames[] should
+ * be exclusive. No more than one of them can be set for any picture.
+ * Sum of NumPocStCurrBefore, NumPocStCurrAfter and NumPocLtCurr
+ * equals NumPocTotalCurr, which should be equal to or smaller than 8.
+ * Application should provide valid values for both short format and long format.
+ * The pictures in DPB with any of these three flags turned on are referred by
+ * the current picture.
+ */
+/** \brief RefPicSetStCurrBefore of HEVC spec variable
+ * Number of ReferenceFrames[] entries with this bit set equals
+ * NumPocStCurrBefore.
+ */
+#define ROCDECHEVCPICTURE_RPS_ST_CURR_BEFORE      0x00000010
+/** \brief RefPicSetStCurrAfter of HEVC spec variable
+ * Number of ReferenceFrames[] entries with this bit set equals
+ * NumPocStCurrAfter.
+ */
+#define ROCDECHEVCPICTURE_RPS_ST_CURR_AFTER       0x00000020
+/** \brief RefPicSetLtCurr of HEVC spec variable
+ * Number of ReferenceFrames[] entries with this bit set equals
+ * NumPocLtCurr.
+ */
+#define ROCDECHEVCPICTURE_RPS_LT_CURR             0x00000040
+
 /***********************************************************/
 //! \struct ROCDECJPEGPICPARAMS placeholder
 //! JPEG picture parameters
@@ -252,30 +331,273 @@ typedef struct _ROCDECJPEGPICPARAMS {
 } ROCDECJPEGPICPARAMS;
 
 /***********************************************************/
-//! \struct ROCDECMPEG2PICPARAMS placeholder
-//! JPEG picture parameters
+//! \struct ROCDECMPEG2QMATRIX
+//! MPEG2 QMatrix
+//! This structure is used in _ROCDECMPEG2PICPARAMS structure
+/***********************************************************/
+typedef struct _ROCDECMPEG2QMATRIX {
+    int32_t load_intra_quantiser_matrix;
+    int32_t load_non_intra_quantiser_matrix;
+    int32_t load_chroma_intra_quantiser_matrix;
+    int32_t load_chroma_non_intra_quantiser_matrix;
+    uint8_t intra_quantiser_matrix[64];
+    uint8_t non_intra_quantiser_matrix[64];
+    uint8_t chroma_intra_quantiser_matrix[64];
+    uint8_t chroma_non_intra_quantiser_matrix[64];
+}ROCDECMPEG2QMATRIX;
+
+
+/***********************************************************/
+//! \struct ROCDECMPEG2PICPARAMS
+//! MPEG2 picture parameters
 //! This structure is used in ROCDECMPEG2PICPARAMS structure
 /***********************************************************/
 typedef struct _ROCDECMPEG2PICPARAMS {
-    int Reserved;
+    uint16_t horizontal_size;
+    uint16_t vertical_size;
+    unsigned int forward_reference_pic;       // surface_id for forward reference
+    unsigned int backward_reference_picture;       // surface_id for backward reference
+    /* meanings of the following fields are the same as in the standard */
+    int32_t picture_coding_type;
+    int32_t f_code; /* pack all four fcode into this */
+    union {
+        struct {
+            uint32_t intra_dc_precision     : 2;
+            uint32_t picture_structure      : 2;
+            uint32_t top_field_first        : 1;
+            uint32_t frame_pred_frame_dct       : 1;
+            uint32_t concealment_motion_vectors : 1;
+            uint32_t q_scale_type           : 1;
+            uint32_t intra_vlc_format       : 1;
+            uint32_t alternate_scan         : 1;
+            uint32_t repeat_first_field     : 1;
+            uint32_t progressive_frame      : 1;
+            uint32_t is_first_field         : 1; // indicate whether the current field is the first field for field picture
+        } bits;
+        uint32_t value;
+    } picture_coding_extension;
+
+    ROCDECMPEG2QMATRIX q_matrix;
+    uint32_t  Reserved[4];
 } ROCDECMPEG2PICPARAMS;
 
 /***********************************************************/
 //! \struct ROCDECH264PICPARAMS placeholder
-//! JPEG picture parameters
+//! H.264 picture parameters
 //! This structure is used in ROCDECH264PICPARAMS structure
+//! This structure is configured similar to VA-API VAPictureParameterBufferH264 structure
 /***********************************************************/
 typedef struct _ROCDECH264PICPARAMS {
-    int Reserved;
+    ROCDECH264PICTURE cur_pic;
+    ROCDECH264PICTURE dpb[16];	/* in DPB */
+    unsigned short picture_width_in_mbs_minus1;
+    unsigned short picture_height_in_mbs_minus1;
+    unsigned char bit_depth_luma_minus8;
+    unsigned char bit_depth_chroma_minus8;
+    unsigned char num_ref_frames;
+    union {
+        struct {
+            unsigned int chroma_format_idc			: 2;
+            unsigned int residual_colour_transform_flag		: 1;
+            unsigned int gaps_in_frame_num_value_allowed_flag	: 1;
+            unsigned int frame_mbs_only_flag			: 1;
+            unsigned int mb_adaptive_frame_field_flag		: 1; 
+            unsigned int direct_8x8_inference_flag		: 1;
+            unsigned int MinLumaBiPredSize8x8			: 1; /* see A.3.3.2 */
+            unsigned int log2_max_frame_num_minus4		: 4;
+            unsigned int pic_order_cnt_type			: 2;
+            unsigned int log2_max_pic_order_cnt_lsb_minus4	: 4;
+            unsigned int delta_pic_order_always_zero_flag	: 1;
+        } bits;
+        unsigned int value;
+    } sps_fields;
+    union {
+        struct {
+            unsigned int entropy_coding_mode_flag	: 1;
+            unsigned int weighted_pred_flag		: 1;
+            unsigned int weighted_bipred_idc		: 2;
+            unsigned int transform_8x8_mode_flag	: 1;
+            unsigned int field_pic_flag			: 1;
+            unsigned int constrained_intra_pred_flag	: 1;
+            unsigned int pic_order_present_flag			: 1;
+            unsigned int deblocking_filter_control_present_flag : 1;
+            unsigned int redundant_pic_cnt_present_flag		: 1;
+            unsigned int reference_pic_flag			: 1; /* nal_ref_idc != 0 */
+        } bits;
+        unsigned int value;
+    } pps_fields;
+
+    // FMO/ASO
+    unsigned char num_slice_groups_minus1;
+    unsigned char slice_group_map_type;
+    unsigned short slice_group_change_rate_minus1;
+    signed char pic_init_qp_minus26;
+    signed char pic_init_qs_minus26;
+    signed char chroma_qp_index_offset;
+    signed char second_chroma_qp_index_offset;
+
+    unsigned short frame_num;
+    unsigned char num_ref_idx_l0_default_active_minus1;
+    unsigned char num_ref_idx_l1_default_active_minus1;
+
+    // Quantization Matrices (raster-order)
+    unsigned char scaling_list_4x4[6][16];
+    unsigned char scaling_list_8x8[2][64];
+    // SVC/MVC : Not supported in this version
+    // union
+    // {
+    //     ROCDECH264MVCEXT mvcext;
+    //     ROCDECH264SVCEXT svcext;
+    // };
+    unsigned int  Reserved[12];
 } ROCDECH264PICPARAMS;
 
+
 /***********************************************************/
-//! \struct ROCDECHEVCPICPARAMS placeholder
-//! JPEG picture parameters
+//! \struct ROCDEC_HEVCQMATRIX
+//! HEVC QMatrix
+//! This structure is sent once per frame,
+//! and only when scaling_list_enabled_flag = 1.
+//! When sps_scaling_list_data_present_flag = 0, app still
+//! needs to send in this structure with default matrix values.
+//! This structure is used in ROCDEC_HEVCQMATRIX structure
+/***********************************************************/
+typedef struct _ROCDEC_HEVCQMATRIX {
+    /**
+     * \brief 4x4 scaling,
+     * correspongs i = 0, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 15, inclusive.
+     */
+    uint8_t                 ScalingList4x4[6][16];
+    /**
+     * \brief 8x8 scaling,
+     * correspongs i = 1, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList8x8[6][64];
+    /**
+     * \brief 16x16 scaling,
+     * correspongs i = 2, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList16x16[6][64];
+    /**
+     * \brief 32x32 scaling,
+     * correspongs i = 3, MatrixID is in the range of 0 to 1,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList32x32[2][64];
+    /**
+     * \brief DC values of the 16x16 scaling lists,
+     * corresponds to HEVC spec syntax
+     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
+     * with sizeID = 2 and matrixID in the range of 0 to 5, inclusive.
+     */
+    uint8_t                 ScalingListDC16x16[6];
+    /**
+     * \brief DC values of the 32x32 scaling lists,
+     * corresponds to HEVC spec syntax
+     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
+     * with sizeID = 3 and matrixID in the range of 0 to 1, inclusive.
+     */
+    uint8_t                 ScalingListDC32x32[2];
+
+}ROCDEC_HEVCQMATRIX;
+
+/***********************************************************/
+//! \struct ROCDECHEVCPICPARAMS
+//! HEVC picture parameters
 //! This structure is used in ROCDECHEVCPICPARAMS structure
 /***********************************************************/
 typedef struct _ROCDECHEVCPICPARAMS {
-    int Reserved;
+    ROCDECHEVCPICTURE cur_pic;
+    ROCDECHEVCPICTURE dpb[15];	/* in DPB */
+    unsigned short picture_width_in_luma_samples;
+    unsigned short picture_height_in_luma_samples;
+    union {
+        struct {
+            /** following flags have same syntax and semantic as those in HEVC spec */
+            uint32_t        chroma_format_idc                           : 2;
+            uint32_t        separate_colour_plane_flag                  : 1;
+            uint32_t        pcm_enabled_flag                            : 1;
+            uint32_t        scaling_list_enabled_flag                   : 1;
+            uint32_t        transform_skip_enabled_flag                 : 1;
+            uint32_t        amp_enabled_flag                            : 1;
+            uint32_t        strong_intra_smoothing_enabled_flag         : 1;
+            uint32_t        sign_data_hiding_enabled_flag               : 1;
+            uint32_t        constrained_intra_pred_flag                 : 1;
+            uint32_t        cu_qp_delta_enabled_flag                    : 1;
+            uint32_t        weighted_pred_flag                          : 1;
+            uint32_t        weighted_bipred_flag                        : 1;
+            uint32_t        transquant_bypass_enabled_flag              : 1;
+            uint32_t        tiles_enabled_flag                          : 1;
+            uint32_t        entropy_coding_sync_enabled_flag            : 1;
+            uint32_t        pps_loop_filter_across_slices_enabled_flag  : 1;
+            uint32_t        loop_filter_across_tiles_enabled_flag       : 1;
+            uint32_t        pcm_loop_filter_disabled_flag               : 1;
+            /** set based on sps_max_num_reorder_pics of current temporal layer. */
+            uint32_t        NoPicReorderingFlag                         : 1;
+            /** picture has no B slices */
+            uint32_t        NoBiPredFlag                                : 1;
+
+            uint32_t        ReservedBits                                : 11;
+        } bits;
+        uint32_t            value;
+    } pps_fields;
+
+    /** SPS fields: the following parameters have same syntax with those in HEVC spec */
+    uint8_t                 sps_max_dec_pic_buffering_minus1;       /**< IN: DPB size for current temporal layer */
+    uint8_t                 bit_depth_luma_minus8;
+    uint8_t                 bit_depth_chroma_minus8;
+    uint8_t                 pcm_sample_bit_depth_luma_minus1;
+    uint8_t                 pcm_sample_bit_depth_chroma_minus1;
+    uint8_t                 log2_min_luma_coding_block_size_minus3;
+    uint8_t                 log2_diff_max_min_luma_coding_block_size;
+    uint8_t                 log2_min_transform_block_size_minus2;
+    uint8_t                 log2_diff_max_min_transform_block_size;
+    uint8_t                 log2_min_pcm_luma_coding_block_size_minus3;
+    uint8_t                 log2_diff_max_min_pcm_luma_coding_block_size;
+    uint8_t                 max_transform_hierarchy_depth_intra;
+    uint8_t                 max_transform_hierarchy_depth_inter;
+    int8_t                  init_qp_minus26;
+    uint8_t                 diff_cu_qp_delta_depth;
+    int8_t                  pps_cb_qp_offset;
+    int8_t                  pps_cr_qp_offset;
+    uint8_t                 log2_parallel_merge_level_minus2;
+    uint8_t                 num_tile_columns_minus1;
+    uint8_t                 num_tile_rows_minus1;
+    /**
+     * when uniform_spacing_flag equals 1, application should populate
+     * column_width_minus[], and row_height_minus1[] with approperiate values.
+     */
+    uint16_t                column_width_minus1[19];
+    uint16_t                row_height_minus1[21];
+
+    uint32_t                slice_parsing_fields;       /**< IN: Needed only for Short Slice Format */
+
+    /** following parameters have same syntax with those in HEVC spec */
+    uint8_t                 log2_max_pic_order_cnt_lsb_minus4;
+    uint8_t                 num_short_term_ref_pic_sets;
+    uint8_t                 num_long_term_ref_pic_sps;
+    uint8_t                 num_ref_idx_l0_default_active_minus1;
+    uint8_t                 num_ref_idx_l1_default_active_minus1;
+    int8_t                  pps_beta_offset_div2;
+    int8_t                  pps_tc_offset_div2;
+    uint8_t                 num_extra_slice_header_bits;
+    /**
+     * \brief number of bits that structure
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) takes in slice
+     * segment header when short_term_ref_pic_set_sps_flag equals 0.
+     * if short_term_ref_pic_set_sps_flag equals 1, the value should be 0.
+     * the bit count is calculated after emulation prevention bytes are removed
+     * from bit streams.
+     * This variable is used for accelorater to skip parsing the
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) structure.
+     */
+    uint32_t                st_rps_bits;
+
+    ROCDEC_HEVCQMATRIX      q_matrix;
+    uint32_t                Reserved[16];
 } ROCDECHEVCPICPARAMS;
 
 /***********************************************************/
@@ -319,6 +641,7 @@ typedef struct _ROCDECPICPARAMS {
         ROCDECJPEGPICPARAMS  jpeg;
         unsigned int CodecReserved[256];
     } CodecSpecific;
+
 } ROCDECPICPARAMS;
 
 /******************************************************/
@@ -342,7 +665,6 @@ typedef struct _ROCDECPROCPARAMS
     hipStream_t output_hstream;                   /**< IN: stream object used by rocDecMapVideoFrame                               */
     unsigned int Reserved[16];                    /**< Reserved for future use (set to zero)                                      */
 } ROCDECPROCPARAMS;
-
 
 
 /***********************************************************************************************************/
@@ -402,7 +724,7 @@ extern rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RO
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);
 //! Get the decode status for frame corresponding to nPicIdx
 //! API is currently supported for HEVC, H264 and JPEG codecs.
-//! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
+//! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);
 

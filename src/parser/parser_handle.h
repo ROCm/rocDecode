@@ -23,17 +23,37 @@ THE SOFTWARE.
 
 #include <memory>
 #include <string>
+#include "rocparser.h"
 
-#include "roc_decoder.h"
+class RocVideoParser {
+public:
+    RocVideoParser() {};    // default constructor
+    RocVideoParser(ROCDECPARSERPARAMS *pParams): parser_params_(*pParams) {};
+    ~RocVideoParser();
+    void SetParserParams(ROCDECPARSERPARAMS *pParams) { parser_params_ = *pParams; };
+    ROCDECPARSERPARAMS *GetParserParams() {return &parser_params_;};
+    rocDecStatus ParseVideoData(ROCDECSOURCEDATAPACKET *pData);
 
-struct DecHandle {
+private:
+    ROCDECPARSERPARAMS parser_params_;
+};
 
-    explicit DecHandle();   //constructor
-    ~DecHandle() { clear_errors(); }
-    std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
+struct RocParserHandle {
+public:    
+    explicit RocParserHandle() {};   // default constructor
+    ~RocParserHandle() { clear_errors(); }
+    std::shared_ptr<RocVideoParser> roc_parser;    // class instantiation
     bool no_error() { return error.empty(); }
     const char* error_msg() { return error.c_str(); }
     void capture_error(const std::string& err_msg) { error = err_msg; }
+    bool set_parser_params(ROCDECPARSERPARAMS *pParams) {
+      if(roc_parser) {
+        roc_parser->SetParserParams(pParams); 
+        return true;
+      } else {
+         return false;
+      }
+    }
 
 private:
     void clear_errors() { error = "";}

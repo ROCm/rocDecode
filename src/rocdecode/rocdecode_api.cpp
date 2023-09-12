@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 #include "dec_handle.h"
 #include "rocdecode.h"
-#include "commons.h"
+#include "../commons.h"
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci)
