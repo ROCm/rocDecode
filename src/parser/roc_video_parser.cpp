@@ -30,7 +30,7 @@ THE SOFTWARE.
  * @param pData 
  * @return rocDecodeStatus 
  */
-rocDecStatus RocVideoParser::ParseVideoData(ROCDECSOURCEDATAPACKET *pData) {  
+rocDecStatus RocVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {  
     // todo:
     return ROCDEC_SUCCESS;
 }

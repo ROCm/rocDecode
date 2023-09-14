@@ -28,14 +28,14 @@ THE SOFTWARE.
 class RocVideoParser {
 public:
     RocVideoParser() {};    // default constructor
-    RocVideoParser(ROCDECPARSERPARAMS *pParams): parser_params_(*pParams) {};
+    RocVideoParser(RocdecParserParams *pParams): parser_params_(*pParams) {};
     ~RocVideoParser();
-    void SetParserParams(ROCDECPARSERPARAMS *pParams) { parser_params_ = *pParams; };
-    ROCDECPARSERPARAMS *GetParserParams() {return &parser_params_;};
-    rocDecStatus ParseVideoData(ROCDECSOURCEDATAPACKET *pData);
+    void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
+    RocdecParserParams *GetParserParams() {return &parser_params_;};
+    rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData);
 
 private:
-    ROCDECPARSERPARAMS parser_params_;
+    RocdecParserParams parser_params_;
 };
 
 struct RocParserHandle {
@@ -46,7 +46,7 @@ public:
     bool no_error() { return error.empty(); }
     const char* error_msg() { return error.c_str(); }
     void capture_error(const std::string& err_msg) { error = err_msg; }
-    bool set_parser_params(ROCDECPARSERPARAMS *pParams) {
+    bool set_parser_params(RocdecParserParams *pParams) {
       if(roc_parser) {
         roc_parser->SetParserParams(pParams); 
         return true;

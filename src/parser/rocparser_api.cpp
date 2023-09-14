@@ -25,11 +25,11 @@ THE SOFTWARE.
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle, ROCDECPARSERPARAMS *pParams)
+//! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
 //! Create video parser object and initialize
 /************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateVideoParser(RocdecVideoParser *pHandle, ROCDECPARSERPARAMS *pParams)
+rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
 {
     RocdecVideoParser handle = nullptr;
     try {
@@ -48,16 +48,16 @@ rocDecCreateVideoParser(RocdecVideoParser *pHandle, ROCDECPARSERPARAMS *pParams)
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocParserStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, ROCDECSOURCEDATAPACKET *pPacket)
+//! \fn rocParserStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket)
 //! Parse the video data from source data packet in pPacket 
 //! Extracts parameter sets like SPS, PPS, bitstream etc. from pPacket and 
-//! calls back pfnDecodePicture with ROCDECPICPARAMS data for kicking of HW decoding
-//! calls back pfnSequenceCallback with ROCDECVIDEOFORMAT data for initial sequence header or when
+//! calls back pfnDecodePicture with RocdecPicParams data for kicking of HW decoding
+//! calls back pfnSequenceCallback with RocdecVideoFormat data for initial sequence header or when
 //! the decoder encounters a video format change
 //! calls back pfnDisplayPicture with ROCDECPARSERDISPINFO data to display a video frame
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
-rocDecParseVideoData(RocdecVideoParser handle, ROCDECSOURCEDATAPACKET *pPacket)
+rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket)
 {
     auto parser_hdl = static_cast<RocParserHandle *> (handle);
     rocDecStatus ret;
