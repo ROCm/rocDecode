@@ -29,8 +29,7 @@ THE SOFTWARE.
 //! Create video parser object and initialize
 /************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
-{
+rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams) {
     RocdecVideoParser handle = nullptr;
     try {
         handle = new RocParserHandle();
@@ -57,8 +56,7 @@ rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
 //! calls back pfnDisplayPicture with ROCDECPARSERDISPINFO data to display a video frame
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
-rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket)
-{
+rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) {
     auto parser_hdl = static_cast<RocParserHandle *> (handle);
     rocDecStatus ret;
     try {
