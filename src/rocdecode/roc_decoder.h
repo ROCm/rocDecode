@@ -19,23 +19,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #pragma once
 
-#include <memory>
+#include <assert.h>
+#include <stdint.h>
+#include <vector>
 #include <string>
+#include <iostream>
+#include <sstream>
+#include <string.h>
+#include <map>
+#include "../api/rocdecode.h"
+#include <hip/hip_runtime.h>
 
-#include "roc_decoder.h"
 
-struct DecHandle {
-
-    explicit DecHandle() {};   //constructor
-    ~DecHandle() { clear_errors(); }
-    std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
-    bool no_error() { return error.empty(); }
-    const char* error_msg() { return error.c_str(); }
-    void capture_error(const std::string& err_msg) { error = err_msg; }
+class RocDecoder {
+public:
+    RocDecoder(int device_id, int num_devices);
+    ~RocDecoder();
+    rocDecStatus getDecoderCaps(RocdecDecodeCaps *pdc);
+    rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
+    rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
+    rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
+    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
+    rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
 private:
-    void clear_errors() { error = "";}
-    std::string error;
+    rocDecStatus initHIP(int device_id);
+    void initDRMnodes();
+
+    int num_devices_;
+    int device_id_;
+    hipDeviceProp_t hip_dev_prop_;
+    hipStream_t hip_stream_;
+    std::vector<std::string> drm_nodes_;
 };

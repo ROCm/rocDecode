@@ -21,14 +21,14 @@ THE SOFTWARE.
 */
 #include "dec_handle.h"
 #include "rocdecode.h"
-#include "commons.h"
+#include "../commons.h"
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci)
+//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci)
 //! Create the decoder object based on pdci. A handle to the created decoder is returned
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, ROCDECDECODECREATEINFO *pdci) {
+rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci) {
     rocDecDecoderHandle handle = nullptr;
     try {
         handle = new DecHandle();
@@ -52,14 +52,14 @@ rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
 }
 
 /**********************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc)
+//! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(rocDecDecoderHandle hDecoder, RocdecDecodeCaps *pdc)
 //! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
-//! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of ROCDECDECODECAPS structure
+//! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of RocdecDecodeCaps structure
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
 /**********************************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc) {
+rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, RocdecDecodeCaps *pdc) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -74,12 +74,12 @@ rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, ROCDECDECODECAPS *pdc) {
 }
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams)
+//! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams)
 //! Decodes a single picture
 //! Submits the frame for HW decoding 
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams) {
+rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -94,13 +94,13 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, ROCDECPICPARAMS *pPicParams) {
 }
 
 /************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);
+//! \fn rocDecStatus ROCDECAPI RocdecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
 //! Get the decode status for frame corresponding to nPicIdx
 //! API is currently supported for HEVC, H264 and JPEG codecs.
 //! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus) {
+RocdecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -115,12 +115,12 @@ rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, ROCDECGETDECODE
 }
 
 /*********************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams)
+//! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderInfo *pDecReconfigParams)
 //! Used to reuse single decoder for multiple clips. Currently supports resolution change, resize params 
-//! params, target area params change for same codec. Must be called during ROCDECPARSERPARAMS::pfnSequenceCallback 
+//! params, target area params change for same codec. Must be called during RocdecParserParams::pfnSequenceCallback 
 /*********************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams) {
+rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderInfo *pDecReconfigParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -137,13 +137,13 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, ROCDECRECONFIGUREDECODERI
 /************************************************************************************************************************/
 //! \fn extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
 //!                                           unsigned int *pDevMemPtr, unsigned int *pHorizontalPitch,
-//!                                           ROCDECPROCPARAMS *pVidPostprocParams);
+//!                                           RocdecProcParams *pVidPostprocParams);
 //! Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                    void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], ROCDECPROCPARAMS *pVidPostprocParams) {
+                    void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {

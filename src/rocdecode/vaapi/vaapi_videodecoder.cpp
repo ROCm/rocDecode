@@ -20,8 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#pragma once
-
 #include <assert.h>
 #include <stdint.h>
 #include <vector>
@@ -29,29 +27,6 @@ THE SOFTWARE.
 #include <iostream>
 #include <sstream>
 #include <string.h>
-#include <map>
-#include "../api/rocdecode.h"
-#include <hip/hip_runtime.h>
 
-
-class RocDecoder {
-public:
-    RocDecoder(int device_id, int num_devices);
-    ~RocDecoder();
-    rocDecStatus getDecoderCaps(ROCDECDECODECAPS *pdc);
-    rocDecStatus decodeFrame(ROCDECPICPARAMS *pPicParams);
-    rocDecStatus getDecodeStatus(int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);
-    rocDecStatus reconfigureDecoder(ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], ROCDECPROCPARAMS *pVidPostprocParams);
-    rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
-
-private:
-    rocDecStatus initHIP(int device_id);
-    void initDRMnodes();
-
-    int num_devices_;
-    int device_id_;
-    hipDeviceProp_t hip_dev_prop_;
-    hipStream_t hip_stream_;
-    std::vector<std::string> drm_nodes_;
-};
+#include "../commons.h"
+#include "vaapi_videodecoder.h"
