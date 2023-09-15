@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
-#include "videoDemuxer.hpp"
+#include "video_demuxer.hpp"
 #include "rocdecode.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
-        demuxer.demux(&pVideo, &nVideoBytes, &pts);
+        demuxer.Demux(&pVideo, &nVideoBytes, &pts);
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
