@@ -29,6 +29,9 @@ THE SOFTWARE.
  */
 
 #include "data_stream.h"
+#include <iostream>
+#include <stdio.h>
+using namespace std;
 
 DataStream::DataStream() {
     m_pMemory_ = new uint8_t [DATA_STREAM_SIZE];
@@ -75,16 +78,15 @@ PARSER_RESULT DataStream::Realloc(size_t iSize) {
         }
         m_uiAllocatedSize_ = iSize;
         if(m_pMemory_ != NULL) {
-            memcpy(pNewMemory, m_pMemory_, m_uiMemorySize_);
+            //memcpy(pNewMemory, m_pMemory_, m_uiMemorySize_);
             delete m_pMemory_;
         }
-
         m_pMemory_ = pNewMemory;
     }
     m_uiMemorySize_ = iSize;
-    if(m_pos_ > m_uiMemorySize_) {
+    /*if(m_pos_ > m_uiMemorySize_) {
         m_pos_ = m_uiMemorySize_;
-    }
+    }*/
     return PARSER_OK;
 }
 
@@ -110,13 +112,19 @@ PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritte
     if (pData == NULL) {
         return PARSER_INVALID_POINTER;
     }
+    m_pos_ = 0;
     if (Realloc(m_pos_ + iSize)) {
         return PARSER_STREAM_NOT_ALLOCATED;
     }
 
     size_t toWrite = std::min(iSize, m_uiMemorySize_ - m_pos_);
     memcpy(m_pMemory_ + m_pos_, pData, toWrite);
-    m_pos_ += toWrite;
+    /*std::cout << std::endl;
+    for(int i = 0; i < 500; i++) {
+            printf("%x ", m_pMemory_[i]);
+    }
+    std::cout << std::endl;*/
+    //m_pos_ += toWrite;
     if(pWritten != NULL)
     {
         *pWritten = toWrite;

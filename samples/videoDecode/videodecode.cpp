@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
+#include <fstream>
 #include "video_demuxer.hpp"
 //#include "rocdecode.h"
 #include "../../utils/bit_stream_parser.h"
@@ -110,10 +111,15 @@ int main(int argc, char **argv) {
     uint32_t width, height;
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
-
+    int tempCount = 0;
     ParserData* data;
+    ParserBuffer* outputBuffer;
     bool bNeedNewInput = true;
     bool firstFrame = true;
+    std::ofstream fp;
+    if (dumpOutputFrames) {
+        fp.open(outputFilePath.c_str(), std::ofstream::out | std::ofstream::app | std::ofstream::binary);
+    }
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
@@ -121,7 +127,13 @@ int main(int argc, char **argv) {
         if (parser->CheckDataStreamEof(nVideoBytes)) {
             break;
         }
+        /*std::cout << "nFrame  = " << nFrame << std::endl;
+        for (int i = 0; i < 500; i++) {
+            printf("%x ", pVideo[i]);
+        }
+        std::cout << std::endl;*/
         res = datastream->Write(pVideo, nVideoBytes, 0);
+        
         if (res != PARSER_OK) {
             std::cerr << "ERROR: Write to datastream failed" << res << std::endl;
             return res; 
@@ -133,6 +145,7 @@ int main(int argc, char **argv) {
         if(bNeedNewInput) {
             data = NULL;
             res = parser->QueryOutput(&data); // read compressed frame into buffer
+            outputBuffer = static_cast<ParserBuffer*>(data);
             if(res == PARSER_EOF || data == NULL) {
                 break;// end of file
             }
@@ -147,17 +160,27 @@ int main(int argc, char **argv) {
             break;
         }*/
 
-        /*if (dumpOutputFrames) {
-            for (int i = 0; i < nFrameReturned; i++) {
+        if (dumpOutputFrames) {
+            std::cout << "size of buffer to write = " << outputBuffer->GetSize() << std::endl;
+            if (fp.is_open()) {
+                fp.write((char*)outputBuffer->GetNative(), outputBuffer->GetSize());
+            }
+            else {
+                std::cout << "file not open" << std::endl;
+                exit(0);
+            }
+            /*for (int i = 0; i < nFrameReturned; i++) {
                 pFrame = viddec.getFrame(&pts);
                 viddec.saveImage(outputFilePath, pFrame, pImageInfo, false);
                 // release frame
                 viddec.releaseFrame(pts);
-            }
+            }*/
         }
-        nFrame += nFrameReturned;*/
+        nFrame++;
+        //nFrame += nFrameReturned;
         printf("i am here\n");
-    } while (nVideoBytes);
+        tempCount++;
+    } while (tempCount < 5);
      // Flush last frames from the decoder if any
     do {
         // send null packet to decoder to flush out

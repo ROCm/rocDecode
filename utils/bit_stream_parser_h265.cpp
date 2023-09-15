@@ -811,6 +811,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
     } while (!newPictureDetected);
 
     ParserBuffer* pictureBuffer;
+    std::cout << "packetSize before allocBuffer = " <<packetSize << std::endl;
     PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize, &pictureBuffer);
     if (ar != PARSER_OK) {
         return ar;
@@ -833,7 +834,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData)
             data += naluSize;
         }
     }
-    
+
     pictureBuffer->SetPts(m_currentFrameTimestamp_);
     int64_t frameDuration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
     pictureBuffer->SetDuration(frameDuration);
@@ -909,8 +910,8 @@ void HevcParser::FindSPSandPPS() {
         }
     } while (true);
 
-    //m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
-    //m_ReadData_.SetSize(0);
+    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_ReadData_.SetSize(0);
     // It will fail if SPS or PPS are absent
     extraDataBuilder.GetExtradata(m_Extradata_);
 }
