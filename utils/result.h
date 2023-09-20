@@ -31,8 +31,7 @@ THE SOFTWARE.
 #ifndef RESULT_H
 #define RESULT_H
 
-typedef enum PARSER_RESULT
-{
+typedef enum PARSER_RESULT {
     PARSER_OK                                   = 0,
     PARSER_FAIL                                    ,
 

@@ -48,8 +48,6 @@ PARSER_RESULT DataStream::OpenDataStream(DataStream** str) {
     if (res != PARSER_OK) {
         return res;
     }
-    //ptr->m_pMemory_ = pData;
-    //ptr->m_uiMemorySize_ = pSize;
     *str = ptr;
     ptr = NULL;
     return PARSER_OK;
@@ -60,9 +58,6 @@ DataStream::~DataStream() {
 }
 
 PARSER_RESULT DataStream::Close() {
-    /*if(m_pMemory_ != NULL) {
-        delete m_pMemory_;
-    }*/
     m_pMemory_ = NULL,
     m_uiMemorySize_ = 0,
     m_uiAllocatedSize_ = 0,
@@ -71,22 +66,18 @@ PARSER_RESULT DataStream::Close() {
 }
 
 PARSER_RESULT DataStream::Realloc(size_t iSize) {
-    if(iSize > m_uiMemorySize_) {
+    if (iSize > m_uiMemorySize_) {
         uint8_t* pNewMemory = new uint8_t [iSize];
-        if(pNewMemory == NULL) {
+        if (pNewMemory == NULL) {
             return PARSER_OUT_OF_MEMORY;
         }
         m_uiAllocatedSize_ = iSize;
-        if(m_pMemory_ != NULL) {
-            //memcpy(pNewMemory, m_pMemory_, m_uiMemorySize_);
+        if (m_pMemory_ != NULL) {
             delete m_pMemory_;
         }
         m_pMemory_ = pNewMemory;
     }
     m_uiMemorySize_ = iSize;
-    /*if(m_pos_ > m_uiMemorySize_) {
-        m_pos_ = m_uiMemorySize_;
-    }*/
     return PARSER_OK;
 }
 
@@ -100,15 +91,13 @@ PARSER_RESULT DataStream::Read(void* pData, size_t iSize, size_t* pRead) {
     size_t toRead = std::min(iSize, m_uiMemorySize_ - m_pos_);
     memcpy(pData, m_pMemory_ + m_pos_, toRead);
     m_pos_ += toRead;
-    if(pRead != NULL)
-    {
+    if(pRead != NULL) {
         *pRead = toRead;
     }
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritten)
-{
+PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritten) {
     if (pData == NULL) {
         return PARSER_INVALID_POINTER;
     }
@@ -119,14 +108,8 @@ PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritte
 
     size_t toWrite = std::min(iSize, m_uiMemorySize_ - m_pos_);
     memcpy(m_pMemory_ + m_pos_, pData, toWrite);
-    /*std::cout << std::endl;
-    for(int i = 0; i < 500; i++) {
-            printf("%x ", m_pMemory_[i]);
-    }
-    std::cout << std::endl;*/
-    //m_pos_ += toWrite;
-    if(pWritten != NULL)
-    {
+
+    if(pWritten != NULL) {
         *pWritten = toWrite;
     }
     return PARSER_OK;

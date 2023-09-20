@@ -66,8 +66,7 @@ class BitStreamParser;
 typedef std::shared_ptr<BitStreamParser> BitStreamParserPtr;
 
 //  Common Parser Class
-class BitStreamParser
-{
+class BitStreamParser {
 public:
     virtual ~BitStreamParser();
 
@@ -95,63 +94,49 @@ public:
 };
 
 // helpers
-namespace Parser
-{
-    inline char getLowByte(uint16_t data)
-    {
+namespace Parser {
+    inline char getLowByte(uint16_t data) {
         return (data >> 8);
     }
 
-    inline char getHiByte(uint16_t data)
-    {
+    inline char getHiByte(uint16_t data) {
         return (data & 0xFF);
     }
 
-    inline bool getBit(const uint8_t *data, size_t &bitIdx)
-    {
+    inline bool getBit(const uint8_t *data, size_t &bitIdx) {
         bool ret = (data[bitIdx / 8] >> (7 - bitIdx % 8) & 1);
         bitIdx++;
         return ret;
     }
-    inline uint32_t getBitToUint32(const uint8_t *data, size_t &bitIdx)
-    {
+    inline uint32_t getBitToUint32(const uint8_t *data, size_t &bitIdx) {
         uint32_t ret = (data[bitIdx / 8] >> (7 - bitIdx % 8) & 1);
         bitIdx++;
         return ret;
     }
 
-    inline uint32_t readBits(const uint8_t *data, size_t &startBitIdx, size_t bitsToRead)
-    {
-        if (bitsToRead > 32)
-        {
+    inline uint32_t readBits(const uint8_t *data, size_t &startBitIdx, size_t bitsToRead) {
+        if (bitsToRead > 32) {
             return 0; // assert(0);
         }
         uint32_t result = 0;
-        for (size_t i = 0; i < bitsToRead; i++)
-        {
+        for (size_t i = 0; i < bitsToRead; i++) {
             result = result << 1;
             result |= getBitToUint32(data, startBitIdx); // startBitIdx incremented inside
         }
         return result;
     }
 
-    inline size_t countContiniusZeroBits(const uint8_t *data, size_t &startBitIdx)
-    {
+    inline size_t countContiniusZeroBits(const uint8_t *data, size_t &startBitIdx) {
         size_t startBitIdxOrg = startBitIdx;
-        while (getBit(data, startBitIdx) == false) // startBitIdx incremented inside
-        {
-        }
+        while (getBit(data, startBitIdx) == false) {} // startBitIdx incremented inside
         startBitIdx--; // remove non zero
         return startBitIdx - startBitIdxOrg;
     }
 
-    namespace ExpGolomb
-    {
-        inline uint32_t readUe(const uint8_t *data, size_t &startBitIdx)
-        {
+    namespace ExpGolomb {
+        inline uint32_t readUe(const uint8_t *data, size_t &startBitIdx) {
             size_t zeroBitsCount = countContiniusZeroBits(data, startBitIdx); // startBitIdx incremented inside
-            if (zeroBitsCount > 30)
-            {
+            if (zeroBitsCount > 30) {
                 return 0; // assert(0)
             }
 
@@ -161,15 +146,13 @@ namespace Parser
             return leftPart + rightPart;
         }
 
-        inline uint32_t readSe(const uint8_t *data, size_t &startBitIdx)
-        {
+        inline uint32_t readSe(const uint8_t *data, size_t &startBitIdx) {
             uint32_t ue = readUe(data, startBitIdx);
             // se From Ue 
             uint32_t mod2 = ue % 2;
             uint32_t r = ue / 2 + mod2;
 
-            if (mod2 == 0)
-            {
+            if (mod2 == 0) {
                 return r * -1;
             }
             return r;

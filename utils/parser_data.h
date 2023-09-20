@@ -31,8 +31,7 @@ THE SOFTWARE.
 #include <chrono>
 #include "result.h"
 
-typedef enum PARSER_MEMORY_TYPE
-{
+typedef enum PARSER_MEMORY_TYPE {
     PARSER_MEMORY_UNKNOWN          = 0,
     PARSER_MEMORY_HOST             = 1,
     PARSER_MEMORY_HIP              = 2,

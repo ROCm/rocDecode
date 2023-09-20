@@ -34,15 +34,13 @@ THE SOFTWARE.
 
 #include <cstdint>
 #define PARSER_SECOND          10000000L    // 1 second in 100 nanoseconds
-typedef struct ParserRect
-{
+typedef struct ParserRect {
     int32_t left;
     int32_t top;
     int32_t right;
     int32_t bottom;
 #if defined(__cplusplus)
-    bool operator==(const ParserRect& other) const
-    {
+    bool operator==(const ParserRect& other) const {
          return left == other.left && top == other.top && right == other.right && bottom == other.bottom; 
     }
     __inline__ bool operator!=(const ParserRect& other) const { return !operator==(other); }

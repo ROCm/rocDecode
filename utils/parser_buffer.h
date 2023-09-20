@@ -26,8 +26,7 @@ THE SOFTWARE.
 
 #include "parser_data.h"
 
-class ParserBuffer : public ParserData
-{
+class ParserBuffer : public ParserData {
 public:
     ParserBuffer();
     virtual ~ParserBuffer();

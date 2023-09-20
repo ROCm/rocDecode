@@ -34,7 +34,7 @@ PARSER_RESULT ParserContext::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, P
             if (pNewBuffer != NULL) {
                 pNewBuffer->SetNative(size);
                 res = pNewBuffer->SetSize(size);
-                if(res != PARSER_OK) {
+                if (res != PARSER_OK) {
                     return res;
                 }
                 *ppBuffer = pNewBuffer;

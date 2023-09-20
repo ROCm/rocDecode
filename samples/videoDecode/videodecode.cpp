@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include <filesystem>
 #include <fstream>
 #include "video_demuxer.hpp"
-//#include "rocdecode.h"
 #include "../../utils/bit_stream_parser.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -91,7 +90,6 @@ int main(int argc, char **argv) {
     parser = BitStreamParser::Create(datastream, BitStream265AnnexB, &context);
     //VideoDecode viddec(deviceId);
 
-    //res = DataStream::OpenDataStream(&datastream);
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
 
@@ -115,7 +113,6 @@ int main(int argc, char **argv) {
     ParserData* data;
     ParserBuffer* outputBuffer;
     bool bNeedNewInput = true;
-    bool firstFrame = true;
     std::ofstream fp;
     if (dumpOutputFrames) {
         fp.open(outputFilePath.c_str(), std::ofstream::out | std::ofstream::app | std::ofstream::binary);
@@ -127,22 +124,14 @@ int main(int argc, char **argv) {
         if (parser->CheckDataStreamEof(nVideoBytes)) {
             break;
         }
-        /*std::cout << "nFrame  = " << nFrame << std::endl;
-        for (int i = 0; i < 500; i++) {
-            printf("%x ", pVideo[i]);
-        }
-        std::cout << std::endl;*/
         res = datastream->Write(pVideo, nVideoBytes, 0);
         
         if (res != PARSER_OK) {
             std::cerr << "ERROR: Write to datastream failed" << res << std::endl;
             return res; 
         }
-        //if (firstFrame) {
-            parser->FindFirstFrameSPSandPPS();
-            //firstFrame = false;
-        //}
-        if(bNeedNewInput) {
+        parser->FindFirstFrameSPSandPPS();
+        if (bNeedNewInput) {
             data = NULL;
             res = parser->QueryOutput(&data); // read compressed frame into buffer
             outputBuffer = static_cast<ParserBuffer*>(data);
@@ -178,9 +167,7 @@ int main(int argc, char **argv) {
         }
         nFrame++;
         //nFrame += nFrameReturned;
-        printf("i am here\n");
-        tempCount++;
-    } while (tempCount < 5);
+    } while (nVideoBytes);
      // Flush last frames from the decoder if any
     do {
         // send null packet to decoder to flush out

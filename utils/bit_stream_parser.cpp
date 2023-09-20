@@ -28,8 +28,7 @@ BitStreamParser::~BitStreamParser() {}
 BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType type, ParserContext* pContext) {
     BitStreamParserPtr pParser;
 
-    switch(type)
-    {
+    switch(type) {
     case BitStreamH264AnnexB:
         //pParser = BitStreamParserPtr(CreateH264Parser(pStream, pContext));
         ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));

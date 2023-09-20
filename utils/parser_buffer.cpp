@@ -38,7 +38,9 @@ ParserBuffer::~ParserBuffer () {
     m_current_timestamp_ = 0;
 }
 
-int64_t ParserBuffer::GetPts() const { return m_current_timestamp_; }
+int64_t ParserBuffer::GetPts() const { 
+    return m_current_timestamp_; 
+}
 
 void ParserBuffer::SetPts(int64_t pts) {
     if (pts == m_current_timestamp_) {
@@ -47,7 +49,9 @@ void ParserBuffer::SetPts(int64_t pts) {
     m_current_timestamp_ = pts;
 }
 
-int64_t ParserBuffer::GetDuration() const { return m_duration_; }
+int64_t ParserBuffer::GetDuration() const { 
+    return m_duration_; 
+}
 
 void ParserBuffer::SetDuration(int64_t duration) { 
     m_duration_ = duration; 
@@ -56,18 +60,18 @@ void ParserBuffer::SetDuration(int64_t duration) {
 bool ParserBuffer::IsReusable() { return PARSER_NOT_IMPLEMENTED; }
 
 PARSER_RESULT ParserBuffer::SetSize(size_t newSize) {
-    /*if (newSize > m_packet_size_) {
-        return PARSER_INVALID_ARG;
-    }*/
     m_packet_size_ = newSize;
     return PARSER_OK;
 }
 
-size_t ParserBuffer::GetSize() { return m_packet_size_; }
+size_t ParserBuffer::GetSize() { 
+    return m_packet_size_; 
+}
 
-void* ParserBuffer::GetNative() { return m_buffer_; }
+void* ParserBuffer::GetNative() { 
+    return m_buffer_; 
+}
 
 void ParserBuffer::SetNative(size_t size) { 
     m_buffer_ = new uint8_t[size];
-    //m_packet_size_ = size * sizeof(uint8_t);
 }

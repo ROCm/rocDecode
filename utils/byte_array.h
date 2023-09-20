@@ -41,57 +41,44 @@ THE SOFTWARE.
 #define    INIT_ARRAY_SIZE 1024
 #define    ARRAY_MAX_SIZE (1LL << 60LL) // extremely large maximum size
 
-class ByteArray
-{
+class ByteArray {
 protected:
     uint8_t        *m_pData_;
     size_t         m_iSize_;
     size_t         m_iMaxSize_;
 public:
-    ByteArray() : m_pData_(0), m_iSize_(0), m_iMaxSize_(0)
-    {
-    }
-    ByteArray(const ByteArray &other) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0)
-    {
+    ByteArray() : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {}
+    ByteArray(const ByteArray &other) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {
         *this = other;
     }
-    ByteArray(size_t num) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0)
-    {
+    ByteArray(size_t num) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {
         SetSize(num);
     }
-    virtual ~ByteArray()
-    {
-        if (m_pData_ != 0)
-        {
+    virtual ~ByteArray() {
+        if (m_pData_ != 0) {
             delete[] m_pData_;
         }
     }
-    void  SetSize(size_t num)
-    {
-        if (num == m_iSize_)
-        {
+    void  SetSize(size_t num) {
+        if (num == m_iSize_) {
             return;
         }
-        if (num < m_iSize_)
-        {
+        if (num < m_iSize_) {
             memset(m_pData_ + num, 0, m_iMaxSize_ - num);
         }
-        else if (num > m_iMaxSize_)
-        {
+        else if (num > m_iMaxSize_) {
             // This is done to prevent the following error from surfacing
             // for the pNewData allocation on some compilers:
             //     -Werror=alloc-size-larger-than=
             size_t newSize = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
-            if (newSize > ARRAY_MAX_SIZE)
-            {
+            if (newSize > ARRAY_MAX_SIZE) {
                 return;
             }
             m_iMaxSize_ = newSize;
 
             uint8_t *pNewData = new uint8_t[m_iMaxSize_];
             memset(pNewData, 0, m_iMaxSize_);
-            if (m_pData_ != NULL)
-            {
+            if (m_pData_ != NULL) {
                 memcpy(pNewData, m_pData_, m_iSize_);
                 delete[] m_pData_;
             }
@@ -99,13 +86,10 @@ public:
         }
         m_iSize_ = num;
     }
-    void Copy(const ByteArray &old)
-    {
-        if (m_iMaxSize_ < old.m_iSize_)
-        {
+    void Copy(const ByteArray &old) {
+        if (m_iMaxSize_ < old.m_iSize_) {
             m_iMaxSize_ = old.m_iMaxSize_;
-            if (m_pData_ != NULL)
-            {
+            if (m_pData_ != NULL) {
                 delete[] m_pData_;
             }
             m_pData_ = new uint8_t[m_iMaxSize_];
@@ -114,19 +98,15 @@ public:
         memcpy(m_pData_, old.m_pData_, old.m_iSize_);
         m_iSize_ = old.m_iSize_;
     }
-    uint8_t    operator[] (size_t iPos) const
-    {
+    uint8_t    operator[] (size_t iPos) const {
         return m_pData_[iPos];
     }
-    uint8_t&    operator[] (size_t iPos)
-    {
+    uint8_t&    operator[] (size_t iPos) {
         return m_pData_[iPos];
     }
-    ByteArray&    operator=(const ByteArray &other)
-    {
+    ByteArray&    operator=(const ByteArray &other) {
         SetSize(other.GetSize());
-        if (GetSize() > 0)
-        {
+        if (GetSize() > 0) {
             memcpy(GetData(), other.GetData(), GetSize());
         }
         return *this;
