@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
         }
         nFrame += nFrameReturned;
     } while (nVideoBytes);
+
      // Flush last frames from the decoder if any
     do {
         // send null packet to decoder to flush out
