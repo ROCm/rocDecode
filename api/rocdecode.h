@@ -345,15 +345,9 @@ typedef struct _RocdecMpeg2QMatrix {
 
 
 /***********************************************************/
-<<<<<<< HEAD
-//! \struct ROCDECH264PICPARAMS placeholder
-//! H.264 picture parameters
-//! This structure is used in ROCDECH264PICPARAMS structure
-=======
 //! \struct RocdecMpeg2PicParams
 //! MPEG2 picture parameters
 //! This structure is used in RocdecMpeg2PicParams structure
->>>>>>> upstream/master
 /***********************************************************/
 typedef struct _RocdecMpeg2PicParams {
     uint16_t horizontal_size;
@@ -385,20 +379,6 @@ typedef struct _RocdecMpeg2PicParams {
 } RocdecMpeg2PicParams;
 
 /***********************************************************/
-<<<<<<< HEAD
-//! \struct ROCDECHEVCPICPARAMS placeholder
-//! HEVC picture parameters
-//! This structure is used in ROCDECHEVCPICPARAMS structure
-/***********************************************************/
-typedef struct _ROCDECHEVCPICPARAMS {  
-    int Reserved;
-} ROCDECHEVCPICPARAMS;
-
-/***********************************************************/
-//! \struct ROCDECVC1PICPARAMS placeholder
-//! VC1 picture parameters
-//! This structure is used in ROCDECVC1PICPARAMS structure
-=======
 //! \struct RocdecH264PicParams placeholder
 //! H.264 picture parameters
 //! This structure is used in RocdecH264PicParams structure
@@ -478,7 +458,6 @@ typedef struct _RocdecH264PicParams {
 //! When sps_scaling_list_data_present_flag = 0, app still
 //! needs to send in this structure with default matrix values.
 //! This structure is used in RocdecHevcQMatrix structure
->>>>>>> upstream/master
 /***********************************************************/
 typedef struct _RocdecHevcQMatrix {
     /**

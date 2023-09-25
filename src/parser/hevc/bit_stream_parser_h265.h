@@ -22,6 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include "bit_stream_parser.h"
+#include "../common/bit_stream_parser.h"
 
 BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext *pContext);

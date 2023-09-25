@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 
 #include "bit_stream_parser.h"
-#include "bit_stream_parser_h265.h"
+#include "../hevc/bit_stream_parser_h265.h"
 
 BitStreamParser::~BitStreamParser() {}
 
