@@ -31,13 +31,13 @@ BitStreamParserPtr BitStreamParser::Create(DataStream* pStream, BitStreamType ty
     switch(type) {
     case BitStreamH264AnnexB:
         //pParser = BitStreamParserPtr(CreateH264Parser(pStream, pContext));
-        ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));
+        ERR(STR("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));
         break;
     case BitStream265AnnexB:
         pParser = BitStreamParserPtr(CreateHEVCParser(pStream, pContext));
         break;
     default:
-        ERR ( STR ("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_SUPPORTED)));
+        ERR(STR("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_SUPPORTED)));
     }
     return pParser;
 }

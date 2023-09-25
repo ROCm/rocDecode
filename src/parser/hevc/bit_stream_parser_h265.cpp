@@ -902,102 +902,102 @@ void HevcParser::FindSPSandPPS() {
 
 bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
     size_t offset = 16; // 2 bytes NALU header + 
-    uint32_t activeVPS = Parser::readBits(nalu, offset,4);
-    uint32_t max_sub_layer_minus1 = Parser::readBits(nalu, offset,3);
-    sps_temporal_id_nesting_flag = Parser::getBit(nalu, offset);
+    uint32_t activeVPS = Parser::ReadBits(nalu, offset,4);
+    uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset,3);
+    sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
     H265_profile_tier_level_t ptl;
     memset (&ptl,0,sizeof(ptl));
     ParsePTL(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
-    uint32_t SPS_ID = Parser::ExpGolomb::readUe(nalu, offset);
+    uint32_t SPS_ID = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     sps_video_parameter_set_id = activeVPS;
     sps_max_sub_layers_minus1 = max_sub_layer_minus1;
     memcpy (&profile_tier_level,&ptl,sizeof(ptl));
     sps_seq_parameter_set_id = SPS_ID;
 
-    chroma_format_idc = Parser::ExpGolomb::readUe(nalu, offset);
+    chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
     if (chroma_format_idc == 3) {
-        separate_colour_plane_flag = Parser::getBit(nalu, offset);
+        separate_colour_plane_flag = Parser::GetBit(nalu, offset);
     }
-    pic_width_in_luma_samples = Parser::ExpGolomb::readUe(nalu, offset);
-    pic_height_in_luma_samples = Parser::ExpGolomb::readUe(nalu, offset);
-    conformance_window_flag = Parser::getBit(nalu, offset);
+    pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    conformance_window_flag = Parser::GetBit(nalu, offset);
     if (conformance_window_flag) {
-        conf_win_left_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        conf_win_right_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        conf_win_top_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        conf_win_bottom_offset = Parser::ExpGolomb::readUe(nalu, offset);
+        conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    bit_depth_luma_minus8 = Parser::ExpGolomb::readUe(nalu, offset);
-    bit_depth_chroma_minus8 = Parser::ExpGolomb::readUe(nalu, offset);
-    log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::readUe(nalu, offset);
-    sps_sub_layer_ordering_info_present_flag = Parser::getBit(nalu, offset);
+    bit_depth_luma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    bit_depth_chroma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
     for (uint32_t i = (sps_sub_layer_ordering_info_present_flag?0:sps_max_sub_layers_minus1); i <= sps_max_sub_layers_minus1; i++) {
-        sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
-        sps_max_num_reorder_pics[i] = Parser::ExpGolomb::readUe(nalu, offset);
-        sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+        sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::readUe(nalu, offset);
+    log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     int log2MinCUSize = log2_min_luma_coding_block_size_minus3 +3;
 
-    log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::readUe(nalu, offset);
+    log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     int maxCUDepthDelta = log2_diff_max_min_luma_coding_block_size;
     max_cu_width = ( 1<<(log2MinCUSize + maxCUDepthDelta) );
     max_cu_height = ( 1<<(log2MinCUSize + maxCUDepthDelta) );
 
-    log2_min_transform_block_size_minus2 = Parser::ExpGolomb::readUe(nalu, offset);
+    log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     uint32_t QuadtreeTULog2MinSize = log2_min_transform_block_size_minus2 + 2;
     int addCuDepth = std::max (0, log2MinCUSize - (int)QuadtreeTULog2MinSize );
     max_cu_depth = (maxCUDepthDelta + addCuDepth);
 
-    log2_diff_max_min_transform_block_size = Parser::ExpGolomb::readUe(nalu, offset);
-    max_transform_hierarchy_depth_inter = Parser::ExpGolomb::readUe(nalu, offset);
-    max_transform_hierarchy_depth_intra = Parser::ExpGolomb::readUe(nalu, offset);
-    scaling_list_enabled_flag = Parser::getBit(nalu, offset);
+    log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+    max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
+    max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
+    scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
     if (scaling_list_enabled_flag) {
-        sps_scaling_list_data_present_flag = Parser::getBit(nalu, offset);
+        sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
         if (sps_scaling_list_data_present_flag) {
             ParseScalingList(&scaling_list_data, nalu, size, offset);
         }
     }
-    amp_enabled_flag = Parser::getBit(nalu, offset);
-    sample_adaptive_offset_enabled_flag = Parser::getBit(nalu, offset);
-    pcm_enabled_flag = Parser::getBit(nalu, offset);
+    amp_enabled_flag = Parser::GetBit(nalu, offset);
+    sample_adaptive_offset_enabled_flag = Parser::GetBit(nalu, offset);
+    pcm_enabled_flag = Parser::GetBit(nalu, offset);
     if (pcm_enabled_flag) {
-        pcm_sample_bit_depth_luma_minus1 = Parser::readBits(nalu, offset,4);
-        pcm_sample_bit_depth_chroma_minus1 = Parser::readBits(nalu, offset,4);
-        log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::readUe(nalu, offset);
-        log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::readUe(nalu, offset);
-        pcm_loop_filter_disabled_flag = Parser::getBit(nalu, offset);
+        pcm_sample_bit_depth_luma_minus1 = Parser::ReadBits(nalu, offset,4);
+        pcm_sample_bit_depth_chroma_minus1 = Parser::ReadBits(nalu, offset,4);
+        log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
-    num_short_term_ref_pic_sets = Parser::ExpGolomb::readUe(nalu, offset);
+    num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
     for (uint32_t i=0; i<num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
         ParseShortTermRefPicSet(&stRPS[i], i, num_short_term_ref_pic_sets, stRPS, nalu, size, offset);
     }
-    long_term_ref_pics_present_flag = Parser::getBit(nalu, offset);
+    long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
     if (long_term_ref_pics_present_flag) {
-        num_long_term_ref_pics_sps = Parser::ExpGolomb::readUe(nalu, offset);
+        num_long_term_ref_pics_sps = Parser::ExpGolomb::ReadUe(nalu, offset);
         ltRPS.num_of_pics = num_long_term_ref_pics_sps;
         for (uint32_t i=0; i<num_long_term_ref_pics_sps; i++) {
             //The number of bits used to represent lt_ref_pic_poc_lsb_sps[ i ] is equal to log2_max_pic_order_cnt_lsb_minus4 + 4.
-            lt_ref_pic_poc_lsb_sps[i] = Parser::readBits(nalu, offset,(log2_max_pic_order_cnt_lsb_minus4 + 4));
-            used_by_curr_pic_lt_sps_flag[i] = Parser::getBit(nalu, offset);
+            lt_ref_pic_poc_lsb_sps[i] = Parser::ReadBits(nalu, offset,(log2_max_pic_order_cnt_lsb_minus4 + 4));
+            used_by_curr_pic_lt_sps_flag[i] = Parser::GetBit(nalu, offset);
             ltRPS.POCs[i]=lt_ref_pic_poc_lsb_sps[i];
             ltRPS.used_by_curr_pic[i] = used_by_curr_pic_lt_sps_flag[i];            
         }
     }
-    sps_temporal_mvp_enabled_flag = Parser::getBit(nalu, offset);
-    strong_intra_smoothing_enabled_flag = Parser::getBit(nalu, offset);
-    vui_parameters_present_flag = Parser::getBit(nalu, offset);
+    sps_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
+    strong_intra_smoothing_enabled_flag = Parser::GetBit(nalu, offset);
+    vui_parameters_present_flag = Parser::GetBit(nalu, offset);
     if (vui_parameters_present_flag) {
         //vui_parameters()
         ParseVUI(&vui_parameters, sps_max_sub_layers_minus1, nalu, size, offset);
     }
-    sps_extension_flag = Parser::getBit(nalu, offset);
+    sps_extension_flag = Parser::GetBit(nalu, offset);
     if( sps_extension_flag ) {
         //while( more_rbsp_data( ) )
             //sps_extension_data_flag u(1)
@@ -1008,69 +1008,69 @@ bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
 bool HevcParser::PpsData::Parse(uint8_t *nalu, size_t size) {
     size_t offset = 16; // 2 bytes NALU header
 
-    uint32_t PPS_ID = Parser::ExpGolomb::readUe(nalu, offset);
+    uint32_t PPS_ID = Parser::ExpGolomb::ReadUe(nalu, offset);
     
     pps_pic_parameter_set_id = PPS_ID;
-    uint32_t activeSPS = Parser::ExpGolomb::readUe(nalu, offset);
+    uint32_t activeSPS = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     pps_seq_parameter_set_id = activeSPS;
-    dependent_slice_segments_enabled_flag = Parser::getBit(nalu, offset);
-    output_flag_present_flag = Parser::getBit(nalu, offset);
-    num_extra_slice_header_bits = Parser::readBits(nalu, offset,3);
-    sign_data_hiding_enabled_flag = Parser::getBit(nalu, offset);
-    cabac_init_present_flag = Parser::getBit(nalu, offset);
-    num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
-    num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
-    init_qp_minus26 = Parser::ExpGolomb::readSe(nalu, offset);
-    constrained_intra_pred_flag = Parser::getBit(nalu, offset);
-    transform_skip_enabled_flag = Parser::getBit(nalu, offset);
-    cu_qp_delta_enabled_flag = Parser::getBit(nalu, offset);
+    dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
+    output_flag_present_flag = Parser::GetBit(nalu, offset);
+    num_extra_slice_header_bits = Parser::ReadBits(nalu, offset,3);
+    sign_data_hiding_enabled_flag = Parser::GetBit(nalu, offset);
+    cabac_init_present_flag = Parser::GetBit(nalu, offset);
+    num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    init_qp_minus26 = Parser::ExpGolomb::ReadSe(nalu, offset);
+    constrained_intra_pred_flag = Parser::GetBit(nalu, offset);
+    transform_skip_enabled_flag = Parser::GetBit(nalu, offset);
+    cu_qp_delta_enabled_flag = Parser::GetBit(nalu, offset);
     if (cu_qp_delta_enabled_flag) {
-        diff_cu_qp_delta_depth = Parser::ExpGolomb::readUe(nalu, offset);
+        diff_cu_qp_delta_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    pps_cb_qp_offset = Parser::ExpGolomb::readSe(nalu, offset);
-    pps_cr_qp_offset = Parser::ExpGolomb::readSe(nalu, offset);
-    pps_slice_chroma_qp_offsets_present_flag = Parser::getBit(nalu, offset);
-    weighted_pred_flag = Parser::getBit(nalu, offset);
-    weighted_bipred_flag = Parser::getBit(nalu, offset);
-    transquant_bypass_enabled_flag = Parser::getBit(nalu, offset);
-    tiles_enabled_flag = Parser::getBit(nalu, offset);
-    entropy_coding_sync_enabled_flag = Parser::getBit(nalu, offset);
+    pps_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_slice_chroma_qp_offsets_present_flag = Parser::GetBit(nalu, offset);
+    weighted_pred_flag = Parser::GetBit(nalu, offset);
+    weighted_bipred_flag = Parser::GetBit(nalu, offset);
+    transquant_bypass_enabled_flag = Parser::GetBit(nalu, offset);
+    tiles_enabled_flag = Parser::GetBit(nalu, offset);
+    entropy_coding_sync_enabled_flag = Parser::GetBit(nalu, offset);
     if (tiles_enabled_flag) {
-        num_tile_columns_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
-        num_tile_rows_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
-        uniform_spacing_flag = Parser::getBit(nalu, offset);
+        num_tile_columns_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        num_tile_rows_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        uniform_spacing_flag = Parser::GetBit(nalu, offset);
         if (!uniform_spacing_flag) {
             for (uint32_t i=0; i<num_tile_columns_minus1; i++) {
-                column_width_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+                column_width_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
             for (uint32_t i=0; i<num_tile_rows_minus1; i++) {
-                row_height_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+                row_height_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
         }
-        loop_filter_across_tiles_enabled_flag = Parser::getBit(nalu, offset);
+        loop_filter_across_tiles_enabled_flag = Parser::GetBit(nalu, offset);
     }
     else {
          loop_filter_across_tiles_enabled_flag = 1;
     }
-    pps_loop_filter_across_slices_enabled_flag = Parser::getBit(nalu, offset);
-    deblocking_filter_control_present_flag = Parser::getBit(nalu, offset);
+    pps_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
+    deblocking_filter_control_present_flag = Parser::GetBit(nalu, offset);
     if (deblocking_filter_control_present_flag) {
-        deblocking_filter_override_enabled_flag = Parser::getBit(nalu, offset);
-        pps_deblocking_filter_disabled_flag = Parser::getBit(nalu, offset);
+        deblocking_filter_override_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
         if (!pps_deblocking_filter_disabled_flag) {
-            pps_beta_offset_div2 = Parser::ExpGolomb::readSe(nalu, offset);
-            pps_tc_offset_div2 = Parser::ExpGolomb::readSe(nalu, offset);
+            pps_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+            pps_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
         }
     }
-    pps_scaling_list_data_present_flag = Parser::getBit(nalu, offset);
+    pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
     if (pps_scaling_list_data_present_flag) {
         SpsData::ParseScalingList(&scaling_list_data, nalu, size, offset);
     }
-    lists_modification_present_flag = Parser::getBit(nalu, offset);
-    log2_parallel_merge_level_minus2 = Parser::ExpGolomb::readUe(nalu, offset);
-    slice_segment_header_extension_present_flag = Parser::getBit(nalu, offset);
-    pps_extension_flag = Parser::getBit(nalu, offset);
+    lists_modification_present_flag = Parser::GetBit(nalu, offset);
+    log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
+    pps_extension_flag = Parser::GetBit(nalu, offset);
     if (pps_extension_flag) {
         //while( more_rbsp_data( ) )
             //pps_extension_data_flag u(1)
@@ -1081,102 +1081,102 @@ bool HevcParser::PpsData::Parse(uint8_t *nalu, size_t size) {
 
 void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profilePresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     if (profilePresentFlag) {
-        ptl->general_profile_space = Parser::readBits(nalu, offset,2);
-        ptl->general_tier_flag = Parser::getBit(nalu, offset);
-        ptl->general_profile_idc = Parser::readBits(nalu, offset,5);
+        ptl->general_profile_space = Parser::ReadBits(nalu, offset,2);
+        ptl->general_tier_flag = Parser::GetBit(nalu, offset);
+        ptl->general_profile_idc = Parser::ReadBits(nalu, offset,5);
         for (int i = 0; i < 32; i++) {
-            ptl->general_profile_compatibility_flag[i] = Parser::getBit(nalu, offset);
+            ptl->general_profile_compatibility_flag[i] = Parser::GetBit(nalu, offset);
         }
-        ptl->general_progressive_source_flag = Parser::getBit(nalu, offset);
-        ptl->general_interlaced_source_flag = Parser::getBit(nalu, offset);
-        ptl->general_non_packed_constraint_flag = Parser::getBit(nalu, offset);
-        ptl->general_frame_only_constraint_flag = Parser::getBit(nalu, offset);
-        //readBits is limited to 32 
-        //ptl->general_reserved_zero_44bits = Parser::readBits(nalu, offset,44);
+        ptl->general_progressive_source_flag = Parser::GetBit(nalu, offset);
+        ptl->general_interlaced_source_flag = Parser::GetBit(nalu, offset);
+        ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
+        ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
+        //ReadBits is limited to 32 
+        //ptl->general_reserved_zero_44bits = Parser::ReadBits(nalu, offset,44);
         offset += 44;
     }
 
-    ptl->general_level_idc = Parser::readBits(nalu, offset,8);
+    ptl->general_level_idc = Parser::ReadBits(nalu, offset,8);
     for(uint32_t i=0; i < maxNumSubLayersMinus1; i++) {
-        ptl->sub_layer_profile_present_flag[i] = Parser::getBit(nalu, offset);
-        ptl->sub_layer_level_present_flag[i] = Parser::getBit(nalu, offset);
+        ptl->sub_layer_profile_present_flag[i] = Parser::GetBit(nalu, offset);
+        ptl->sub_layer_level_present_flag[i] = Parser::GetBit(nalu, offset);
     }
     if (maxNumSubLayersMinus1 > 0) {
         for(uint32_t i=maxNumSubLayersMinus1; i<8; i++) {               
-            ptl->reserved_zero_2bits[i] = Parser::readBits(nalu, offset,2);
+            ptl->reserved_zero_2bits[i] = Parser::ReadBits(nalu, offset,2);
         }
     }
     for (uint32_t i=0; i<maxNumSubLayersMinus1; i++) {
         if (ptl->sub_layer_profile_present_flag[i]) {
-            ptl->sub_layer_profile_space[i] = Parser::readBits(nalu, offset,2);
-            ptl->sub_layer_tier_flag[i] = Parser::getBit(nalu, offset);
-            ptl->sub_layer_profile_idc[i] = Parser::readBits(nalu, offset,5);
+            ptl->sub_layer_profile_space[i] = Parser::ReadBits(nalu, offset,2);
+            ptl->sub_layer_tier_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_profile_idc[i] = Parser::ReadBits(nalu, offset,5);
             for (int j = 0; j<32; j++) {
-                ptl->sub_layer_profile_compatibility_flag[i][j] = Parser::getBit(nalu, offset);
+                ptl->sub_layer_profile_compatibility_flag[i][j] = Parser::GetBit(nalu, offset);
             }
-            ptl->sub_layer_progressive_source_flag[i] = Parser::getBit(nalu, offset);
-            ptl->sub_layer_interlaced_source_flag[i] = Parser::getBit(nalu, offset);
-            ptl->sub_layer_non_packed_constraint_flag[i] = Parser::getBit(nalu, offset);
-            ptl->sub_layer_frame_only_constraint_flag[i] = Parser::getBit(nalu, offset);
-            ptl->sub_layer_reserved_zero_44bits[i] = Parser::readBits(nalu, offset,44);
+            ptl->sub_layer_progressive_source_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_interlaced_source_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_non_packed_constraint_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_frame_only_constraint_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_reserved_zero_44bits[i] = Parser::ReadBits(nalu, offset,44);
         }
         if (ptl->sub_layer_level_present_flag[i]) {
-            ptl->sub_layer_level_idc[i] = Parser::readBits(nalu, offset,8);
+            ptl->sub_layer_level_idc[i] = Parser::ReadBits(nalu, offset,8);
         }
     }
 }
 
 void HevcParser::SpsData::ParseSubLayerHrdParameters(H265_sub_layer_hrd_parameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (uint32_t i=0; i<=CpbCnt; i++) {
-        sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
-        sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+        sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         if(sub_pic_hrd_params_present_flag) {
-            sub_hrd->cpb_size_du_value_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
-            sub_hrd->bit_rate_du_value_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+            sub_hrd->cpb_size_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sub_hrd->bit_rate_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        sub_hrd->cbr_flag[i] = Parser::getBit(nalu, offset);
+        sub_hrd->cbr_flag[i] = Parser::GetBit(nalu, offset);
     }
 }
 
 void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool commonInfPresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size,size_t &offset) {
     if (commonInfPresentFlag) {
-        hrd->nal_hrd_parameters_present_flag = Parser::getBit(nalu, offset);
-        hrd->vcl_hrd_parameters_present_flag = Parser::getBit(nalu, offset);
+        hrd->nal_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
+        hrd->vcl_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (hrd->nal_hrd_parameters_present_flag || hrd->vcl_hrd_parameters_present_flag) {
-            hrd->sub_pic_hrd_params_present_flag = Parser::getBit(nalu, offset);
+            hrd->sub_pic_hrd_params_present_flag = Parser::GetBit(nalu, offset);
             if (hrd->sub_pic_hrd_params_present_flag) {
-                hrd->tick_divisor_minus2 = Parser::readBits(nalu, offset,8);
-                hrd->du_cpb_removal_delay_increment_length_minus1 = Parser::readBits(nalu, offset,5);
-                hrd->sub_pic_cpb_params_in_pic_timing_sei_flag = Parser::getBit(nalu, offset);
-                hrd->dpb_output_delay_du_length_minus1 = Parser::readBits(nalu, offset,5);
+                hrd->tick_divisor_minus2 = Parser::ReadBits(nalu, offset,8);
+                hrd->du_cpb_removal_delay_increment_length_minus1 = Parser::ReadBits(nalu, offset,5);
+                hrd->sub_pic_cpb_params_in_pic_timing_sei_flag = Parser::GetBit(nalu, offset);
+                hrd->dpb_output_delay_du_length_minus1 = Parser::ReadBits(nalu, offset,5);
             }
-            hrd->bit_rate_scale = Parser::readBits(nalu, offset,4);
-            hrd->cpb_size_scale = Parser::readBits(nalu, offset,4);
+            hrd->bit_rate_scale = Parser::ReadBits(nalu, offset,4);
+            hrd->cpb_size_scale = Parser::ReadBits(nalu, offset,4);
             if (hrd->sub_pic_hrd_params_present_flag) {
-                hrd->cpb_size_du_scale = Parser::readBits(nalu, offset,4);
+                hrd->cpb_size_du_scale = Parser::ReadBits(nalu, offset,4);
             }
-            hrd->initial_cpb_removal_delay_length_minus1 = Parser::readBits(nalu, offset,5);
-            hrd->au_cpb_removal_delay_length_minus1 = Parser::readBits(nalu, offset,5);
-            hrd->dpb_output_delay_length_minus1 = Parser::readBits(nalu, offset,5);
+            hrd->initial_cpb_removal_delay_length_minus1 = Parser::ReadBits(nalu, offset,5);
+            hrd->au_cpb_removal_delay_length_minus1 = Parser::ReadBits(nalu, offset,5);
+            hrd->dpb_output_delay_length_minus1 = Parser::ReadBits(nalu, offset,5);
         }
     }
     for (uint32_t i = 0; i <= maxNumSubLayersMinus1; i++) {
-        hrd->fixed_pic_rate_general_flag[i] = Parser::getBit(nalu, offset);
+        hrd->fixed_pic_rate_general_flag[i] = Parser::GetBit(nalu, offset);
         if (!hrd->fixed_pic_rate_general_flag[i]) {
-            hrd->fixed_pic_rate_within_cvs_flag[i] = Parser::getBit(nalu, offset);
+            hrd->fixed_pic_rate_within_cvs_flag[i] = Parser::GetBit(nalu, offset);
         }
         else {
             hrd->fixed_pic_rate_within_cvs_flag[i] = hrd->fixed_pic_rate_general_flag[i];
         }
 
         if (hrd->fixed_pic_rate_within_cvs_flag[i]) {
-            hrd->elemental_duration_in_tc_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+            hrd->elemental_duration_in_tc_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         else {
-            hrd->low_delay_hrd_flag[i] = Parser::getBit(nalu, offset);
+            hrd->low_delay_hrd_flag[i] = Parser::GetBit(nalu, offset);
         }
         if (!hrd->low_delay_hrd_flag[i]) {
-            hrd->cpb_cnt_minus1[i] = Parser::ExpGolomb::readUe(nalu, offset);
+            hrd->cpb_cnt_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         if (hrd->nal_hrd_parameters_present_flag) {
             //sub_layer_hrd_parameters( i )
@@ -1192,9 +1192,9 @@ void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool co
 void HevcParser::SpsData::ParseScalingList(H265_scaling_list_data_t * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (int sizeId = 0; sizeId < 4; sizeId++) {
         for (int matrixId = 0; matrixId < ((sizeId == 3) ? 2:6); matrixId++) {
-            s_data->scaling_list_pred_mode_flag[sizeId][matrixId] = Parser::getBit(nalu, offset);
+            s_data->scaling_list_pred_mode_flag[sizeId][matrixId] = Parser::GetBit(nalu, offset);
             if(!s_data->scaling_list_pred_mode_flag[sizeId][matrixId]) {
-                s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId] = Parser::ExpGolomb::readUe(nalu, offset);
+                s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId] = Parser::ExpGolomb::ReadUe(nalu, offset);
 
                 int refMatrixId = matrixId - s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId];
                 int coefNum = std::min(64, (1<< (4 + (sizeId<<1))));
@@ -1232,11 +1232,11 @@ void HevcParser::SpsData::ParseScalingList(H265_scaling_list_data_t * s_data, ui
                 int nextCoef = 8;
                 int coefNum = std::min(64, (1<< (4 + (sizeId<<1))));
                 if (sizeId > 1) {
-                    s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] = Parser::ExpGolomb::readSe(nalu, offset);
+                    s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] = Parser::ExpGolomb::ReadSe(nalu, offset);
                     nextCoef = s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] + 8;
                 }
                 for (int i=0; i < coefNum; i++) {
-                    s_data->scaling_list_delta_coef = Parser::ExpGolomb::readSe(nalu, offset);
+                    s_data->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
                     nextCoef = (nextCoef + s_data->scaling_list_delta_coef +256)%256;
                     s_data->ScalingList[sizeId][matrixId][i] = nextCoef;
                 }
@@ -1251,23 +1251,23 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
     int32_t i=0;
 
     if (stRpsIdx != 0) {
-        interRPSPred = Parser::getBit(nalu, offset);
+        interRPSPred = Parser::GetBit(nalu, offset);
     }
     if (interRPSPred) {
         uint32_t delta_rps_sign, abs_delta_rps_minus1;
         bool used_by_curr_pic_flag[16] = {0};
         bool use_delta_flag[16] = {0};
         if (unsigned(stRpsIdx) == number_short_term_ref_pic_sets) {
-            delta_idx_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
+            delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        delta_rps_sign = Parser::getBit(nalu, offset);
-        abs_delta_rps_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
+        delta_rps_sign = Parser::GetBit(nalu, offset);
+        abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         int32_t delta_rps = (int32_t) (1 - 2*delta_rps_sign) * (abs_delta_rps_minus1 + 1);
         int32_t ref_idx = stRpsIdx - delta_idx_minus1 - 1;
         for (int j = 0; j <= (rps_ref[ref_idx].num_negative_pics + rps_ref[ref_idx].num_positive_pics); j++) {
-            used_by_curr_pic_flag[j] = Parser::getBit(nalu, offset);
+            used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
             if (!used_by_curr_pic_flag[j]) {
-                use_delta_flag[j] = Parser::getBit(nalu, offset);
+                use_delta_flag[j] = Parser::GetBit(nalu, offset);
             }
             else {
                 use_delta_flag[j] = 1;
@@ -1318,25 +1318,25 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
         rps->num_of_pics = i;
     }
     else {
-        rps->num_negative_pics = Parser::ExpGolomb::readUe(nalu, offset);
-        rps->num_positive_pics = Parser::ExpGolomb::readUe(nalu, offset);
+        rps->num_negative_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
+        rps->num_positive_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         int32_t prev = 0;
         int32_t poc;
         uint32_t delta_poc_s0_minus1,delta_poc_s1_minus1;
         for (int j = 0; j < rps->num_negative_pics; j++) {
-            delta_poc_s0_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
+            delta_poc_s0_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             poc = prev - delta_poc_s0_minus1 - 1;
             prev = poc;
             rps->deltaPOC[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::getBit(nalu, offset);
+            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
         }
         prev = 0;
         for (int j = rps->num_negative_pics; j < rps->num_negative_pics + rps->num_positive_pics; j++) {
-            delta_poc_s1_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
+            delta_poc_s1_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             poc = prev + delta_poc_s1_minus1 + 1;
             prev = poc;
             rps->deltaPOC[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::getBit(nalu, offset);
+            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
         }
         rps->num_of_pics = rps->num_negative_pics + rps->num_positive_pics;
         rps->num_of_delta_poc = rps->num_negative_pics + rps->num_positive_pics;
@@ -1344,73 +1344,73 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
 }
 
 void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size, size_t &offset) {
-    vui->aspect_ratio_info_present_flag = Parser::getBit(nalu, offset);
+    vui->aspect_ratio_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->aspect_ratio_info_present_flag) {
-        vui->aspect_ratio_idc = Parser::readBits(nalu, offset,8);
+        vui->aspect_ratio_idc = Parser::ReadBits(nalu, offset,8);
         if (vui->aspect_ratio_idc == 255) {
-            vui->sar_width = Parser::readBits(nalu, offset,16);
-            vui->sar_height = Parser::readBits(nalu, offset,16);
+            vui->sar_width = Parser::ReadBits(nalu, offset,16);
+            vui->sar_height = Parser::ReadBits(nalu, offset,16);
         }
     }
-    vui->overscan_info_present_flag = Parser::getBit(nalu, offset);
+    vui->overscan_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->overscan_info_present_flag) {
-        vui->overscan_appropriate_flag = Parser::getBit(nalu, offset);
+        vui->overscan_appropriate_flag = Parser::GetBit(nalu, offset);
     }
-    vui->video_signal_type_present_flag = Parser::getBit(nalu, offset);
+    vui->video_signal_type_present_flag = Parser::GetBit(nalu, offset);
     if (vui->video_signal_type_present_flag) {
-        vui->video_format = Parser::readBits(nalu, offset,3);
-        vui->video_full_range_flag = Parser::getBit(nalu, offset);
-        vui->colour_description_present_flag = Parser::getBit(nalu, offset);
+        vui->video_format = Parser::ReadBits(nalu, offset,3);
+        vui->video_full_range_flag = Parser::GetBit(nalu, offset);
+        vui->colour_description_present_flag = Parser::GetBit(nalu, offset);
         if (vui->colour_description_present_flag) {
-            vui->colour_primaries = Parser::readBits(nalu, offset,8);
-            vui->transfer_characteristics = Parser::readBits(nalu, offset,8);
-            vui->matrix_coeffs = Parser::readBits(nalu, offset,8);
+            vui->colour_primaries = Parser::ReadBits(nalu, offset,8);
+            vui->transfer_characteristics = Parser::ReadBits(nalu, offset,8);
+            vui->matrix_coeffs = Parser::ReadBits(nalu, offset,8);
         }
     }
-    vui->chroma_loc_info_present_flag = Parser::getBit(nalu, offset);
+    vui->chroma_loc_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->chroma_loc_info_present_flag) {
-        vui->chroma_sample_loc_type_top_field = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->chroma_sample_loc_type_bottom_field = Parser::ExpGolomb::readUe(nalu, offset);
+        vui->chroma_sample_loc_type_top_field = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->chroma_sample_loc_type_bottom_field = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    vui->neutral_chroma_indication_flag = Parser::getBit(nalu, offset);
-    vui->field_seq_flag = Parser::getBit(nalu, offset);
-    vui->frame_field_info_present_flag = Parser::getBit(nalu, offset);
-    vui->default_display_window_flag = Parser::getBit(nalu, offset);
+    vui->neutral_chroma_indication_flag = Parser::GetBit(nalu, offset);
+    vui->field_seq_flag = Parser::GetBit(nalu, offset);
+    vui->frame_field_info_present_flag = Parser::GetBit(nalu, offset);
+    vui->default_display_window_flag = Parser::GetBit(nalu, offset);
     if (vui->default_display_window_flag) {
-        vui->def_disp_win_left_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->def_disp_win_right_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->def_disp_win_top_offset = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->def_disp_win_bottom_offset = Parser::ExpGolomb::readUe(nalu, offset);
+        vui->def_disp_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->def_disp_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->def_disp_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->def_disp_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    vui->vui_timing_info_present_flag = Parser::getBit(nalu, offset);
+    vui->vui_timing_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->vui_timing_info_present_flag) {
-        vui->vui_num_units_in_tick = Parser::readBits(nalu, offset,32);
-        vui->vui_time_scale = Parser::readBits(nalu, offset,32);
-        vui->vui_poc_proportional_to_timing_flag = Parser::getBit(nalu, offset);
+        vui->vui_num_units_in_tick = Parser::ReadBits(nalu, offset,32);
+        vui->vui_time_scale = Parser::ReadBits(nalu, offset,32);
+        vui->vui_poc_proportional_to_timing_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_poc_proportional_to_timing_flag) {
-            vui->vui_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::readUe(nalu, offset);
+            vui->vui_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        vui->vui_hrd_parameters_present_flag = Parser::getBit(nalu, offset);
+        vui->vui_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_hrd_parameters_present_flag) {
             ParseHrdParameters(&vui->hrd_parameters, 1, maxNumSubLayersMinus1, nalu, size, offset);
         }
     }
-    vui->bitstream_restriction_flag = Parser::getBit(nalu, offset);
+    vui->bitstream_restriction_flag = Parser::GetBit(nalu, offset);
     if (vui->bitstream_restriction_flag) {
-        vui->tiles_fixed_structure_flag = Parser::getBit(nalu, offset);
-        vui->motion_vectors_over_pic_boundaries_flag = Parser::getBit(nalu, offset);
-        vui->restricted_ref_pic_lists_flag = Parser::getBit(nalu, offset);
-        vui->min_spatial_segmentation_idc = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->max_bytes_per_pic_denom = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->max_bits_per_min_cu_denom = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->log2_max_mv_length_horizontal = Parser::ExpGolomb::readUe(nalu, offset);
-        vui->log2_max_mv_length_vertical = Parser::ExpGolomb::readUe(nalu, offset);
+        vui->tiles_fixed_structure_flag = Parser::GetBit(nalu, offset);
+        vui->motion_vectors_over_pic_boundaries_flag = Parser::GetBit(nalu, offset);
+        vui->restricted_ref_pic_lists_flag = Parser::GetBit(nalu, offset);
+        vui->min_spatial_segmentation_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->max_bytes_per_pic_denom = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->max_bits_per_min_cu_denom = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->log2_max_mv_length_horizontal = Parser::ExpGolomb::ReadUe(nalu, offset);
+        vui->log2_max_mv_length_vertical = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
 }
 
 bool HevcParser::AccessUnitSigns::Parse(uint8_t *nalu, size_t /*size*/, std::map<uint32_t, SpsData>&/*spsMap*/, std::map<uint32_t, PpsData>& /*ppsMap*/) {
     size_t offset = 16; // 2 bytes NALU header
-    bNewPicture = Parser::getBit(nalu, offset);
+    bNewPicture = Parser::GetBit(nalu, offset);
     return true;
 }
 
@@ -1424,8 +1424,8 @@ void HevcParser::ExtraDataBuilder::AddSPS(uint8_t *sps, size_t size) {
     uint16_t spsSize = size & maxSpsSize;
     m_SPSs_.SetSize(pos + spsSize +2);
     uint8_t *data = m_SPSs_.GetData() + pos;
-    *data++ = Parser::getLowByte(spsSize);
-    *data++ = Parser::getHiByte(spsSize);
+    *data++ = Parser::GetLowByte(spsSize);
+    *data++ = Parser::GetHiByte(spsSize);
     memcpy(data , sps, (size_t)spsSize);
 }
 
@@ -1435,8 +1435,8 @@ void HevcParser::ExtraDataBuilder::AddPPS(uint8_t *pps, size_t size) {
     uint16_t ppsSize = size & maxPpsSize;
     m_PPSs_.SetSize(pos + ppsSize +2);
     uint8_t *data = m_PPSs_.GetData() + pos;
-    *data++ = Parser::getLowByte(ppsSize);
-    *data++ = Parser::getHiByte(ppsSize);
+    *data++ = Parser::GetLowByte(ppsSize);
+    *data++ = Parser::GetHiByte(ppsSize);
     memcpy(data , pps, (size_t)ppsSize);
 }
 
@@ -1471,15 +1471,15 @@ bool HevcParser::ExtraDataBuilder::GetExtradata(ByteArray &extradata) {
     *data++ = static_cast<uint8_t>(2); // reserved(11100000) + numOfSequenceParameterSets
 
     *data++ = NAL_UNIT_SPS;
-    *data++ = Parser::getLowByte(static_cast<int16_t>(m_SPSCount_));
-    *data++ = Parser::getHiByte(static_cast<int16_t>(m_SPSCount_));
+    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_SPSCount_));
+    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_SPSCount_));
 
     memcpy(data, m_SPSs_.GetData(), m_SPSs_.GetSize());
     data += m_SPSs_.GetSize();
 
     *data++ = NAL_UNIT_PPS;
-    *data++ = Parser::getLowByte(static_cast<int16_t>(m_PPSCount_));
-    *data++ = Parser::getHiByte(static_cast<int16_t>(m_PPSCount_));
+    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_PPSCount_));
+    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_PPSCount_));
     memcpy(data, m_PPSs_.GetData(), m_PPSs_.GetSize());
     data += m_PPSs_.GetSize();
     return true;
