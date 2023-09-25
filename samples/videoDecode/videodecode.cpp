@@ -79,7 +79,6 @@ int main(int argc, char **argv) {
     }
 
     VideoDemuxer demuxer(inputFilePath.c_str());
-
     //VideoDecode viddec(deviceId);
 
     std::string deviceName, gcnArchName, drmNode;
@@ -105,7 +104,6 @@ int main(int argc, char **argv) {
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
-
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
