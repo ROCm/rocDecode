@@ -19,23 +19,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#pragma once
+#include "rocparser.h"
+#include "parser_handle.h"
 
-#include <memory>
-#include <string>
 
-#include "roc_decoder.h"
 
-struct DecHandle {
-
-    explicit DecHandle();   //constructor
-    ~DecHandle() { clear_errors(); }
-    std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
-    bool no_error() { return error.empty(); }
-    const char* error_msg() { return error.c_str(); }
-    void capture_error(const std::string& err_msg) { error = err_msg; }
-
-private:
-    void clear_errors() { error = "";}
-    std::string error;
-};
+/**
+ * @brief 
+ * 
+ * @param pData 
+ * @return rocDecodeStatus 
+ */
+rocDecStatus RocVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {  
+    // todo:
+    return ROCDEC_SUCCESS;
+}

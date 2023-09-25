@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <fstream>
 #include "video_demuxer.hpp"
 #include "../../utils/bit_stream_parser.h"
+#include "rocdecode.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl

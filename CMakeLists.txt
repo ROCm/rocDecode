@@ -48,8 +48,9 @@ find_package(Libva QUIET)
 
 if(HIP_FOUND AND Libva_FOUND)
     include_directories(api
-                        src
-                        src/vaapi
+                        src/rocdecode
+                        src/parser
+                        src/rocdecode/vaapi
                         )       
     file(GLOB_RECURSE SOURCES "./src/*.cpp")
     add_library(${PROJECT_NAME} SHARED ${SOURCES})

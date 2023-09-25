@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "commons.h"
+#include "../commons.h"
 #include "roc_decoder.h"
 
 RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, num_devices_{num_devices} {
@@ -32,29 +32,29 @@ RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, n
 
 }
 
-rocDecStatus RocDecoder::getDecoderCaps(ROCDECDECODECAPS *pdc) {
+rocDecStatus RocDecoder::getDecoderCaps(RocdecDecodeCaps *pdc) {
     // todo:: return appropriate decStatus if fails
     //vaQueryConfigProfiles
-    // fill the ROCDECDECODECAPS struct
+    // fill the RocdecDecodeCaps struct
     // return status
     return ROCDEC_NOT_IMPLEMENTED;
 }
 
-rocDecStatus RocDecoder::decodeFrame(ROCDECPICPARAMS *pPicParams) {
+rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
     // todo:: return appropriate decStatus if fails
     // call funsction to do va-api decoding using the picture parameters structure
     // return status
     return ROCDEC_NOT_IMPLEMENTED;
 }
 
-rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus) {
+rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
     // todo:: return appropriate decStatus
     // init vaapi decoder to get the decoding status of the picture specified by nPicIndex 
     // return status
     return ROCDEC_NOT_IMPLEMENTED;
 }
 
-rocDecStatus RocDecoder::reconfigureDecoder(ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams) {
+rocDecStatus RocDecoder::reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams) {
     // todo:: return appropriate decStatus
     // this will be called when the current configuration is changed during decoding
     // release the current va-api decoder instance and create a new one with the new parameters (or reinit if available)
@@ -63,7 +63,7 @@ rocDecStatus RocDecoder::reconfigureDecoder(ROCDECRECONFIGUREDECODERINFO *pDecRe
 }
 
 rocDecStatus RocDecoder::mapVideoFrame(int nPicIdx, void *pDevMemPtr[3],
-                                unsigned int *pHorizontalPitch[3], ROCDECPROCPARAMS *pVidPostprocParams) {
+                                unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
     // todo:: return appropriate decStatus
     // Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
     // pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately

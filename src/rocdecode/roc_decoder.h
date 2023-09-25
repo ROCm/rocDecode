@@ -38,11 +38,11 @@ class RocDecoder {
 public:
     RocDecoder(int device_id, int num_devices);
     ~RocDecoder();
-    rocDecStatus getDecoderCaps(ROCDECDECODECAPS *pdc);
-    rocDecStatus decodeFrame(ROCDECPICPARAMS *pPicParams);
-    rocDecStatus getDecodeStatus(int nPicIdx, ROCDECGETDECODESTATUS* pDecodeStatus);
-    rocDecStatus reconfigureDecoder(ROCDECRECONFIGUREDECODERINFO *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], ROCDECPROCPARAMS *pVidPostprocParams);
+    rocDecStatus getDecoderCaps(RocdecDecodeCaps *pdc);
+    rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
+    rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
+    rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
+    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
     rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
 private:

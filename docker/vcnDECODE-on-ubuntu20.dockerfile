@@ -5,13 +5,11 @@ RUN apt-get update -y
 #RUN apt-get dist-upgrade -y
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install gcc g++ cmake pkg-config git apt-utils sudo vainfo dialog
 
-RUN DEBIAN_FRONTEND=noninteractive dpkg --add-architecture i386
-
 # install ROCm
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install initramfs-tools libnuma-dev wget keyboard-configuration && \
-        wget https://repo.radeon.com/amdgpu-install/5.5/ubuntu/focal/amdgpu-install_5.5.50500-1_all.deb && \
-        sudo apt-get install ./amdgpu-install_5.5.50500-1_all.deb && \
-        sudo amdgpu-install -y --usecase=graphics,rocm
+        wget https://repo.radeon.com/amdgpu-install/5.7/ubuntu/focal/amdgpu-install_5.7.50700-1_all.deb && \
+        sudo apt-get install ./amdgpu-install_5.7.50700-1_all.deb && \
+        sudo amdgpu-install -y --usecase=graphics,rocm --no-32
 
 # install FFMPEG, and other dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install autoconf automake build-essential cmake git-core libass-dev libfreetype6-dev libsdl2-dev libtool libva-dev \
