@@ -1,3 +1,5 @@
 build/
 samples/*/build
 .vscode/
+samples/videoDecode/videodecode_test.cpp
+samples/videoDecodeCMakeLists_test.txt

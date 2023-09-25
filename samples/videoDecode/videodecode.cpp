@@ -28,9 +28,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
-#include <fstream>
 #include "video_demuxer.hpp"
-#include "../../src/parser/common/bit_stream_parser.h"
 #include "rocdecode.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -79,16 +77,9 @@ int main(int argc, char **argv) {
         }
         ShowHelpAndExit(argv[i]);
     }
-   
-    ParserContext context;
-    BitStreamParserPtr parser;
-    DataStream *datastream;
-    PARSER_RESULT res;
+
     VideoDemuxer demuxer(inputFilePath.c_str());
 
-    // initializing parser
-    res = DataStream::OpenDataStream(&datastream);
-    parser = BitStreamParser::Create(datastream, BitStream265AnnexB, &context);
     //VideoDecode viddec(deviceId);
 
     std::string deviceName, gcnArchName, drmNode;
@@ -110,36 +101,10 @@ int main(int argc, char **argv) {
     uint32_t width, height;
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
-    int tempCount = 0;
-    ParserData* data;
-    ParserBuffer* outputBuffer;
-    bool bNeedNewInput = true;
-    std::ofstream fp;
-    if (dumpOutputFrames) {
-        fp.open(outputFilePath.c_str(), std::ofstream::out | std::ofstream::app | std::ofstream::binary);
-    }
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
-        if (parser->CheckDataStreamEof(nVideoBytes)) {
-            break;
-        }
-        res = datastream->Write(pVideo, nVideoBytes, 0);
-        
-        if (res != PARSER_OK) {
-            std::cerr << "ERROR: Write to datastream failed" << res << std::endl;
-            return res; 
-        }
-        parser->FindFirstFrameSPSandPPS();
-        if (bNeedNewInput) {
-            data = NULL;
-            res = parser->QueryOutput(&data); // read compressed frame into buffer
-            outputBuffer = static_cast<ParserBuffer*>(data);
-            if(res == PARSER_EOF || data == NULL) {
-                break;// end of file
-            }
-        }
 
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -151,23 +116,14 @@ int main(int argc, char **argv) {
         }*/
 
         if (dumpOutputFrames) {
-            std::cout << "size of buffer to write = " << outputBuffer->GetSize() << std::endl;
-            if (fp.is_open()) {
-                fp.write((char*)outputBuffer->GetNative(), outputBuffer->GetSize());
-            }
-            else {
-                std::cout << "file not open" << std::endl;
-                exit(0);
-            }
-            /*for (int i = 0; i < nFrameReturned; i++) {
-                pFrame = viddec.getFrame(&pts);
+            for (int i = 0; i < nFrameReturned; i++) {
+                /*pFrame = viddec.getFrame(&pts);
                 viddec.saveImage(outputFilePath, pFrame, pImageInfo, false);
                 // release frame
-                viddec.releaseFrame(pts);
-            }*/
+                viddec.releaseFrame(pts);*/
+            }
         }
-        nFrame++;
-        //nFrame += nFrameReturned;
+        nFrame += nFrameReturned;
     } while (nVideoBytes);
      // Flush last frames from the decoder if any
     do {

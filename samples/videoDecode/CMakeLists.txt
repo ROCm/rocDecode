@@ -36,12 +36,9 @@ find_package(FFmpeg QUIET)
 find_package(Libva QUIET)
 if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
     include_directories (${ROCM_PATH}/include/rocdecode)
-    # TODO: temporartily added files for app till we build and install the parser correctly
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp ../../src/parser/common/data_stream.cpp
-        ../../src/parser/common/bit_stream_parser.cpp ../../src/parser/hevc/bit_stream_parser_h265.cpp 
-        ../../src/parser/common/context.cpp ../../src/parser/common/parser_buffer.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -gdwarf-4")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${AVUTIL_LIBRARY} ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} Libva::va Libva::va_drm hip::device rocdecode)
 else()
     if (NOT HIP_FOUND)
