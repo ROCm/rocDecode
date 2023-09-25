@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
-        demuxer.demux(&pVideo, &nVideoBytes, &pts);
+        demuxer.Demux(&pVideo, &nVideoBytes, &pts);
         if (parser->CheckDataStreamEof(nVideoBytes)) {
             break;
         }
