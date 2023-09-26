@@ -216,7 +216,7 @@ typedef struct _RocdecSeiMessageInfo {
 typedef int (ROCDECAPI *PFNVIDSEQUENCECALLBACK)(void *, RocdecVideoFormat *);
 typedef int (ROCDECAPI *PFNVIDDECODECALLBACK)(void *, RocdecPicParams *);
 typedef int (ROCDECAPI *PFNVIDDISPLAYCALLBACK)(void *, RocdecParserDispInfo *);
-typedef int (ROCDECAPI *PFNVIDOPPOINTCALLBACK)(void *, RocdecOperatingPointInfo*);        // reserved for future (AV1 specific)
+//typedef int (ROCDECAPI *PFNVIDOPPOINTCALLBACK)(void *, RocdecOperatingPointInfo*);        // reserved for future (AV1 specific)
 typedef int (ROCDECAPI *PFNVIDSEIMSGCALLBACK) (void *, RocdecSeiMessageInfo *);
 
 /**
@@ -239,8 +239,8 @@ typedef struct _RocdecParserParams {
     PFNVIDSEQUENCECALLBACK pfnSequenceCallback; /**< IN: Called before decoding frames and/or whenever there is a fmt change */
     PFNVIDDECODECALLBACK pfnDecodePicture;      /**< IN: Called when a picture is ready to be decoded (decode order)         */
     PFNVIDDISPLAYCALLBACK pfnDisplayPicture;    /**< IN: Called whenever a picture is ready to be displayed (display order)  */
-    PFNVIDOPPOINTCALLBACK pfnGetOperatingPoint; /**< IN: Called from AV1 sequence header to get operating point of a AV1 
-                                                         scalable bitstream                                                  */
+    //PFNVIDOPPOINTCALLBACK pfnGetOperatingPoint; /**< IN: Called from AV1 sequence header to get operating point of a AV1 
+    //                                                     scalable bitstream                                                  */
     PFNVIDSEIMSGCALLBACK pfnGetSEIMsg;          /**< IN: Called when all SEI messages are parsed for particular frame        */
     void *pvReserved2[5];                       /**< Reserved for future use - set to NULL                                   */
     RocdecVideoFormatEx *pExtVideoInfo;             /**< IN: [Optional] sequence header data from system layer                   */
@@ -264,6 +264,13 @@ extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle
 //! calls back pfnDisplayPicture with RocdecParserDispInfo data to display a video frame
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket);
+
+/************************************************************************************************/
+//! \ingroup FUNCTS
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle)
+//! Destroy the video parser object
+/************************************************************************************************/
+extern rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle);
 
 #if defined(__cplusplus)
 }

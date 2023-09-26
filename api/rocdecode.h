@@ -62,7 +62,8 @@ typedef enum rocDecStatus_enum{
     ROCDEC_OUTOF_MEMORY = -4,
     ROCDEC_INVALID_PARAMETER = -5,
     ROCDEC_NOT_IMPLEMENTED = -6,
-    ROCDEC_NOT_SUPPORTED = -7,
+    ROCDEC_NOT_INITIALIZED = -7,
+    ROCDEC_NOT_SUPPORTED = -8,
     ROCDEC_SUCCESS = 0,
 }rocDecStatus;
 
