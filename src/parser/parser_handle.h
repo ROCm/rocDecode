@@ -24,38 +24,40 @@ THE SOFTWARE.
 #include <memory>
 #include <string>
 #include "rocparser.h"
+#include "roc_video_parser.h"
+#include "h264_parser.h"
+#include "hevc_parser.h"
 
-class RocVideoParser {
-public:
-    RocVideoParser() {};    // default constructor
-    RocVideoParser(RocdecParserParams *pParams): parser_params_(*pParams) {};
-    ~RocVideoParser();
-    void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
-    RocdecParserParams *GetParserParams() {return &parser_params_;};
-    rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData);
-
-private:
-    RocdecParserParams parser_params_;
-};
-
-struct RocParserHandle {
+class RocParserHandle {
 public:    
-    explicit RocParserHandle() {};   // default constructor
+    explicit RocParserHandle(RocdecParserParams *pParams) { create_parser(pParams); };   // default constructor
     ~RocParserHandle() { clear_errors(); }
-    std::shared_ptr<RocVideoParser> roc_parser;    // class instantiation
     bool no_error() { return error.empty(); }
     const char* error_msg() { return error.c_str(); }
     void capture_error(const std::string& err_msg) { error = err_msg; }
-    bool set_parser_params(RocdecParserParams *pParams) {
-      if(roc_parser) {
-        roc_parser->SetParserParams(pParams); 
-        return true;
-      } else {
-         return false;
-      }
-    }
+    rocDecStatus ParseVideoData(RocdecSourceDataPacket *pPacket) { return roc_parser_->ParseVideoData(pPacket); }
 
 private:
-    void clear_errors() { error = "";}
+    std::shared_ptr<RocVideoParser> roc_parser_ = nullptr;    // class instantiation
+    void clear_errors() { error = ""; }
+    void create_parser(RocdecParserParams *pParams) {
+        switch(pParams->CodecType) {
+            case rocDecVideoCodec_H264:
+                roc_parser_ = std::make_shared<H264VideoParser>();
+                break;
+            case rocDecVideoCodec_HEVC:
+                roc_parser_ = std::make_shared<HEVCVideoParser>();
+                break;
+            default:
+                THROW("Unsupported parser type "+ TOSTR(pParams->CodecType));
+                break;
+        }
+
+        if (roc_parser_ ) {
+            rocDecStatus ret = roc_parser_->Initialize(pParams);
+            if (ret != ROCDEC_SUCCESS)
+                THROW("rocParser Initialization failed with error: "+ TOSTR(ret));
+        }
+    }
     std::string error;
 };
