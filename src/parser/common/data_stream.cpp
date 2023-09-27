@@ -34,9 +34,9 @@ THE SOFTWARE.
 using namespace std;
 
 DataStream::DataStream() {
-    m_pMemory_ = new uint8_t [DATA_STREAM_SIZE];
-    m_uiAllocatedSize_ = DATA_STREAM_SIZE;
-    m_uiMemorySize_ = sizeof(m_pMemory_);
+    m_pmemory_ = new uint8_t [DATA_STREAM_SIZE];
+    m_allocated_size_ = DATA_STREAM_SIZE;
+    m_memory_size_ = sizeof(m_pmemory_);
     m_pos_ = 0;
 }
 
@@ -58,26 +58,26 @@ DataStream::~DataStream() {
 }
 
 PARSER_RESULT DataStream::Close() {
-    m_pMemory_ = NULL,
-    m_uiMemorySize_ = 0,
-    m_uiAllocatedSize_ = 0,
+    m_pmemory_ = NULL,
+    m_memory_size_ = 0,
+    m_allocated_size_ = 0,
     m_pos_ = 0;
     return PARSER_OK;
 }
 
 PARSER_RESULT DataStream::Realloc(size_t iSize) {
-    if (iSize > m_uiMemorySize_) {
+    if (iSize > m_memory_size_) {
         uint8_t* pNewMemory = new uint8_t [iSize];
         if (pNewMemory == NULL) {
             return PARSER_OUT_OF_MEMORY;
         }
-        m_uiAllocatedSize_ = iSize;
-        if (m_pMemory_ != NULL) {
-            delete m_pMemory_;
+        m_allocated_size_ = iSize;
+        if (m_pmemory_ != NULL) {
+            delete m_pmemory_;
         }
-        m_pMemory_ = pNewMemory;
+        m_pmemory_ = pNewMemory;
     }
-    m_uiMemorySize_ = iSize;
+    m_memory_size_ = iSize;
     return PARSER_OK;
 }
 
@@ -85,11 +85,11 @@ PARSER_RESULT DataStream::Read(void* pData, size_t iSize, size_t* pRead) {
     if (pData == NULL) {
         return PARSER_INVALID_POINTER;
     }
-    if (m_pMemory_ == NULL) {
+    if (m_pmemory_ == NULL) {
         return PARSER_NOT_INITIALIZED;
     }
-    size_t toRead = std::min(iSize, m_uiMemorySize_ - m_pos_);
-    memcpy(pData, m_pMemory_ + m_pos_, toRead);
+    size_t toRead = std::min(iSize, m_memory_size_ - m_pos_);
+    memcpy(pData, m_pmemory_ + m_pos_, toRead);
     m_pos_ += toRead;
     if(pRead != NULL) {
         *pRead = toRead;
@@ -106,8 +106,8 @@ PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritte
         return PARSER_STREAM_NOT_ALLOCATED;
     }
 
-    size_t toWrite = std::min(iSize, m_uiMemorySize_ - m_pos_);
-    memcpy(m_pMemory_ + m_pos_, pData, toWrite);
+    size_t toWrite = std::min(iSize, m_memory_size_ - m_pos_);
+    memcpy(m_pmemory_ + m_pos_, pData, toWrite);
 
     if(pWritten != NULL) {
         *pWritten = toWrite;
@@ -126,12 +126,12 @@ PARSER_RESULT DataStream::Seek(PARSER_SEEK_ORIGIN eOrigin, int64_t iPosition, in
         break;
 
     case PARSER_SEEK_END:
-        m_pos_ = m_uiMemorySize_ - (size_t)iPosition;
+        m_pos_ = m_memory_size_ - (size_t)iPosition;
         break;
     }
 
-    if(m_pos_ > m_uiMemorySize_) {
-        m_pos_ = m_uiMemorySize_;
+    if(m_pos_ > m_memory_size_) {
+        m_pos_ = m_memory_size_;
     }
     if(pNewPosition != NULL) {
         *pNewPosition = m_pos_;
@@ -151,7 +151,7 @@ PARSER_RESULT DataStream::GetSize(int64_t* pSize) {
     if (pSize != NULL) {
         return PARSER_INVALID_POINTER;
     }
-    *pSize = m_uiMemorySize_;
+    *pSize = m_memory_size_;
     return PARSER_OK;
 }
 

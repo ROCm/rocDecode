@@ -27,8 +27,6 @@ THE SOFTWARE.
  * \defgroup group_rocdecode_parser Parser definitions.
  * \brief The byte array for Bit Stream Parser data.
  */
-
-
 #ifndef BYTEARRAY_H
 #define BYTEARRAY_H
 
@@ -43,30 +41,30 @@ THE SOFTWARE.
 
 class ByteArray {
 protected:
-    uint8_t        *m_pData_;
-    size_t         m_iSize_;
-    size_t         m_iMaxSize_;
+    uint8_t        *m_pdata_;
+    size_t         m_size_;
+    size_t         m_max_size_;
 public:
-    ByteArray() : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {}
-    ByteArray(const ByteArray &other) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {
+    ByteArray() : m_pdata_(0), m_size_(0), m_max_size_(0) {}
+    ByteArray(const ByteArray &other) : m_pdata_(0), m_size_(0), m_max_size_(0) {
         *this = other;
     }
-    ByteArray(size_t num) : m_pData_(0), m_iSize_(0), m_iMaxSize_(0) {
+    ByteArray(size_t num) : m_pdata_(0), m_size_(0), m_max_size_(0) {
         SetSize(num);
     }
     virtual ~ByteArray() {
-        if (m_pData_ != 0) {
-            delete[] m_pData_;
+        if (m_pdata_ != 0) {
+            delete[] m_pdata_;
         }
     }
     void  SetSize(size_t num) {
-        if (num == m_iSize_) {
+        if (num == m_size_) {
             return;
         }
-        if (num < m_iSize_) {
-            memset(m_pData_ + num, 0, m_iMaxSize_ - num);
+        if (num < m_size_) {
+            memset(m_pdata_ + num, 0, m_max_size_ - num);
         }
-        else if (num > m_iMaxSize_) {
+        else if (num > m_max_size_) {
             // This is done to prevent the following error from surfacing
             // for the pNewData allocation on some compilers:
             //     -Werror=alloc-size-larger-than=
@@ -74,35 +72,35 @@ public:
             if (newSize > ARRAY_MAX_SIZE) {
                 return;
             }
-            m_iMaxSize_ = newSize;
+            m_max_size_ = newSize;
 
-            uint8_t *pNewData = new uint8_t[m_iMaxSize_];
-            memset(pNewData, 0, m_iMaxSize_);
-            if (m_pData_ != NULL) {
-                memcpy(pNewData, m_pData_, m_iSize_);
-                delete[] m_pData_;
+            uint8_t *pNewData = new uint8_t[m_max_size_];
+            memset(pNewData, 0, m_max_size_);
+            if (m_pdata_ != NULL) {
+                memcpy(pNewData, m_pdata_, m_size_);
+                delete[] m_pdata_;
             }
-            m_pData_ = pNewData;
+            m_pdata_ = pNewData;
         }
-        m_iSize_ = num;
+        m_size_ = num;
     }
     void Copy(const ByteArray &old) {
-        if (m_iMaxSize_ < old.m_iSize_) {
-            m_iMaxSize_ = old.m_iMaxSize_;
-            if (m_pData_ != NULL) {
-                delete[] m_pData_;
+        if (m_max_size_ < old.m_size_) {
+            m_max_size_ = old.m_max_size_;
+            if (m_pdata_ != NULL) {
+                delete[] m_pdata_;
             }
-            m_pData_ = new uint8_t[m_iMaxSize_];
-            memset(m_pData_, 0, m_iMaxSize_);
+            m_pdata_ = new uint8_t[m_max_size_];
+            memset(m_pdata_, 0, m_max_size_);
         }
-        memcpy(m_pData_, old.m_pData_, old.m_iSize_);
-        m_iSize_ = old.m_iSize_;
+        memcpy(m_pdata_, old.m_pdata_, old.m_size_);
+        m_size_ = old.m_size_;
     }
     uint8_t    operator[] (size_t iPos) const {
-        return m_pData_[iPos];
+        return m_pdata_[iPos];
     }
     uint8_t&    operator[] (size_t iPos) {
-        return m_pData_[iPos];
+        return m_pdata_[iPos];
     }
     ByteArray&    operator=(const ByteArray &other) {
         SetSize(other.GetSize());
@@ -111,7 +109,7 @@ public:
         }
         return *this;
     }
-    uint8_t *GetData() const { return m_pData_; }
-    size_t GetSize() const { return m_iSize_; }
+    uint8_t *GetData() const { return m_pdata_; }
+    size_t GetSize() const { return m_size_; }
 };
 #endif // BYTEARRAY_H

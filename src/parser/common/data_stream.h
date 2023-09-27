@@ -65,9 +65,9 @@ public:
 protected:
     PARSER_RESULT Realloc(size_t iSize);
 
-    uint8_t* m_pMemory_;
-    size_t m_uiMemorySize_;
-    size_t m_uiAllocatedSize_;
+    uint8_t* m_pmemory_;
+    size_t m_memory_size_;
+    size_t m_allocated_size_;
     size_t m_pos_;
 private:
     DataStream(const DataStream&);

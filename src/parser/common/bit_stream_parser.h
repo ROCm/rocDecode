@@ -128,7 +128,7 @@ namespace Parser {
 
     inline size_t CountContiniusZeroBits(const uint8_t *data, size_t &startBitIdx) {
         size_t startBitIdxOrg = startBitIdx;
-        while (getBit(data, startBitIdx) == false) {} // startBitIdx incremented inside
+        while (GetBit(data, startBitIdx) == false) {} // startBitIdx incremented inside
         startBitIdx--; // remove non zero
         return startBitIdx - startBitIdxOrg;
     }
@@ -142,7 +142,7 @@ namespace Parser {
 
             uint32_t leftPart = (0x1 << zeroBitsCount) - 1;
             startBitIdx++;
-            uint32_t rightPart = readBits(data, startBitIdx, zeroBitsCount);
+            uint32_t rightPart = ReadBits(data, startBitIdx, zeroBitsCount);
             return leftPart + rightPart;
         }
 

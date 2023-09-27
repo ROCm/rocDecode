@@ -26,11 +26,11 @@ THE SOFTWARE.
 #include <map>
 #include <algorithm>
 
-//sizeId = 0
+//size_id = 0
 extern int scaling_list_default_0[1][6][16];
-//sizeId = 1, 2
+//size_id = 1, 2
 extern int scaling_list_default_1_2[2][6][64];
-//sizeId = 3
+//size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
 class HevcParser : public BitStreamParser {
@@ -45,18 +45,18 @@ public:
     virtual int                     GetAlignedWidth() const;
     virtual int                     GetAlignedHeight() const;
 
-    virtual void                    SetMaxFramesNumber(size_t num) { m_maxFramesNumber_ = num; }
+    virtual void                    SetMaxFramesNumber(size_t num) { m_max_frames_number_ = num; }
 
     virtual const unsigned char*    GetExtraData() const;
     virtual size_t                  GetExtraDataSize() const;
-    virtual void                    SetUseStartCodes(bool bUse);
+    virtual void                    SetUseStartCodes(bool b_use);
     virtual void                    SetFrameRate(double fps);
     virtual double                  GetFrameRate()  const;
     virtual PARSER_RESULT           ReInit();
-    virtual void                    GetFrameRate(ParserRate *frameRate) const;
-    virtual PARSER_RESULT           QueryOutput(ParserData** ppData);
+    virtual void                    GetFrameRate(ParserRate *frame_rate) const;
+    virtual PARSER_RESULT           QueryOutput(ParserData** pp_data);
     virtual void                    FindFirstFrameSPSandPPS();
-    virtual bool                    CheckDataStreamEof(int nVideoBytes);
+    virtual bool                    CheckDataStreamEof(int n_video_bytes);
 
 protected:
     // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
@@ -163,7 +163,7 @@ protected:
         bool general_frame_only_constraint_flag;             //u(1)
         uint64_t general_reserved_zero_44bits;               //u(44)
         uint32_t general_level_idc;                          //u(8)
-        //maxNumSubLayersMinus1 max is 7 - 1 = 6
+        //max_num_sub_layers_minus1 max is 7 - 1 = 6
         bool sub_layer_profile_present_flag[6];              //u(1)
         bool sub_layer_level_present_flag[6];                //u(1)
 
@@ -189,7 +189,7 @@ protected:
         uint32_t scaling_list_pred_matrix_id_delta[4][6];    //ue(v)
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
         int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
-        int32_t ScalingList[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
+        int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
     } H265_scaling_list_data_t;
 
     typedef struct {
@@ -197,7 +197,7 @@ protected:
         int32_t num_positive_pics;
         int32_t num_of_pics;
         int32_t num_of_delta_poc;
-        int32_t deltaPOC[16];
+        int32_t delta_poc[16];
         bool used_by_curr_pic[16];
     } H265_short_term_RPS_t;
 
@@ -359,12 +359,12 @@ protected:
         }
 
         bool Parse(uint8_t *data, size_t size);
-        void ParsePTL(H265_profile_tier_level_t *ptl, bool profilePresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size, size_t &offset);
+        void ParsePTL(H265_profile_tier_level_t *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
         void ParseSubLayerHrdParameters(H265_sub_layer_hrd_parameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
-        void ParseHrdParameters(H265_hrd_parameters_t *hrd, bool commonInfPresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size, size_t &offset);
+        void ParseHrdParameters(H265_hrd_parameters_t *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
         static void ParseScalingList(H265_scaling_list_data_t * s_data, uint8_t *data, size_t size,size_t &offset);
-        void ParseVUI(H265_vui_parameters_t *vui, uint32_t maxNumSubLayersMinus1, uint8_t *data, size_t size,size_t &offset);
-        void ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t stRpsIdx, uint32_t num_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *data, size_t size,size_t &offset);
+        void ParseVUI(H265_vui_parameters_t *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size,size_t &offset);
+        void ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *data, size_t size,size_t &offset);
     };
 
     struct PpsData {
@@ -424,128 +424,123 @@ protected:
 
     // See ITU-T Rec. H.264 (04/2013) Advanced video coding for generic audiovisual services, page 28, 91.
     struct AccessUnitSigns {
-        bool bNewPicture;
-        AccessUnitSigns() : bNewPicture(false) {}
-        bool Parse(uint8_t *data, size_t size, std::map<uint32_t,SpsData> &spsMap, std::map<uint32_t,PpsData> &ppsMap);
+        bool b_new_picture;
+        AccessUnitSigns() : b_new_picture(false) {}
+        bool Parse(uint8_t *data, size_t size, std::map<uint32_t,SpsData> &sps_map, std::map<uint32_t,PpsData> &pps_map);
         bool IsNewPicture();
     };
 
     class ExtraDataBuilder {
     public:
-        ExtraDataBuilder() : m_SPSCount_(0), m_PPSCount_(0) {}
+        ExtraDataBuilder() : m_sps_count_(0), m_pps_count_(0) {}
 
         void AddSPS(uint8_t *sps, size_t size);
         void AddPPS(uint8_t *pps, size_t size);
         bool GetExtradata(ByteArray   &extradata);
 
     private:
-        ByteArray    m_SPSs_;
-        ByteArray    m_PPSs_;
-        int32_t      m_SPSCount_;
-        int32_t      m_PPSCount_;
+        ByteArray    m_sps_;
+        ByteArray    m_pps_;
+        int32_t      m_sps_count_;
+        int32_t      m_pps_count_;
     };
 
     friend struct AccessUnitSigns;
 
-    static const uint32_t MacroblocSize = 16;
-    static const uint8_t NalUnitTypeMask = 0x1F; // b00011111
-    static const uint8_t NalRefIdcMask = 0x60;   // b01100000
-    static const uint8_t NalUnitLengthSize = 4U;
+    static const uint8_t nal_unit_length_size_ = 4U;
 
-    static const size_t m_ReadSize_ = 1024*4;
+    static const size_t m_read_size_ = 1024*4;
 
-    static const uint16_t maxSpsSize = 0xFFFF;
-    static const uint16_t minSpsSize = 5;
-    static const uint16_t maxPpsSize = 0xFFFF;
+    static const uint16_t max_sps_size_ = 0xFFFF;
+    static const uint16_t min_sps_size_ = 5;
+    static const uint16_t max_pps_size_ = 0xFFFF;
 
     NalUnitHeader ReadNextNaluUnit(size_t *offset, size_t *nalu, size_t *size);
     void          FindSPSandPPS();
-    static inline NalUnitHeader GetNaluUnitType(uint8_t *nalUnit) {
+    static inline NalUnitHeader GetNaluUnitType(uint8_t *nal_unit) {
         NalUnitHeader nalu_header;
         nalu_header.num_emu_byte_removed = 0;
         //read nalu header
-        nalu_header.forbidden_zero_bit = (uint32_t) ((nalUnit[0] >> 7)&1);
-        nalu_header.nal_unit_type = (uint32_t) ((nalUnit[0] >> 1)&63);
-        nalu_header.nuh_layer_id = (uint32_t) (((nalUnit[0]&1) << 6) | ((nalUnit[1] & 248) >> 3));
-        nalu_header.nuh_temporal_id_plus1 = (uint32_t) (nalUnit[1] & 7);
+        nalu_header.forbidden_zero_bit = (uint32_t) ((nal_unit[0] >> 7)&1);
+        nalu_header.nal_unit_type = (uint32_t) ((nal_unit[0] >> 1)&63);
+        nalu_header.nuh_layer_id = (uint32_t) (((nal_unit[0]&1) << 6) | ((nal_unit[1] & 248) >> 3));
+        nalu_header.nuh_temporal_id_plus1 = (uint32_t) (nal_unit[1] & 7);
 
         return nalu_header;
     }
     size_t EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos);
     ParserRect GetCropRect() const;
 
-    ByteArray   m_ReadData_;
-    ByteArray   m_Extradata_;
+    ByteArray   m_read_data_;
+    ByteArray   m_extra_data_;
     
-    ByteArray   m_EBSPtoRBSPData_;
+    ByteArray   m_EBSP_to_RBSP_data_;
 
-    bool           m_bUseStartCodes_;
-    int64_t        m_currentFrameTimestamp_;
-    DataStreamPtr  m_pStream_;
-    std::map<uint32_t,SpsData> m_SpsMap_;
-    std::map<uint32_t,PpsData> m_PpsMap_;
-    size_t         m_PacketCount_;
-    bool           m_bEof_;
+    bool           m_use_start_codes_;
+    int64_t        m_current_frame_timestamp_;
+    DataStreamPtr  m_pstream_;
+    std::map<uint32_t,SpsData> m_sps_map_;
+    std::map<uint32_t,PpsData> m_pps_map_;
+    size_t         m_packet_count_;
+    bool           m_eof_;
     double         m_fps_;
-    size_t         m_maxFramesNumber_;
-    ParserContext* m_pContext_;
+    size_t         m_max_frames_number_;
+    ParserContext* m_pcontext_;
 };
 
-BitStreamParser* CreateHEVCParser(DataStream* pStream, ParserContext* pContext) {
-    return new HevcParser(pStream, pContext);
+BitStreamParser* CreateHEVCParser(DataStream* pstream, ParserContext* pcontext) {
+    return new HevcParser(pstream, pcontext);
 }
 
-HevcParser::HevcParser(DataStream *stream, ParserContext* pContext) :
-    m_bUseStartCodes_(false),
-    m_currentFrameTimestamp_(0),
-    m_pStream_(stream),
-    m_PacketCount_(0),
-    m_bEof_(false),
+HevcParser::HevcParser(DataStream *stream, ParserContext* pcontext) :
+    m_use_start_codes_(false),
+    m_current_frame_timestamp_(0),
+    m_pstream_(stream),
+    m_packet_count_(0),
+    m_eof_(false),
     m_fps_(0),
-    m_maxFramesNumber_(0),
-    m_pContext_(pContext) {
+    m_max_frames_number_(0),
+    m_pcontext_(pcontext) {
 }
 
 void HevcParser::FindFirstFrameSPSandPPS() {
-    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
     FindSPSandPPS();
 }
 
 HevcParser::~HevcParser() {
-    std::cout << "parsed frames: " << m_PacketCount_ << std::endl;
+    std::cout << "parsed frames: " << m_packet_count_ << std::endl;
 }
 
 PARSER_RESULT HevcParser::ReInit() {
-    m_currentFrameTimestamp_ = 0;
-    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
-    m_PacketCount_ = 0;
-    m_bEof_ = false;
+    m_current_frame_timestamp_ = 0;
+    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_packet_count_ = 0;
+    m_eof_ = false;
     return PARSER_OK;
 }
 
-static const int s_winUnitX[]={1,2,2,1};
-static const int s_winUnitY[]={1,2,1,1};
+static const int s_win_unit_x[]={1,2,2,1};
+static const int s_win_unit_y[]={1,2,1,1};
 
-static int getWinUnitX (int chromaFormatIdc) { return s_winUnitX[chromaFormatIdc]; }
-// static int getWinUnitY (int chromaFormatIdc) { return s_winUnitY[chromaFormatIdc]; }
-static const int MacroblockSize = 16;
-
+static int GetWinUnitX (int chromaFormatIdc) { return s_win_unit_x[chromaFormatIdc]; }
+// static int GetWinUnitX (int chromaFormatIdc) { return s_win_unit_y[chromaFormatIdc]; }
 
 ParserRect HevcParser::GetCropRect() const {
     ParserRect rect ={0};
-    if(m_SpsMap_.size() == 0) {
+    if(m_sps_map_.size() == 0) {
         return rect;
     }
-    const SpsData &sps = m_SpsMap_.cbegin()->second;
+    const SpsData &sps = m_sps_map_.cbegin()->second;
 
     rect.right = int32_t(sps.pic_width_in_luma_samples);
     rect.bottom = int32_t(sps.pic_height_in_luma_samples);
 
     if (sps.conformance_window_flag) {
-        rect.left += getWinUnitX(sps.chroma_format_idc) * sps.conf_win_left_offset;
-        rect.right -= getWinUnitX(sps.chroma_format_idc) * sps.conf_win_right_offset;
-        rect.top += getWinUnitX(sps.chroma_format_idc) * sps.conf_win_top_offset;
-        rect.bottom -= getWinUnitX(sps.chroma_format_idc) * sps.conf_win_bottom_offset;
+        rect.left += GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_left_offset;
+        rect.right -= GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_right_offset;
+        rect.top += GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_top_offset;
+        rect.bottom -= GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_bottom_offset;
     }
     return rect;
 }
@@ -567,10 +562,10 @@ int HevcParser::GetPictureHeight() const {
 }
 
 int HevcParser::GetAlignedWidth() const {
-    if(m_SpsMap_.size() == 0) {
+    if(m_sps_map_.size() == 0) {
         return 0;
     }
-    const SpsData &sps = m_SpsMap_.cbegin()->second;
+    const SpsData &sps = m_sps_map_.cbegin()->second;
 
     int32_t blocksize = sps.log2_min_luma_coding_block_size_minus3+3;
     int width =int(sps.pic_width_in_luma_samples / (1<<blocksize) * (1<<blocksize));
@@ -578,10 +573,10 @@ int HevcParser::GetAlignedWidth() const {
 }
 
 int HevcParser::GetAlignedHeight() const {
-    if(m_SpsMap_.size() == 0) {
+    if(m_sps_map_.size() == 0) {
         return 0;
     }
-    const SpsData &sps = m_SpsMap_.cbegin()->second;
+    const SpsData &sps = m_sps_map_.cbegin()->second;
 
     int32_t blocksize = sps.log2_min_luma_coding_block_size_minus3+3;
     int height = int(sps.pic_height_in_luma_samples / (1<<blocksize) * (1<<blocksize));
@@ -589,15 +584,15 @@ int HevcParser::GetAlignedHeight() const {
 }
 
 const unsigned char* HevcParser::GetExtraData() const {
-    return m_Extradata_.GetData();
+    return m_extra_data_.GetData();
 }
 
 size_t HevcParser::GetExtraDataSize() const {
-    return m_Extradata_.GetSize();
+    return m_extra_data_.GetSize();
 };
 
-void HevcParser::SetUseStartCodes(bool bUse) {
-    m_bUseStartCodes_ = bUse;
+void HevcParser::SetUseStartCodes(bool b_use) {
+    m_use_start_codes_ = b_use;
 }
 
 void HevcParser::SetFrameRate(double fps) {
@@ -608,8 +603,8 @@ double HevcParser::GetFrameRate() const {
     if(m_fps_ != 0) {
         return m_fps_;
     }
-    if(m_SpsMap_.size() > 0) {
-        const SpsData &sps = m_SpsMap_.cbegin()->second;
+    if(m_sps_map_.size() > 0) {
+        const SpsData &sps = m_sps_map_.cbegin()->second;
         if(sps.vui_parameters_present_flag && sps.vui_parameters.vui_timing_info_present_flag && sps.vui_parameters.vui_num_units_in_tick) {
             // according to the latest h264 standard nuit_field_based_flag is always = 1 and therefore this must be divided by two 
             // some old clips may get wrong FPS. This is just a sample. Use container information
@@ -619,53 +614,53 @@ double HevcParser::GetFrameRate() const {
     return 25.0;
 }
 
-void HevcParser::GetFrameRate(ParserRate *frameRate) const {
-    if(m_SpsMap_.size() > 0) {
-        const SpsData &sps = m_SpsMap_.cbegin()->second;
+void HevcParser::GetFrameRate(ParserRate *frame_rate) const {
+    if(m_sps_map_.size() > 0) {
+        const SpsData &sps = m_sps_map_.cbegin()->second;
         if(sps.vui_parameters_present_flag && sps.vui_parameters.vui_timing_info_present_flag && sps.vui_parameters.vui_num_units_in_tick) {
             // according to the latest h264 standard nuit_field_based_flag is always = 1 and therefore this must be divided by two 
             // some old clips may get wrong FPS. This is just a sample. Use container information
-            frameRate->num = sps.vui_parameters.vui_time_scale / 2;
-            frameRate->den = sps.vui_parameters.vui_num_units_in_tick;
+            frame_rate->num = sps.vui_parameters.vui_time_scale / 2;
+            frame_rate->den = sps.vui_parameters.vui_num_units_in_tick;
             return;
         }
     }
-    frameRate->num = 0;
-    frameRate->den = 0;
+    frame_rate->num = 0;
+    frame_rate->den = 0;
 }
 
 HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *nalu, size_t *size) {
     *size = 0;
-    size_t startOffset = *offset;
+    size_t start_offset = *offset;
 
-    bool newNalFound = false;
-    size_t zerosCount = 0;
+    bool new_nal_found = false;
+    size_t zeros_count = 0;
 
-    while (!newNalFound) {
+    while (!new_nal_found) {
         // read next portion if needed
-        size_t ready = m_ReadData_.GetSize() - *offset;
-        printf("ReadNextNaluUnit: remaining data size for read: %zu\n", ready);
+        size_t ready = m_read_data_.GetSize() - *offset;
+        //printf("ReadNextNaluUnit: remaining data size for read: %zu\n", ready);
         if (ready == 0) {
-            if (m_bEof_ == false) {
-                m_ReadData_.SetSize(m_ReadData_.GetSize() + m_ReadSize_);
+            if (m_eof_ == false) {
+                m_read_data_.SetSize(m_read_data_.GetSize() + m_read_size_);
                 ready = 0;
-                m_pStream_->Read(m_ReadData_.GetData() + *offset, m_ReadSize_, &ready);
+                m_pstream_->Read(m_read_data_.GetData() + *offset, m_read_size_, &ready);
             }
-            if (ready != m_ReadSize_ && ready != 0) {
-                m_ReadData_.SetSize(m_ReadData_.GetSize() - (m_ReadSize_ - ready));
+            if (ready != m_read_size_ && ready != 0) {
+                m_read_data_.SetSize(m_read_data_.GetSize() - (m_read_size_ - ready));
             }
             if (ready == 0 ) {
-                if (m_bEof_ == false)
-                m_ReadData_.SetSize(m_ReadData_.GetSize() - m_ReadSize_);
+                if (m_eof_ == false)
+                m_read_data_.SetSize(m_read_data_.GetSize() - m_read_size_);
 
-                //m_bEof_ = true;
-                newNalFound = startOffset != *offset; 
-                *offset = m_ReadData_.GetSize();
+                //m_eof_ = true;
+                new_nal_found = start_offset != *offset; 
+                *offset = m_read_data_.GetSize();
                 break; // EOF
             }
         }
 
-        uint8_t* data = m_ReadData_.GetData();
+        uint8_t* data = m_read_data_.GetData();
         if (data == nullptr) { // check data before adding the offset
             NalUnitHeader header_nalu;
             header_nalu.nal_unit_type = NAL_UNIT_INVALID;
@@ -676,244 +671,243 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
         for (size_t i = 0; i < ready; i++) {
             uint8_t ch = *data++;
             if (0 == ch) {
-                zerosCount++;
+                zeros_count++;
             }
             else {
-                if (1 == ch && zerosCount >=2) { // We found a start code in Annex B stream
-                    if (*offset + (i - zerosCount) > startOffset) {
-                        ready = i - zerosCount;
-                        newNalFound = true; // new NAL
+                if (1 == ch && zeros_count >=2) { // We found a start code in Annex B stream
+                    if (*offset + (i - zeros_count) > start_offset) {
+                        ready = i - zeros_count;
+                        new_nal_found = true; // new NAL
                         break; 
                     }
                     else {
-                        *nalu = *offset + zerosCount + 1;
+                        *nalu = *offset + zeros_count + 1;
                     }
                 }
-                zerosCount = 0;
+                zeros_count = 0;
             }
         }
-        // if zeros found but not a new NAL - continue with zerosCount on the next iteration
+        // if zeros found but not a new NAL - continue with zeros_count on the next iteration
         *offset += ready;
     }
-    if (!newNalFound) {
+    if (!new_nal_found) {
         NalUnitHeader header_nalu;
         header_nalu.nal_unit_type = NAL_UNIT_INVALID;
         return header_nalu; // EOF
     }
     *size = *offset - *nalu;
     // get NAL type
-    return GetNaluUnitType(m_ReadData_.GetData() + *nalu);
+    return GetNaluUnitType(m_read_data_.GetData() + *nalu);
 }
 
-PARSER_RESULT HevcParser::QueryOutput(ParserData** ppData) {
-    if ((m_bEof_ && m_ReadData_.GetSize() == 0) || m_maxFramesNumber_ && m_PacketCount_ >= m_maxFramesNumber_) {
+PARSER_RESULT HevcParser::QueryOutput(ParserData** pp_data) {
+    if ((m_eof_ && m_read_data_.GetSize() == 0) || m_max_frames_number_ && m_packet_count_ >= m_max_frames_number_) {
         return PARSER_EOF;
     }
-    bool newPictureDetected = false;
-    size_t packetSize = 0;
-    size_t readSize = 0;
-    std::vector<size_t> naluStarts;
-    std::vector<size_t> naluSizes;
-    size_t dataOffset = 0;
-    bool bSliceFound = false;
+    bool new_picture_detected = false;
+    size_t packet_size = 0;
+    size_t read_size = 0;
+    std::vector<size_t> nalu_starts;
+    std::vector<size_t> nalu_sizes;
+    size_t data_offset = 0;
+    bool b_slice_found = false;
     uint32_t prev_slice_nal_unit_type = 0;
 
     do {
-        size_t naluSize = 0;
-        size_t naluOffset = 0;
-        size_t naluAnnexBOffset = dataOffset;
-        NalUnitHeader   naluHeader = ReadNextNaluUnit(&dataOffset, &naluOffset, &naluSize);
-        if (bSliceFound == true) {
-            if (prev_slice_nal_unit_type != naluHeader.nal_unit_type) {
-                newPictureDetected = true;
+        size_t nalu_size = 0;
+        size_t nalu_offset = 0;
+        size_t nalu_annex_boffset = data_offset;
+        NalUnitHeader   nalu_header = ReadNextNaluUnit(&data_offset, &nalu_offset, &nalu_size);
+        if (b_slice_found == true) {
+            if (prev_slice_nal_unit_type != nalu_header.nal_unit_type) {
+                new_picture_detected = true;
             }
         }
 
-        if (NAL_UNIT_ACCESS_UNIT_DELIMITER == naluHeader.nal_unit_type) {
-            if (packetSize > 0) {
-                newPictureDetected = true;
+        if (NAL_UNIT_ACCESS_UNIT_DELIMITER == nalu_header.nal_unit_type) {
+            if (packet_size > 0) {
+                new_picture_detected = true;
             }
         }
-        else if (NAL_UNIT_PREFIX_SEI == naluHeader.nal_unit_type) {
-            if (bSliceFound) {
-                newPictureDetected = true;
+        else if (NAL_UNIT_PREFIX_SEI == nalu_header.nal_unit_type) {
+            if (b_slice_found) {
+                new_picture_detected = true;
             }
         }
         else if (
-        NAL_UNIT_CODED_SLICE_TRAIL_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TRAIL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TLA_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TSA_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_STSA_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_STSA_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_W_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_W_RADL == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_N_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_IDR_W_RADL == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_IDR_N_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_CRA == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RADL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RADL_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RASL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RASL_R == naluHeader.nal_unit_type
+        NAL_UNIT_CODED_SLICE_TRAIL_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TRAIL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TLA_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TSA_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_RADL == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_N_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_W_RADL == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_N_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_CRA == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RASL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RASL_R == nalu_header.nal_unit_type
         ) {
-            if (bSliceFound == true) {
-                if (prev_slice_nal_unit_type != naluHeader.nal_unit_type) {
-                    newPictureDetected = true;
+            if (b_slice_found == true) {
+                if (prev_slice_nal_unit_type != nalu_header.nal_unit_type) {
+                    new_picture_detected = true;
                 }
                 else {
-                    AccessUnitSigns naluAccessUnitsSigns;
-                    naluAccessUnitsSigns.Parse(m_ReadData_.GetData() + naluOffset, naluSize, m_SpsMap_, m_PpsMap_);
-                    newPictureDetected = naluAccessUnitsSigns.IsNewPicture() && bSliceFound;
+                    AccessUnitSigns nalu_access_units_signs;
+                    nalu_access_units_signs.Parse(m_read_data_.GetData() + nalu_offset, nalu_size, m_sps_map_, m_pps_map_);
+                    new_picture_detected = nalu_access_units_signs.IsNewPicture() && b_slice_found;
                 }
-                bSliceFound = true;
-                prev_slice_nal_unit_type = naluHeader.nal_unit_type;
+                b_slice_found = true;
+                prev_slice_nal_unit_type = nalu_header.nal_unit_type;
             }
             else {
-                AccessUnitSigns naluAccessUnitsSigns;
-                naluAccessUnitsSigns.Parse(m_ReadData_.GetData() + naluOffset, naluSize, m_SpsMap_, m_PpsMap_);
-                newPictureDetected = naluAccessUnitsSigns.IsNewPicture() && bSliceFound;
-                bSliceFound = true;
-                prev_slice_nal_unit_type = naluHeader.nal_unit_type;
+                AccessUnitSigns nalu_access_units_signs;
+                nalu_access_units_signs.Parse(m_read_data_.GetData() + nalu_offset, nalu_size, m_sps_map_, m_pps_map_);
+                new_picture_detected = nalu_access_units_signs.IsNewPicture() && b_slice_found;
+                b_slice_found = true;
+                prev_slice_nal_unit_type = nalu_header.nal_unit_type;
             }
         }
 
-		if (naluSize > 0 && !newPictureDetected ) {
-            packetSize += naluSize;
-            if (!m_bUseStartCodes_) {
-                packetSize += NalUnitLengthSize;
-                naluStarts.push_back(naluOffset);
-                naluSizes.push_back(naluSize);
+		if (nalu_size > 0 && !new_picture_detected ) {
+            packet_size += nalu_size;
+            if (!m_use_start_codes_) {
+                packet_size += nal_unit_length_size_;
+                nalu_starts.push_back(nalu_offset);
+                nalu_sizes.push_back(nalu_size);
             }
             else {
-                size_t startCodeSize = naluOffset - naluAnnexBOffset;
-                packetSize += startCodeSize;
+                size_t startCodeSize = nalu_offset - nalu_annex_boffset;
+                packet_size += startCodeSize;
             }
         }
-        if (!newPictureDetected) {
-            readSize = dataOffset;
+        if (!new_picture_detected) {
+            read_size = data_offset;
         }
-        if (naluHeader.nal_unit_type == NAL_UNIT_INVALID) {
+        if (nalu_header.nal_unit_type == NAL_UNIT_INVALID) {
 	  		break;
         }
-    } while (!newPictureDetected);
+    } while (!new_picture_detected);
 
-    ParserBuffer* pictureBuffer;
-    std::cout << "packetSize before allocBuffer = " <<packetSize << std::endl;
-    PARSER_RESULT ar = m_pContext_->AllocBuffer(PARSER_MEMORY_HOST, packetSize, &pictureBuffer);
+    ParserBuffer* picture_buffer;
+    PARSER_RESULT ar = m_pcontext_->AllocBuffer(PARSER_MEMORY_HOST, packet_size, &picture_buffer);
     if (ar != PARSER_OK) {
         return ar;
     }
     
-    uint8_t *data = (uint8_t*)pictureBuffer->GetNative();
-    if (m_bUseStartCodes_) {
-        memcpy(data, m_ReadData_.GetData(), packetSize);
+    uint8_t *data = (uint8_t*)picture_buffer->GetNative();
+    if (m_use_start_codes_) {
+        memcpy(data, m_read_data_.GetData(), packet_size);
     }
     else {
-        for (size_t i=0; i < naluStarts.size(); i++) {
+        for (size_t i=0; i < nalu_starts.size(); i++) {
             // copy size
-            uint32_t naluSize= (uint32_t)naluSizes[i];
-            *data++ = (naluSize >> 24);
-            *data++ = static_cast<uint8_t>(((naluSize & 0x00FF0000) >> 16));
-            *data++ = ((naluSize & 0x0000FF00) >> 8);
-            *data++ = ((naluSize & 0x000000FF));
-            memcpy(data, m_ReadData_.GetData() + naluStarts[i], naluSize);
-            data += naluSize;
+            uint32_t nalu_size= (uint32_t)nalu_sizes[i];
+            *data++ = (nalu_size >> 24);
+            *data++ = static_cast<uint8_t>(((nalu_size & 0x00FF0000) >> 16));
+            *data++ = ((nalu_size & 0x0000FF00) >> 8);
+            *data++ = ((nalu_size & 0x000000FF));
+            memcpy(data, m_read_data_.GetData() + nalu_starts[i], nalu_size);
+            data += nalu_size;
         }
     }
-    pictureBuffer->SetPts(m_currentFrameTimestamp_);
-    int64_t frameDuration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
-    pictureBuffer->SetDuration(frameDuration);
-    m_currentFrameTimestamp_ += frameDuration;
+    picture_buffer->SetPts(m_current_frame_timestamp_);
+    int64_t frame_duration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
+    picture_buffer->SetDuration(frame_duration);
+    m_current_frame_timestamp_ += frame_duration;
 
     // shift remaining data in m_ReadData
-    size_t remainingData = m_ReadData_.GetSize() - readSize;
-    memmove(m_ReadData_.GetData(), m_ReadData_.GetData()+readSize, remainingData);
-    m_ReadData_.SetSize(remainingData);
+    size_t remaining_data = m_read_data_.GetSize() - read_size;
+    memmove(m_read_data_.GetData(), m_read_data_.GetData()+read_size, remaining_data);
+    m_read_data_.SetSize(remaining_data);
 
-    *ppData = static_cast<ParserData*>(pictureBuffer);
-    pictureBuffer = NULL;    
-    m_PacketCount_++;
+    *pp_data = static_cast<ParserData*>(picture_buffer);
+    picture_buffer = NULL;    
+    m_packet_count_++;
 
     return PARSER_OK;
 }
 
 void HevcParser::FindSPSandPPS() {
-    ExtraDataBuilder extraDataBuilder;
+    ExtraDataBuilder extra_data_builder;
 
-    size_t dataOffset = 0;
+    size_t data_offset = 0;
     do {
         
-        size_t naluSize = 0;
-        size_t naluOffset = 0;
-        NalUnitHeader naluHeader = ReadNextNaluUnit(&dataOffset, &naluOffset, &naluSize);
+        size_t nalu_size = 0;
+        size_t nalu_offset = 0;
+        NalUnitHeader nalu_header = ReadNextNaluUnit(&data_offset, &nalu_offset, &nalu_size);
 
-        if (naluHeader.nal_unit_type == NAL_UNIT_INVALID ) {
+        if (nalu_header.nal_unit_type == NAL_UNIT_INVALID ) {
             break; // EOF
         }
 
-        if (naluHeader.nal_unit_type == NAL_UNIT_SPS) {
-            m_EBSPtoRBSPData_.SetSize(naluSize);
-            memcpy(m_EBSPtoRBSPData_.GetData(), m_ReadData_.GetData() + naluOffset, naluSize);
-            size_t newNaluSize = EBSPtoRBSP(m_EBSPtoRBSPData_.GetData(),0, naluSize);
+        if (nalu_header.nal_unit_type == NAL_UNIT_SPS) {
+            m_EBSP_to_RBSP_data_.SetSize(nalu_size);
+            memcpy(m_EBSP_to_RBSP_data_.GetData(), m_read_data_.GetData() + nalu_offset, nalu_size);
+            size_t newNaluSize = EBSPtoRBSP(m_EBSP_to_RBSP_data_.GetData(),0, nalu_size);
 
             SpsData sps;
-            sps.Parse(m_EBSPtoRBSPData_.GetData(), newNaluSize);
-            m_SpsMap_[sps.sps_video_parameter_set_id] = sps;
-            extraDataBuilder.AddSPS(m_ReadData_.GetData()+naluOffset, naluSize);
+            sps.Parse(m_EBSP_to_RBSP_data_.GetData(), newNaluSize);
+            m_sps_map_[sps.sps_video_parameter_set_id] = sps;
+            extra_data_builder.AddSPS(m_read_data_.GetData()+nalu_offset, nalu_size);
         }
-        else if (naluHeader.nal_unit_type == NAL_UNIT_PPS) {
-            m_EBSPtoRBSPData_.SetSize(naluSize);
-            memcpy(m_EBSPtoRBSPData_.GetData(), m_ReadData_.GetData() + naluOffset, naluSize);
-            size_t newNaluSize = EBSPtoRBSP(m_EBSPtoRBSPData_.GetData(),0, naluSize);
+        else if (nalu_header.nal_unit_type == NAL_UNIT_PPS) {
+            m_EBSP_to_RBSP_data_.SetSize(nalu_size);
+            memcpy(m_EBSP_to_RBSP_data_.GetData(), m_read_data_.GetData() + nalu_offset, nalu_size);
+            size_t newNaluSize = EBSPtoRBSP(m_EBSP_to_RBSP_data_.GetData(),0, nalu_size);
 
             PpsData pps;
-            pps.Parse(m_EBSPtoRBSPData_.GetData(), newNaluSize);
-            m_PpsMap_[pps.pps_pic_parameter_set_id] = pps;
-            extraDataBuilder.AddPPS(m_ReadData_.GetData()+naluOffset, naluSize);
+            pps.Parse(m_EBSP_to_RBSP_data_.GetData(), newNaluSize);
+            m_pps_map_[pps.pps_pic_parameter_set_id] = pps;
+            extra_data_builder.AddPPS(m_read_data_.GetData()+nalu_offset, nalu_size);
         }
         else if (
-        NAL_UNIT_CODED_SLICE_TRAIL_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TRAIL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TLA_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_TSA_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_STSA_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_STSA_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_W_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_W_RADL == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_BLA_N_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_IDR_W_RADL == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_IDR_N_LP == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_CRA == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RADL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RADL_R == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RASL_N == naluHeader.nal_unit_type
-        || NAL_UNIT_CODED_SLICE_RASL_R == naluHeader.nal_unit_type
+        NAL_UNIT_CODED_SLICE_TRAIL_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TRAIL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TLA_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_TSA_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_STSA_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_W_RADL == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_BLA_N_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_W_RADL == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_IDR_N_LP == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_CRA == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RADL_R == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RASL_N == nalu_header.nal_unit_type
+        || NAL_UNIT_CODED_SLICE_RASL_R == nalu_header.nal_unit_type
         ) {
             break; // frame data
         }
     } while (true);
 
-    m_pStream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
-    m_ReadData_.SetSize(0);
+    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    m_read_data_.SetSize(0);
     // It will fail if SPS or PPS are absent
-    extraDataBuilder.GetExtradata(m_Extradata_);
+    extra_data_builder.GetExtradata(m_extra_data_);
 }
 
 bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
     size_t offset = 16; // 2 bytes NALU header + 
-    uint32_t activeVPS = Parser::ReadBits(nalu, offset,4);
+    uint32_t active_vps = Parser::ReadBits(nalu, offset,4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset,3);
     sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
     H265_profile_tier_level_t ptl;
     memset (&ptl,0,sizeof(ptl));
     ParsePTL(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
-    uint32_t SPS_ID = Parser::ExpGolomb::ReadUe(nalu, offset);
+    uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    sps_video_parameter_set_id = activeVPS;
+    sps_video_parameter_set_id = active_vps;
     sps_max_sub_layers_minus1 = max_sub_layer_minus1;
     memcpy (&profile_tier_level,&ptl,sizeof(ptl));
-    sps_seq_parameter_set_id = SPS_ID;
+    sps_seq_parameter_set_id = sps_id;
 
     chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
     if (chroma_format_idc == 3) {
@@ -939,19 +933,19 @@ bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
     }
     log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int log2MinCUSize = log2_min_luma_coding_block_size_minus3 +3;
+    int log2_min_cu_size = log2_min_luma_coding_block_size_minus3 +3;
 
     log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int maxCUDepthDelta = log2_diff_max_min_luma_coding_block_size;
-    max_cu_width = ( 1<<(log2MinCUSize + maxCUDepthDelta) );
-    max_cu_height = ( 1<<(log2MinCUSize + maxCUDepthDelta) );
+    int max_cu_depth_delta = log2_diff_max_min_luma_coding_block_size;
+    max_cu_width = ( 1<<(log2_min_cu_size + max_cu_depth_delta) );
+    max_cu_height = ( 1<<(log2_min_cu_size + max_cu_depth_delta) );
 
     log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    uint32_t QuadtreeTULog2MinSize = log2_min_transform_block_size_minus2 + 2;
-    int addCuDepth = std::max (0, log2MinCUSize - (int)QuadtreeTULog2MinSize );
-    max_cu_depth = (maxCUDepthDelta + addCuDepth);
+    uint32_t quadtree_tu_log2_min_size = log2_min_transform_block_size_minus2 + 2;
+    int add_cu_depth = std::max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size );
+    max_cu_depth = (max_cu_depth_delta + add_cu_depth);
 
     log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
     max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1008,12 +1002,12 @@ bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
 bool HevcParser::PpsData::Parse(uint8_t *nalu, size_t size) {
     size_t offset = 16; // 2 bytes NALU header
 
-    uint32_t PPS_ID = Parser::ExpGolomb::ReadUe(nalu, offset);
+    uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
     
-    pps_pic_parameter_set_id = PPS_ID;
-    uint32_t activeSPS = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_pic_parameter_set_id = pps_id;
+    uint32_t active_sps = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    pps_seq_parameter_set_id = activeSPS;
+    pps_seq_parameter_set_id = active_sps;
     dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
     output_flag_present_flag = Parser::GetBit(nalu, offset);
     num_extra_slice_header_bits = Parser::ReadBits(nalu, offset,3);
@@ -1079,8 +1073,8 @@ bool HevcParser::PpsData::Parse(uint8_t *nalu, size_t size) {
     return true;
 }
 
-void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profilePresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    if (profilePresentFlag) {
+void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+    if (profile_present_flag) {
         ptl->general_profile_space = Parser::ReadBits(nalu, offset,2);
         ptl->general_tier_flag = Parser::GetBit(nalu, offset);
         ptl->general_profile_idc = Parser::ReadBits(nalu, offset,5);
@@ -1097,21 +1091,21 @@ void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profileP
     }
 
     ptl->general_level_idc = Parser::ReadBits(nalu, offset,8);
-    for(uint32_t i=0; i < maxNumSubLayersMinus1; i++) {
+    for(uint32_t i = 0; i < max_num_sub_layers_minus1; i++) {
         ptl->sub_layer_profile_present_flag[i] = Parser::GetBit(nalu, offset);
         ptl->sub_layer_level_present_flag[i] = Parser::GetBit(nalu, offset);
     }
-    if (maxNumSubLayersMinus1 > 0) {
-        for(uint32_t i=maxNumSubLayersMinus1; i<8; i++) {               
+    if (max_num_sub_layers_minus1 > 0) {
+        for(uint32_t i=max_num_sub_layers_minus1; i<8; i++) {               
             ptl->reserved_zero_2bits[i] = Parser::ReadBits(nalu, offset,2);
         }
     }
-    for (uint32_t i=0; i<maxNumSubLayersMinus1; i++) {
+    for (uint32_t i = 0; i < max_num_sub_layers_minus1; i++) {
         if (ptl->sub_layer_profile_present_flag[i]) {
             ptl->sub_layer_profile_space[i] = Parser::ReadBits(nalu, offset,2);
             ptl->sub_layer_tier_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_profile_idc[i] = Parser::ReadBits(nalu, offset,5);
-            for (int j = 0; j<32; j++) {
+            for (int j = 0; j < 32; j++) {
                 ptl->sub_layer_profile_compatibility_flag[i][j] = Parser::GetBit(nalu, offset);
             }
             ptl->sub_layer_progressive_source_flag[i] = Parser::GetBit(nalu, offset);
@@ -1127,7 +1121,7 @@ void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profileP
 }
 
 void HevcParser::SpsData::ParseSubLayerHrdParameters(H265_sub_layer_hrd_parameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    for (uint32_t i=0; i<=CpbCnt; i++) {
+    for (uint32_t i = 0; i <= CpbCnt; i++) {
         sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         if(sub_pic_hrd_params_present_flag) {
@@ -1138,8 +1132,8 @@ void HevcParser::SpsData::ParseSubLayerHrdParameters(H265_sub_layer_hrd_paramete
     }
 }
 
-void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool commonInfPresentFlag, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size,size_t &offset) {
-    if (commonInfPresentFlag) {
+void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
+    if (common_inf_present_flag) {
         hrd->nal_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         hrd->vcl_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (hrd->nal_hrd_parameters_present_flag || hrd->vcl_hrd_parameters_present_flag) {
@@ -1160,7 +1154,7 @@ void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool co
             hrd->dpb_output_delay_length_minus1 = Parser::ReadBits(nalu, offset,5);
         }
     }
-    for (uint32_t i = 0; i <= maxNumSubLayersMinus1; i++) {
+    for (uint32_t i = 0; i <= max_num_sub_layers_minus1; i++) {
         hrd->fixed_pic_rate_general_flag[i] = Parser::GetBit(nalu, offset);
         if (!hrd->fixed_pic_rate_general_flag[i]) {
             hrd->fixed_pic_rate_within_cvs_flag[i] = Parser::GetBit(nalu, offset);
@@ -1190,80 +1184,80 @@ void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool co
 }
 
 void HevcParser::SpsData::ParseScalingList(H265_scaling_list_data_t * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    for (int sizeId = 0; sizeId < 4; sizeId++) {
-        for (int matrixId = 0; matrixId < ((sizeId == 3) ? 2:6); matrixId++) {
-            s_data->scaling_list_pred_mode_flag[sizeId][matrixId] = Parser::GetBit(nalu, offset);
-            if(!s_data->scaling_list_pred_mode_flag[sizeId][matrixId]) {
-                s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    for (int size_id = 0; size_id < 4; size_id++) {
+        for (int matrix_id = 0; matrix_id < ((size_id == 3) ? 2:6); matrix_id++) {
+            s_data->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
+            if(!s_data->scaling_list_pred_mode_flag[size_id][matrix_id]) {
+                s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-                int refMatrixId = matrixId - s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId];
-                int coefNum = std::min(64, (1<< (4 + (sizeId<<1))));
+                int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
+                int coef_num = std::min(64, (1<< (4 + (size_id<<1))));
 
                 //fill in scaling_list_dc_coef_minus8
-                if (!s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId]) {
-                    if (sizeId>1) {
-                        s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] = 8;
+                if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
+                    if (size_id > 1) {
+                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = 8;
                     }
                 }
                 else {
-                    if (sizeId>1) {
-                        s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] = s_data->scaling_list_dc_coef_minus8[sizeId-2][refMatrixId];
+                    if (size_id > 1) {
+                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = s_data->scaling_list_dc_coef_minus8[size_id-2][ref_matrix_id];
                     }
                 }
 
-                for (int i=0; i<coefNum; i++) {
-                    if (s_data->scaling_list_pred_matrix_id_delta[sizeId][matrixId] == 0) {
-                        if (sizeId == 0) {
-                            s_data->ScalingList[sizeId][matrixId][i] = scaling_list_default_0[sizeId][matrixId][i];
+                for (int i = 0; i < coef_num; i++) {
+                    if (s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] == 0) {
+                        if (size_id == 0) {
+                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_0[size_id][matrix_id][i];
                         }
-                        else if(sizeId == 1 || sizeId == 2) {
-                            s_data->ScalingList[sizeId][matrixId][i] = scaling_list_default_1_2[sizeId][matrixId][i];
+                        else if(size_id == 1 || size_id == 2) {
+                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_1_2[size_id][matrix_id][i];
                         }
-                        else if(sizeId == 3) {
-                            s_data->ScalingList[sizeId][matrixId][i] = scaling_list_default_3[sizeId][matrixId][i];
+                        else if(size_id == 3) {
+                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_3[size_id][matrix_id][i];
                         }
                     }
                     else {
-                        s_data->ScalingList[sizeId][matrixId][i] = s_data->ScalingList[sizeId][refMatrixId][i];
+                        s_data->scaling_list[size_id][matrix_id][i] = s_data->scaling_list[size_id][ref_matrix_id][i];
                     }
                 }
             }
             else {
-                int nextCoef = 8;
-                int coefNum = std::min(64, (1<< (4 + (sizeId<<1))));
-                if (sizeId > 1) {
-                    s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    nextCoef = s_data->scaling_list_dc_coef_minus8[sizeId-2][matrixId] + 8;
+                int next_coef = 8;
+                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+                if (size_id > 1) {
+                    s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = Parser::ExpGolomb::ReadSe(nalu, offset);
+                    next_coef = s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] + 8;
                 }
-                for (int i=0; i < coefNum; i++) {
+                for (int i = 0; i < coef_num; i++) {
                     s_data->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    nextCoef = (nextCoef + s_data->scaling_list_delta_coef +256)%256;
-                    s_data->ScalingList[sizeId][matrixId][i] = nextCoef;
+                    next_coef = (next_coef + s_data->scaling_list_delta_coef +256)%256;
+                    s_data->scaling_list[size_id][matrix_id][i] = next_coef;
                 }
             }
         }
     }
 }
 
-void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t stRpsIdx, uint32_t number_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    uint32_t interRPSPred = 0;
+void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
+    uint32_t inter_rps_pred = 0;
     uint32_t delta_idx_minus1 = 0;
-    int32_t i=0;
+    int32_t i = 0;
 
-    if (stRpsIdx != 0) {
-        interRPSPred = Parser::GetBit(nalu, offset);
+    if (st_rps_idx != 0) {
+        inter_rps_pred = Parser::GetBit(nalu, offset);
     }
-    if (interRPSPred) {
+    if (inter_rps_pred) {
         uint32_t delta_rps_sign, abs_delta_rps_minus1;
         bool used_by_curr_pic_flag[16] = {0};
         bool use_delta_flag[16] = {0};
-        if (unsigned(stRpsIdx) == number_short_term_ref_pic_sets) {
+        if (unsigned(st_rps_idx) == number_short_term_ref_pic_sets) {
             delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         delta_rps_sign = Parser::GetBit(nalu, offset);
         abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        int32_t delta_rps = (int32_t) (1 - 2*delta_rps_sign) * (abs_delta_rps_minus1 + 1);
-        int32_t ref_idx = stRpsIdx - delta_idx_minus1 - 1;
+        int32_t delta_rps = (int32_t) (1 - 2 * delta_rps_sign) * (abs_delta_rps_minus1 + 1);
+        int32_t ref_idx = st_rps_idx - delta_idx_minus1 - 1;
         for (int j = 0; j <= (rps_ref[ref_idx].num_negative_pics + rps_ref[ref_idx].num_positive_pics); j++) {
             used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
             if (!used_by_curr_pic_flag[j]) {
@@ -1275,41 +1269,41 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
         }
 
         for (int j = rps_ref[ref_idx].num_positive_pics - 1; j >= 0; j--) {
-            int32_t delta_poc = delta_rps + rps_ref[ref_idx].deltaPOC[rps_ref[ref_idx].num_negative_pics + j];  //positive deltaPOC from ref_rps
+            int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics + j];  //positive delta_poc from ref_rps
             if (delta_poc < 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics + j]) {
-                rps->deltaPOC[i] = delta_poc;
+                rps->delta_poc[i] = delta_poc;
                 rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics + j];
             }
         }
         if (delta_rps < 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
-            rps->deltaPOC[i] = delta_rps;
+            rps->delta_poc[i] = delta_rps;
             rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
-        for (int j = 0; j<rps_ref[ref_idx].num_negative_pics; j++) {
-            int32_t delta_poc = delta_rps + rps_ref[ref_idx].deltaPOC[j];
+        for (int j = 0; j < rps_ref[ref_idx].num_negative_pics; j++) {
+            int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];
             if (delta_poc < 0 && use_delta_flag[j]) {
-                rps->deltaPOC[i]=delta_poc;
+                rps->delta_poc[i]=delta_poc;
                 rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
             }
         }
         rps->num_negative_pics = i;
         
         
-        for (int j =rps_ref[ref_idx].num_negative_pics - 1; j >= 0; j--) {
-            int32_t delta_poc = delta_rps + rps_ref[ref_idx].deltaPOC[j];  //positive deltaPOC from ref_rps
+        for (int j = rps_ref[ref_idx].num_negative_pics - 1; j >= 0; j--) {
+            int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];  //positive delta_poc from ref_rps
             if (delta_poc > 0 && use_delta_flag[j]) {
-                rps->deltaPOC[i] = delta_poc;
+                rps->delta_poc[i] = delta_poc;
                 rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
             }
         }
         if (delta_rps > 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
-            rps->deltaPOC[i] = delta_rps;
+            rps->delta_poc[i] = delta_rps;
             rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
         for (int j = 0; j < rps_ref[ref_idx].num_positive_pics; j++) {
-            int32_t delta_poc = delta_rps + rps_ref[ref_idx].deltaPOC[rps_ref[ref_idx].num_negative_pics+j];
+            int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics+j];
             if (delta_poc > 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics+j]) {
-                rps->deltaPOC[i]=delta_poc;
+                rps->delta_poc[i]=delta_poc;
                 rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics+j];
             }
         }
@@ -1327,7 +1321,7 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
             delta_poc_s0_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             poc = prev - delta_poc_s0_minus1 - 1;
             prev = poc;
-            rps->deltaPOC[j] = poc;
+            rps->delta_poc[j] = poc;
             rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
         }
         prev = 0;
@@ -1335,7 +1329,7 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
             delta_poc_s1_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             poc = prev + delta_poc_s1_minus1 + 1;
             prev = poc;
-            rps->deltaPOC[j] = poc;
+            rps->delta_poc[j] = poc;
             rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
         }
         rps->num_of_pics = rps->num_negative_pics + rps->num_positive_pics;
@@ -1343,7 +1337,7 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, in
     }
 }
 
-void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t maxNumSubLayersMinus1, uint8_t *nalu, size_t size, size_t &offset) {
+void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset) {
     vui->aspect_ratio_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->aspect_ratio_info_present_flag) {
         vui->aspect_ratio_idc = Parser::ReadBits(nalu, offset,8);
@@ -1392,7 +1386,7 @@ void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t maxNumSu
         }
         vui->vui_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_hrd_parameters_present_flag) {
-            ParseHrdParameters(&vui->hrd_parameters, 1, maxNumSubLayersMinus1, nalu, size, offset);
+            ParseHrdParameters(&vui->hrd_parameters, 1, max_num_sub_layers_minus1, nalu, size, offset);
         }
     }
     vui->bitstream_restriction_flag = Parser::GetBit(nalu, offset);
@@ -1408,46 +1402,46 @@ void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t maxNumSu
     }
 }
 
-bool HevcParser::AccessUnitSigns::Parse(uint8_t *nalu, size_t /*size*/, std::map<uint32_t, SpsData>&/*spsMap*/, std::map<uint32_t, PpsData>& /*ppsMap*/) {
+bool HevcParser::AccessUnitSigns::Parse(uint8_t *nalu, size_t /*size*/, std::map<uint32_t, SpsData>&/*sps_map*/, std::map<uint32_t, PpsData>& /*pps_map*/) {
     size_t offset = 16; // 2 bytes NALU header
-    bNewPicture = Parser::GetBit(nalu, offset);
+    b_new_picture = Parser::GetBit(nalu, offset);
     return true;
 }
 
 bool HevcParser::AccessUnitSigns::IsNewPicture() {
-    return bNewPicture;
+    return b_new_picture;
 }
 
 void HevcParser::ExtraDataBuilder::AddSPS(uint8_t *sps, size_t size) {
-    m_SPSCount_++;
-    size_t pos = m_SPSs_.GetSize();
-    uint16_t spsSize = size & maxSpsSize;
-    m_SPSs_.SetSize(pos + spsSize +2);
-    uint8_t *data = m_SPSs_.GetData() + pos;
+    m_sps_count_++;
+    size_t pos = m_sps_.GetSize();
+    uint16_t spsSize = size & max_sps_size_;
+    m_sps_.SetSize(pos + spsSize +2);
+    uint8_t *data = m_sps_.GetData() + pos;
     *data++ = Parser::GetLowByte(spsSize);
     *data++ = Parser::GetHiByte(spsSize);
     memcpy(data , sps, (size_t)spsSize);
 }
 
 void HevcParser::ExtraDataBuilder::AddPPS(uint8_t *pps, size_t size) {
-    m_PPSCount_++;
-    size_t pos = m_PPSs_.GetSize();
-    uint16_t ppsSize = size & maxPpsSize;
-    m_PPSs_.SetSize(pos + ppsSize +2);
-    uint8_t *data = m_PPSs_.GetData() + pos;
+    m_pps_count_++;
+    size_t pos = m_pps_.GetSize();
+    uint16_t ppsSize = size & max_pps_size_;
+    m_pps_.SetSize(pos + ppsSize + 2);
+    uint8_t *data = m_pps_.GetData() + pos;
     *data++ = Parser::GetLowByte(ppsSize);
     *data++ = Parser::GetHiByte(ppsSize);
     memcpy(data , pps, (size_t)ppsSize);
 }
 
 bool HevcParser::ExtraDataBuilder::GetExtradata(ByteArray &extradata) {
-    if( m_SPSs_.GetSize() == 0  || m_PPSs_ .GetSize() ==0 ) {
+    if(m_sps_.GetSize() == 0  || m_pps_ .GetSize() == 0) {
         return false;
     }
-    if (m_SPSCount_ > 0x1F) {
+    if (m_sps_count_ > 0x1F) {
         return false;
     }
-    if (m_SPSs_.GetSize() < minSpsSize) {
+    if (m_sps_.GetSize() < min_sps_size_) {
         return false;
     }
     extradata.SetSize(
@@ -1455,9 +1449,9 @@ bool HevcParser::ExtraDataBuilder::GetExtradata(ByteArray &extradata) {
         1 +                 // length size
         1 +                 // array size
         3 +                 // SPS type + SPS count (2)
-        m_SPSs_.GetSize() +
+        m_sps_.GetSize() +
         3 +                 // PPS type + PPS count (2)
-        m_PPSs_.GetSize()
+        m_pps_.GetSize()
         );
 
     uint8_t *data = extradata.GetData();
@@ -1466,28 +1460,28 @@ bool HevcParser::ExtraDataBuilder::GetExtradata(ByteArray &extradata) {
 
     *data = 0x01; // configurationVersion
     data+=21;
-    *data++ = (0xFC | (NalUnitLengthSize - 1));   // reserved(11111100) + lengthSizeMinusOne
+    *data++ = (0xFC | (nal_unit_length_size_ - 1));   // reserved(11111100) + lengthSizeMinusOne
 
     *data++ = static_cast<uint8_t>(2); // reserved(11100000) + numOfSequenceParameterSets
 
     *data++ = NAL_UNIT_SPS;
-    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_SPSCount_));
-    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_SPSCount_));
+    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_sps_count_));
+    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_sps_count_));
 
-    memcpy(data, m_SPSs_.GetData(), m_SPSs_.GetSize());
-    data += m_SPSs_.GetSize();
+    memcpy(data, m_sps_.GetData(), m_sps_.GetSize());
+    data += m_sps_.GetSize();
 
     *data++ = NAL_UNIT_PPS;
-    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_PPSCount_));
-    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_PPSCount_));
-    memcpy(data, m_PPSs_.GetData(), m_PPSs_.GetSize());
-    data += m_PPSs_.GetSize();
+    *data++ = Parser::GetLowByte(static_cast<int16_t>(m_pps_count_));
+    *data++ = Parser::GetHiByte(static_cast<int16_t>(m_pps_count_));
+    memcpy(data, m_pps_.GetData(), m_pps_.GetSize());
+    data += m_pps_.GetSize();
     return true;
 }
 
-bool HevcParser::CheckDataStreamEof(int nVideoBytes) {
-    if (nVideoBytes <= 0) {
-        m_bEof_ = true;
+bool HevcParser::CheckDataStreamEof(int n_video_bytes) {
+    if (n_video_bytes <= 0) {
+        m_eof_ = true;
         return true;
     }
     return false;
@@ -1500,9 +1494,9 @@ size_t HevcParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t
     if (end_bytepos < begin_bytepos) {
         return end_bytepos;
     }
-    uint8_t *streamBuffer_i=streamBuffer+begin_bytepos;
-    uint8_t *streamBuffer_end=streamBuffer+end_bytepos;
-    int iReduceCount=0;
+    uint8_t *streamBuffer_i = streamBuffer + begin_bytepos;
+    uint8_t *streamBuffer_end = streamBuffer + end_bytepos;
+    int reduce_count = 0;
     for (; streamBuffer_i != streamBuffer_end; ) { 
         //starting from begin_bytepos to avoid header information
         //in NAL unit, 0x000000, 0x000001 or 0x000002 shall not occur at any uint8_t-aligned position
@@ -1517,9 +1511,9 @@ size_t HevcParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t
                 if (streamBuffer_i + 1 == streamBuffer_end) {
                     break;
                 }
-                memmove(streamBuffer_i,streamBuffer_i+1,streamBuffer_end-streamBuffer_i-1);
+                memmove(streamBuffer_i, streamBuffer_i + 1, streamBuffer_end-streamBuffer_i - 1);
                 streamBuffer_end--;
-                iReduceCount++;
+                reduce_count++;
                 count = 0;
                 tmp = *streamBuffer_i;
             }
@@ -1534,17 +1528,17 @@ size_t HevcParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t
         }
         streamBuffer_i++;
     }
-    return end_bytepos - begin_bytepos + iReduceCount;
+    return end_bytepos - begin_bytepos + reduce_count;
 }
 
-//sizeId = 0
+//size_id = 0
 int scaling_list_default_0 [1][6][16] =  {{{16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
                                            {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
                                            {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
                                            {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
                                            {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
                                            {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16}}};
-//sizeId = 1, 2
+//size_id = 1, 2
 int scaling_list_default_1_2 [2][6][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
                                             {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
                                             {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
@@ -1557,6 +1551,6 @@ int scaling_list_default_1_2 [2][6][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16
                                             {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
                                             {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
                                             {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
-//sizeId = 3
+//size_id = 3
 int scaling_list_default_3 [1][2][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
                                           {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
