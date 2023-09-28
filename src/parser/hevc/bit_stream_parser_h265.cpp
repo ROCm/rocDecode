@@ -283,12 +283,12 @@ protected:
         uint32_t max_bits_per_min_cu_denom;                  //ue(v)
         uint32_t log2_max_mv_length_horizontal;              //ue(v)
         uint32_t log2_max_mv_length_vertical;                //ue(v)
-    } H265_vui_parameters_t;
+    } H265VuiParameters;
 
     typedef struct {
         uint32_t rbsp_stop_one_bit; /* equal to 1 */
         uint32_t rbsp_alignment_zero_bit; /* equal to 0 */
-    } H265_rbsp_trailing_bits_t;
+    } H265RbspTrailingBits;
 
     struct SpsData {
         uint32_t sps_video_parameter_set_id;                 //u(4)
@@ -348,11 +348,11 @@ protected:
         bool strong_intra_smoothing_enabled_flag;            //u(1)
         bool vui_parameters_present_flag;                    //u(1)
         //vui_parameters()
-        H265_vui_parameters_t vui_parameters;
+        H265VuiParameters vui_parameters;
         bool sps_extension_flag;                             //u(1)
         bool sps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
-        H265_rbsp_trailing_bits_t rbsp_trailing_bits;
+        H265RbspTrailingBits rbsp_trailing_bits;
 
         SpsData(void) {
             memset(this, 0, sizeof(*this));
@@ -363,7 +363,7 @@ protected:
         void ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
         void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
         static void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size,size_t &offset);
-        void ParseVUI(H265_vui_parameters_t *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size,size_t &offset);
+        void ParseVUI(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size,size_t &offset);
         void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
     };
 
@@ -415,7 +415,7 @@ protected:
         bool pps_extension_flag;                             //u(1)
         bool pps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
-        H265_rbsp_trailing_bits_t rbsp_trailing_bits;
+        H265RbspTrailingBits rbsp_trailing_bits;
         PpsData(void) {
             memset(this, 0, sizeof(*this));
         }
@@ -1337,7 +1337,7 @@ void HevcParser::SpsData::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t
     }
 }
 
-void HevcParser::SpsData::ParseVUI(H265_vui_parameters_t *vui, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset) {
+void HevcParser::SpsData::ParseVUI(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset) {
     vui->aspect_ratio_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->aspect_ratio_info_present_flag) {
         vui->aspect_ratio_idc = Parser::ReadBits(nalu, offset,8);
