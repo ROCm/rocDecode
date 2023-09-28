@@ -47,7 +47,6 @@ THE SOFTWARE.
 #include "data_stream.h"
 #include "byte_array.h"
 #include "platform.h"
-#include "parser_data.h"
 #include "parser_buffer.h"
 #include "context.h"
 
@@ -87,7 +86,7 @@ public:
     virtual PARSER_RESULT           ReInit() = 0;
     virtual void                    GetFrameRate(ParserRate *frameRate) const = 0;
     
-    virtual PARSER_RESULT           QueryOutput(ParserData** ppData) = 0;
+    virtual PARSER_RESULT           QueryOutput(ParserBuffer** ppData) = 0;
     static BitStreamParserPtr       Create(DataStream* pStream, BitStreamType type, ParserContext* pContext);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
     virtual bool                    CheckDataStreamEof(int nVideoBytes) = 0;

@@ -54,7 +54,7 @@ public:
     virtual double                  GetFrameRate()  const;
     virtual PARSER_RESULT           ReInit();
     virtual void                    GetFrameRate(ParserRate *frame_rate) const;
-    virtual PARSER_RESULT           QueryOutput(ParserData** pp_data);
+    virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_data);
     virtual void                    FindFirstFrameSPSandPPS();
     virtual bool                    CheckDataStreamEof(int n_video_bytes);
 
@@ -639,7 +639,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
     while (!new_nal_found) {
         // read next portion if needed
         size_t ready = m_read_data_.GetSize() - *offset;
-        //printf("ReadNextNaluUnit: remaining data size for read: %zu\n", ready);
+        printf("ReadNextNaluUnit: remaining data size for read: %zu\n", ready);
         if (ready == 0) {
             if (m_eof_ == false) {
                 m_read_data_.SetSize(m_read_data_.GetSize() + m_read_size_);
@@ -700,7 +700,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
     return GetNaluUnitType(m_read_data_.GetData() + *nalu);
 }
 
-PARSER_RESULT HevcParser::QueryOutput(ParserData** pp_data) {
+PARSER_RESULT HevcParser::QueryOutput(ParserBuffer** pp_data) {
     if ((m_eof_ && m_read_data_.GetSize() == 0) || m_max_frames_number_ && m_packet_count_ >= m_max_frames_number_) {
         return PARSER_EOF;
     }
@@ -793,13 +793,12 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** pp_data) {
         }
     } while (!new_picture_detected);
 
-    ParserBuffer* picture_buffer;
-    PARSER_RESULT ar = m_pcontext_->AllocBuffer(PARSER_MEMORY_HOST, packet_size, &picture_buffer);
+    PARSER_RESULT ar = m_pcontext_->AllocBuffer(PARSER_MEMORY_HOST, packet_size, pp_data);
     if (ar != PARSER_OK) {
         return ar;
     }
     
-    uint8_t *data = (uint8_t*)picture_buffer->GetNative();
+    uint8_t *data = (uint8_t*)(*pp_data)->GetNative();
     if (m_use_start_codes_) {
         memcpy(data, m_read_data_.GetData(), packet_size);
     }
@@ -815,9 +814,9 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** pp_data) {
             data += nalu_size;
         }
     }
-    picture_buffer->SetPts(m_current_frame_timestamp_);
+    (*pp_data)->SetPts(m_current_frame_timestamp_);
     int64_t frame_duration = int64_t(PARSER_SECOND / GetFrameRate()); // In 100 NanoSeconds
-    picture_buffer->SetDuration(frame_duration);
+    (*pp_data)->SetDuration(frame_duration);
     m_current_frame_timestamp_ += frame_duration;
 
     // shift remaining data in m_ReadData
@@ -825,8 +824,6 @@ PARSER_RESULT HevcParser::QueryOutput(ParserData** pp_data) {
     memmove(m_read_data_.GetData(), m_read_data_.GetData()+read_size, remaining_data);
     m_read_data_.SetSize(remaining_data);
 
-    *pp_data = static_cast<ParserData*>(picture_buffer);
-    picture_buffer = NULL;    
     m_packet_count_++;
 
     return PARSER_OK;

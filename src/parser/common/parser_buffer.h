@@ -24,9 +24,20 @@ THE SOFTWARE.
 #define PARSERBUFFER_H
 #pragma once
 
-#include "parser_data.h"
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <ctime>
+#include <chrono>
+#include "result.h"
 
-class ParserBuffer : public ParserData {
+typedef enum PARSER_MEMORY_TYPE {
+    PARSER_MEMORY_UNKNOWN          = 0,
+    PARSER_MEMORY_HOST             = 1,
+    PARSER_MEMORY_HIP              = 2,
+} PARSER_MEMORY_TYPE;
+
+class ParserBuffer  {
 public:
     ParserBuffer();
     virtual ~ParserBuffer();
