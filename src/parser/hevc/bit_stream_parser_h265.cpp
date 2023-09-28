@@ -144,7 +144,7 @@ protected:
         uint32_t num_emu_byte_removed;
     };
 
-    enum H265_ScalingListSize {
+    enum H265ScalingListSize {
         H265_SCALING_LIST_4x4 = 0,
         H265_SCALING_LIST_8x8,
         H265_SCALING_LIST_16x16,
@@ -179,7 +179,7 @@ protected:
         bool sub_layer_frame_only_constraint_flag[6];        //u(1)
         uint64_t sub_layer_reserved_zero_44bits[6];          //u(44)
         uint32_t sub_layer_level_idc[6];                     //u(8)
-    } H265_profile_tier_level_t;
+    } H265ProfileTierLevel;
 
 #define H265_SCALING_LIST_NUM 6         ///< list number for quantization matrix
 #define H265_SCALING_LIST_MAX_I 64
@@ -190,7 +190,7 @@ protected:
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
         int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
-    } H265_scaling_list_data_t;
+    } H265ScalingListData;
 
     typedef struct {
         int32_t num_negative_pics;
@@ -199,13 +199,13 @@ protected:
         int32_t num_of_delta_poc;
         int32_t delta_poc[16];
         bool used_by_curr_pic[16];
-    } H265_short_term_RPS_t;
+    } H265ShortTermRPS;
 
     typedef struct {
         int32_t num_of_pics;
         int32_t POCs[32];
         bool used_by_curr_pic[32];
-    } H265_long_term_RPS_t;
+    } H265LongTermRPS;
 
     typedef struct {
         //CpbCnt = cpb_cnt_minus1
@@ -214,7 +214,7 @@ protected:
         uint32_t cpb_size_du_value_minus1[32];               //ue(v)
         uint32_t bit_rate_du_value_minus1[32];               //ue(v)
         bool cbr_flag[32];                                   //u(1)
-    } H265_sub_layer_hrd_parameters;
+    } H265SubLayerHrdParameters;
 
     typedef struct {
         bool nal_hrd_parameters_present_flag;                //u(1)
@@ -236,10 +236,10 @@ protected:
         bool low_delay_hrd_flag[7];                          //u(1)
         uint32_t cpb_cnt_minus1[7];                          //ue(v)
         //sub_layer_hrd_parameters()
-        H265_sub_layer_hrd_parameters sub_layer_hrd_parameters_0[7];
+        H265SubLayerHrdParameters sub_layer_hrd_parameters_0[7];
         //sub_layer_hrd_parameters()
-        H265_sub_layer_hrd_parameters sub_layer_hrd_parameters_1[7];
-    } H265_hrd_parameters_t;
+        H265SubLayerHrdParameters sub_layer_hrd_parameters_1[7];
+    } H265HrdParameters;
 
     typedef struct {
         bool aspect_ratio_info_present_flag;                 //u(1)
@@ -273,7 +273,7 @@ protected:
         uint32_t vui_num_ticks_poc_diff_one_minus1;          //ue(v)
         bool vui_hrd_parameters_present_flag;                //u(1)
         //hrd_parameters()
-        H265_hrd_parameters_t hrd_parameters;
+        H265HrdParameters hrd_parameters;
         bool bitstream_restriction_flag;                     //u(1)
         bool tiles_fixed_structure_flag;                     //u(1)
         bool motion_vectors_over_pic_boundaries_flag;        //u(1)
@@ -295,7 +295,7 @@ protected:
         uint32_t sps_max_sub_layers_minus1;                  //u(3)
         bool sps_temporal_id_nesting_flag;                   //u(1)
         //profile_tier_level( sps_max_sub_layers_minus1 )
-        H265_profile_tier_level_t profile_tier_level;
+        H265ProfileTierLevel profile_tier_level;
         uint32_t sps_seq_parameter_set_id;                   //ue(v)
         uint32_t chroma_format_idc;                          //ue(v)
         bool separate_colour_plane_flag;                     //u(1)
@@ -325,7 +325,7 @@ protected:
         bool scaling_list_enabled_flag;                      //u(1)
         bool sps_scaling_list_data_present_flag;             //u(1)
         //scaling_list_data()
-        H265_scaling_list_data_t scaling_list_data;
+        H265ScalingListData scaling_list_data;
         bool amp_enabled_flag;                               //u(1)
         bool sample_adaptive_offset_enabled_flag;            //u(1)
         bool pcm_enabled_flag;                               //u(1)
@@ -336,8 +336,8 @@ protected:
         bool pcm_loop_filter_disabled_flag;                  //u(1)
         uint32_t num_short_term_ref_pic_sets;                //ue(v)
         //short_term_ref_pic_set(i) max is 64
-        H265_short_term_RPS_t stRPS[64];
-        H265_long_term_RPS_t ltRPS;
+        H265ShortTermRPS stRPS[64];
+        H265LongTermRPS ltRPS;
         //H265_short_term_ref_pic_set_t short_term_ref_pic_set[64];
         bool long_term_ref_pics_present_flag;                //u(1)
         uint32_t num_long_term_ref_pics_sps;                 //ue(v)
@@ -359,12 +359,12 @@ protected:
         }
 
         bool Parse(uint8_t *data, size_t size);
-        void ParsePTL(H265_profile_tier_level_t *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
-        void ParseSubLayerHrdParameters(H265_sub_layer_hrd_parameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
-        void ParseHrdParameters(H265_hrd_parameters_t *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
-        static void ParseScalingList(H265_scaling_list_data_t * s_data, uint8_t *data, size_t size,size_t &offset);
+        void ParsePTL(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
+        void ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
+        void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
+        static void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size,size_t &offset);
         void ParseVUI(H265_vui_parameters_t *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size,size_t &offset);
-        void ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *data, size_t size,size_t &offset);
+        void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
     };
 
     struct PpsData {
@@ -408,7 +408,7 @@ protected:
         int32_t pps_tc_offset_div2;                          //se(v)
         bool pps_scaling_list_data_present_flag;             //u(1)
         //scaling_list_data( )
-        H265_scaling_list_data_t scaling_list_data;
+        H265ScalingListData scaling_list_data;
         bool lists_modification_present_flag;                //u(1)
         uint32_t log2_parallel_merge_level_minus2;           //ue(v)
         bool slice_segment_header_extension_present_flag;    //u(1)
@@ -899,7 +899,7 @@ bool HevcParser::SpsData::Parse(uint8_t *nalu, size_t size) {
     uint32_t active_vps = Parser::ReadBits(nalu, offset,4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset,3);
     sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
-    H265_profile_tier_level_t ptl;
+    H265ProfileTierLevel ptl;
     memset (&ptl,0,sizeof(ptl));
     ParsePTL(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
     uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1073,7 +1073,7 @@ bool HevcParser::PpsData::Parse(uint8_t *nalu, size_t size) {
     return true;
 }
 
-void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcParser::SpsData::ParsePTL(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     if (profile_present_flag) {
         ptl->general_profile_space = Parser::ReadBits(nalu, offset,2);
         ptl->general_tier_flag = Parser::GetBit(nalu, offset);
@@ -1120,7 +1120,7 @@ void HevcParser::SpsData::ParsePTL(H265_profile_tier_level_t *ptl, bool profile_
     }
 }
 
-void HevcParser::SpsData::ParseSubLayerHrdParameters(H265_sub_layer_hrd_parameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcParser::SpsData::ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (uint32_t i = 0; i <= CpbCnt; i++) {
         sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1132,7 +1132,7 @@ void HevcParser::SpsData::ParseSubLayerHrdParameters(H265_sub_layer_hrd_paramete
     }
 }
 
-void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
+void HevcParser::SpsData::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
     if (common_inf_present_flag) {
         hrd->nal_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         hrd->vcl_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
@@ -1183,7 +1183,7 @@ void HevcParser::SpsData::ParseHrdParameters(H265_hrd_parameters_t *hrd, bool co
     }
 }
 
-void HevcParser::SpsData::ParseScalingList(H265_scaling_list_data_t * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcParser::SpsData::ParseScalingList(H265ScalingListData * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (int size_id = 0; size_id < 4; size_id++) {
         for (int matrix_id = 0; matrix_id < ((size_id == 3) ? 2:6); matrix_id++) {
             s_data->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
@@ -1239,7 +1239,7 @@ void HevcParser::SpsData::ParseScalingList(H265_scaling_list_data_t * s_data, ui
     }
 }
 
-void HevcParser::SpsData::ParseShortTermRefPicSet(H265_short_term_RPS_t *rps, int32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265_short_term_RPS_t rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcParser::SpsData::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
     uint32_t inter_rps_pred = 0;
     uint32_t delta_idx_minus1 = 0;
     int32_t i = 0;
