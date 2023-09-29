@@ -66,21 +66,21 @@ public:
         }
         else if (num > m_max_size_) {
             // This is done to prevent the following error from surfacing
-            // for the pNewData allocation on some compilers:
+            // for the p_new_data allocation on some compilers:
             //     -Werror=alloc-size-larger-than=
-            size_t newSize = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
-            if (newSize > ARRAY_MAX_SIZE) {
+            size_t new_size = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
+            if (new_size > ARRAY_MAX_SIZE) {
                 return;
             }
-            m_max_size_ = newSize;
+            m_max_size_ = new_size;
 
-            uint8_t *pNewData = new uint8_t[m_max_size_];
-            memset(pNewData, 0, m_max_size_);
+            uint8_t *p_new_data = new uint8_t[m_max_size_];
+            memset(p_new_data, 0, m_max_size_);
             if (m_pdata_ != NULL) {
-                memcpy(pNewData, m_pdata_, m_size_);
+                memcpy(p_new_data, m_pdata_, m_size_);
                 delete[] m_pdata_;
             }
-            m_pdata_ = pNewData;
+            m_pdata_ = p_new_data;
         }
         m_size_ = num;
     }

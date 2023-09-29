@@ -35,7 +35,7 @@ extern int scaling_list_default_3[1][2][64];
 
 class HevcParser : public BitStreamParser {
 public:
-    HevcParser(DataStream *stream, ParserContext* context);
+    HevcParser(DataStream *stream);
     virtual ~HevcParser();
 
     virtual int                     GetOffsetX() const;
@@ -485,22 +485,20 @@ protected:
     bool           m_eof_;
     double         m_fps_;
     size_t         m_max_frames_number_;
-    ParserContext* m_pcontext_;
 };
 
-BitStreamParser* CreateHEVCParser(DataStream* pstream, ParserContext* pcontext) {
-    return new HevcParser(pstream, pcontext);
+BitStreamParser* CreateHEVCParser(DataStream* pstream) {
+    return new HevcParser(pstream);
 }
 
-HevcParser::HevcParser(DataStream *stream, ParserContext* pcontext) :
+HevcParser::HevcParser(DataStream *stream) :
     m_use_start_codes_(false),
     m_current_frame_timestamp_(0),
     m_pstream_(stream),
     m_packet_count_(0),
     m_eof_(false),
     m_fps_(0),
-    m_max_frames_number_(0),
-    m_pcontext_(pcontext) {
+    m_max_frames_number_(0) {
 }
 
 void HevcParser::FindFirstFrameSPSandPPS() {
@@ -793,7 +791,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserBuffer** pp_data) {
         }
     } while (!new_picture_detected);
 
-    PARSER_RESULT ar = m_pcontext_->AllocBuffer(PARSER_MEMORY_HOST, packet_size, pp_data);
+    PARSER_RESULT ar = ParserBuffer::AllocBuffer(PARSER_MEMORY_HOST, packet_size, pp_data);
     if (ar != PARSER_OK) {
         return ar;
     }

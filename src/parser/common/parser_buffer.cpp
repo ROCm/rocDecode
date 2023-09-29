@@ -1,4 +1,4 @@
-/*amf_ptsdure
+/*
 Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,8 +59,8 @@ void ParserBuffer::SetDuration(int64_t duration) {
 
 bool ParserBuffer::IsReusable() { return PARSER_NOT_IMPLEMENTED; }
 
-PARSER_RESULT ParserBuffer::SetSize(size_t newSize) {
-    m_packet_size_ = newSize;
+PARSER_RESULT ParserBuffer::SetSize(size_t new_size) {
+    m_packet_size_ = new_size;
     return PARSER_OK;
 }
 
@@ -74,4 +74,35 @@ void* ParserBuffer::GetNative() {
 
 void ParserBuffer::SetNative(size_t size) { 
     m_buffer_ = new uint8_t[size];
+}
+
+PARSER_RESULT ParserBuffer::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** pp_buffer) {
+    PARSER_RESULT res = PARSER_OK;
+    switch(type) { 
+        case PARSER_MEMORY_HOST: {
+            ParserBuffer* p_new_buffer = new ParserBuffer;
+            if (p_new_buffer != NULL) {
+                p_new_buffer->SetNative(size);
+                res = p_new_buffer->SetSize(size);
+                if (res != PARSER_OK) {
+                    return res;
+                }
+                *pp_buffer = p_new_buffer;
+            }
+        }
+        break;
+        case PARSER_MEMORY_HIP: {
+            res = PARSER_NOT_IMPLEMENTED;
+        }
+        break;
+        case PARSER_MEMORY_UNKNOWN:{
+            res = PARSER_NOT_IMPLEMENTED;
+        }
+        break;
+        default: {
+            res = PARSER_INVALID_ARG;
+        }
+        break;       
+    }
+    return res;
 }

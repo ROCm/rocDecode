@@ -48,7 +48,6 @@ THE SOFTWARE.
 #include "byte_array.h"
 #include "platform.h"
 #include "parser_buffer.h"
-#include "context.h"
 
 enum BitStreamType {
     BitStreamH264AnnexB = 0,
@@ -80,16 +79,16 @@ public:
 
     virtual const unsigned char*    GetExtraData() const = 0;
     virtual size_t                  GetExtraDataSize() const = 0;
-    virtual void                    SetUseStartCodes(bool bUse) = 0;
+    virtual void                    SetUseStartCodes(bool b_use) = 0;
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
     virtual PARSER_RESULT           ReInit() = 0;
-    virtual void                    GetFrameRate(ParserRate *frameRate) const = 0;
+    virtual void                    GetFrameRate(ParserRate *frame_rate) const = 0;
     
-    virtual PARSER_RESULT           QueryOutput(ParserBuffer** ppData) = 0;
-    static BitStreamParserPtr       Create(DataStream* pStream, BitStreamType type, ParserContext* pContext);
+    virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_buffer) = 0;
+    static BitStreamParserPtr       Create(DataStream* pstream, BitStreamType type);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
-    virtual bool                    CheckDataStreamEof(int nVideoBytes) = 0;
+    virtual bool                    CheckDataStreamEof(int n_video_bytes) = 0;
 };
 
 // helpers
@@ -102,51 +101,51 @@ namespace Parser {
         return (data & 0xFF);
     }
 
-    inline bool GetBit(const uint8_t *data, size_t &bitIdx) {
-        bool ret = (data[bitIdx / 8] >> (7 - bitIdx % 8) & 1);
-        bitIdx++;
+    inline bool GetBit(const uint8_t *data, size_t &bit_idx) {
+        bool ret = (data[bit_idx / 8] >> (7 - bit_idx % 8) & 1);
+        bit_idx++;
         return ret;
     }
-    inline uint32_t GetBitToUint32(const uint8_t *data, size_t &bitIdx) {
-        uint32_t ret = (data[bitIdx / 8] >> (7 - bitIdx % 8) & 1);
-        bitIdx++;
+    inline uint32_t GetBitToUint32(const uint8_t *data, size_t &bit_idx) {
+        uint32_t ret = (data[bit_idx / 8] >> (7 - bit_idx % 8) & 1);
+        bit_idx++;
         return ret;
     }
 
-    inline uint32_t ReadBits(const uint8_t *data, size_t &startBitIdx, size_t bitsToRead) {
-        if (bitsToRead > 32) {
+    inline uint32_t ReadBits(const uint8_t *data, size_t &start_bit_idx, size_t bits_to_read) {
+        if (bits_to_read > 32) {
             return 0; // assert(0);
         }
         uint32_t result = 0;
-        for (size_t i = 0; i < bitsToRead; i++) {
+        for (size_t i = 0; i < bits_to_read; i++) {
             result = result << 1;
-            result |= GetBitToUint32(data, startBitIdx); // startBitIdx incremented inside
+            result |= GetBitToUint32(data, start_bit_idx); // start_bit_idx incremented inside
         }
         return result;
     }
 
-    inline size_t CountContiniusZeroBits(const uint8_t *data, size_t &startBitIdx) {
-        size_t startBitIdxOrg = startBitIdx;
-        while (GetBit(data, startBitIdx) == false) {} // startBitIdx incremented inside
-        startBitIdx--; // remove non zero
-        return startBitIdx - startBitIdxOrg;
+    inline size_t CountContiniusZeroBits(const uint8_t *data, size_t &start_bit_idx) {
+        size_t start_bit_idx_org = start_bit_idx;
+        while (GetBit(data, start_bit_idx) == false) {} // start_bit_idx incremented inside
+        start_bit_idx--; // remove non zero
+        return start_bit_idx - start_bit_idx_org;
     }
 
     namespace ExpGolomb {
-        inline uint32_t ReadUe(const uint8_t *data, size_t &startBitIdx) {
-            size_t zeroBitsCount = CountContiniusZeroBits(data, startBitIdx); // startBitIdx incremented inside
-            if (zeroBitsCount > 30) {
+        inline uint32_t ReadUe(const uint8_t *data, size_t &start_bit_idx) {
+            size_t zero_bits_count = CountContiniusZeroBits(data, start_bit_idx); // start_bit_idx incremented inside
+            if (zero_bits_count > 30) {
                 return 0; // assert(0)
             }
 
-            uint32_t leftPart = (0x1 << zeroBitsCount) - 1;
-            startBitIdx++;
-            uint32_t rightPart = ReadBits(data, startBitIdx, zeroBitsCount);
-            return leftPart + rightPart;
+            uint32_t left_part = (0x1 << zero_bits_count) - 1;
+            start_bit_idx++;
+            uint32_t rightPart = ReadBits(data, start_bit_idx, zero_bits_count);
+            return left_part + rightPart;
         }
 
-        inline uint32_t ReadSe(const uint8_t *data, size_t &startBitIdx) {
-            uint32_t ue = ReadUe(data, startBitIdx);
+        inline uint32_t ReadSe(const uint8_t *data, size_t &start_bit_idx) {
+            uint32_t ue = ReadUe(data, start_bit_idx);
             // se From Ue 
             uint32_t mod2 = ue % 2;
             uint32_t r = ue / 2 + mod2;

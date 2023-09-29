@@ -54,16 +54,16 @@ public:
     // interface
     virtual PARSER_RESULT           Open() { return PARSER_OK; };
     virtual PARSER_RESULT           Close();
-    virtual PARSER_RESULT           Read(void* pData, size_t iSize, size_t* pRead);
-    virtual PARSER_RESULT           Write(const void* pData, size_t iSize, size_t* pWritten);
-    virtual PARSER_RESULT           Seek(PARSER_SEEK_ORIGIN eOrigin, int64_t iPosition, int64_t* pNewPosition);
-    virtual PARSER_RESULT           GetPosition(int64_t* pPosition);
-    virtual PARSER_RESULT           GetSize(int64_t* pSize);
+    virtual PARSER_RESULT           Read(void* p_data, size_t size, size_t* p_read);
+    virtual PARSER_RESULT           Write(const void* p_data, size_t size, size_t* p_written);
+    virtual PARSER_RESULT           Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position);
+    virtual PARSER_RESULT           GetPosition(int64_t* p_position);
+    virtual PARSER_RESULT           GetSize(int64_t* p_size);
     virtual bool                    IsSeekable();
     static PARSER_RESULT            OpenDataStream(DataStream** str);
 
 protected:
-    PARSER_RESULT Realloc(size_t iSize);
+    PARSER_RESULT Realloc(size_t size);
 
     uint8_t* m_pmemory_;
     size_t m_memory_size_;

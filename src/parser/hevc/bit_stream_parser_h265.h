@@ -24,4 +24,4 @@ THE SOFTWARE.
 
 #include "../common/bit_stream_parser.h"
 
-BitStreamParser* CreateHEVCParser(DataStream* pstream, ParserContext *pcontext);
+BitStreamParser* CreateHEVCParser(DataStream* pstream);

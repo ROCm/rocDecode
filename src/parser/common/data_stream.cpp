@@ -65,93 +65,93 @@ PARSER_RESULT DataStream::Close() {
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::Realloc(size_t iSize) {
-    if (iSize > m_memory_size_) {
-        uint8_t* pNewMemory = new uint8_t [iSize];
-        if (pNewMemory == NULL) {
+PARSER_RESULT DataStream::Realloc(size_t size) {
+    if (size > m_memory_size_) {
+        uint8_t* p_new_memory = new uint8_t [size];
+        if (p_new_memory == NULL) {
             return PARSER_OUT_OF_MEMORY;
         }
-        m_allocated_size_ = iSize;
+        m_allocated_size_ = size;
         if (m_pmemory_ != NULL) {
             delete m_pmemory_;
         }
-        m_pmemory_ = pNewMemory;
+        m_pmemory_ = p_new_memory;
     }
-    m_memory_size_ = iSize;
+    m_memory_size_ = size;
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::Read(void* pData, size_t iSize, size_t* pRead) {
-    if (pData == NULL) {
+PARSER_RESULT DataStream::Read(void* p_data, size_t size, size_t* p_read) {
+    if (p_data == NULL) {
         return PARSER_INVALID_POINTER;
     }
     if (m_pmemory_ == NULL) {
         return PARSER_NOT_INITIALIZED;
     }
-    size_t toRead = std::min(iSize, m_memory_size_ - m_pos_);
-    memcpy(pData, m_pmemory_ + m_pos_, toRead);
-    m_pos_ += toRead;
-    if(pRead != NULL) {
-        *pRead = toRead;
+    size_t to_read = std::min(size, m_memory_size_ - m_pos_);
+    memcpy(p_data, m_pmemory_ + m_pos_, to_read);
+    m_pos_ += to_read;
+    if(p_read != NULL) {
+        *p_read = to_read;
     }
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::Write(const void* pData, size_t iSize, size_t* pWritten) {
-    if (pData == NULL) {
+PARSER_RESULT DataStream::Write(const void* p_data, size_t size, size_t* p_written) {
+    if (p_data == NULL) {
         return PARSER_INVALID_POINTER;
     }
     m_pos_ = 0;
-    if (Realloc(m_pos_ + iSize)) {
+    if (Realloc(m_pos_ + size)) {
         return PARSER_STREAM_NOT_ALLOCATED;
     }
 
-    size_t toWrite = std::min(iSize, m_memory_size_ - m_pos_);
-    memcpy(m_pmemory_ + m_pos_, pData, toWrite);
+    size_t to_write = std::min(size, m_memory_size_ - m_pos_);
+    memcpy(m_pmemory_ + m_pos_, p_data, to_write);
 
-    if(pWritten != NULL) {
-        *pWritten = toWrite;
+    if(p_written != NULL) {
+        *p_written = to_write;
     }
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::Seek(PARSER_SEEK_ORIGIN eOrigin, int64_t iPosition, int64_t* pNewPosition) {
-    switch(eOrigin) {
+PARSER_RESULT DataStream::Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position) {
+    switch(e_origin) {
     case PARSER_SEEK_BEGIN:
-        m_pos_ = (size_t)iPosition;
+        m_pos_ = (size_t)i_position;
         break;
 
     case PARSER_SEEK_CURRENT:
-        m_pos_ += (size_t)iPosition;
+        m_pos_ += (size_t)i_position;
         break;
 
     case PARSER_SEEK_END:
-        m_pos_ = m_memory_size_ - (size_t)iPosition;
+        m_pos_ = m_memory_size_ - (size_t)i_position;
         break;
     }
 
     if(m_pos_ > m_memory_size_) {
         m_pos_ = m_memory_size_;
     }
-    if(pNewPosition != NULL) {
-        *pNewPosition = m_pos_;
+    if(p_new_position != NULL) {
+        *p_new_position = m_pos_;
     }
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::GetPosition(int64_t* pPosition) {
-    if (pPosition != NULL) {
+PARSER_RESULT DataStream::GetPosition(int64_t* p_position) {
+    if (p_position != NULL) {
         return PARSER_INVALID_POINTER;
     }
-    *pPosition = m_pos_;
+    *p_position = m_pos_;
     return PARSER_OK;
 }
 
-PARSER_RESULT DataStream::GetSize(int64_t* pSize) {
-    if (pSize != NULL) {
+PARSER_RESULT DataStream::GetSize(int64_t* p_size) {
+    if (p_size != NULL) {
         return PARSER_INVALID_POINTER;
     }
-    *pSize = m_memory_size_;
+    *p_size = m_memory_size_;
     return PARSER_OK;
 }
 
