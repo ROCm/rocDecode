@@ -29,12 +29,13 @@ THE SOFTWARE.
 #include <algorithm> 
 
 #define PARSER_SECOND          10000000L    // 1 second in 100 nanoseconds
+#define DATA_STREAM_SIZE    10*1024    // allocating buffer to hold video stream
 
-BitStreamParser* CreateHEVCParser(DataStream* pstream);
+BitStreamParser* CreateHEVCParser();
 
 class HevcParser : public BitStreamParser {
 public:
-    HevcParser(DataStream *stream);
+    HevcParser();
     virtual ~HevcParser();
 
     virtual void                    SetFrameRate(double fps);
@@ -463,11 +464,23 @@ protected:
 
     bool           m_use_start_codes_;
     int64_t        m_current_frame_timestamp_;
-    DataStreamPtr  m_pstream_;
     std::map<uint32_t,SpsData> m_sps_map_;
     std::map<uint32_t,PpsData> m_pps_map_;
     size_t         m_packet_count_;
     bool           m_eof_;
     double         m_fps_;
     size_t         m_max_frames_number_;
+
+    // data stream info
+    uint8_t* m_pmemory_;
+    size_t m_memory_size_;
+    size_t m_allocated_size_;
+    size_t m_pos_;
+
+    virtual PARSER_RESULT           Close();
+    virtual PARSER_RESULT           Read(void* p_data, size_t size, size_t* p_read);
+    virtual PARSER_RESULT           Write(const void* p_data, size_t size, size_t* p_written);
+    virtual PARSER_RESULT           Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position);
+    virtual PARSER_RESULT           GetSize(int64_t* p_size);
+    PARSER_RESULT Realloc(size_t size);
 };

@@ -44,7 +44,6 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "../../commons.h"
 #include "result.h"
-#include "data_stream.h"
 #include "byte_array.h"
 #include "parser_buffer.h"
 
@@ -57,6 +56,12 @@ enum BitStreamType {
     BitStream265AnnexB,
     BitStreamIVF,
     BitStreamUnknown
+};
+
+enum PARSER_SEEK_ORIGIN {
+    PARSER_SEEK_BEGIN          = 0,
+    PARSER_SEEK_CURRENT        = 1,
+    PARSER_SEEK_END            = 2,
 };
 
 class BitStreamParser;
@@ -72,9 +77,16 @@ public:
     virtual PARSER_RESULT           ReInit() = 0;
     
     virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_buffer) = 0;
-    static BitStreamParserPtr       Create(DataStream* pstream, BitStreamType type);
+    static BitStreamParserPtr       Create(BitStreamType type);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
     virtual bool                    CheckDataStreamEof(int n_video_bytes) = 0;
+
+    virtual PARSER_RESULT           Close() = 0;
+    virtual PARSER_RESULT           Read(void* p_data, size_t size, size_t* p_read) = 0;
+    virtual PARSER_RESULT           Write(const void* p_data, size_t size, size_t* p_written) = 0;
+    virtual PARSER_RESULT           Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position) = 0;
+    virtual PARSER_RESULT           GetSize(int64_t* p_size) = 0;
+    PARSER_RESULT Realloc(size_t size);
 };
 
 // helpers

@@ -29,32 +29,36 @@ extern int scaling_list_default_1_2[2][6][64];
 //size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
-BitStreamParser* CreateHEVCParser(DataStream* pstream) {
-    return new HevcParser(pstream);
+BitStreamParser* CreateHEVCParser() {
+    return new HevcParser();
 }
 
-HevcParser::HevcParser(DataStream *stream) :
+HevcParser::HevcParser() :
     m_use_start_codes_(false),
     m_current_frame_timestamp_(0),
-    m_pstream_(stream),
     m_packet_count_(0),
     m_eof_(false),
     m_fps_(0),
-    m_max_frames_number_(0) {
+    m_max_frames_number_(0) { 
+        m_pmemory_ = new uint8_t [DATA_STREAM_SIZE];
+        m_allocated_size_ = DATA_STREAM_SIZE;
+        m_memory_size_ = sizeof(m_pmemory_);
+        m_pos_ = 0;
 }
 
 void HevcParser::FindFirstFrameSPSandPPS() {
-    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    Seek(PARSER_SEEK_BEGIN, 0, NULL);
     FindSPSandPPS();
 }
 
 HevcParser::~HevcParser() {
     std::cout << "parsed frames: " << m_packet_count_ << std::endl;
+    Close();
 }
 
 PARSER_RESULT HevcParser::ReInit() {
     m_current_frame_timestamp_ = 0;
-    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    Seek(PARSER_SEEK_BEGIN, 0, NULL);
     m_packet_count_ = 0;
     m_eof_ = false;
     return PARSER_OK;
@@ -100,7 +104,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
             if (m_eof_ == false) {
                 m_read_data_.SetSize(m_read_data_.GetSize() + m_read_size_);
                 ready = 0;
-                m_pstream_->Read(m_read_data_.GetData() + *offset, m_read_size_, &ready);
+                Read(m_read_data_.GetData() + *offset, m_read_size_, &ready);
             }
             if (ready != m_read_size_ && ready != 0) {
                 m_read_data_.SetSize(m_read_data_.GetSize() - (m_read_size_ - ready));
@@ -341,7 +345,7 @@ void HevcParser::FindSPSandPPS() {
         }
     } while (true);
 
-    m_pstream_->Seek(PARSER_SEEK_BEGIN, 0, NULL);
+    Seek(PARSER_SEEK_BEGIN, 0, NULL);
     m_read_data_.SetSize(0);
     // It will fail if SPS or PPS are absent
     extra_data_builder.GetExtradata(m_extra_data_);
@@ -982,6 +986,97 @@ size_t HevcParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t
         streamBuffer_i++;
     }
     return end_bytepos - begin_bytepos + reduce_count;
+}
+
+//data stream functions
+PARSER_RESULT HevcParser::Close() {
+    m_pmemory_ = NULL,
+    m_memory_size_ = 0,
+    m_allocated_size_ = 0,
+    m_pos_ = 0;
+    return PARSER_OK;
+}
+
+PARSER_RESULT HevcParser::Realloc(size_t size) {
+    if (size > m_memory_size_) {
+        uint8_t* p_new_memory = new uint8_t [size];
+        if (p_new_memory == NULL) {
+            return PARSER_OUT_OF_MEMORY;
+        }
+        m_allocated_size_ = size;
+        if (m_pmemory_ != NULL) {
+            delete m_pmemory_;
+        }
+        m_pmemory_ = p_new_memory;
+    }
+    m_memory_size_ = size;
+    return PARSER_OK;
+}
+
+PARSER_RESULT HevcParser::Read(void* p_data, size_t size, size_t* p_read) {
+    if (p_data == NULL) {
+        return PARSER_INVALID_POINTER;
+    }
+    if (m_pmemory_ == NULL) {
+        return PARSER_NOT_INITIALIZED;
+    }
+    size_t to_read = std::min(size, m_memory_size_ - m_pos_);
+    memcpy(p_data, m_pmemory_ + m_pos_, to_read);
+    m_pos_ += to_read;
+    if(p_read != NULL) {
+        *p_read = to_read;
+    }
+    return PARSER_OK;
+}
+
+PARSER_RESULT HevcParser::Write(const void* p_data, size_t size, size_t* p_written) {
+    if (p_data == NULL) {
+        return PARSER_INVALID_POINTER;
+    }
+    m_pos_ = 0;
+    if (Realloc(m_pos_ + size)) {
+        return PARSER_STREAM_NOT_ALLOCATED;
+    }
+
+    size_t to_write = std::min(size, m_memory_size_ - m_pos_);
+    memcpy(m_pmemory_ + m_pos_, p_data, to_write);
+
+    if(p_written != NULL) {
+        *p_written = to_write;
+    }
+    return PARSER_OK;
+}
+
+PARSER_RESULT HevcParser::Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position) {
+    switch(e_origin) {
+    case PARSER_SEEK_BEGIN:
+        m_pos_ = (size_t)i_position;
+        break;
+
+    case PARSER_SEEK_CURRENT:
+        m_pos_ += (size_t)i_position;
+        break;
+
+    case PARSER_SEEK_END:
+        m_pos_ = m_memory_size_ - (size_t)i_position;
+        break;
+    }
+
+    if(m_pos_ > m_memory_size_) {
+        m_pos_ = m_memory_size_;
+    }
+    if(p_new_position != NULL) {
+        *p_new_position = m_pos_;
+    }
+    return PARSER_OK;
+}
+
+PARSER_RESULT HevcParser::GetSize(int64_t* p_size) {
+    if (p_size != NULL) {
+        return PARSER_INVALID_POINTER;
+    }
+    *p_size = m_memory_size_;
+    return PARSER_OK;
 }
 
 //size_id = 0
