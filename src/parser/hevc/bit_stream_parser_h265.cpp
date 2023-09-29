@@ -85,56 +85,6 @@ ParserRect HevcParser::GetCropRect() const {
     return rect;
 }
 
-int  HevcParser::GetOffsetX() const {
-    return GetCropRect().left;
-}
-
-int  HevcParser::GetOffsetY() const {
-    return GetCropRect().top;
-}
-
-int HevcParser::GetPictureWidth() const {
-    return GetCropRect().Width();
-}
-
-int HevcParser::GetPictureHeight() const {
-    return GetCropRect().Height();
-}
-
-int HevcParser::GetAlignedWidth() const {
-    if(m_sps_map_.size() == 0) {
-        return 0;
-    }
-    const SpsData &sps = m_sps_map_.cbegin()->second;
-
-    int32_t blocksize = sps.log2_min_luma_coding_block_size_minus3+3;
-    int width =int(sps.pic_width_in_luma_samples / (1<<blocksize) * (1<<blocksize));
-    return width;
-}
-
-int HevcParser::GetAlignedHeight() const {
-    if(m_sps_map_.size() == 0) {
-        return 0;
-    }
-    const SpsData &sps = m_sps_map_.cbegin()->second;
-
-    int32_t blocksize = sps.log2_min_luma_coding_block_size_minus3+3;
-    int height = int(sps.pic_height_in_luma_samples / (1<<blocksize) * (1<<blocksize));
-    return height;
-}
-
-const unsigned char* HevcParser::GetExtraData() const {
-    return m_extra_data_.GetData();
-}
-
-size_t HevcParser::GetExtraDataSize() const {
-    return m_extra_data_.GetSize();
-};
-
-void HevcParser::SetUseStartCodes(bool b_use) {
-    m_use_start_codes_ = b_use;
-}
-
 void HevcParser::SetFrameRate(double fps) {
     m_fps_ = fps;
 }
@@ -152,21 +102,6 @@ double HevcParser::GetFrameRate() const {
         }
     }
     return 25.0;
-}
-
-void HevcParser::GetFrameRate(ParserRate *frame_rate) const {
-    if(m_sps_map_.size() > 0) {
-        const SpsData &sps = m_sps_map_.cbegin()->second;
-        if(sps.vui_parameters_present_flag && sps.vui_parameters.vui_timing_info_present_flag && sps.vui_parameters.vui_num_units_in_tick) {
-            // according to the latest h264 standard nuit_field_based_flag is always = 1 and therefore this must be divided by two 
-            // some old clips may get wrong FPS. This is just a sample. Use container information
-            frame_rate->num = sps.vui_parameters.vui_time_scale / 2;
-            frame_rate->den = sps.vui_parameters.vui_num_units_in_tick;
-            return;
-        }
-    }
-    frame_rate->num = 0;
-    frame_rate->den = 0;
 }
 
 HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *nalu, size_t *size) {

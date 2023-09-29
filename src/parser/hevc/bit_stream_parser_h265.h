@@ -36,22 +36,9 @@ public:
     HevcParser(DataStream *stream);
     virtual ~HevcParser();
 
-    virtual int                     GetOffsetX() const;
-    virtual int                     GetOffsetY() const;
-    virtual int                     GetPictureWidth() const;
-    virtual int                     GetPictureHeight() const;
-    virtual int                     GetAlignedWidth() const;
-    virtual int                     GetAlignedHeight() const;
-
-    virtual void                    SetMaxFramesNumber(size_t num) { m_max_frames_number_ = num; }
-
-    virtual const unsigned char*    GetExtraData() const;
-    virtual size_t                  GetExtraDataSize() const;
-    virtual void                    SetUseStartCodes(bool b_use);
     virtual void                    SetFrameRate(double fps);
     virtual double                  GetFrameRate()  const;
     virtual PARSER_RESULT           ReInit();
-    virtual void                    GetFrameRate(ParserRate *frame_rate) const;
     virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_data);
     virtual void                    FindFirstFrameSPSandPPS();
     virtual bool                    CheckDataStreamEof(int n_video_bytes);
@@ -179,7 +166,7 @@ protected:
         uint32_t sub_layer_level_idc[6];                     //u(8)
     } H265ProfileTierLevel;
 
-#define H265_SCALING_LIST_NUM 6         ///< list number for quantization matrix
+#define H265_SCALING_LIST_NUM 6                              ///< list number for quantization matrix
 #define H265_SCALING_LIST_MAX_I 64
 
     typedef struct {

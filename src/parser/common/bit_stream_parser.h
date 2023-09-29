@@ -68,22 +68,9 @@ class BitStreamParser {
 public:
     virtual ~BitStreamParser();
 
-    virtual int                     GetOffsetX() const = 0;
-    virtual int                     GetOffsetY() const = 0;
-    virtual int                     GetPictureWidth() const = 0;
-    virtual int                     GetPictureHeight() const = 0;
-    virtual int                     GetAlignedWidth() const = 0;
-    virtual int                     GetAlignedHeight() const = 0;
-
-    virtual void                    SetMaxFramesNumber(size_t num) = 0;
-
-    virtual const unsigned char*    GetExtraData() const = 0;
-    virtual size_t                  GetExtraDataSize() const = 0;
-    virtual void                    SetUseStartCodes(bool b_use) = 0;
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
     virtual PARSER_RESULT           ReInit() = 0;
-    virtual void                    GetFrameRate(ParserRate *frame_rate) const = 0;
     
     virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_buffer) = 0;
     static BitStreamParserPtr       Create(DataStream* pstream, BitStreamType type);
