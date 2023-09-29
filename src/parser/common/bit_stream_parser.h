@@ -42,7 +42,7 @@ THE SOFTWARE.
 #include <chrono>
 #include <ctime>
 #include <hip/hip_runtime.h>
-#include "log.h"
+#include "../../commons.h"
 #include "result.h"
 #include "data_stream.h"
 #include "byte_array.h"
