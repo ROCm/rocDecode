@@ -66,25 +66,6 @@ static const int s_win_unit_y[]={1,2,1,1};
 static int GetWinUnitX (int chromaFormatIdc) { return s_win_unit_x[chromaFormatIdc]; }
 // static int GetWinUnitX (int chromaFormatIdc) { return s_win_unit_y[chromaFormatIdc]; }
 
-ParserRect HevcParser::GetCropRect() const {
-    ParserRect rect ={0};
-    if(m_sps_map_.size() == 0) {
-        return rect;
-    }
-    const SpsData &sps = m_sps_map_.cbegin()->second;
-
-    rect.right = int32_t(sps.pic_width_in_luma_samples);
-    rect.bottom = int32_t(sps.pic_height_in_luma_samples);
-
-    if (sps.conformance_window_flag) {
-        rect.left += GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_left_offset;
-        rect.right -= GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_right_offset;
-        rect.top += GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_top_offset;
-        rect.bottom -= GetWinUnitX(sps.chroma_format_idc) * sps.conf_win_bottom_offset;
-    }
-    return rect;
-}
-
 void HevcParser::SetFrameRate(double fps) {
     m_fps_ = fps;
 }

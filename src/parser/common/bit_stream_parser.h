@@ -46,7 +46,6 @@ THE SOFTWARE.
 #include "result.h"
 #include "data_stream.h"
 #include "byte_array.h"
-#include "platform.h"
 #include "parser_buffer.h"
 
 enum BitStreamType {

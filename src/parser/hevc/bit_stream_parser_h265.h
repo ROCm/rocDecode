@@ -28,8 +28,9 @@ THE SOFTWARE.
 #include <vector>
 #include <algorithm> 
 
-BitStreamParser* CreateHEVCParser(DataStream* pstream);
+#define PARSER_SECOND          10000000L    // 1 second in 100 nanoseconds
 
+BitStreamParser* CreateHEVCParser(DataStream* pstream);
 
 class HevcParser : public BitStreamParser {
 public:
@@ -454,7 +455,6 @@ protected:
         return nalu_header;
     }
     size_t EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos);
-    ParserRect GetCropRect() const;
 
     ByteArray   m_read_data_;
     ByteArray   m_extra_data_;
