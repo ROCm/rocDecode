@@ -32,7 +32,6 @@ THE SOFTWARE.
 #define DATA_STREAM_SIZE    10*1024    // allocating buffer to hold video stream
 
 BitStreamParser* CreateHEVCParser();
-
 class HevcParser : public BitStreamParser {
 public:
     HevcParser();
