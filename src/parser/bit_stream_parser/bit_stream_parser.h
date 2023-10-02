@@ -73,19 +73,19 @@ public:
 
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
-    virtual ParserResult           ReInit() = 0;
+    virtual ParserResult            ReInit() = 0;
     
-    virtual ParserResult           QueryOutput(ParserBuffer** pp_buffer) = 0;
+    virtual ParserResult            QueryOutput(ParserBuffer** pp_buffer) = 0;
     static BitStreamParserPtr       Create(BitStreamType type);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
     virtual bool                    CheckDataStreamEof(int n_video_bytes) = 0;
 
-    virtual ParserResult           Close() = 0;
-    virtual ParserResult           Read(void* p_data, size_t size, size_t* p_read) = 0;
-    virtual ParserResult           Write(const void* p_data, size_t size, size_t* p_written) = 0;
-    virtual ParserResult           Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position) = 0;
-    virtual ParserResult           GetSize(int64_t* p_size) = 0;
-    ParserResult Realloc(size_t size);
+    virtual ParserResult            Close() = 0;
+    virtual ParserResult            Read(void* p_data, size_t size, size_t* p_read) = 0;
+    virtual ParserResult            Write(const void* p_data, size_t size, size_t* p_written) = 0;
+    virtual ParserResult            Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position) = 0;
+    virtual ParserResult            GetSize(int64_t* p_size) = 0;
+    ParserResult                    Realloc(size_t size);
 };
 
 // helpers

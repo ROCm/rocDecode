@@ -42,7 +42,7 @@ public:
     ParserBuffer();
     virtual ~ParserBuffer();
 
-    virtual ParserResult     SetSize(size_t new_size);
+    virtual ParserResult      SetSize(size_t new_size);
     virtual size_t            GetSize();
     virtual void*             GetNative();
     virtual void              SetNative(size_t size);
@@ -54,7 +54,7 @@ public:
     virtual void              SetDuration(int64_t duration);
     virtual int64_t           GetDuration() const;
 
-    static ParserResult     AllocBuffer(ParserMemoryType type, size_t size, ParserBuffer** pp_buffer);
+    static ParserResult       AllocBuffer(ParserMemoryType type, size_t size, ParserBuffer** pp_buffer);
 
 private:
     int64_t     m_current_timestamp_;

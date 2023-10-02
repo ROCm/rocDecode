@@ -115,8 +115,8 @@ public:
 
     virtual void                    SetFrameRate(double fps);
     virtual double                  GetFrameRate()  const;
-    virtual ParserResult           ReInit();
-    virtual ParserResult           QueryOutput(ParserBuffer** pp_data);
+    virtual ParserResult            ReInit();
+    virtual ParserResult            QueryOutput(ParserBuffer** pp_data);
     virtual void                    FindFirstFrameSPSandPPS();
     virtual bool                    CheckDataStreamEof(int n_video_bytes);
 
