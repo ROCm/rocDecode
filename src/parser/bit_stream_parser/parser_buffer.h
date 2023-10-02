@@ -31,18 +31,18 @@ THE SOFTWARE.
 #include <chrono>
 #include "result.h"
 
-typedef enum PARSER_MEMORY_TYPE {
+typedef enum ParserMemoryType {
     PARSER_MEMORY_UNKNOWN          = 0,
     PARSER_MEMORY_HOST             = 1,
     PARSER_MEMORY_HIP              = 2,
-} PARSER_MEMORY_TYPE;
+} ParserMemoryType;
 
 class ParserBuffer  {
 public:
     ParserBuffer();
     virtual ~ParserBuffer();
 
-    virtual PARSER_RESULT     SetSize(size_t new_size);
+    virtual ParserResult     SetSize(size_t new_size);
     virtual size_t            GetSize();
     virtual void*             GetNative();
     virtual void              SetNative(size_t size);
@@ -54,7 +54,7 @@ public:
     virtual void              SetDuration(int64_t duration);
     virtual int64_t           GetDuration() const;
 
-    static PARSER_RESULT     AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** pp_buffer);
+    static ParserResult     AllocBuffer(ParserMemoryType type, size_t size, ParserBuffer** pp_buffer);
 
 private:
     int64_t     m_current_timestamp_;

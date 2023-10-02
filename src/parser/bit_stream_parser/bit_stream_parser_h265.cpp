@@ -56,7 +56,7 @@ HevcParser::~HevcParser() {
     Close();
 }
 
-PARSER_RESULT HevcParser::ReInit() {
+ParserResult HevcParser::ReInit() {
     m_current_frame_timestamp_ = 0;
     Seek(PARSER_SEEK_BEGIN, 0, NULL);
     m_packet_count_ = 0;
@@ -160,7 +160,7 @@ HevcParser::NalUnitHeader HevcParser::ReadNextNaluUnit(size_t *offset, size_t *n
     return GetNaluUnitType(m_read_data_.GetData() + *nalu);
 }
 
-PARSER_RESULT HevcParser::QueryOutput(ParserBuffer** pp_data) {
+ParserResult HevcParser::QueryOutput(ParserBuffer** pp_data) {
     if ((m_eof_ && m_read_data_.GetSize() == 0) || m_max_frames_number_ && m_packet_count_ >= m_max_frames_number_) {
         return PARSER_EOF;
     }
@@ -253,7 +253,7 @@ PARSER_RESULT HevcParser::QueryOutput(ParserBuffer** pp_data) {
         }
     } while (!new_picture_detected);
 
-    PARSER_RESULT ar = ParserBuffer::AllocBuffer(PARSER_MEMORY_HOST, packet_size, pp_data);
+    ParserResult ar = ParserBuffer::AllocBuffer(PARSER_MEMORY_HOST, packet_size, pp_data);
     if (ar != PARSER_OK) {
         return ar;
     }
@@ -989,7 +989,7 @@ size_t HevcParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t
 }
 
 //data stream functions
-PARSER_RESULT HevcParser::Close() {
+ParserResult HevcParser::Close() {
     m_pmemory_ = NULL,
     m_memory_size_ = 0,
     m_allocated_size_ = 0,
@@ -997,7 +997,7 @@ PARSER_RESULT HevcParser::Close() {
     return PARSER_OK;
 }
 
-PARSER_RESULT HevcParser::Realloc(size_t size) {
+ParserResult HevcParser::Realloc(size_t size) {
     if (size > m_memory_size_) {
         uint8_t* p_new_memory = new uint8_t [size];
         if (p_new_memory == NULL) {
@@ -1013,7 +1013,7 @@ PARSER_RESULT HevcParser::Realloc(size_t size) {
     return PARSER_OK;
 }
 
-PARSER_RESULT HevcParser::Read(void* p_data, size_t size, size_t* p_read) {
+ParserResult HevcParser::Read(void* p_data, size_t size, size_t* p_read) {
     if (p_data == NULL) {
         return PARSER_INVALID_POINTER;
     }
@@ -1029,17 +1029,17 @@ PARSER_RESULT HevcParser::Read(void* p_data, size_t size, size_t* p_read) {
     return PARSER_OK;
 }
 
-PARSER_RESULT HevcParser::Write(const void* p_data, size_t size, size_t* p_written) {
+ParserResult HevcParser::Write(const void* p_data, size_t size, size_t* p_written) {
     if (p_data == NULL) {
         return PARSER_INVALID_POINTER;
     }
     m_pos_ = 0;
-    if (Realloc(m_pos_ + size)) {
+    if (Realloc(size)) {
         return PARSER_STREAM_NOT_ALLOCATED;
     }
 
-    size_t to_write = std::min(size, m_memory_size_ - m_pos_);
-    memcpy(m_pmemory_ + m_pos_, p_data, to_write);
+    size_t to_write = std::min(size, m_memory_size_);
+    memcpy(m_pmemory_, p_data, to_write);
 
     if(p_written != NULL) {
         *p_written = to_write;
@@ -1047,7 +1047,7 @@ PARSER_RESULT HevcParser::Write(const void* p_data, size_t size, size_t* p_writt
     return PARSER_OK;
 }
 
-PARSER_RESULT HevcParser::Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position) {
+ParserResult HevcParser::Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position) {
     switch(e_origin) {
     case PARSER_SEEK_BEGIN:
         m_pos_ = (size_t)i_position;
@@ -1071,7 +1071,7 @@ PARSER_RESULT HevcParser::Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, 
     return PARSER_OK;
 }
 
-PARSER_RESULT HevcParser::GetSize(int64_t* p_size) {
+ParserResult HevcParser::GetSize(int64_t* p_size) {
     if (p_size != NULL) {
         return PARSER_INVALID_POINTER;
     }

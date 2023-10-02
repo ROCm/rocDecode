@@ -24,14 +24,14 @@ THE SOFTWARE.
  * \file
  * \brief The Parser results.
  *
- * \defgroup group_parser_result Parser result definitions.
+ * \defgroup group_ParserResult Parser result definitions.
  * \brief Bit Stream Parser Result codes.
  */
 
 #ifndef RESULT_H
 #define RESULT_H
 
-typedef enum PARSER_RESULT {
+typedef enum ParserResult {
     PARSER_OK                                   = 0,
     PARSER_FAIL                                    ,
 
@@ -76,6 +76,6 @@ typedef enum PARSER_RESULT {
     PARSER_INVALID_RESOLUTION                      ,//invalid resolution (width or height)
     PARSER_CODEC_NOT_SUPPORTED                     ,//codec not supported
     PARSER_SURFACE_FORMAT_NOT_SUPPORTED            ,//surface format not supported
-} PARSER_RESULT;
+} ParserResult;
 
 #endif /* RESULT_H */

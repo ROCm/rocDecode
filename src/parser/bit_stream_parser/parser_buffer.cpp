@@ -59,7 +59,7 @@ void ParserBuffer::SetDuration(int64_t duration) {
 
 bool ParserBuffer::IsReusable() { return PARSER_NOT_IMPLEMENTED; }
 
-PARSER_RESULT ParserBuffer::SetSize(size_t new_size) {
+ParserResult ParserBuffer::SetSize(size_t new_size) {
     m_packet_size_ = new_size;
     return PARSER_OK;
 }
@@ -76,8 +76,8 @@ void ParserBuffer::SetNative(size_t size) {
     m_buffer_ = new uint8_t[size];
 }
 
-PARSER_RESULT ParserBuffer::AllocBuffer(PARSER_MEMORY_TYPE type, size_t size, ParserBuffer** pp_buffer) {
-    PARSER_RESULT res = PARSER_OK;
+ParserResult ParserBuffer::AllocBuffer(ParserMemoryType type, size_t size, ParserBuffer** pp_buffer) {
+    ParserResult res = PARSER_OK;
     switch(type) { 
         case PARSER_MEMORY_HOST: {
             ParserBuffer* p_new_buffer = new ParserBuffer;

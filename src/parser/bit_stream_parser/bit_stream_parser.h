@@ -44,7 +44,6 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "../../commons.h"
 #include "result.h"
-#include "byte_array.h"
 #include "parser_buffer.h"
 
 enum BitStreamType {
@@ -58,7 +57,7 @@ enum BitStreamType {
     BitStreamUnknown
 };
 
-enum PARSER_SEEK_ORIGIN {
+enum ParserSeekOrigin {
     PARSER_SEEK_BEGIN          = 0,
     PARSER_SEEK_CURRENT        = 1,
     PARSER_SEEK_END            = 2,
@@ -74,19 +73,19 @@ public:
 
     virtual void                    SetFrameRate(double fps) = 0;
     virtual double                  GetFrameRate() const = 0;
-    virtual PARSER_RESULT           ReInit() = 0;
+    virtual ParserResult           ReInit() = 0;
     
-    virtual PARSER_RESULT           QueryOutput(ParserBuffer** pp_buffer) = 0;
+    virtual ParserResult           QueryOutput(ParserBuffer** pp_buffer) = 0;
     static BitStreamParserPtr       Create(BitStreamType type);
     virtual void                    FindFirstFrameSPSandPPS() = 0;
     virtual bool                    CheckDataStreamEof(int n_video_bytes) = 0;
 
-    virtual PARSER_RESULT           Close() = 0;
-    virtual PARSER_RESULT           Read(void* p_data, size_t size, size_t* p_read) = 0;
-    virtual PARSER_RESULT           Write(const void* p_data, size_t size, size_t* p_written) = 0;
-    virtual PARSER_RESULT           Seek(PARSER_SEEK_ORIGIN e_origin, int64_t i_position, int64_t* p_new_position) = 0;
-    virtual PARSER_RESULT           GetSize(int64_t* p_size) = 0;
-    PARSER_RESULT Realloc(size_t size);
+    virtual ParserResult           Close() = 0;
+    virtual ParserResult           Read(void* p_data, size_t size, size_t* p_read) = 0;
+    virtual ParserResult           Write(const void* p_data, size_t size, size_t* p_written) = 0;
+    virtual ParserResult           Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position) = 0;
+    virtual ParserResult           GetSize(int64_t* p_size) = 0;
+    ParserResult Realloc(size_t size);
 };
 
 // helpers
