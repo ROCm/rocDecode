@@ -42,7 +42,7 @@ THE SOFTWARE.
 #include <chrono>
 #include <ctime>
 #include <hip/hip_runtime.h>
-#include "../../commons.h"
+#include "../commons.h"
 #include "result.h"
 #include "parser_buffer.h"
 

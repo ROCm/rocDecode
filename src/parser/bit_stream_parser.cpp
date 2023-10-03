@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 
 #include "bit_stream_parser.h"
-#include "bit_stream_parser_h265.h"
+#include "hevc_parser.h"
 
 BitStreamParser::~BitStreamParser() {}
 
@@ -34,7 +34,7 @@ BitStreamParserPtr BitStreamParser::Create(BitStreamType type) {
         ERR(STR("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_IMPLEMENTED)));
         break;
     case BitStream265AnnexB:
-        p_parser = BitStreamParserPtr(CreateHEVCParser());
+        p_parser = BitStreamParserPtr(CreateHEVCVideoParser());
         break;
     default:
         ERR(STR("Error: ") + TOSTR(static_cast<int>(PARSER_NOT_SUPPORTED)));
