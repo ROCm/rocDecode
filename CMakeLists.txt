@@ -57,7 +57,7 @@ if(HIP_FOUND AND Libva_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} Libva::va Libva::va_drm hip::device)
     install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    install(FILES api/rocdecode.h utils/video_demuxer.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+    install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
 else()
     if (NOT HIP_FOUND)

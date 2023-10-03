@@ -19,26 +19,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+#pragma once
 
 #include "roc_video_parser.h"
 
-/**
- * @brief Initializes any parser related stuff for all parsers
- * 
- * @return rocDecStatus : ROCDEC_SUCCESS on success
- */
-rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
-    if(pParams == nullptr) {
-        ERR(STR("Parser parameters are not set for the parser"));
-        return ROCDEC_NOT_INITIALIZED;
-    }
-    // Initialize callback function pointers
-    pfn_sequece_cb_         = pParams->pfnSequenceCallback;             /**< Called before decoding frames and/or whenever there is a fmt change */
-    pfn_decode_picture_cb_  = pParams->pfnDecodePicture;        /**< Called when a picture is ready to be decoded (decode order)         */
-    pfn_display_picture_cb_ = pParams->pfnDisplayPicture;      /**< Called whenever a picture is ready to be displayed (display order)  */
-    pfn_get_sei_message_cb_ = pParams->pfnGetSEIMsg;       /**< Called when all SEI messages are parsed for particular frame        */
+class H264VideoParser : public RocVideoParser {
 
-    parser_params_ = pParams;
-    
-    return ROCDEC_SUCCESS;
-}
+public:
+    /**
+     * @brief Construct a new HEVCParser object
+     * 
+     */
+    H264VideoParser();
+    /**
+     * @brief Derived Function to Initialize the parser
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus Initialize(RocdecParserParams *pParams);
+    /**
+     * @brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
+     * @brief Derived from base class
+     * 
+     * @param pData: Pointer to picture data
+     * @return rocDecStatus: returns success on completion, else error_code for failure
+     */
+    virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData);
+
+private:    
+
+};
