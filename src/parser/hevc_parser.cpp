@@ -29,10 +29,6 @@ extern int scaling_list_default_1_2[2][6][64];
 //size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
-BitStreamParser* CreateHEVCVideoParser() {
-    return new HEVCVideoParser();
-}
-
 /**
  * @brief Constructs a new HEVCVideoParser object
  * 
@@ -68,7 +64,16 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *pParams) {
  * @return rocDecStatus 
  */
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {
-    return ROCDEC_NOT_IMPLEMENTED;
+    if (!CheckDataStreamEof(pData->payload_size)) {
+        Write(pData->payload, pData->payload_size, NULL);
+        Seek(PARSER_SEEK_BEGIN, 0, NULL);
+        FindSPSandPPS();
+
+        ParserBuffer* outputBuffer;
+        outputBuffer = NULL;
+        QueryOutput(&outputBuffer);
+    }
+    return ROCDEC_SUCCESS;
 }
 
 void HEVCVideoParser::FindFirstFrameSPSandPPS() {

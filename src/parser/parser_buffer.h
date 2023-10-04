@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include <memory>
 #include <ctime>
 #include <chrono>
-#include "result.h"
+#include "roc_video_parser.h"
 
 typedef enum ParserMemoryType {
     PARSER_MEMORY_UNKNOWN          = 0,

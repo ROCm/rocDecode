@@ -22,7 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "roc_video_parser.h"
-#include "bit_stream_parser.h"
+#include "parser_buffer.h"
 
 #include <map>
 #include <vector>
@@ -107,8 +107,7 @@ public:
     size_t GetSize() const { return m_size_; }
 };
 
-BitStreamParser* CreateHEVCVideoParser();
-class HEVCVideoParser : public RocVideoParser, public BitStreamParser {
+class HEVCVideoParser : public RocVideoParser {
 
 public:
     /**
@@ -142,38 +141,38 @@ public:
      * @param fps: Value of fps to set in <tt>double</tt>
      * @return void: returns on completion
      */
-    virtual void                    SetFrameRate(double fps);
+    void                    SetFrameRate(double fps);
     /**
      * @brief Function to get the frames per second
      * 
      * @return double: returns fps in <tt>double</tt> on completion.
      */
-    virtual double                  GetFrameRate()  const;
+    double                  GetFrameRate()  const;
     /**
      * @brief Function to reinitialize the HEVC parser. Resets the timestamp, packet count and pointer to beginning of stream.
      * 
      * @return ParserResult: returns PARSER_OK on successful completion.
      */
-    virtual ParserResult            ReInit();
+    ParserResult            ReInit();
     /**
      * @brief Function to get the output buffer in type <tt>ParserBuffer</tt> after parsing the HEVC stream.
      * 
      * @param pp_data: Pointer to pointer to the <tt>ParserBuffer</tt> data which is also the returned.
      * @return ParserResult: returns PARSER_OK on successful completion.
      */
-    virtual ParserResult            QueryOutput(ParserBuffer** pp_data);
+    ParserResult            QueryOutput(ParserBuffer** pp_data);
     /**
      * @brief Function to set the parser to beginning of frame and call the SPS and PPS funtions. 
      * 
      * @return void: returns on completion
      */
-    virtual void                    FindFirstFrameSPSandPPS();
+    void                    FindFirstFrameSPSandPPS();
     /**
      * @brief Function to check if it's the last frame after dumuxing.
      * 
      * @return bool: returns true if last frame, else false.
      */
-    virtual bool                    CheckDataStreamEof(int n_video_bytes);
+    bool                    CheckDataStreamEof(int n_video_bytes);
 
 protected:
     // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
@@ -607,11 +606,11 @@ protected:
     size_t m_allocated_size_;
     size_t m_pos_;
 
-    virtual ParserResult           Close();
-    virtual ParserResult           Read(void* p_data, size_t size, size_t* p_read);
-    virtual ParserResult           Write(const void* p_data, size_t size, size_t* p_written);
-    virtual ParserResult           Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position);
-    virtual ParserResult           GetSize(int64_t* p_size);
-    ParserResult Realloc(size_t size);    
+    ParserResult           Close();
+    ParserResult           Read(void* p_data, size_t size, size_t* p_read);
+    ParserResult           Write(const void* p_data, size_t size, size_t* p_written);
+    ParserResult           Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position);
+    ParserResult           GetSize(int64_t* p_size);
+    ParserResult           Realloc(size_t size);    
 
 };
