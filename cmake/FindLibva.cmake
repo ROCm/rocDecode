@@ -1,19 +1,16 @@
 ################################################################################
-# 
-# MIT License
-# 
-# Copyright (c) 2022 Advanced Micro Devices, Inc.
-# 
+# Copyright (c) 2023 Advanced Micro Devices, Inc.
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,6 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+################################################################################
 
 find_package(Libdrm REQUIRED)
 find_library(LIBVA_LIBRARY NAMES va)
@@ -43,5 +41,12 @@ if(Libva_FOUND)
     target_link_libraries(Libva::va_drm INTERFACE Libdrm::drm)
     set_target_properties(Libva::va_drm PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LIBVA_INCLUDE_DIR}"
         IMPORTED_LOCATION "${LIBVA_DRM_LIBRARY}")
+  endif()
+  if(NOT Libva_FIND_QUIETLY)
+    message("-- ${White}Using Libva -- \n\tLibraries:${LIBVA_LIBRARY} \n\tIncludes:${LIBVA_INCLUDE_DIR}${ColourReset}")
+  endif()
+else()
+  if(Libva_FIND_REQUIRED)
+    message(FATAL_ERROR "{Red}FindLibva -- Libva NOT FOUND${ColourReset}")
   endif()
 endif()

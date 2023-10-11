@@ -1,21 +1,26 @@
 # rocDecode
 rocDecode is a high performance video decode SDK for AMD hardware
 
+
 ## Prerequisites:
 
-* One of the supported GPUs by ROCm: [AMD Radeon&trade; Graphics](https://docs.amd.com/bundle/Hardware_and_Software_Reference_Guide/page/Hardware_and_Software_Support.html)
 * Linux distribution
-  + **Ubuntu** - `20.04` / `22.04`
-* Install [ROCm5.5 or later](https://docs.amd.com)
-  + **Note** - both graphics and rocm use-cases must be installed (i.e., sudo amdgpu-install --usecase=graphics,rocm --no-32).
-* CMake 3.0 or later
-* libva-dev 2.7 or later
-* [FFMPEG n4.4.2 or later](https://github.com/FFmpeg/FFmpeg/releases/tag/n4.4.2)
+  + Ubuntu - `20.04` / `22.04`
+* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
+* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm`
+  + **Note** - both graphics and rocm use-cases must be installed (i.e., sudo amdgpu-install --usecase=graphics,rocm).
+* CMake `3.5` or later
+* libva-dev `2.7` or later
+* [FFMPEG](https://ffmpeg.org/about.html)
+  ```
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
+  ```
 
-* **Note** [vcnDECODE-setup.py](vcnDECODE-setup.py) script can be used for installing all the dependencies
+* **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
 
 ## Build instructions:
-Please follow the instructions below to build and install the vcndecode library.
+Please follow the instructions below to build and install the rocDecode library.
+
 ```
  cd rocDecode
  mkdir build; cd build
@@ -24,8 +29,39 @@ Please follow the instructions below to build and install the vcndecode library.
  sudo make install
 ```
 
+* run tests
+  ```
+  make test
+  ```
+  **NOTE:** run tests with verbose option `make test ARGS="-VV"`
+
+* make package
+  ```
+  sudo make test package
+  ```
+
 ## Samples:
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
 
 ## Docker:
 Docker files to build rocDecode containers are available [here](docker/)
+
+## Documentation
+
+Run the steps below to build documentation locally.
+
+* Doxygen 
+```
+doxygen .Doxyfile
+```
+
+## Tested configurations
+
+* Linux distribution
+  + Ubuntu - `20.04` / `22.04`
+* ROCm: 
+  + rocm-core - `5.6.1.50601-93`
+  + amdgpu-core - `1:5.6.50601-1649308`
+* FFMPEG - `4.2.7` / `4.4.2-0`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* rocDecode Setup Script - `V1.1`

@@ -33,6 +33,15 @@ extern "C" {
     #include <va/va_drmcommon.h>
 }
 
+/*!
+ * \file
+ * \brief The AMD Video Demuxer for  rocDecode Library.
+ *
+ * \defgroup group_amd_rocdecode_videodemuxer videoDemuxer: AMD rocDecode Video Demuxer API
+ * \brief AMD The rocDecode Video Demuxer API.
+ */
+
+
 // Video Demuxer Interface class
 class VideoDemuxer {
     public:
