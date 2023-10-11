@@ -164,7 +164,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
 
   # set license information
   set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 
   # NOTE: ASAN package requires address sanitized libraries and license file
   # BUILD_DEV will be set to OFF for ASAN biulds.
