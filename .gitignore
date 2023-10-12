@@ -1,5 +1,6 @@
 build/
 samples/*/build
 .vscode/
+doxygen_output*
 samples/videoDecode/videodecode_test.cpp
 samples/videoDecodeCMakeLists_test.txt
