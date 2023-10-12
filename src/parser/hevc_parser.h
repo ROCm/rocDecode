@@ -32,80 +32,18 @@ THE SOFTWARE.
 #define DATA_STREAM_SIZE       10*1024      // allocating buffer to hold video stream
 #define INIT_ARRAY_SIZE        1024
 #define ARRAY_MAX_SIZE (1LL << 60LL)        // extremely large maximum size
+#define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 
-class ByteArray {
-protected:
-    uint8_t        *m_pdata_;
-    size_t         m_size_;
-    size_t         m_max_size_;
-public:
-    ByteArray() : m_pdata_(0), m_size_(0), m_max_size_(0) {}
-    ByteArray(const ByteArray &other) : m_pdata_(0), m_size_(0), m_max_size_(0) {
-        *this = other;
-    }
-    ByteArray(size_t num) : m_pdata_(0), m_size_(0), m_max_size_(0) {
-        SetSize(num);
-    }
-    virtual ~ByteArray() {
-        if (m_pdata_ != 0) {
-            delete[] m_pdata_;
-        }
-    }
-    void  SetSize(size_t num) {
-        if (num == m_size_) {
-            return;
-        }
-        if (num < m_size_) {
-            memset(m_pdata_ + num, 0, m_max_size_ - num);
-        }
-        else if (num > m_max_size_) {
-            // This is done to prevent the following error from surfacing
-            // for the p_new_data allocation on some compilers:
-            //     -Werror=alloc-size-larger-than=
-            size_t new_size = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
-            if (new_size > ARRAY_MAX_SIZE) {
-                return;
-            }
-            m_max_size_ = new_size;
+//size_id = 0
+extern int scaling_list_default_0[1][6][16];
+//size_id = 1, 2
+extern int scaling_list_default_1_2[2][6][64];
+//size_id = 3
+extern int scaling_list_default_3[1][2][64];
 
-            uint8_t *p_new_data = new uint8_t[m_max_size_];
-            memset(p_new_data, 0, m_max_size_);
-            if (m_pdata_ != NULL) {
-                memcpy(p_new_data, m_pdata_, m_size_);
-                delete[] m_pdata_;
-            }
-            m_pdata_ = p_new_data;
-        }
-        m_size_ = num;
-    }
-    void Copy(const ByteArray &old) {
-        if (m_max_size_ < old.m_size_) {
-            m_max_size_ = old.m_max_size_;
-            if (m_pdata_ != NULL) {
-                delete[] m_pdata_;
-            }
-            m_pdata_ = new uint8_t[m_max_size_];
-            memset(m_pdata_, 0, m_max_size_);
-        }
-        memcpy(m_pdata_, old.m_pdata_, old.m_size_);
-        m_size_ = old.m_size_;
-    }
-    uint8_t    operator[] (size_t iPos) const {
-        return m_pdata_[iPos];
-    }
-    uint8_t&    operator[] (size_t iPos) {
-        return m_pdata_[iPos];
-    }
-    ByteArray&    operator=(const ByteArray &other) {
-        SetSize(other.GetSize());
-        if (GetSize() > 0) {
-            memcpy(GetData(), other.GetData(), GetSize());
-        }
-        return *this;
-    }
-    uint8_t *GetData() const { return m_pdata_; }
-    size_t GetSize() const { return m_size_; }
-};
+#define MAX_VPS_COUNT 16
+#define MAX_SPS_COUNT 16
+#define MAX_PPS_COUNT 64
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -134,45 +72,6 @@ public:
      * 
      */
     virtual ~HEVCVideoParser();
-
-    /**
-     * @brief Function to set the frames per second
-     * 
-     * @param fps: Value of fps to set in <tt>double</tt>
-     * @return void: returns on completion
-     */
-    void                    SetFrameRate(double fps);
-    /**
-     * @brief Function to get the frames per second
-     * 
-     * @return double: returns fps in <tt>double</tt> on completion.
-     */
-    double                  GetFrameRate()  const;
-    /**
-     * @brief Function to reinitialize the HEVC parser. Resets the timestamp, packet count and pointer to beginning of stream.
-     * 
-     * @return ParserResult: returns PARSER_OK on successful completion.
-     */
-    ParserResult            ReInit();
-    /**
-     * @brief Function to get the output buffer in type <tt>ParserBuffer</tt> after parsing the HEVC stream.
-     * 
-     * @param pp_data: Pointer to pointer to the <tt>ParserBuffer</tt> data which is also the returned.
-     * @return ParserResult: returns PARSER_OK on successful completion.
-     */
-    ParserResult            QueryOutput(ParserBuffer** pp_data);
-    /**
-     * @brief Function to set the parser to beginning of frame and call the SPS and PPS funtions. 
-     * 
-     * @return void: returns on completion
-     */
-    void                    FindFirstFrameSPSandPPS();
-    /**
-     * @brief Function to check if it's the last frame after dumuxing.
-     * 
-     * @return bool: returns true if last frame, else false.
-     */
-    bool                    CheckDataStreamEof(int n_video_bytes);
 
 protected:
     // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
@@ -319,7 +218,7 @@ protected:
 
     typedef struct {
         int32_t num_of_pics;
-        int32_t POCs[32];
+        int32_t pocs[32];
         bool used_by_curr_pic[32];
     } H265LongTermRPS;
 
@@ -406,7 +305,43 @@ protected:
         uint32_t rbsp_alignment_zero_bit; /* equal to 0 */
     } H265RbspTrailingBits;
 
-    struct SpsData {
+    typedef struct{
+        uint32_t vps_video_parameter_set_id;                    //u(4)
+        uint32_t vps_reserved_three_2bits;                      //u(2)
+        uint32_t vps_max_layers_minus1;                         //u(6)
+        uint32_t vps_max_sub_layers_minus1;                     //u(3)
+        bool vps_temporal_id_nesting_flag;                   //u(1)
+        uint32_t vps_reserved_0xffff_16bits;                    //u(16)
+        //profile_tier_level( vps_max_sub_layers_minus1 )
+        H265ProfileTierLevel profile_tier_level;
+        bool vps_sub_layer_ordering_info_present_flag;       //u(1)
+        //vps_max_sub_layers_minus1 max is 6, need to +1
+        uint32_t vps_max_dec_pic_buffering_minus1[7];           //ue(v)
+        uint32_t vps_max_num_reorder_pics[7];                   //ue(v)
+        uint32_t vps_max_latency_increase_plus1[7];             //ue(v)
+        uint32_t vps_max_layer_id;                              //u(6)
+        uint32_t vps_num_layer_sets_minus1;                     //ue(v)
+        //vps_num_layer_sets_minus1 max is  1023  (dont +1 since starts from 1)
+        //vps_max_layer_id max is 62                   (+1 since starts from 0 and <= condition)
+        bool layer_id_included_flag[1023][63];                         //u(1)
+        bool vps_timing_info_present_flag;                   //u(1)
+        uint32_t vps_num_units_in_tick;                         //u(32)
+        uint32_t vps_time_scale;                                //u(32)
+        bool vps_poc_proportional_to_timing_flag;            //u(1)
+        uint32_t vps_num_ticks_poc_diff_one_minus1;             //ue(v)
+        uint32_t vps_num_hrd_parameters;                        //ue(v)
+        //vps_num_hrd_parameters max is 1024
+        uint32_t hrd_layer_set_idx[1024];                       //ue(v)
+        bool cprms_present_flag[1024];                       //u(1)
+        //hrd_parameters()
+        H265HrdParameters hrd_parameters[1024];
+        bool vps_extension_flag;                             //u(1)
+        bool vps_extension_data_flag;                        //u(1)
+        //rbsp_trailing_bits()
+        H265RbspTrailingBits rbsp_trailing_bits;
+    } VpsData;
+
+    typedef struct {
         uint32_t sps_video_parameter_set_id;                 //u(4)
         uint32_t sps_max_sub_layers_minus1;                  //u(3)
         bool sps_temporal_id_nesting_flag;                   //u(1)
@@ -452,8 +387,8 @@ protected:
         bool pcm_loop_filter_disabled_flag;                  //u(1)
         uint32_t num_short_term_ref_pic_sets;                //ue(v)
         //short_term_ref_pic_set(i) max is 64
-        H265ShortTermRPS stRPS[64];
-        H265LongTermRPS ltRPS;
+        H265ShortTermRPS st_rps[64];
+        H265LongTermRPS lt_rps;
         //H265_short_term_ref_pic_set_t short_term_ref_pic_set[64];
         bool long_term_ref_pics_present_flag;                //u(1)
         uint32_t num_long_term_ref_pics_sps;                 //ue(v)
@@ -469,21 +404,9 @@ protected:
         bool sps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
         H265RbspTrailingBits rbsp_trailing_bits;
+    } SpsData;
 
-        SpsData(void) {
-            memset(this, 0, sizeof(*this));
-        }
-
-        bool Parse(uint8_t *data, size_t size);
-        void ParsePTL(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
-        void ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t CpbCnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
-        void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
-        static void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size,size_t &offset);
-        void ParseVUI(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size,size_t &offset);
-        void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
-    };
-
-    struct PpsData {
+    typedef struct {
         uint32_t pps_pic_parameter_set_id;                   //ue(v)
         uint32_t pps_seq_parameter_set_id;                   //ue(v)
         bool dependent_slice_segments_enabled_flag;          //u(1)
@@ -532,47 +455,72 @@ protected:
         bool pps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
         H265RbspTrailingBits rbsp_trailing_bits;
-        PpsData(void) {
-            memset(this, 0, sizeof(*this));
-        }
-        bool Parse(uint8_t *data, size_t size);
-    };
+    } PpsData;
 
-    // See ITU-T Rec. H.264 (04/2013) Advanced video coding for generic audiovisual services, page 28, 91.
-    struct AccessUnitSigns {
-        bool b_new_picture;
-        AccessUnitSigns() : b_new_picture(false) {}
-        bool Parse(uint8_t *data, size_t size, std::map<uint32_t,SpsData> &sps_map, std::map<uint32_t,PpsData> &pps_map);
-        bool IsNewPicture();
-    };
+    typedef struct {
+        uint32_t prev_poc;
+        uint32_t curr_poc;
+        uint32_t prev_poc_lsb;
+        uint32_t prev_poc_msb;
+        uint32_t curr_poc_lsb;
+        uint32_t curr_poc_msb;
+        uint32_t max_poc_lsb;
+    } SliceData;
 
-    class ExtraDataBuilder {
-    public:
-        ExtraDataBuilder() : m_sps_count_(0), m_pps_count_(0) {}
+    typedef struct {
+        bool first_slice_segment_in_pic_flag;                //u(1)
+        bool no_output_of_prior_pics_flag;                   //u(1)
+        uint32_t slice_pic_parameter_set_id;                 //ue(v)
+        bool dependent_slice_segment_flag;                   //u(1)
+        uint32_t slice_segment_address;                      //u(v)
+        //num_extra_slice_header_bits is u(3), so max is 7
+        bool slice_reserved_flag[7];                         //u(1)
+        uint32_t slice_type;                                 //ue(v)
+        bool pic_output_flag;                                //u(1)
+        uint32_t colour_plane_id;                            //u(2)
+        uint32_t slice_pic_order_cnt_lsb;                    //u(v)
+        bool short_term_ref_pic_set_sps_flag;                //u(1)
+        //short_term_ref_pic_set( num_short_term_ref_pic_sets )
+        uint32_t              short_term_ref_pic_set_size; //MM
+        H265ShortTermRPS st_rps;
+        uint32_t short_term_ref_pic_set_idx;                 //u(v)
+        uint32_t num_long_term_sps;                          //ue(v)
+        uint32_t num_long_term_pics;                         //ue(v)
+        //num_long_term_sps + num_long_term_pics max is 32
+        H265LongTermRPS lt_rps;
+        uint32_t lt_idx_sps[32];                             //u(v)
+        uint32_t poc_lsb_lt[32];                             //u(v)
+        bool used_by_curr_pic_lt_flag[32];                   //u(1)
+        bool delta_poc_msb_present_flag[32];                 //u(1)
+        uint32_t delta_poc_msb_cycle_lt[32];                 //ue(v)
+        bool slice_temporal_mvp_enabled_flag;                //u(1)
+        bool slice_sao_luma_flag;                            //u(1)
+        bool slice_sao_chroma_flag;                          //u(1)
+        bool num_ref_idx_active_override_flag;               //u(1)
+        uint32_t num_ref_idx_l0_active_minus1;               //ue(v)
+        uint32_t num_ref_idx_l1_active_minus1;               //ue(v)
+        bool mvd_l1_zero_flag;                               //u(1)
+        bool cabac_init_flag;                                //u(1)
+        bool collocated_from_l0_flag;                        //u(1)
+        uint32_t collocated_ref_idx;                         //ue(v)
+        uint32_t five_minus_max_num_merge_cand;              //ue(v)
+        int32_t slice_qp_delta;                              //se(v)
+        int32_t slice_cb_qp_offset;                          //se(v)
+        int32_t slice_cr_qp_offset;                          //se(v)
+        bool deblocking_filter_override_flag;                //u(1)
+        bool slice_deblocking_filter_disabled_flag;          //u(1)
+        int32_t slice_beta_offset_div2;                      //se(v)
+        int32_t slice_tc_offset_div2;                        //se(v)
+        bool slice_loop_filter_across_slices_enabled_flag;   //u(1)
+        uint32_t num_entry_point_offsets;                    //ue(v)
+        uint32_t offset_len_minus1;                          //ue(v)
+        //num_entry_point_offsets max is 440
+        uint32_t entry_point_offset_minus1[440];             //u(v)
+        uint32_t slice_segment_header_extension_length;      //ue(v)
+        //slice_segment_header_extension_length max is 256
+        uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
+    } SliceHeaderData;
 
-        void AddSPS(uint8_t *sps, size_t size);
-        void AddPPS(uint8_t *pps, size_t size);
-        bool GetExtradata(ByteArray   &extradata);
-
-    private:
-        ByteArray    m_sps_;
-        ByteArray    m_pps_;
-        int32_t      m_sps_count_;
-        int32_t      m_pps_count_;
-    };
-
-    friend struct AccessUnitSigns;
-
-    static const uint8_t nal_unit_length_size_ = 4U;
-
-    static const size_t m_read_size_ = 1024*4;
-
-    static const uint16_t max_sps_size_ = 0xFFFF;
-    static const uint16_t min_sps_size_ = 5;
-    static const uint16_t max_pps_size_ = 0xFFFF;
-
-    NalUnitHeader ReadNextNaluUnit(size_t *offset, size_t *nalu, size_t *size);
-    void          FindSPSandPPS();
     static inline NalUnitHeader GetNaluUnitType(uint8_t *nal_unit) {
         NalUnitHeader nalu_header;
         nalu_header.num_emu_byte_removed = 0;
@@ -586,31 +534,35 @@ protected:
     }
     size_t EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos);
 
-    ByteArray   m_read_data_;
-    ByteArray   m_extra_data_;
-    
-    ByteArray   m_EBSP_to_RBSP_data_;
+    //new internal AMF porting
+    uint32_t            m_active_vps_;
+    uint32_t            m_active_sps_;
+    uint32_t            m_active_pps_;
+    VpsData*            m_vps_;
+    SpsData*            m_sps_;
+    PpsData*            m_pps_;
+    SliceHeaderData*    m_sh_;
+    SliceHeaderData*    m_sh_copy_;
+    SliceData*          m_slice_;
+    bool                b_new_picture_;
 
-    bool           m_use_start_codes_;
-    int64_t        m_current_frame_timestamp_;
-    std::map<uint32_t,SpsData> m_sps_map_;
-    std::map<uint32_t,PpsData> m_pps_map_;
-    size_t         m_packet_count_;
-    bool           m_eof_;
-    double         m_fps_;
-    size_t         m_max_frames_number_;
+    void ParseVps(uint8_t *nalu, size_t size);
+    void ParseSps(uint8_t *nalu, size_t size);
+    void ParsePps(uint8_t *nalu, size_t size);
+    void ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
+    void ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
+    void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
+    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size,size_t &offset);
+    void ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size, size_t &offset);
+    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
+    bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
+    bool DecodeBuffer(const uint8_t* buf, NalUnitHeader nalu_header, uint32_t nalu_size);
 
-    // data stream info
-    uint8_t* m_pmemory_;
-    size_t m_memory_size_;
-    size_t m_allocated_size_;
-    size_t m_pos_;
-
-    ParserResult           Close();
-    ParserResult           Read(void* p_data, size_t size, size_t* p_read);
-    ParserResult           Write(const void* p_data, size_t size, size_t* p_written);
-    ParserResult           Seek(ParserSeekOrigin e_origin, int64_t i_position, int64_t* p_new_position);
-    ParserResult           GetSize(int64_t* p_size);
-    ParserResult           Realloc(size_t size);    
-
+private:
+    ParserResult Init();
+    VpsData*         AllocVps();
+    SpsData*         AllocSps();
+    PpsData*         AllocPps();
+    SliceData*       AllocSlice();
+    SliceHeaderData* AllocSliceHeader();
 };

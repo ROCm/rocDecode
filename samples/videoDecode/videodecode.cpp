@@ -28,8 +28,12 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
+#include <fstream>
 #include "video_demuxer.hpp"
 #include "rocdecode.h"
+#include "rocparser.h"
+#include "../../src/parser/hevc_parser.h"
+#include "../../src/parser/parser_buffer.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -79,8 +83,17 @@ int main(int argc, char **argv) {
     }
 
     VideoDemuxer demuxer(inputFilePath.c_str());
+    ParserBuffer* outputBuffer;
+    RocdecVideoParser parser_handle;
+    RocdecParserParams parser_params;
+    parser_params.CodecType = rocDecVideoCodec_HEVC;
+    rocDecStatus roc_dec_status;
+    RocdecSourceDataPacket parser_packet; // TODO: in place of parser_buffer??
+    ParserResult res;
+    std::ofstream fs;
     //VideoDecode viddec(deviceId);
 
+    roc_dec_status = rocDecCreateVideoParser(&parser_handle, &parser_params);
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
 
@@ -100,14 +113,36 @@ int main(int argc, char **argv) {
     uint32_t width, height;
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
+    //parser = BitStreamParser::Create(BitStream265AnnexB);
+    /*if(dumpOutputFrames) {
+        fs.open(outputFilePath.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
+    }*/
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
+        parser_packet.payload_size = nVideoBytes;
+        parser_packet.payload = pVideo;
+        roc_dec_status = rocDecParseVideoData(parser_handle, &parser_packet);
+        /*if (parser->CheckDataStreamEof(nVideoBytes)) {
+            break;
+        }
+
+        parser->Write(pVideo, nVideoBytes, NULL);
+        parser->FindFirstFrameSPSandPPS();
+        outputBuffer = NULL;
+        res = parser->QueryOutput(&outputBuffer);
+        if(res != PARSER_OK || outputBuffer == NULL) {
+            return res;
+        }
+        if (fs.is_open()) {
+            std::cout << "size of bytes to write = " << outputBuffer->GetSize() << std::endl;
+            fs.write((const char*)outputBuffer->GetNative(), outputBuffer->GetSize());
+        }
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
-        totalDecTime += timePerFrame;
+        totalDecTime += timePerFrame;*/
         /*if (!nFrame && !viddec.getOutputImageInfo(&pImageInfo)){
             std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
             break;
@@ -121,8 +156,10 @@ int main(int argc, char **argv) {
                 viddec.releaseFrame(pts);*/
             }
         }
+        printf("I am here! \n");
         nFrame += nFrameReturned;
     } while (nVideoBytes);
+    fs.close();
 
      // Flush last frames from the decoder if any
     do {
