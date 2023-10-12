@@ -29,7 +29,7 @@ THE SOFTWARE.
  * \brief The AMD rocParser Library.
  *
  * \defgroup group_amd_rocdecode rocDecode: AMD Decode API
- * \brief AMD The rocDECODE is a toolkit to decode videos and images using a hardware-accelerated video/jpeg decoder on AMD’s GPUs.
+ * \brief AMD The rocDECODE is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
  */
 
 #if defined(__cplusplus)

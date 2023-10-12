@@ -6,11 +6,18 @@ rocDecode is a high performance video decode SDK for AMD hardware
 
 * Linux distribution
   + Ubuntu - `20.04` / `22.04`
+
 * [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm`
-  + **Note** - both graphics and rocm use-cases must be installed (i.e., sudo amdgpu-install --usecase=graphics,rocm).
+
+* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
+
 * CMake `3.5` or later
+
 * libva-dev `2.7` or later
+  ```
+  sudo apt install libva-dev
+  ```
+
 * [FFMPEG](https://ffmpeg.org/about.html)
   ```
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev

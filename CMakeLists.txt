@@ -156,10 +156,10 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
     set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode address sanitizer libraries")
   else()
     set(CPACK_PACKAGE_NAME "rocDecode")
-    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode hardware-accelerated video/jpeg decoder on AMD’s GPUs.
-                 rocDecode is a toolkit to decode videos and images using a hardware-accelerated video/jpeg \
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.
+                 rocDecode is a toolkit to decode videos and images using a hardware-accelerated video \
                 decoder on AMD’s GPUs.")
-    set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode hardware-accelerated video/jpeg decoder on AMD’s GPUs.")
+    set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.")
   endif()
 
   # set license information
