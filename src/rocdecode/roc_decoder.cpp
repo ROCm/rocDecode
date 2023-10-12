@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include "../commons.h"
 #include "roc_decoder.h"
 
-RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, num_devices_{num_devices} {
+RocDecoder::RocDecoder(int device_id):device_id_ {device_id}, num_devices_{0} {
   // todo:: 
     if (ROCDEC_SUCCESS != initHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -32,6 +32,16 @@ RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, n
 
 }
 
+ RocDecoder::~RocDecoder() {
+    // todo::
+    hipError_t hipStatus = hipSuccess;
+    if (hip_stream_) {
+        hipStatus = hipStreamDestroy(hip_stream_);
+        if (hipStatus != hipSuccess) {
+            ERR("ERROR: hipStreamDestroy failed! (" + TOSTR(hipStatus) + ")");
+        }
+    }
+ }
 rocDecStatus RocDecoder::getDecoderCaps(RocdecDecodeCaps *pdc) {
     // todo:: return appropriate decStatus if fails
     //vaQueryConfigProfiles
