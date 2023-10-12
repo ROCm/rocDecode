@@ -20,7 +20,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 set -x
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
-                python rocDECODE-setup.py
+                python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
                 ${enableSCL}
                 cmake ${buildTypeArg} ../..
