@@ -194,9 +194,9 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
 
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST
-      "ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+      "vainfo, libva-dev, ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
   set(rocDecode_RPM_PACKAGE_LIST
-      "ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
+      "libva-devel,ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
   # set dependency to ROCm if set to TRUE, default to OFF
   set(ROCM_DEP_ROCMCORE OFF CACHE BOOL "Set rocm-core dependency")
   if(ROCM_DEP_ROCMCORE)
