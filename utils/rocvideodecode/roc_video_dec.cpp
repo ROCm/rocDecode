@@ -37,7 +37,7 @@ RocVideoDecode::RocVideoDecode(int device_id) : num_devices_{0}, device_id_{devi
 RocVideoDecode::RocVideoDecode(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVideoCodec codec, int device_id, bool b_low_latency, bool device_frame_pitched, 
               const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
               uint32_t clk_rate,  bool force_zero_latency) : hip_ctx_(hip_ctx), b_use_device_mem_(b_use_device_mem), codec_id_(codec), device_id_{device_id}, 
-              b_extract_sei_message_(extract_user_SEI_Message), max_width_ (max_width), max_height_(max_height),
+              b_low_latency_(b_low_latency), b_extract_sei_message_(extract_user_SEI_Message), max_width_ (max_width), max_height_(max_height),
               b_force_zero_latency_(force_zero_latency)
 {
     if (!InitHIP(device_id_)) {
@@ -187,7 +187,7 @@ std::string RocVideoDecode::GetPixFmtName(RocDecImageFormat subsampling) {
 /* Return value from HandleVideoSequence() are interpreted as   :
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::ulMaxNumDecodeSurfaces while creating parser)
 */
-int RocVideoDecode::int HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
+int RocVideoDecode::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     //START_TIMER
     input_video_info_str_.str("");
     input_video_info_str_.clear();
@@ -413,7 +413,7 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             {
                 for (uint32_t i = 0; i < sei_num_messages; i++)
                 {
-                    if (codec_id_ == cudaVideoCodec_H264 || cudaVideoCodec_HEVC)
+                    if (codec_id_ == rocDecVideoCodec_H264 || rocDecVideoCodec_HEVC)
                     {    
                         switch (sei_message[i].sei_message_type)
                         {
@@ -429,7 +429,7 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                             break;
                         }            
                     }
-                    if (m_eCodec == cudaVideoCodec_AV1)
+                    if (m_eCodec == rocDecVideoCodec_AV1)
                     {
                         fwrite(seiBuffer, sei_message[i].sei_message_size, 1, m_fpSEI);
                     }    
@@ -453,86 +453,68 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         std::cerr("Decode Error occurred for picture %d\n", pic_num_in_dec_order_[pDispInfo->picture_index]);
     }
     // copy the decoded surface info device or host
-    uint8_t *pDecodedFrame = nullptr;
+    uint8_t *p_dec_frame = nullptr;
     {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size())
         {
             // Not enough frames in stock
             num_alloced_frames_++;
-            uint8_t *p_frame = NULL;
+            DecFrameBuffer dec_frame = { 0 };
             if (b_use_device_mem_)
             {
-                if (m_bDeviceFramePitched)
-                {
-                    HIP_API_CALL(hipMalloc((CUdeviceptr *)&p_frame, &m_nDeviceFramePitch, GetWidth() * m_nBPP, m_nLumaHeight + (m_nChromaHeight * m_nNumChromaPlanes), 16));
-                }
-                else
-                {
-                    CUDA_DRVAPI_CALL(cuMemAlloc((CUdeviceptr *)&pFrame, GetFrameSize()));
-                }
+                // device memory pointer is always pitched
+                HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
             }
             else
             {
-                pFrame = new uint8_t[GetFrameSize()];
+                dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
             }
-            m_vpFrame.push_back(pFrame);
+            dec_frame.pts = pDispInfo->timestamp;
+            vp_frames_.push_back(dec_frame);
         }
-        pDecodedFrame = m_vpFrame[m_nDecodedFrame - 1];
+        p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1];
     }
 
-    // Copy luma plane
-    CUDA_MEMCPY2D m = { 0 };
-    m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-    m.srcDevice = dpSrcFrame;
-    m.srcPitch = nSrcPitch;
-    m.dstMemoryType = m_bUseDeviceFrame ? CU_MEMORYTYPE_DEVICE : CU_MEMORYTYPE_HOST;
-    m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame);
-    m.dstPitch = m_nDeviceFramePitch ? m_nDeviceFramePitch : GetWidth() * m_nBPP;
-    m.WidthInBytes = GetWidth() * m_nBPP;
-    m.Height = m_nLumaHeight;
-    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
+    // Copy luma data
+    int luma_size = surface_width_ * height_ * byte_per_pixel_;
+    HIP_API_CALL(hipMemcpyAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
 
-    // Copy chroma plane
-    // NVDEC output has luma height aligned by 2. Adjust chroma offset by aligning height
-    m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1));
-    m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame + m.dstPitch * m_nLumaHeight);
-    m.Height = m_nChromaHeight;
-    CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
-
-    if (m_nNumChromaPlanes == 2)
-    {
-        m.srcDevice = (CUdeviceptr)((uint8_t *)dpSrcFrame + m.srcPitch * ((m_nSurfaceHeight + 1) & ~1) * 2);
-        m.dstDevice = (CUdeviceptr)(m.dstHost = pDecodedFrame + m.dstPitch * m_nLumaHeight * 2);
-        m.Height = m_nChromaHeight;
-        CUDA_DRVAPI_CALL(cuMemcpy2DAsync(&m, m_cuvidStream));
-    }
-    CUDA_DRVAPI_CALL(cuStreamSynchronize(m_cuvidStream));
-    CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
-
-    if ((int)m_vTimestamp.size() < m_nDecodedFrame) {
-        m_vTimestamp.resize(m_vpFrame.size());
-    }
-    m_vTimestamp[m_nDecodedFrame - 1] = pDispInfo->timestamp;
-
-    NVDEC_API_CALL(cuvidUnmapVideoFrame(m_hDecoder, dpSrcFrame));
+    // Copy chroma plane ( )
+    // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
+    uint8_t *p_frame_uv = p_dec_frame + surface_width_ * height_ * byte_per_pixel_;
+    int chroma_size = chroma_height_ * surface_width_ * byte_per_pixel_;
+    HIP_API_CALL(hipMemcpyAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
+    HIP_API_CALL(hipStreamSynchronize(hip_stream_));
+    ROCDEC_API_CALL(rocDecUnmapVideoFrame(roc_decoder_, src_dev_ptr[0]));
     return 1;
 }
 
 
-bool RocVideoDecode::DecodeFrame(uint8_t *data, size_t size, int64_t pts) {
-    //TODO implement the DecodeFrame function
-    return false;
+int RocVideoDecode::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
+    int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+    RocdecSourceDataPacket packet = { 0 };
+    packet.payload = data;
+    packet.payload_size = size;
+    packet.flags = pkt_flags | ROCDEC_PKT_TIMESTAMP;
+    packet.pts = pts;
+    if (!data || size == 0) {
+        packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
+    }
+    ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
+
+    return decoded_frame_cnt_;
 }
 
-uint8_t *RocVideoDecode::GetFrame(int64_t *pts) {
-    //TODO implement the GetFrame function
+uint8_t* RocVideoDecode::GetFrame(int64_t *pts) {
+    if (decoded_frame_cnt_ > 0) {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        decoded_frame_cnt_--;
+        if (pTimestamp)
+            *pTimestamp = vp_frames_[decoded_frame_cnt_ret_].pts;
+        return m_vpFrame[decoded_frame_cnt_ret_++].frame_ptr;
+    }
     return nullptr;
-}
-
-bool RocVideoDecode::ReleaseFrame(int64_t pts) {
-    //TODO implement the ReleaseFrame function
-    return false;
 }
 
 void RocVideoDecode::SaveImage(std::string output_file_name, void *dev_mem, OutputImageInfo *image_info, bool is_output_RGB) {
@@ -611,13 +593,6 @@ void RocVideoDecode::GetDeviceinfo(std::string &device_name, std::string &gcn_ar
     drm_node = drm_nodes_[device_id_];
 }
 
-void RocVideoDecode::GetDecoderCaps(ROCDECDECODECAPS &decoder_caps) {
-    //TODO implement the GetDecoderCaps function
-
-}
-
-
-
 
 bool RocVideoDecode::GetOutputImageInfo(OutputImageInfo **image_info) {
     if (!width_ || !height_) {
@@ -652,53 +627,6 @@ void RocVideoDecode::InitDRMnodes() {
     }
 }
 
-bool RocVideoDecode::InitVAAPI() {
-    if (drm_nodes_.size() == 0) {
-        std::cerr << "VAAPI initialization failed!" << std::endl;
-        return false;
-    }
-    drm_fd_ = open(drm_nodes_[device_id_].c_str(), O_RDWR);
-    if (drm_fd_ < 0) {
-        std::cerr << "ERROR: failed to open drm node " << drm_nodes_[device_id_].c_str() << std::endl;
-        return false;
-    }
-    va_display_ = vaGetDisplayDRM(drm_fd_);
-    if (!va_display_) {
-        std::cerr << "error: vaGetDisplayDRM failed! " << std::endl;
-        return false;
-    }
-
-    vaSetInfoCallback(va_display_, NULL, NULL);
-
-    VAStatus va_status;
-    int major_version = 0, minor_version = 0;
-    va_status = vaInitialize(va_display_, &major_version, &minor_version);
-    if (va_status != VA_STATUS_SUCCESS) {
-        std::cerr << "ERROR: vaInitialize failed! " << std::endl;
-        return false;
-    }
-    return true;
-}
-
-bool RocVideoDecode::QueryVaProfiles() {
-    if (va_display_ == nullptr) {
-        if (!InitVAAPI()) {
-            return false;
-        }
-    }
-    if (num_va_profiles_ > -1) {
-        //already queried available profiles
-        return true;
-    }
-    num_va_profiles_ = vaMaxNumProfiles(va_display_);
-    VAStatus va_status;
-    va_status = vaQueryConfigProfiles(va_display_, va_profiles_, &num_va_profiles_);
-    if (va_status != VA_STATUS_SUCCESS) {
-        std::cerr << "ERROR: vaQueryConfigProfiles failed! " << std::endl;
-        return false;
-    }
-    return true;
-}
 
 bool RocVideoDecode::GetImageSizeHintInternal(RocDecImageFormat subsampling, const uint32_t width, const uint32_t height, uint32_t *output_stride, size_t *output_image_size) {
     if ( output_stride == nullptr || output_image_size == nullptr) {

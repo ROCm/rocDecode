@@ -80,10 +80,9 @@ static inline int align(int value, int alignment) {
    return (value + alignment - 1) & ~(alignment - 1);
 }
 
-typedef struct DecFrameBufferType {
-    VASurfaceID va_surface_id;                              /**< VASurfaceID for the decoded frame buffer */
-    hipExternalMemory_t hip_ext_mem;                        /**< interop hip memory for the decoded surface */
-    VADRMPRIMESurfaceDescriptor va_drm_prime_surface_desc;  /**< DRM surface descriptor */
+typedef struct DecFrameBuffer_ {
+    uint8_t *frame_ptr;      /**< device memory pointer for the decoded frame */
+    int64_t  *pts;          // timestamp
 } DecFrameBuffer;
 
 typedef enum {
@@ -221,22 +220,16 @@ class RocVideoDecode {
        * @param data - pointer to the data buffer that is to be decode
        * @param size - size of the data buffer in bytes
        * @param pts - presentation timestamp
+       * @param flags - video packet flags
        * @return int - num of frames to display
        */
-      int DecodeFrame(const uint8_t *data, size_t size, int64_t pts = 0);
+      int DecodeFrameDecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0);
       /**
        * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
        * 
        */
       uint8_t* GetFrame(int64_t *pts);
-      /**
-       * @brief this function releases a previously mapped frame and makes it avalable for write again
-       * 
-       * @param pts 
-       * @return true 
-       * @return false 
-       */
-      bool ReleaseFrame(int64_t pts);
+
       /**
        * @brief utility function to save image to a file
        * 
@@ -258,8 +251,6 @@ class RocVideoDecode {
        * @param drm_node 
        */
       void GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id, std::string &drm_node);
-
-      void GetDecoderCaps(ROCDECDECODECAPS &decoder_caps);
 
     private:
         int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
@@ -338,6 +329,8 @@ class RocVideoDecode {
       void *yuv_dev_mem_;
       uint32_t width_;
       uint32_t height_;
+      bool b_low_latency_;  
+
       uint32_t chroma_height_;
       uint32_t surface_height_;
       uint32_t surface_width_;
@@ -350,10 +343,10 @@ class RocVideoDecode {
       RocDecImageFormat out_chroma_format_;
       OutputImageInfo out_image_info_;
       std::vector<std::string> drm_nodes_;
-      std::mutex mutex_;
       std::mutex mtx_vp_frame_;
-      std::vector<uint8_t *> vp_frames_;      // vector of decoded frames
-      std::queue<DecFrameBuffer *> dec_frame_q_;
+      std::mutex mtx_dec_frame_q_;
+      std::vector<DecFrameBuffer *> vp_frames_;      // vector of decoded frames
+      //std::queue<DecFrameBuffer *> dec_frame_q_;
       Rect crop_rect_ = {};
       Dim resize_dim_ = {};
       FILE *fp_sei_ = NULL;
