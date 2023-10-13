@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 class RocDecoder {
 public:
-    RocDecoder(int device_id, int num_devices);
+    RocDecoder(int device_id = 0);
     ~RocDecoder();
     rocDecStatus getDecoderCaps(RocdecDecodeCaps *pdc);
     rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
