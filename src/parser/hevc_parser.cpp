@@ -83,6 +83,7 @@ HEVCVideoParser::~HEVCVideoParser() {
     if (m_slice_) {
         delete m_slice_;
     }
+    std::cout << "parsed frames = " << m_packet_count_ << std::endl;
 }
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
@@ -150,6 +151,7 @@ ParserResult HEVCVideoParser::Init() {
     m_active_sps_ = 0;
     m_active_pps_ = 0;
     b_new_picture_ = false;
+    m_packet_count_ = 0;
     m_vps_ = AllocVps();
     m_sps_ = AllocSps();
     m_pps_ = AllocPps();
@@ -161,20 +163,26 @@ ParserResult HEVCVideoParser::Init() {
 
 bool HEVCVideoParser::DecodeBuffer(const uint8_t* buf, NalUnitHeader nalu_header, uint32_t nalu_size) {
     bool ret = false;
-
+    int ebspSize = nalu_size - 4 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nalu_size - 4; // only copy enough bytes for header parsing
     switch (nalu_header.nal_unit_type)
     {
         case NAL_UNIT_VPS:
-            ParseVps((uint8_t*)buf, nalu_size);
-            return false;
+            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+            ParseVps(m_rbsp_buf_, nalu_size);
+            m_packet_count_++;
+            return true;
       
         case NAL_UNIT_SPS:
-            ParseSps((uint8_t*)buf, nalu_size);
-            return false;
+            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+            ParseSps(m_rbsp_buf_, nalu_size);
+            m_packet_count_++;
+            return true;
 
         case NAL_UNIT_PPS:
-            ParsePps((uint8_t*)buf, nalu_size);
-            return false;
+            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+            ParsePps(m_rbsp_buf_, nalu_size);
+            m_packet_count_++;
+            return true;
       
         case NAL_UNIT_CODED_SLICE_TRAIL_R:
         case NAL_UNIT_CODED_SLICE_TRAIL_N:
@@ -192,7 +200,9 @@ bool HEVCVideoParser::DecodeBuffer(const uint8_t* buf, NalUnitHeader nalu_header
         case NAL_UNIT_CODED_SLICE_RADL_R:
         case NAL_UNIT_CODED_SLICE_RASL_N:
         case NAL_UNIT_CODED_SLICE_RASL_R:
-            ParseSliceHeader(nalu_header.nal_unit_type, (uint8_t*)buf, nalu_size);
+            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+            ParseSliceHeader(nalu_header.nal_unit_type, m_rbsp_buf_, nalu_size);
+            m_packet_count_++;
 			return true;
         default:
             return false;
@@ -762,7 +772,7 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
-    size_t offset = 16; // current bit offset
+    size_t offset = 20; // current bit offset
     //memset(m_sh_, 0, sizeof(*m_sh_));
     SliceHeaderData temp_sh;
     memset(&temp_sh, 0, sizeof(temp_sh));
@@ -788,8 +798,8 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         //use the same method from ref decoder
         //MaxCUWidth and MaxCUHeight is obtained from parsing SPS
         //Int num_ctus = ((sps->getPicWidthInLumaSamples()+sps->getMaxCUWidth()-1)/sps->getMaxCUWidth())*((sps->getPicHeightInLumaSamples()+sps->getMaxCUHeight()-1)/sps->getMaxCUHeight());
-        int num_ctus = ((m_sps_[m_active_sps_].pic_width_in_luma_samples + m_sps_[m_active_sps_].max_cu_width -1) / (m_sps_[m_active_sps_].max_cu_width)) * 
-                        ((m_sps_[m_active_sps_].pic_height_in_luma_samples + m_sps_[m_active_sps_].max_cu_height -1) / (m_sps_[m_active_sps_].max_cu_height));
+        int num_ctus = 0; //((m_sps_[m_active_sps_].pic_width_in_luma_samples + m_sps_[m_active_sps_].max_cu_width - 1) / (m_sps_[m_active_sps_].max_cu_width)) * 
+                        //((m_sps_[m_active_sps_].pic_height_in_luma_samples + m_sps_[m_active_sps_].max_cu_height - 1) / (m_sps_[m_active_sps_].max_cu_height));
         int max_parts = (1 << (m_sps_[m_active_sps_].max_cu_depth << 1));
         int bits_slice_segment_address = 0;
         while(num_ctus > (1 << bits_slice_segment_address)) {

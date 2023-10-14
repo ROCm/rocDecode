@@ -44,6 +44,7 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_VPS_COUNT 16
 #define MAX_SPS_COUNT 16
 #define MAX_PPS_COUNT 64
+#define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -545,6 +546,9 @@ protected:
     SliceHeaderData*    m_sh_copy_;
     SliceData*          m_slice_;
     bool                b_new_picture_;
+    int                 m_packet_count_;
+    int                 m_rbsp_size_;
+    uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
     void ParseVps(uint8_t *nalu, size_t size);
     void ParseSps(uint8_t *nalu, size_t size);
