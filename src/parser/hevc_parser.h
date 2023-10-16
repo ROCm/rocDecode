@@ -41,9 +41,9 @@ extern int scaling_list_default_1_2[2][6][64];
 //size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
-#define MAX_VPS_COUNT 16
-#define MAX_SPS_COUNT 16
-#define MAX_PPS_COUNT 64
+#define MAX_VPS_COUNT 16  // 7.3.2.1
+#define MAX_SPS_COUNT 16  // 7.3.2.2.1
+#define MAX_PPS_COUNT 64  // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 
 class HEVCVideoParser : public RocVideoParser {
@@ -522,7 +522,7 @@ protected:
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
     } SliceHeaderData;
 
-    static inline NalUnitHeader GetNaluUnitType(uint8_t *nal_unit) {
+    static inline NalUnitHeader ParseNalUnitHeader(uint8_t *nal_unit) {
         NalUnitHeader nalu_header;
         nalu_header.num_emu_byte_removed = 0;
         //read nalu header
@@ -547,6 +547,19 @@ protected:
     SliceData*          m_slice_;
     bool                b_new_picture_;
     int                 m_packet_count_;
+    int slice_num_;
+
+    // Frame bit stream info
+    uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
+    int frame_data_size_;  // bit stream size of the current frame
+    int curr_byte_offset_;  // current parsing byte offset
+
+    // NAL unit info
+    int start_code_num_;  // number of start codes found so far
+    int curr_start_code_offset_;
+    int next_start_code_offset_;
+    int nal_unit_size_;
+
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
@@ -560,7 +573,9 @@ protected:
     void ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size, size_t &offset);
     void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
-    bool DecodeBuffer(const uint8_t* buf, NalUnitHeader nalu_header, uint32_t nalu_size);
+    bool ParseFrameData(const uint8_t* pStream, uint32_t frameDataSize);
+
+    int GetNALUnit();
 
 private:
     ParserResult Init();

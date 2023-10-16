@@ -56,7 +56,7 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *pParams) {
  * @return rocDecStatus 
  */
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {
-    bool status = DecodeBuffer(pData->payload, GetNaluUnitType((uint8_t*)pData->payload), pData->payload_size);
+    bool status = ParseFrameData(pData->payload, pData->payload_size);
     if (!status) {
         ERR(STR("Parser failed!\n"));
         return ROCDEC_RUNTIME_ERROR;
@@ -83,7 +83,6 @@ HEVCVideoParser::~HEVCVideoParser() {
     if (m_slice_) {
         delete m_slice_;
     }
-    std::cout << "parsed frames = " << m_packet_count_ << std::endl;
 }
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
@@ -151,7 +150,6 @@ ParserResult HEVCVideoParser::Init() {
     m_active_sps_ = 0;
     m_active_pps_ = 0;
     b_new_picture_ = false;
-    m_packet_count_ = 0;
     m_vps_ = AllocVps();
     m_sps_ = AllocSps();
     m_pps_ = AllocPps();
@@ -161,53 +159,175 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
-bool HEVCVideoParser::DecodeBuffer(const uint8_t* buf, NalUnitHeader nalu_header, uint32_t nalu_size) {
-    bool ret = false;
-    int ebspSize = nalu_size - 4 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nalu_size - 4; // only copy enough bytes for header parsing
-    switch (nalu_header.nal_unit_type)
-    {
-        case NAL_UNIT_VPS:
-            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
-            ParseVps(m_rbsp_buf_, nalu_size);
-            m_packet_count_++;
-            return true;
-      
-        case NAL_UNIT_SPS:
-            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
-            ParseSps(m_rbsp_buf_, nalu_size);
-            m_packet_count_++;
-            return true;
+bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataSize)
+{
+    int ret = PARSER_OK;
+    NalUnitHeader nalUnitHeader;
 
-        case NAL_UNIT_PPS:
-            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
-            ParsePps(m_rbsp_buf_, nalu_size);
-            m_packet_count_++;
-            return true;
-      
-        case NAL_UNIT_CODED_SLICE_TRAIL_R:
-        case NAL_UNIT_CODED_SLICE_TRAIL_N:
-        case NAL_UNIT_CODED_SLICE_TLA_R:
-        case NAL_UNIT_CODED_SLICE_TSA_N:
-        case NAL_UNIT_CODED_SLICE_STSA_R:
-        case NAL_UNIT_CODED_SLICE_STSA_N:
-        case NAL_UNIT_CODED_SLICE_BLA_W_LP:
-        case NAL_UNIT_CODED_SLICE_BLA_W_RADL:
-        case NAL_UNIT_CODED_SLICE_BLA_N_LP:
-        case NAL_UNIT_CODED_SLICE_IDR_W_RADL:
-        case NAL_UNIT_CODED_SLICE_IDR_N_LP:
-        case NAL_UNIT_CODED_SLICE_CRA:
-        case NAL_UNIT_CODED_SLICE_RADL_N:
-        case NAL_UNIT_CODED_SLICE_RADL_R:
-        case NAL_UNIT_CODED_SLICE_RASL_N:
-        case NAL_UNIT_CODED_SLICE_RASL_R:
-            m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
-            ParseSliceHeader(nalu_header.nal_unit_type, m_rbsp_buf_, nalu_size);
-            m_packet_count_++;
-			return true;
-        default:
+    frame_data_buffer_ptr_ = (uint8_t*)pStream;
+    frame_data_size_ = frameDataSize;
+    curr_byte_offset_ = 0;
+    start_code_num_ = 0;
+    curr_start_code_offset_ = 0;
+    next_start_code_offset_ = 0;
+
+    slice_num_ = 0;
+
+    do
+    {
+        ret = GetNALUnit();
+
+        if (ret == PARSER_NOT_FOUND)
+        {
+            printf("Error: no start code found in the frame data.\n");
             return false;
+        }
+
+        // Jefftest
+        printf("Start code offset = %d, NAL size = %d\n", curr_start_code_offset_, nal_unit_size_);
+        for (int i = 0; i < 10; i++)
+        {
+            printf("%x ", frame_data_buffer_ptr_[curr_start_code_offset_ + i]);
+        }
+        printf("\n");
+
+        // Parse the NAL unit
+        if (nal_unit_size_)
+        {
+            // start code + NAL unit header = 5 bytes
+            int ebspSize = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
+
+            nalUnitHeader = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
+            // Jefftest
+            //printf("nal unit type = %d\n", nalUnitHeader.nal_unit_type);
+            switch (nalUnitHeader.nal_unit_type)
+            {
+                case NAL_UNIT_VPS:
+                {
+                    // Jefftest
+                    printf("VPS...\n");
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                    ParseVps(m_rbsp_buf_, m_rbsp_size_);
+                    break;
+                }
+
+                case NAL_UNIT_SPS:
+                {
+                    // Jefftest
+                    printf("SPS ...\n");
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                    ParseSps(m_rbsp_buf_, m_rbsp_size_);
+                    break;
+                }
+
+                case NAL_UNIT_PPS:
+                {
+                    // Jefftest
+                    printf("PPS ...\n");
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                    ParsePps(m_rbsp_buf_, m_rbsp_size_);
+                    break;
+                }
+                
+                case NAL_UNIT_CODED_SLICE_TRAIL_R:
+                case NAL_UNIT_CODED_SLICE_TRAIL_N:
+                case NAL_UNIT_CODED_SLICE_TLA_R:
+                case NAL_UNIT_CODED_SLICE_TSA_N:
+                case NAL_UNIT_CODED_SLICE_STSA_R:
+                case NAL_UNIT_CODED_SLICE_STSA_N:
+                case NAL_UNIT_CODED_SLICE_BLA_W_LP:
+                case NAL_UNIT_CODED_SLICE_BLA_W_RADL:
+                case NAL_UNIT_CODED_SLICE_BLA_N_LP:
+                case NAL_UNIT_CODED_SLICE_IDR_W_RADL:
+                case NAL_UNIT_CODED_SLICE_IDR_N_LP:
+                case NAL_UNIT_CODED_SLICE_CRA:
+                case NAL_UNIT_CODED_SLICE_RADL_N:
+                case NAL_UNIT_CODED_SLICE_RADL_R:
+                case NAL_UNIT_CODED_SLICE_RASL_N:
+                case NAL_UNIT_CODED_SLICE_RASL_R:
+                {
+                    // Jefftest
+                    printf("Slice header ...\n");
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                    ParseSliceHeader(nalUnitHeader.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+
+                    slice_num_++;
+
+                    break;
+                }
+                
+                default:
+                    // Do nothing for now.
+                    break;
+            }
+        }
+
+        // Break if this is the last NAL unit
+        if (ret == PARSER_EOF)
+        {
+            break;
+        }
+    } while (1);
+
+    return true;
+}
+
+int HEVCVideoParser::GetNALUnit()
+{
+    bool startCodeFound = false;
+
+    nal_unit_size_ = 0;
+    curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
+
+    // Search for the next start code
+    while (curr_byte_offset_ < frame_data_size_ - 2)
+    {
+        if (frame_data_buffer_ptr_[curr_byte_offset_] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 1] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 2] == 0x01)
+        {
+            curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
+
+            startCodeFound = true;
+            start_code_num_++;
+            next_start_code_offset_ = curr_byte_offset_;
+            // Move the pointer 3 bytes forward
+            curr_byte_offset_ += 3;
+
+            // For the very first NAL unit, search for the next start code (or reach the end of frame)
+            if (start_code_num_ == 1)
+            {
+                startCodeFound = false;
+                curr_start_code_offset_ = next_start_code_offset_;
+                continue;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        curr_byte_offset_++;
     }
-    return false;
+    
+    if (start_code_num_ == 0)
+    {
+        // No NAL unit in the frame data
+        return PARSER_NOT_FOUND;
+    }
+
+    if (startCodeFound)
+    {
+        nal_unit_size_ = next_start_code_offset_ - curr_start_code_offset_;
+        return PARSER_OK;
+    }
+    else
+    {
+        nal_unit_size_ = frame_data_size_ - curr_start_code_offset_;
+        return PARSER_EOF;
+    }        
 }
 
 void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
