@@ -714,7 +714,7 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 }
 
 void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) { 
-    size_t offset = 16; // 2 bytes NALU header +
+    size_t offset = 0;
     m_active_vps_ = Parser::ReadBits(nalu, offset, 4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset, 3);
     uint32_t sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
@@ -822,7 +822,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
 }
 
 void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
-    size_t offset = 16; // 2 bytes NALU header
+    size_t offset = 0;
     uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
     memset(&m_pps_[pps_id], 0, sizeof(m_pps_[pps_id]));
 
@@ -892,7 +892,7 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
-    size_t offset = 20; // current bit offset
+    size_t offset = 0;
     //memset(m_sh_, 0, sizeof(*m_sh_));
     SliceHeaderData temp_sh;
     memset(&temp_sh, 0, sizeof(temp_sh));
