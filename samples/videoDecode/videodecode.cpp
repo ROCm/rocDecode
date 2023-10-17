@@ -121,8 +121,10 @@ int main(int argc, char **argv) {
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
         parser_packet.payload_size = nVideoBytes;
         parser_packet.payload = pVideo;
-        roc_dec_status = rocDecParseVideoData(parser_handle, &parser_packet);
-
+        if (nVideoBytes > 0)
+            roc_dec_status = rocDecParseVideoData(parser_handle, &parser_packet);
+        else
+            break;
         /*if (fs.is_open()) {
             std::cout << "size of bytes to write = " << outputBuffer->GetSize() << std::endl;
             fs.write((const char*)outputBuffer->GetNative(), outputBuffer->GetSize());
@@ -156,7 +158,7 @@ int main(int argc, char **argv) {
         pVideo = nullptr; nVideoBytes = 0;
         int64_t pts = 0;
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
-    } while (nFrameReturned);
+    } while (nVideoBytes);
 
     /*std::cout << "info: Video codec format: " << viddec.getCodecFmtName(viddec.getVcnVideoCodecId()) << std::endl;
     std::cout << "info: Video size: [ " << pImageInfo->nOutputWidth << ", " << pImageInfo->nOutputHeight << " ]" << std::endl;

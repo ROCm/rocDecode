@@ -28,10 +28,6 @@ THE SOFTWARE.
 #include <vector>
 #include <algorithm>
 
-#define PARSER_SECOND          10000000L    // 1 second in 100 nanoseconds
-#define DATA_STREAM_SIZE       10*1024      // allocating buffer to hold video stream
-#define INIT_ARRAY_SIZE        1024
-#define ARRAY_MAX_SIZE (1LL << 60LL)        // extremely large maximum size
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 
 //size_id = 0
@@ -41,41 +37,35 @@ extern int scaling_list_default_1_2[2][6][64];
 //size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
-#define MAX_VPS_COUNT 16  // 7.3.2.1
-#define MAX_SPS_COUNT 16  // 7.3.2.2.1
-#define MAX_PPS_COUNT 64  // 7.4.3.3.1
+#define MAX_VPS_COUNT 16    // 7.3.2.1
+#define MAX_SPS_COUNT 16    // 7.3.2.2.1
+#define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 
 class HEVCVideoParser : public RocVideoParser {
 
 public:
-    /**
-     * @brief Construct a new HEVCParser object
-     * 
+    /*! \brief Construct a new HEVCParser object
      */
     HEVCVideoParser();
-    /**
-     * @brief Function to Initialize the parser
-     * 
-     * @return rocDecStatus 
+    /*! \brief Function to Initialize the parser
+     * \param [in] p_params Input of <tt>RocdecParserParams</tt> with codec type to initialize parser.
+     * \return <tt>rocDecStatus</tt> Returns success on completion, else error code for failure
      */
-    virtual rocDecStatus            Initialize(RocdecParserParams *pParams);
-    /**
-     * @brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
-     * 
-     * @param pData: Pointer to picture data
-     * @return rocDecStatus: returns success on completion, else error_code for failure
+    virtual rocDecStatus            Initialize(RocdecParserParams *p_params);
+    /*! \brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
+     * \param [in] p_data Pointer to picture data of type <tt>RocdecSourceDataPacket</tt>
+     * @return <tt>rocDecStatus</tt> Returns success on completion, else error_code for failure
      */
-    virtual rocDecStatus            ParseVideoData(RocdecSourceDataPacket *pData);     // pure virtual: implemented by derived class
+    virtual rocDecStatus            ParseVideoData(RocdecSourceDataPacket *p_data);     // pure virtual: implemented by derived class
 
-    /**
-     * @brief HEVCParser object destructor
-     * 
+    /*! \brief HEVCParser object destructor
      */
     virtual ~HEVCVideoParser();
 
 protected:
-    // ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
+    /*! \brief Enumerator for the NAL Unit types - ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
+     */
     enum NalUnitType {
         NAL_UNIT_CODED_SLICE_TRAIL_N = 0, // 0
         NAL_UNIT_CODED_SLICE_TRAIL_R,     // 1
@@ -152,6 +142,8 @@ protected:
         NAL_UNIT_INVALID,
     };
 
+    /*! \brief Structure to hold the NAL Unit Header
+     */
     struct NalUnitHeader {
         uint32_t forbidden_zero_bit;
         uint32_t nal_unit_type;
@@ -160,6 +152,8 @@ protected:
         uint32_t num_emu_byte_removed;
     };
 
+    /*! \brief Enumerator for the scaling list sizes
+     */
     enum H265ScalingListSize {
         H265_SCALING_LIST_4x4 = 0,
         H265_SCALING_LIST_8x8,
@@ -168,6 +162,8 @@ protected:
         H265_SCALING_LIST_SIZE_NUM
     };
 
+    /*! \brief Structure for Profile Tier Levels
+     */
     typedef struct {
         uint32_t general_profile_space;                      //u(2)
         bool general_tier_flag;                              //u(1)
@@ -200,6 +196,8 @@ protected:
 #define H265_SCALING_LIST_NUM 6                              ///< list number for quantization matrix
 #define H265_SCALING_LIST_MAX_I 64
 
+    /*! \brief Structure for Scaling List Data
+     */
     typedef struct {
         bool scaling_list_pred_mode_flag[4][6];              //u(1)
         uint32_t scaling_list_pred_matrix_id_delta[4][6];    //ue(v)
@@ -208,6 +206,8 @@ protected:
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
     } H265ScalingListData;
 
+    /*! \brief Structure for Short Term Reference Picture Set
+     */
     typedef struct {
         int32_t num_negative_pics;
         int32_t num_positive_pics;
@@ -217,12 +217,16 @@ protected:
         bool used_by_curr_pic[16];
     } H265ShortTermRPS;
 
+    /*! \brief Structure for Long Term Reference Picture Set
+     */
     typedef struct {
         int32_t num_of_pics;
         int32_t pocs[32];
         bool used_by_curr_pic[32];
     } H265LongTermRPS;
 
+    /*! \brief Structure for Sub Layer Hypothetical Reference Decoder Parameters
+     */
     typedef struct {
         //CpbCnt = cpb_cnt_minus1
         uint32_t bit_rate_value_minus1[32];                  //ue(v)
@@ -232,6 +236,8 @@ protected:
         bool cbr_flag[32];                                   //u(1)
     } H265SubLayerHrdParameters;
 
+    /*! \brief Structure for Hypothetical Reference Decoder Parameters
+     */
     typedef struct {
         bool nal_hrd_parameters_present_flag;                //u(1)
         bool vcl_hrd_parameters_present_flag;                //u(1)
@@ -257,6 +263,8 @@ protected:
         H265SubLayerHrdParameters sub_layer_hrd_parameters_1[7];
     } H265HrdParameters;
 
+    /*! \brief Structure for Video Usability Information Parameters
+     */
     typedef struct {
         bool aspect_ratio_info_present_flag;                 //u(1)
         uint32_t aspect_ratio_idc;                           //u(8)
@@ -301,11 +309,15 @@ protected:
         uint32_t log2_max_mv_length_vertical;                //ue(v)
     } H265VuiParameters;
 
+    /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
+     */
     typedef struct {
         uint32_t rbsp_stop_one_bit; /* equal to 1 */
         uint32_t rbsp_alignment_zero_bit; /* equal to 0 */
     } H265RbspTrailingBits;
 
+    /*! \brief Structure for Video Parameter Set
+     */
     typedef struct{
         uint32_t vps_video_parameter_set_id;                 //u(4)
         uint32_t vps_reserved_three_2bits;                   //u(2)
@@ -342,6 +354,8 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } VpsData;
 
+    /*! \brief Structure for Sequence Parameter Set
+     */
     typedef struct {
         uint32_t sps_video_parameter_set_id;                 //u(4)
         uint32_t sps_max_sub_layers_minus1;                  //u(3)
@@ -407,6 +421,8 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } SpsData;
 
+    /*! \brief  Structure for Picture Parameter Set
+     */
     typedef struct {
         uint32_t pps_pic_parameter_set_id;                   //ue(v)
         uint32_t pps_seq_parameter_set_id;                   //ue(v)
@@ -458,6 +474,8 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } PpsData;
 
+    /*! \brief Structure for Slice Data
+     */
     typedef struct {
         uint32_t prev_poc;
         uint32_t curr_poc;
@@ -468,6 +486,8 @@ protected:
         uint32_t max_poc_lsb;
     } SliceData;
 
+    /*! \brief Structure for Slice Header Data
+     */
     typedef struct {
         bool first_slice_segment_in_pic_flag;                //u(1)
         bool no_output_of_prior_pics_flag;                   //u(1)
@@ -522,6 +542,11 @@ protected:
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
     } SliceHeaderData;
 
+    /*! \brief Inline function to Parse the NAL Unit Header
+     * 
+     * \param [in] nal_unit A pointer of <tt>uint8_t</tt> containing the Demuxed output stream 
+     * \return Returns an object of NALUnitHeader
+     */
     static inline NalUnitHeader ParseNalUnitHeader(uint8_t *nal_unit) {
         NalUnitHeader nalu_header;
         nalu_header.num_emu_byte_removed = 0;
@@ -533,9 +558,17 @@ protected:
 
         return nalu_header;
     }
-    size_t EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos);
 
-    //new internal AMF porting
+    /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
+     * 
+     * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
+     * \param [in] begin_bytepos Start position in the EBSP buffer to convert
+     * \param [in] end_bytepos End position in the EBSP buffer to convert, generally it's size.
+     * \return Returns the size of the converted buffer in <tt>size_t</tt>
+     */
+    size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
+
+    // Data members of HEVC class
     uint32_t            m_active_vps_;
     uint32_t            m_active_sps_;
     uint32_t            m_active_pps_;
@@ -548,6 +581,8 @@ protected:
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
+    int                 m_rbsp_size_;
+    uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
@@ -560,28 +595,139 @@ protected:
     int next_start_code_offset_;
     int nal_unit_size_;
 
-    int                 m_rbsp_size_;
-    uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
-
+    /*! \brief Function to parse Video Parameter Set 
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
     void ParseVps(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to parse Sequence Parameter Set 
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
     void ParseSps(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to parse Picture Parameter Set 
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
     void ParsePps(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to parse Profiles, Tiers and Levels
+     * \param [out] ptl A pointer of <tt>H265ProfileTierLevel</tt> for the output from teh parsed stream
+     * \param [in] profile_present_flag Input of <tt>bool</tt> - 1 specifies profile information is present, else 0
+     * \param [in] max_num_sub_layers_minus1 Input of <tt>uint32_t</tt> - plus 1 specifies the maximum number of temporal sub-layers that may be present
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
     void ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
+    
+    /*! \brief Function to parse Sub Layer Hypothetical Reference Decoder Parameters
+     * \param [out] sub_hrd A pointer of <tt>H265SubLayerHrdParameters</tt> for the output from teh parsed stream
+     * \param [in] cpb_cnt Input of <tt>uint32_t</tt> - specifies the coded picture buffer count in a HRD buffer
+     * \param [in] sub_pic_hrd_params_present_flag Input of <tt>bool</tt> - 1 specifies sub layer HRD information is present, else 0
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
     void ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t size, size_t &offset);
+    
+    /*! \brief Function to parse Hypothetical Reference Decoder Parameters
+     * \param [out] hrd A pointer of <tt>H265HrdParameters</tt> for the output from the parsed stream
+     * \param [in] common_inf_present_flag Input of <tt>bool</tt> - 1 specifies HRD information is present, else 0
+     * \param [in] max_num_sub_layers_minus1 Input of <tt>uint32_t</tt> - plus 1 specifies the maximum number of temporal sub-layers that may be present
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
     void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
-    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size,size_t &offset);
+    
+    /*! \brief Function to parse Scaling List
+     * \param [out] s_data A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
+     * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
+    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size, size_t &offset);
+    
+    /*! \brief Function to parse Video Usability Information
+     * \param [out] vui A pointer of <tt>H265VuiParameters</tt> for the output from the parsed stream
+     * \param [in] max_num_sub_layers_minus1 Input of <tt>uint32_t</tt> - plus 1 specifies the maximum number of temporal sub-layers that may be present
+     * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
     void ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size, size_t &offset);
+    
+    /*! \brief Function to parse Short Term Reference Picture Set
+     * \param [out] rps A pointer of <tt>H265ShortTermRPS</tt> for the output from the parsed stream
+     * \param [in] st_rps_idx Input of <tt>int32_t</tt> - specifies the index in the RPS buffer
+     * \param [in] num_short_term_ref_pic_sets Specifies the count of Short Term RPS in <tt>uint32_t</tt>
+     * \param [in] rps_ref A reference of <tt>H265ShortTermRPS</tt> to the RPS buffer
+     * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \param [in] offset Reference to the offset in the input buffer
+     * \return No return value
+     */
     void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
+    
+    /*! \brief Function to parse Slice Header
+     * \param [in] nal_unit_type Input of <tt>uint32_t</tt> containing the enumerator value to the NAL Unit Type
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return True is successful, else false
+     */
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
+
+    /*! \brief Function to parse the data received from the demuxer.
+     * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] frame_data_size Size of the input stream
+     * \return True is successful, else false
+     */
     bool ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size);
 
+    /*! \brief Function to get the NAL Unit data
+     * \return Returns OK if successful, else error code
+     */
     int GetNalUnit();
 
 private:
-    ParserResult Init();
+    /*! \brief Function to initialize the HEVC parser members
+     * \return Returns OK in <tt>ParserResult</tt> if successful, else error code
+     */
+    ParserResult     Init();
+
+    /*! \brief Function to allocate memory for VPS Structure
+     * \return Returns pointer to the allocated memory for <tt>VpsData</tt>
+     */
     VpsData*         AllocVps();
+
+    /*! \brief Function to allocate memory for SPS Structure
+     * \return Returns pointer to the allocated memory for <tt>SpsData</tt>
+     */
     SpsData*         AllocSps();
+
+    /*! \brief Function to allocate memory for PPS Structure
+     * \return Returns pointer to the allocated memory for <tt>PpsData</tt>
+     */
     PpsData*         AllocPps();
+
+    /*! \brief Function to allocate memory for Slice Structure
+     * \return Returns pointer to the allocated memory for <tt>SliceData</tt>
+     */
     SliceData*       AllocSlice();
+
+    /*! \brief Function to allocate memory for Slice Header Structure
+     * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
+     */
     SliceHeaderData* AllocSliceHeader();
 };

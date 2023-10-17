@@ -22,10 +22,6 @@ THE SOFTWARE.
 
 #include "hevc_parser.h"
 
-/**
- * @brief Constructs a new HEVCVideoParser object
- * 
- */
 HEVCVideoParser::HEVCVideoParser() {
     b_new_picture_ = false;
     m_vps_ = NULL;
@@ -36,27 +32,16 @@ HEVCVideoParser::HEVCVideoParser() {
     m_slice_ = NULL;
 }
 
-/**
- * @brief Function to initialize any hevc parser related members
- * 
- * @return rocDecStatus 
- */
-rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *pParams) {
+rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
     ParserResult status = Init();
     if (status)
         return ROCDEC_RUNTIME_ERROR;
-    RocVideoParser::Initialize(pParams);
+    RocVideoParser::Initialize(p_params);
     return ROCDEC_SUCCESS;
 }
 
-/**
- * @brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
- * 
- * @param pData: IN: pointer to demuxed data packet
- * @return rocDecStatus 
- */
-rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {
-    bool status = ParseFrameData(pData->payload, pData->payload_size);
+rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
+    bool status = ParseFrameData(p_data->payload, p_data->payload_size);
     if (!status) {
         ERR(STR("Parser failed!\n"));
         return ROCDEC_RUNTIME_ERROR;
@@ -159,8 +144,7 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
-bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size)
-{
+bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
     NalUnitHeader nal_unit_header;
 
@@ -180,8 +164,6 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
             ERR(STR("Error: no start code found in the frame data.\n"));
             return false;
         }
-
-        printf("Start code offset = %d, NAL size = %d\n", curr_start_code_offset_, nal_unit_size_);
 
         // Parse the NAL unit
         if (nal_unit_size_) {
@@ -230,9 +212,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
-
                     slice_num_++;
-
                     break;
                 }
                 
@@ -278,15 +258,12 @@ int HEVCVideoParser::GetNalUnit() {
                 break;
             }
         }
-
         curr_byte_offset_++;
-    }
-    
+    }    
     if (start_code_num_ == 0) {
         // No NAL unit in the frame data
         return PARSER_NOT_FOUND;
     }
-
     if (start_code_found) {
         nal_unit_size_ = next_start_code_offset_ - curr_start_code_offset_;
         return PARSER_OK;
@@ -313,7 +290,6 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         //ptl->general_reserved_zero_44bits = Parser::ReadBits(nalu, offset,44);
         offset += 44;
     }
-
     ptl->general_level_idc = Parser::ReadBits(nalu, offset, 8);
     for(uint32_t i = 0; i < max_num_sub_layers_minus1; i++) {
         ptl->sub_layer_profile_present_flag[i] = Parser::GetBit(nalu, offset);
@@ -625,7 +601,6 @@ void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_laye
     }
 }
 
-//TODO: check all offset values
 void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     size_t offset = 0; // current bit offset
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
@@ -702,8 +677,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     m_sps_[sps_id].pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
     m_sps_[sps_id].pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
     m_sps_[sps_id].conformance_window_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].conformance_window_flag)
-    {
+    if (m_sps_[sps_id].conformance_window_flag) {
         m_sps_[sps_id].conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -860,7 +834,6 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
     size_t offset = 0;
-    //memset(m_sh_, 0, sizeof(*m_sh_));
     SliceHeaderData temp_sh;
     memset(&temp_sh, 0, sizeof(temp_sh));
 
@@ -892,7 +865,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         while(num_ctus > (1 << bits_slice_segment_address)) {
             bits_slice_segment_address++;
         }
-        temp_sh.slice_segment_address = m_sh_->slice_segment_address = Parser::ReadBits(nalu, offset, bits_slice_segment_address); //TODO: check if this correct   
+        temp_sh.slice_segment_address = m_sh_->slice_segment_address = Parser::ReadBits(nalu, offset, bits_slice_segment_address);   
     }
     if (!m_sh_->dependent_slice_segment_flag) {
         for (int i = 0; i < m_pps_[m_active_pps_].num_extra_slice_header_bits; i++) {
@@ -940,7 +913,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
             m_slice_->prev_poc_msb = m_slice_->curr_poc_msb;
 
             m_sh_->short_term_ref_pic_set_sps_flag = Parser::GetBit(nalu, offset);
-            //TODO: Check value for offset , it was s->bitstream_offset;
             int32_t pos = offset;
             if (!m_sh_->short_term_ref_pic_set_sps_flag) {
                 ParseShortTermRefPicSet(&m_sh_->st_rps, m_sps_[m_active_sps_].num_short_term_ref_pic_sets, m_sps_[m_active_sps_].num_short_term_ref_pic_sets, m_sps_[m_active_sps_].st_rps, nalu, size, offset);
