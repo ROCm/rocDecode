@@ -98,22 +98,7 @@ find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 find_package(Libva QUIET)
 
-<<<<<<< HEAD
-if(HIP_FOUND AND Libva_FOUND)
-    include_directories(api
-                        src/rocdecode
-                        src/parser
-                        src/rocdecode/vaapi
-                        )       
-    file(GLOB_RECURSE SOURCES "./src/*.cpp")
-    add_library(${PROJECT_NAME} SHARED ${SOURCES})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -gdwarf-4")
-    target_link_libraries(${PROJECT_NAME} Libva::va Libva::va_drm hip::device)
-    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
-=======
 if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
->>>>>>> origin/master
 
   # FFMPEG
   include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
