@@ -47,28 +47,10 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         return ROCDEC_RUNTIME_ERROR;
     }
     return ROCDEC_SUCCESS;
-}
 
 HEVCVideoParser::~HEVCVideoParser() {
     if (m_vps_) {
         delete []m_vps_;
-    }
-    if (m_sps_) {
-        delete []m_sps_;
-    }
-    if (m_pps_) {
-        delete []m_pps_;
-    }
-    if (m_sh_) {
-        delete m_sh_;
-    }
-    if (m_sh_copy_) {
-        delete m_sh_copy_;
-    }
-    if (m_slice_) {
-        delete m_slice_;
-    }
-}
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
     VpsData *p = nullptr;
@@ -305,11 +287,6 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
             ptl->sub_layer_profile_space[i] = Parser::ReadBits(nalu, offset, 2);
             ptl->sub_layer_tier_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_profile_idc[i] = Parser::ReadBits(nalu, offset, 5);
-            for (int j = 0; j < 32; j++) {
-                ptl->sub_layer_profile_compatibility_flag[i][j] = Parser::GetBit(nalu, offset);
-            }
-            ptl->sub_layer_progressive_source_flag[i] = Parser::GetBit(nalu, offset);
-            ptl->sub_layer_interlaced_source_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_non_packed_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_frame_only_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_reserved_zero_44bits[i] = Parser::ReadBits(nalu, offset, 44);
@@ -322,13 +299,8 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
 
 void HEVCVideoParser::ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (uint32_t i = 0; i <= cpb_cnt; i++) {
-        sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         if(sub_pic_hrd_params_present_flag) {
-            sub_hrd->cpb_size_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            sub_hrd->bit_rate_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-        }
-        sub_hrd->cbr_flag[i] = Parser::GetBit(nalu, offset);
     }
 }
 
@@ -339,11 +311,7 @@ void HEVCVideoParser::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf
         if (hrd->nal_hrd_parameters_present_flag || hrd->vcl_hrd_parameters_present_flag) {
             hrd->sub_pic_hrd_params_present_flag = Parser::GetBit(nalu, offset);
             if (hrd->sub_pic_hrd_params_present_flag) {
-                hrd->tick_divisor_minus2 = Parser::ReadBits(nalu, offset, 8);
                 hrd->du_cpb_removal_delay_increment_length_minus1 = Parser::ReadBits(nalu, offset, 5);
-                hrd->sub_pic_cpb_params_in_pic_timing_sei_flag = Parser::GetBit(nalu, offset);
-                hrd->dpb_output_delay_du_length_minus1 = Parser::ReadBits(nalu, offset, 5);
-            }
             hrd->bit_rate_scale = Parser::ReadBits(nalu, offset, 4);
             hrd->cpb_size_scale = Parser::ReadBits(nalu, offset, 4);
             if (hrd->sub_pic_hrd_params_present_flag) {
@@ -391,12 +359,10 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * s_data, uint8_t *na
                 s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
 
                 int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
-                int coef_num = std::min(64, (1 << (4 + (size_id<<1))));
-
-                //fill in scaling_list_dc_coef_minus8
+                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
                 if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
                     if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = 8;
+                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = 8;
                     }
                 }
                 else {
@@ -582,13 +548,8 @@ void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_laye
         vui->vui_poc_proportional_to_timing_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_poc_proportional_to_timing_flag) {
             vui->vui_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        }
         vui->vui_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_hrd_parameters_present_flag) {
-            ParseHrdParameters(&vui->hrd_parameters, 1, max_num_sub_layers_minus1, nalu, size, offset);
-        }
-    }
-    vui->bitstream_restriction_flag = Parser::GetBit(nalu, offset);
     if (vui->bitstream_restriction_flag) {
         vui->tiles_fixed_structure_flag = Parser::GetBit(nalu, offset);
         vui->motion_vectors_over_pic_boundaries_flag = Parser::GetBit(nalu, offset);
@@ -673,12 +634,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     m_sps_[sps_id].chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
     if (m_sps_[sps_id].chroma_format_idc == 3) {
         m_sps_[sps_id].separate_colour_plane_flag = Parser::GetBit(nalu, offset);
-    }
     m_sps_[sps_id].pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].conformance_window_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].conformance_window_flag) {
-        m_sps_[sps_id].conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);

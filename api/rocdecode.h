@@ -31,6 +31,14 @@ THE SOFTWARE.
 #pragma once
 #include "hip/hip_runtime.h"
 
+/*!
+ * \file
+ * \brief The AMD rocDecode Library.
+ *
+ * \defgroup group_amd_rocdecode rocDecode: AMD VCN Decode API
+ * \brief AMD The rocDECODE is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
+ */
+
 /*****************************************************************************************************/
 //! \file rocdecode.h
 //! rocDecode API provides video decoding interface to AMD GPU devices.
