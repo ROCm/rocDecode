@@ -33,7 +33,6 @@ THE SOFTWARE.
 #include "rocdecode.h"
 #include "rocparser.h"
 #include "../../src/parser/hevc_parser.h"
-#include "../../src/parser/parser_buffer.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl

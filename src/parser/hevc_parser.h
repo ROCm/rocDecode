@@ -22,7 +22,6 @@ THE SOFTWARE.
 #pragma once
 
 #include "roc_video_parser.h"
-#include "parser_buffer.h"
 
 #include <map>
 #include <vector>
