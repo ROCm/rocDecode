@@ -51,6 +51,23 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 HEVCVideoParser::~HEVCVideoParser() {
     if (m_vps_) {
         delete []m_vps_;
+    }
+    if (m_sps_) {
+        delete []m_sps_;
+    }
+    if (m_pps_) {
+        delete []m_pps_;
+    }
+    if (m_sh_) {
+        delete m_sh_;
+    }
+    if (m_sh_copy_) {
+        delete m_sh_copy_;
+    }
+    if (m_slice_) {
+        delete m_slice_;
+    }
+}
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
     VpsData *p = nullptr;
