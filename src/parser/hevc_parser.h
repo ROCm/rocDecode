@@ -307,32 +307,32 @@ protected:
     } H265RbspTrailingBits;
 
     typedef struct{
-        uint32_t vps_video_parameter_set_id;                    //u(4)
-        uint32_t vps_reserved_three_2bits;                      //u(2)
-        uint32_t vps_max_layers_minus1;                         //u(6)
-        uint32_t vps_max_sub_layers_minus1;                     //u(3)
+        uint32_t vps_video_parameter_set_id;                 //u(4)
+        uint32_t vps_reserved_three_2bits;                   //u(2)
+        uint32_t vps_max_layers_minus1;                      //u(6)
+        uint32_t vps_max_sub_layers_minus1;                  //u(3)
         bool vps_temporal_id_nesting_flag;                   //u(1)
-        uint32_t vps_reserved_0xffff_16bits;                    //u(16)
+        uint32_t vps_reserved_0xffff_16bits;                 //u(16)
         //profile_tier_level( vps_max_sub_layers_minus1 )
         H265ProfileTierLevel profile_tier_level;
         bool vps_sub_layer_ordering_info_present_flag;       //u(1)
         //vps_max_sub_layers_minus1 max is 6, need to +1
-        uint32_t vps_max_dec_pic_buffering_minus1[7];           //ue(v)
-        uint32_t vps_max_num_reorder_pics[7];                   //ue(v)
-        uint32_t vps_max_latency_increase_plus1[7];             //ue(v)
-        uint32_t vps_max_layer_id;                              //u(6)
-        uint32_t vps_num_layer_sets_minus1;                     //ue(v)
+        uint32_t vps_max_dec_pic_buffering_minus1[7];        //ue(v)
+        uint32_t vps_max_num_reorder_pics[7];                //ue(v)
+        uint32_t vps_max_latency_increase_plus1[7];          //ue(v)
+        uint32_t vps_max_layer_id;                           //u(6)
+        uint32_t vps_num_layer_sets_minus1;                  //ue(v)
         //vps_num_layer_sets_minus1 max is  1023  (dont +1 since starts from 1)
         //vps_max_layer_id max is 62                   (+1 since starts from 0 and <= condition)
-        bool layer_id_included_flag[1023][63];                         //u(1)
+        bool layer_id_included_flag[1023][63];               //u(1)
         bool vps_timing_info_present_flag;                   //u(1)
-        uint32_t vps_num_units_in_tick;                         //u(32)
-        uint32_t vps_time_scale;                                //u(32)
+        uint32_t vps_num_units_in_tick;                      //u(32)
+        uint32_t vps_time_scale;                             //u(32)
         bool vps_poc_proportional_to_timing_flag;            //u(1)
-        uint32_t vps_num_ticks_poc_diff_one_minus1;             //ue(v)
-        uint32_t vps_num_hrd_parameters;                        //ue(v)
+        uint32_t vps_num_ticks_poc_diff_one_minus1;          //ue(v)
+        uint32_t vps_num_hrd_parameters;                     //ue(v)
         //vps_num_hrd_parameters max is 1024
-        uint32_t hrd_layer_set_idx[1024];                       //ue(v)
+        uint32_t hrd_layer_set_idx[1024];                    //ue(v)
         bool cprms_present_flag[1024];                       //u(1)
         //hrd_parameters()
         H265HrdParameters hrd_parameters[1024];
@@ -526,9 +526,9 @@ protected:
         NalUnitHeader nalu_header;
         nalu_header.num_emu_byte_removed = 0;
         //read nalu header
-        nalu_header.forbidden_zero_bit = (uint32_t) ((nal_unit[0] >> 7)&1);
-        nalu_header.nal_unit_type = (uint32_t) ((nal_unit[0] >> 1)&63);
-        nalu_header.nuh_layer_id = (uint32_t) (((nal_unit[0]&1) << 6) | ((nal_unit[1] & 248) >> 3));
+        nalu_header.forbidden_zero_bit = (uint32_t) ((nal_unit[0] >> 7) & 1);
+        nalu_header.nal_unit_type = (uint32_t) ((nal_unit[0] >> 1) & 63);
+        nalu_header.nuh_layer_id = (uint32_t) (((nal_unit[0] & 1) << 6) | ((nal_unit[1] & 248) >> 3));
         nalu_header.nuh_temporal_id_plus1 = (uint32_t) (nal_unit[1] & 7);
 
         return nalu_header;
@@ -547,15 +547,15 @@ protected:
     SliceData*          m_slice_;
     bool                b_new_picture_;
     int                 m_packet_count_;
-    int slice_num_;
+    int                 slice_num_;
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
-    int frame_data_size_;  // bit stream size of the current frame
-    int curr_byte_offset_;  // current parsing byte offset
+    int frame_data_size_;             // bit stream size of the current frame
+    int curr_byte_offset_;            // current parsing byte offset
 
     // NAL unit info
-    int start_code_num_;  // number of start codes found so far
+    int start_code_num_;              // number of start codes found so far
     int curr_start_code_offset_;
     int next_start_code_offset_;
     int nal_unit_size_;
@@ -573,9 +573,9 @@ protected:
     void ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size, size_t &offset);
     void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
-    bool ParseFrameData(const uint8_t* pStream, uint32_t frameDataSize);
+    bool ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size);
 
-    int GetNALUnit();
+    int GetNalUnit();
 
 private:
     ParserResult Init();

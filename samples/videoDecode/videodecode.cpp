@@ -83,7 +83,6 @@ int main(int argc, char **argv) {
     }
 
     VideoDemuxer demuxer(inputFilePath.c_str());
-    ParserBuffer* outputBuffer;
     RocdecVideoParser parser_handle;
     RocdecParserParams parser_params;
     parser_params.CodecType = rocDecVideoCodec_HEVC;
@@ -113,7 +112,6 @@ int main(int argc, char **argv) {
     uint32_t width, height;
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
-    //parser = BitStreamParser::Create(BitStream265AnnexB);
     /*if(dumpOutputFrames) {
         fs.open(outputFilePath.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
     }*/
@@ -124,18 +122,8 @@ int main(int argc, char **argv) {
         parser_packet.payload_size = nVideoBytes;
         parser_packet.payload = pVideo;
         roc_dec_status = rocDecParseVideoData(parser_handle, &parser_packet);
-        /*if (parser->CheckDataStreamEof(nVideoBytes)) {
-            break;
-        }
 
-        parser->Write(pVideo, nVideoBytes, NULL);
-        parser->FindFirstFrameSPSandPPS();
-        outputBuffer = NULL;
-        res = parser->QueryOutput(&outputBuffer);
-        if(res != PARSER_OK || outputBuffer == NULL) {
-            return res;
-        }
-        if (fs.is_open()) {
+        /*if (fs.is_open()) {
             std::cout << "size of bytes to write = " << outputBuffer->GetSize() << std::endl;
             fs.write((const char*)outputBuffer->GetNative(), outputBuffer->GetSize());
         }
@@ -157,9 +145,10 @@ int main(int argc, char **argv) {
             }
         }
         printf("I am here! \n");
-        nFrame += nFrameReturned;
+        nFrame++;
+        //nFrame += nFrameReturned;
     } while (nVideoBytes);
-    fs.close();
+    //fs.close();
 
      // Flush last frames from the decoder if any
     do {

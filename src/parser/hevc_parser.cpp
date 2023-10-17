@@ -91,7 +91,7 @@ HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
         p = new VpsData [MAX_VPS_COUNT];
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to alloc VPS Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc VPS Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(VpsData) * MAX_VPS_COUNT);
     return p;
@@ -103,7 +103,7 @@ HEVCVideoParser::SpsData* HEVCVideoParser::AllocSps() {
         p = new SpsData [MAX_SPS_COUNT];
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to alloc SPS Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc SPS Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(SpsData) * MAX_SPS_COUNT);
     return p;
@@ -115,7 +115,7 @@ HEVCVideoParser::PpsData* HEVCVideoParser::AllocPps() {
         p = new PpsData [MAX_PPS_COUNT];
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to alloc PPS Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc PPS Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(PpsData) * MAX_PPS_COUNT);
     return p;
@@ -127,7 +127,7 @@ HEVCVideoParser::SliceData* HEVCVideoParser::AllocSlice() {
         p = new SliceData;
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to alloc Slice Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc Slice Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(SliceData));
     return p;
@@ -139,7 +139,7 @@ HEVCVideoParser::SliceHeaderData* HEVCVideoParser::AllocSliceHeader() {
         p = new SliceHeaderData;
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to alloc Slice Header Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc Slice Header Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(SliceHeaderData));
     return p;
@@ -159,13 +159,13 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
-bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataSize)
+bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size)
 {
     int ret = PARSER_OK;
-    NalUnitHeader nalUnitHeader;
+    NalUnitHeader nal_unit_header;
 
-    frame_data_buffer_ptr_ = (uint8_t*)pStream;
-    frame_data_size_ = frameDataSize;
+    frame_data_buffer_ptr_ = (uint8_t*)p_stream;
+    frame_data_size_ = frame_data_size;
     curr_byte_offset_ = 0;
     start_code_num_ = 0;
     curr_start_code_offset_ = 0;
@@ -173,61 +173,40 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataS
 
     slice_num_ = 0;
 
-    do
-    {
-        ret = GetNALUnit();
+    do {
+        ret = GetNalUnit();
 
-        if (ret == PARSER_NOT_FOUND)
-        {
-            printf("Error: no start code found in the frame data.\n");
+        if (ret == PARSER_NOT_FOUND) {
+            ERR(STR("Error: no start code found in the frame data.\n"));
             return false;
         }
 
-        // Jefftest
         printf("Start code offset = %d, NAL size = %d\n", curr_start_code_offset_, nal_unit_size_);
-        for (int i = 0; i < 10; i++)
-        {
-            printf("%x ", frame_data_buffer_ptr_[curr_start_code_offset_ + i]);
-        }
-        printf("\n");
 
         // Parse the NAL unit
-        if (nal_unit_size_)
-        {
+        if (nal_unit_size_) {
             // start code + NAL unit header = 5 bytes
-            int ebspSize = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
+            int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
-            nalUnitHeader = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
-            // Jefftest
-            //printf("nal unit type = %d\n", nalUnitHeader.nal_unit_type);
-            switch (nalUnitHeader.nal_unit_type)
-            {
-                case NAL_UNIT_VPS:
-                {
-                    // Jefftest
-                    printf("VPS...\n");
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+            nal_unit_header = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
+            switch (nal_unit_header.nal_unit_type) {
+                case NAL_UNIT_VPS: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     ParseVps(m_rbsp_buf_, m_rbsp_size_);
                     break;
                 }
 
-                case NAL_UNIT_SPS:
-                {
-                    // Jefftest
-                    printf("SPS ...\n");
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                case NAL_UNIT_SPS: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     ParseSps(m_rbsp_buf_, m_rbsp_size_);
                     break;
                 }
 
-                case NAL_UNIT_PPS:
-                {
-                    // Jefftest
-                    printf("PPS ...\n");
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
+                case NAL_UNIT_PPS: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     ParsePps(m_rbsp_buf_, m_rbsp_size_);
                     break;
                 }
@@ -247,13 +226,10 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataS
                 case NAL_UNIT_CODED_SLICE_RADL_N:
                 case NAL_UNIT_CODED_SLICE_RADL_R:
                 case NAL_UNIT_CODED_SLICE_RASL_N:
-                case NAL_UNIT_CODED_SLICE_RASL_R:
-                {
-                    // Jefftest
-                    printf("Slice header ...\n");
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebspSize);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebspSize);
-                    ParseSliceHeader(nalUnitHeader.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                case NAL_UNIT_CODED_SLICE_RASL_R: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
+                    ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
 
                     slice_num_++;
 
@@ -267,8 +243,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataS
         }
 
         // Break if this is the last NAL unit
-        if (ret == PARSER_EOF)
-        {
+        if (ret == PARSER_EOF) {
             break;
         }
     } while (1);
@@ -276,35 +251,30 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* pStream, uint32_t frameDataS
     return true;
 }
 
-int HEVCVideoParser::GetNALUnit()
-{
-    bool startCodeFound = false;
+int HEVCVideoParser::GetNalUnit() {
+    bool start_code_found = false;
 
     nal_unit_size_ = 0;
     curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
 
     // Search for the next start code
-    while (curr_byte_offset_ < frame_data_size_ - 2)
-    {
-        if (frame_data_buffer_ptr_[curr_byte_offset_] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 1] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 2] == 0x01)
-        {
+    while (curr_byte_offset_ < frame_data_size_ - 2) {
+        if (frame_data_buffer_ptr_[curr_byte_offset_] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 1] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 2] == 0x01) {
             curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
 
-            startCodeFound = true;
+            start_code_found = true;
             start_code_num_++;
             next_start_code_offset_ = curr_byte_offset_;
             // Move the pointer 3 bytes forward
             curr_byte_offset_ += 3;
 
             // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1)
-            {
-                startCodeFound = false;
+            if (start_code_num_ == 1) {
+                start_code_found = false;
                 curr_start_code_offset_ = next_start_code_offset_;
                 continue;
             }
-            else
-            {
+            else {
                 break;
             }
         }
@@ -312,19 +282,16 @@ int HEVCVideoParser::GetNALUnit()
         curr_byte_offset_++;
     }
     
-    if (start_code_num_ == 0)
-    {
+    if (start_code_num_ == 0) {
         // No NAL unit in the frame data
         return PARSER_NOT_FOUND;
     }
 
-    if (startCodeFound)
-    {
+    if (start_code_found) {
         nal_unit_size_ = next_start_code_offset_ - curr_start_code_offset_;
         return PARSER_OK;
     }
-    else
-    {
+    else {
         nal_unit_size_ = frame_data_size_ - curr_start_code_offset_;
         return PARSER_EOF;
     }        
