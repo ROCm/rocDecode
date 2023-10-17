@@ -47,6 +47,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         return ROCDEC_RUNTIME_ERROR;
     }
     return ROCDEC_SUCCESS;
+}
 
 HEVCVideoParser::~HEVCVideoParser() {
     if (m_vps_) {
@@ -316,8 +317,13 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
 
 void HEVCVideoParser::ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (uint32_t i = 0; i <= cpb_cnt; i++) {
+        sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         if(sub_pic_hrd_params_present_flag) {
+            sub_hrd->cpb_size_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sub_hrd->bit_rate_du_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        }
+        sub_hrd->cbr_flag[i] = Parser::GetBit(nalu, offset);
     }
 }
 
@@ -328,7 +334,11 @@ void HEVCVideoParser::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf
         if (hrd->nal_hrd_parameters_present_flag || hrd->vcl_hrd_parameters_present_flag) {
             hrd->sub_pic_hrd_params_present_flag = Parser::GetBit(nalu, offset);
             if (hrd->sub_pic_hrd_params_present_flag) {
+                hrd->tick_divisor_minus2 = Parser::ReadBits(nalu, offset, 8);
                 hrd->du_cpb_removal_delay_increment_length_minus1 = Parser::ReadBits(nalu, offset, 5);
+                hrd->sub_pic_cpb_params_in_pic_timing_sei_flag = Parser::GetBit(nalu, offset);
+                hrd->dpb_output_delay_du_length_minus1 = Parser::ReadBits(nalu, offset, 5);
+            }
             hrd->bit_rate_scale = Parser::ReadBits(nalu, offset, 4);
             hrd->cpb_size_scale = Parser::ReadBits(nalu, offset, 4);
             if (hrd->sub_pic_hrd_params_present_flag) {
@@ -565,8 +575,13 @@ void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_laye
         vui->vui_poc_proportional_to_timing_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_poc_proportional_to_timing_flag) {
             vui->vui_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        }
         vui->vui_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         if (vui->vui_hrd_parameters_present_flag) {
+            ParseHrdParameters(&vui->hrd_parameters, 1, max_num_sub_layers_minus1, nalu, size, offset);
+        }
+    }
+    vui->bitstream_restriction_flag = Parser::GetBit(nalu, offset);
     if (vui->bitstream_restriction_flag) {
         vui->tiles_fixed_structure_flag = Parser::GetBit(nalu, offset);
         vui->motion_vectors_over_pic_boundaries_flag = Parser::GetBit(nalu, offset);
