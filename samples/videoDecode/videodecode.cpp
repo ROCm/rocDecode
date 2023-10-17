@@ -28,11 +28,8 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <libgen.h>
 #include <filesystem>
-#include <fstream>
 #include "video_demuxer.hpp"
 #include "rocdecode.h"
-#include "rocparser.h"
-#include "../../src/parser/hevc_parser.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -82,16 +79,8 @@ int main(int argc, char **argv) {
     }
 
     VideoDemuxer demuxer(inputFilePath.c_str());
-    RocdecVideoParser parser_handle;
-    RocdecParserParams parser_params;
-    parser_params.CodecType = rocDecVideoCodec_HEVC;
-    rocDecStatus roc_dec_status;
-    RocdecSourceDataPacket parser_packet; // TODO: in place of parser_buffer??
-    ParserResult res;
-    std::ofstream fs;
     //VideoDecode viddec(deviceId);
 
-    roc_dec_status = rocDecCreateVideoParser(&parser_handle, &parser_params);
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
 
@@ -111,27 +100,14 @@ int main(int argc, char **argv) {
     uint32_t width, height;
     //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
-    /*if(dumpOutputFrames) {
-        fs.open(outputFilePath.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
-    }*/
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
-        parser_packet.payload_size = nVideoBytes;
-        parser_packet.payload = pVideo;
-        if (nVideoBytes > 0)
-            roc_dec_status = rocDecParseVideoData(parser_handle, &parser_packet);
-        else
-            break;
-        /*if (fs.is_open()) {
-            std::cout << "size of bytes to write = " << outputBuffer->GetSize() << std::endl;
-            fs.write((const char*)outputBuffer->GetNative(), outputBuffer->GetSize());
-        }
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
-        totalDecTime += timePerFrame;*/
+        totalDecTime += timePerFrame;
         /*if (!nFrame && !viddec.getOutputImageInfo(&pImageInfo)){
             std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
             break;
@@ -145,11 +121,8 @@ int main(int argc, char **argv) {
                 viddec.releaseFrame(pts);*/
             }
         }
-        printf("I am here! \n");
-        nFrame++;
-        //nFrame += nFrameReturned;
+        nFrame += nFrameReturned;
     } while (nVideoBytes);
-    //fs.close();
 
      // Flush last frames from the decoder if any
     do {
@@ -157,7 +130,7 @@ int main(int argc, char **argv) {
         pVideo = nullptr; nVideoBytes = 0;
         int64_t pts = 0;
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
-    } while (nVideoBytes);
+    } while (nFrameReturned);
 
     /*std::cout << "info: Video codec format: " << viddec.getCodecFmtName(viddec.getVcnVideoCodecId()) << std::endl;
     std::cout << "info: Video size: [ " << pImageInfo->nOutputWidth << ", " << pImageInfo->nOutputHeight << " ]" << std::endl;
