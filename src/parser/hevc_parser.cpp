@@ -51,13 +51,13 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
 HEVCVideoParser::~HEVCVideoParser() {
     if (m_vps_) {
-        delete []m_vps_;
+        delete [] m_vps_;
     }
     if (m_sps_) {
-        delete []m_sps_;
+        delete [] m_sps_;
     }
     if (m_pps_) {
-        delete []m_pps_;
+        delete [] m_pps_;
     }
     if (m_sh_) {
         delete m_sh_;
@@ -287,7 +287,6 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
         ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
         //ReadBits is limited to 32 
-        //ptl->general_reserved_zero_44bits = Parser::ReadBits(nalu, offset,44);
         offset += 44;
     }
     ptl->general_level_idc = Parser::ReadBits(nalu, offset, 8);
@@ -724,7 +723,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         m_sps_[sps_id].pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
     m_sps_[sps_id].num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i=0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
+    for (int i = 0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
         ParseShortTermRefPicSet(&m_sps_[sps_id].st_rps[i], i, m_sps_[sps_id].num_short_term_ref_pic_sets, m_sps_[sps_id].st_rps, nalu, size, offset);
     }
@@ -842,12 +841,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         if (m_pps_[m_active_pps_].dependent_slice_segments_enabled_flag) {
             temp_sh.dependent_slice_segment_flag = m_sh_->dependent_slice_segment_flag = Parser::GetBit(nalu, offset);
         }
-        //length is Ceil( Log2( PicSizeInCtbsY ) ) bits
-        //use the same method from ref decoder
-        //MaxCUWidth and MaxCUHeight is obtained from parsing SPS
-        //Int num_ctus = ((sps->getPicWidthInLumaSamples()+sps->getMaxCUWidth()-1)/sps->getMaxCUWidth())*((sps->getPicHeightInLumaSamples()+sps->getMaxCUHeight()-1)/sps->getMaxCUHeight());
-        int num_ctus = 0; //((m_sps_[m_active_sps_].pic_width_in_luma_samples + m_sps_[m_active_sps_].max_cu_width - 1) / (m_sps_[m_active_sps_].max_cu_width)) * 
-                        //((m_sps_[m_active_sps_].pic_height_in_luma_samples + m_sps_[m_active_sps_].max_cu_height - 1) / (m_sps_[m_active_sps_].max_cu_height));
+        int num_ctus = 0;
         int max_parts = (1 << (m_sps_[m_active_sps_].max_cu_depth << 1));
         int bits_slice_segment_address = 0;
         while(num_ctus > (1 << bits_slice_segment_address)) {
@@ -867,7 +861,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
             m_sh_->colour_plane_id = Parser::ReadBits(nalu, offset, 2);
         }
         if (nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP) {
-            //reference ln 905 in TDevCAVLC.cpp
             m_slice_->curr_poc = 0;
             m_slice_->prev_poc = m_slice_->curr_poc;
             m_slice_->curr_poc_lsb = 0;
@@ -906,7 +899,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                 ParseShortTermRefPicSet(&m_sh_->st_rps, m_sps_[m_active_sps_].num_short_term_ref_pic_sets, m_sps_[m_active_sps_].num_short_term_ref_pic_sets, m_sps_[m_active_sps_].st_rps, nalu, size, offset);
             }
             else if (m_sps_[m_active_sps_].num_short_term_ref_pic_sets > 1) {
-                //Ceil( Log2( num_short_term_ref_pic_sets ) ) bits
                 int num_bits = 0;
                 while ((1 << num_bits) < m_sps_[m_active_sps_].num_short_term_ref_pic_sets) {
                     num_bits++;
@@ -931,7 +923,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                 for (int i = 0; i < (m_sh_->num_long_term_sps + m_sh_->num_long_term_pics); i++) {
                     if (i < m_sh_->num_long_term_sps) {
                         if (m_sps_[m_active_sps_].num_long_term_ref_pics_sps > 1) {
-                            //bits: Ceil( Log2( num_long_term_ref_pics_sps ) ).
                             if( bits_for_ltrp_in_sps > 0) {
                                 m_sh_->lt_idx_sps[i] = Parser::ReadBits(nalu, offset, bits_for_ltrp_in_sps);
                                 m_sh_->lt_rps.pocs[i] = m_sps_[m_active_sps_].lt_rps.pocs[m_sh_->lt_idx_sps[i]];
@@ -940,7 +931,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                         }
                     }
                     else {
-                        //log2_max_pic_order_cnt_lsb_minus4 + 4 bits.
                         m_sh_->poc_lsb_lt[i] = Parser::ReadBits(nalu, offset, (m_sps_[m_active_sps_].log2_max_pic_order_cnt_lsb_minus4 + 4));
                         m_sh_->used_by_curr_pic_lt_flag[i] = Parser::GetBit(nalu, offset);
                         m_sh_->lt_rps.pocs[i] = m_sh_->poc_lsb_lt[i];
@@ -966,7 +956,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         m_sh_->slice_pic_parameter_set_id = temp_sh.slice_pic_parameter_set_id;
         m_sh_->dependent_slice_segment_flag = temp_sh.dependent_slice_segment_flag;
         m_sh_->slice_segment_address = temp_sh.slice_segment_address;
-        //byte_alignment()
     }
     return false;
 }
