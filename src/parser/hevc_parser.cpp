@@ -286,9 +286,10 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         ptl->general_interlaced_source_flag = Parser::GetBit(nalu, offset);
         ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
         ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
-        //ReadBits is limited to 32 
+        //ReadBits is limited to 32
         offset += 44;
     }
+
     ptl->general_level_idc = Parser::ReadBits(nalu, offset, 8);
     for(uint32_t i = 0; i < max_num_sub_layers_minus1; i++) {
         ptl->sub_layer_profile_present_flag[i] = Parser::GetBit(nalu, offset);
@@ -304,6 +305,11 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
             ptl->sub_layer_profile_space[i] = Parser::ReadBits(nalu, offset, 2);
             ptl->sub_layer_tier_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_profile_idc[i] = Parser::ReadBits(nalu, offset, 5);
+            for (int j = 0; j < 32; j++) {
+                ptl->sub_layer_profile_compatibility_flag[i][j] = Parser::GetBit(nalu, offset);
+            }
+            ptl->sub_layer_progressive_source_flag[i] = Parser::GetBit(nalu, offset);
+            ptl->sub_layer_interlaced_source_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_non_packed_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_frame_only_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_reserved_zero_44bits[i] = Parser::ReadBits(nalu, offset, 44);
@@ -386,9 +392,11 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * s_data, uint8_t *na
 
                 int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
                 int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+
+                //fill in scaling_list_dc_coef_minus8
                 if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
                     if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = 8;
+                        s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = 8;
                     }
                 }
                 else {
@@ -665,7 +673,13 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     m_sps_[sps_id].chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
     if (m_sps_[sps_id].chroma_format_idc == 3) {
         m_sps_[sps_id].separate_colour_plane_flag = Parser::GetBit(nalu, offset);
+    }
     m_sps_[sps_id].pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    m_sps_[sps_id].pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    m_sps_[sps_id].conformance_window_flag = Parser::GetBit(nalu, offset);
+    if (m_sps_[sps_id].conformance_window_flag)
+    {
+        m_sps_[sps_id].conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         m_sps_[sps_id].conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -723,7 +737,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         m_sps_[sps_id].pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
     m_sps_[sps_id].num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i = 0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
+    for (int i=0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
         ParseShortTermRefPicSet(&m_sps_[sps_id].st_rps[i], i, m_sps_[sps_id].num_short_term_ref_pic_sets, m_sps_[sps_id].st_rps, nalu, size, offset);
     }
@@ -816,7 +830,6 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
     m_pps_[pps_id].slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
     m_pps_[pps_id].pps_extension_flag = Parser::GetBit(nalu, offset);
-    
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
@@ -847,7 +860,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         while(num_ctus > (1 << bits_slice_segment_address)) {
             bits_slice_segment_address++;
         }
-        temp_sh.slice_segment_address = m_sh_->slice_segment_address = Parser::ReadBits(nalu, offset, bits_slice_segment_address);   
+        temp_sh.slice_segment_address = m_sh_->slice_segment_address = Parser::ReadBits(nalu, offset, bits_slice_segment_address);
     }
     if (!m_sh_->dependent_slice_segment_flag) {
         for (int i = 0; i < m_pps_[m_active_pps_].num_extra_slice_header_bits; i++) {
