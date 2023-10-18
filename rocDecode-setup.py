@@ -41,6 +41,12 @@ args = parser.parse_args()
 
 ROCM_PATH = args.rocm_path
 
+old_system = os.system
+def new_system(command):
+    print(command)
+    return old_system(command)
+os.system = new_system
+
 if "ROCM_PATH" in os.environ:
     ROCM_PATH = os.environ.get('ROCM_PATH')
 print("\nROCm PATH set to -- "+ROCM_PATH+"\n")
