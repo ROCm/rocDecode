@@ -93,7 +93,7 @@ protected:
         NAL_UNIT_CODED_SLICE_BLA_N_LP,    // 18
         NAL_UNIT_CODED_SLICE_IDR_W_RADL,  // 19
         NAL_UNIT_CODED_SLICE_IDR_N_LP,    // 20
-        NAL_UNIT_CODED_SLICE_CRA,         // 21
+        NAL_UNIT_CODED_SLICE_CRA_NUT,     // 21
         NAL_UNIT_RESERVED_IRAP_VCL22,
         NAL_UNIT_RESERVED_IRAP_VCL23,
 
@@ -568,9 +568,9 @@ protected:
     size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
 
     // Data members of HEVC class
-    uint32_t            m_active_vps_;
-    uint32_t            m_active_sps_;
-    uint32_t            m_active_pps_;
+    int32_t             m_active_vps_id_;
+    int32_t             m_active_sps_id_;
+    int32_t             m_active_pps_id_;
     VpsData*            m_vps_;
     SpsData*            m_sps_;
     PpsData*            m_pps_;
