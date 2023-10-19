@@ -699,13 +699,6 @@ protected:
      */
     int GetNalUnit();
 
-    // Jefftest
-    void PrintVps(HEVCVideoParser::VpsData *pVps);
-    void PrintSps(HEVCVideoParser::SpsData *pSps);
-    void PrintPps(HEVCVideoParser::PpsData *pPps);
-    void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *pSliceHeader);
-
-
 private:
     /*! \brief Function to initialize the HEVC parser members
      * \return Returns OK in <tt>ParserResult</tt> if successful, else error code

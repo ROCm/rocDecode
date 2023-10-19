@@ -286,8 +286,7 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         ptl->general_interlaced_source_flag = Parser::GetBit(nalu, offset);
         ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
         ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
-        //ReadBits is limited to 32 
-        //ptl->general_reserved_zero_44bits = Parser::ReadBits(nalu, offset,44);
+        //ReadBits is limited to 32
         offset += 44;
         // Todo: add constrant flags parsing.
     }
@@ -394,9 +393,11 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * s_data, uint8_t *na
 
                 int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
                 int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+
+                //fill in scaling_list_dc_coef_minus8
                 if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
                     if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = 8;
+                        s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = 8;
                     }
                 }
                 else {
@@ -737,7 +738,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         m_sps_[sps_id].pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
     m_sps_[sps_id].num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i = 0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
+    for (int i=0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
         ParseShortTermRefPicSet(&m_sps_[sps_id].st_rps[i], i, m_sps_[sps_id].num_short_term_ref_pic_sets, m_sps_[sps_id].st_rps, nalu, size, offset);
     }
@@ -828,7 +829,6 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
     m_pps_[pps_id].slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
     m_pps_[pps_id].pps_extension_flag = Parser::GetBit(nalu, offset);
-    
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
