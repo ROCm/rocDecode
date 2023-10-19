@@ -22,6 +22,12 @@ THE SOFTWARE.
 
 #include "roc_video_parser.h"
 
+RocVideoParser::RocVideoParser() {
+    pic_width_ = 0;
+    pic_height_ = 0;
+    pic_dimension_changed_ = false;
+}
+
 /**
  * @brief Initializes any parser related stuff for all parsers
  * 
@@ -40,9 +46,5 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
 
     parser_params_ = pParams;
 
-    pic_width_ = 0;
-    pic_height_ = 0;
-    pic_dimension_changed_ = false;
-    
     return ROCDEC_SUCCESS;
 }

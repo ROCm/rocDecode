@@ -32,7 +32,7 @@ THE SOFTWARE.
  */
 class RocVideoParser {
 public:
-    RocVideoParser() {};    // default constructor
+    RocVideoParser();    // default constructor
     RocVideoParser(RocdecParserParams *pParams) : parser_params_(pParams) {};
     virtual ~RocVideoParser() = default ;
     virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = pParams; };
