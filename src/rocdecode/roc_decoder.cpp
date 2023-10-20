@@ -32,6 +32,8 @@ RocDecoder::RocDecoder(int device_id, int num_devices):device_id_ {device_id}, n
 
 }
 
+// static member function to get DecoderCaps
+// since multiple instanes of decoder can call this simultaneously, protect impl with mutex
 rocDecStatus RocDecoder::getDecoderCaps(RocdecDecodeCaps *pdc) {
     // todo:: return appropriate decStatus if fails
     //vaQueryConfigProfiles
@@ -63,7 +65,7 @@ rocDecStatus RocDecoder::reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecRe
 }
 
 rocDecStatus RocDecoder::mapVideoFrame(int nPicIdx, void *pDevMemPtr[3],
-                                unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
+                                unsigned int pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
     // todo:: return appropriate decStatus
     // Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
     // pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately

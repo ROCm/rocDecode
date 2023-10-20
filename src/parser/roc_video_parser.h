@@ -39,6 +39,7 @@ public:
     RocdecParserParams *GetParserParams() {return parser_params_;};
     virtual rocDecStatus Initialize(RocdecParserParams *pParams);
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
+    virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
 
 protected:
     RocdecParserParams *parser_params_ = nullptr;

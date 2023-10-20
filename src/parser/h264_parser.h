@@ -45,6 +45,13 @@ public:
      * @return rocDecStatus: returns success on completion, else error_code for failure
      */
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData);
+    /**
+     * @brief function to uninitialize h264 parser
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus UnInitialize();     // derived method
+
 
 private:    
 

@@ -130,6 +130,13 @@ public:
     virtual rocDecStatus            ParseVideoData(RocdecSourceDataPacket *pData);     // pure virtual: implemented by derived class
 
     /**
+     * @brief function to uninitialize hevc parser
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus UnInitialize();     // derived method
+
+    /**
      * @brief HEVCParser object destructor
      * 
      */

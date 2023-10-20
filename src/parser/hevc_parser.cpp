@@ -76,6 +76,17 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {
     return ROCDEC_SUCCESS;
 }
 
+/**
+ * @brief function to uninitialize hevc parser
+ * 
+ * @return rocDecStatus 
+ */
+rocDecStatus HEVCVideoParser::UnInitialize() {
+  //todo::
+    return ROCDEC_NOT_IMPLEMENTED;
+}
+
+
 void HEVCVideoParser::FindFirstFrameSPSandPPS() {
     Seek(PARSER_SEEK_BEGIN, 0, NULL);
     FindSPSandPPS();

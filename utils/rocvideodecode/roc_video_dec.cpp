@@ -22,23 +22,12 @@ THE SOFTWARE.
 
 #include "roc_video_dec.h"
 
-RocVideoDecode::RocVideoDecode(int device_id) : num_devices_{0}, device_id_{device_id}, hip_stream_ {0},
-    external_mem_handle_desc_{{}}, external_mem_buffer_desc_{{}}, va_display_{nullptr},
-    va_profiles_{{}}, num_va_profiles_{-1}, yuv_dev_mem_{nullptr}, width_{0}, height_{0},
-    chroma_height_{0}, surface_height_{0}, surface_width_{0}, num_chroma_planes_{0},
-    surface_stride_{0}, surface_size_{0}, bit_depth_{8}, byte_per_pixel_{1},
-    subsampling_{ROCDEC_FMT_YUV420}, out_image_info_{{}}, fp_out_{nullptr}, drm_fd_{-1} {
 
-    if (!InitHIP(device_id_)) {
-        THROW("Failed to initilize the HIP");
-    }
-}
-
-RocVideoDecode::RocVideoDecode(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVideoCodec codec, int device_id, bool b_low_latency, bool device_frame_pitched, 
+RocVideoDecoder::RocVideoDecoder(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVideoCodec codec, int device_id, bool b_low_latency, bool device_frame_pitched, 
               const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
               uint32_t clk_rate,  bool force_zero_latency) : hip_ctx_(hip_ctx), b_use_device_mem_(b_use_device_mem), codec_id_(codec), device_id_{device_id}, 
-              b_low_latency_(b_low_latency), b_extract_sei_message_(extract_user_SEI_Message), max_width_ (max_width), max_height_(max_height),
-              b_force_zero_latency_(force_zero_latency)
+              b_low_latency_(b_low_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message), 
+              max_width_ (max_width), max_height_(max_height), b_force_zero_latency_(force_zero_latency)
 {
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -66,7 +55,7 @@ RocVideoDecode::RocVideoDecode(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVi
 }
 
 
-RocVideoDecode::~RocVideoDecode() {
+RocVideoDecoder::~RocVideoDecoder() {
     if (curr_sei_message_ptr_) {
         delete curr_sei_message_ptr_;
         curr_sei_message_ptr_ = nullptr;
@@ -130,7 +119,7 @@ static const char * GetVideoCodecString(rocDecVideoCodec eCodec) {
  * @param codec_id 
  * @return const char* 
  */
-const char *RocVideoDecode::GetCodecFmtName(rocDecVideoCodec codec_id)
+const char *RocVideoDecoder::GetCodecFmtName(rocDecVideoCodec codec_id)
 {
     return GetVideoCodecString(codec_id);
 }
@@ -146,48 +135,53 @@ static const char * GetVideoChromaFormatName(rocDecVideoChromaFormat e_chroma_fo
         { rocDecVideoChromaFormat_444,        "YUV 444"              },
     };
 
-    if (e_chroma_format >= 0 && e_chroma_format < sizeof(chroma_fmt) / sizeof(ChromaFormatName[0])) {
+    if (e_chroma_format >= 0 && e_chroma_format <= rocDecVideoChromaFormat_444) {
         return ChromaFormatName[e_chroma_format].name;
     }
     return "Unknown";
 }
 
-
-
-std::string RocVideoDecode::GetPixFmtName(RocDecImageFormat subsampling) {
-    std::string fmt_name = "";
-    switch (subsampling) {
-        case ROCDEC_FMT_YUV420:
-            fmt_name = "YUV420";
-            break;
-        case ROCDEC_FMT_YUV444:
-            fmt_name = "YUV444";
-            break;
-        case ROCDEC_FMT_YUV422:
-            fmt_name = "YUV422";
-            break;
-        case ROCDEC_FMT_YUV400:
-            fmt_name = "YUV400";
-            break;
-       case ROCDEC_FMT_YUV420P10:
-            fmt_name = "YUV420P10";
-            break;
-       case ROCDEC_FMT_YUV420P12:
-            fmt_name = "YUV420P12";
-            break;
-        case ROCDEC_FMT_RGB:
-            fmt_name = "RGB";
-            break;
-        default:
-            std::cerr << "ERROR: subsampling format is not supported!" << std::endl;
+static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format)
+{
+    float factor = 0.5;
+    switch (surface_format)
+    {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        factor = 0.5;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        factor = 1.0;
+        break;
     }
-    return fmt_name;
+
+    return factor;
 }
+
+static int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format)
+{
+    int num_planes = 1;
+    switch (surface_format)
+    {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        num_planes = 1;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        num_planes = 2;
+        break;
+    }
+
+    return num_planes;
+}
+
 
 /* Return value from HandleVideoSequence() are interpreted as   :
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::ulMaxNumDecodeSurfaces while creating parser)
 */
-int RocVideoDecode::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
+int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     //START_TIMER
     input_video_info_str_.str("");
     input_video_info_str_.clear();
@@ -244,7 +238,7 @@ int RocVideoDecode::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     codec_id_ = pVideoFormat->codec;
     video_chroma_format_ = pVideoFormat->chroma_format;
     bitdepth_minus_8_ = pVideoFormat->bit_depth_luma_minus8;
-    BPP_ = bitdepth_minus_8_ > 0 ? 2 : 1;
+    byte_per_pixel_ = bitdepth_minus_8_ > 0 ? 2 : 1;
 
     // Set the output surface format same as chroma format
     if (video_chroma_format_ == rocDecVideoChromaFormat_420 || rocDecVideoChromaFormat_Monochrome)
@@ -255,109 +249,110 @@ int RocVideoDecode::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
         video_surface_format_ = rocDecVideoSurfaceFormat_NV12;      // 422 output surface is not supported:: default to NV12
 
     // Check if output format supported. If not, check falback options
-    if (!(decode_caps.nOutputFormatMask & (1 << m_eOutputFormat)))
+    if (!(decode_caps.nOutputFormatMask & (1 << video_surface_format_)))
     {
-        if (decode_caps.nOutputFormatMask & (1 << cudaVideoSurfaceFormat_NV12))
-            m_eOutputFormat = cudaVideoSurfaceFormat_NV12;
-        else if (decode_caps.nOutputFormatMask & (1 << cudaVideoSurfaceFormat_P016))
-            m_eOutputFormat = cudaVideoSurfaceFormat_P016;
-        else if (decode_caps.nOutputFormatMask & (1 << cudaVideoSurfaceFormat_YUV444))
-            m_eOutputFormat = cudaVideoSurfaceFormat_YUV444;
-        else if (decode_caps.nOutputFormatMask & (1 << cudaVideoSurfaceFormat_YUV444_16Bit))
-            m_eOutputFormat = cudaVideoSurfaceFormat_YUV444_16Bit;
+        if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_NV12))
+            video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
+        else if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_P016))
+            video_surface_format_ = rocDecVideoSurfaceFormat_P016;
+        else if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_YUV444))
+            video_surface_format_ = rocDecVideoSurfaceFormat_YUV444;
+        else if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_YUV444_16Bit))
+            video_surface_format_ = rocDecVideoSurfaceFormat_YUV444_16Bit;
         else 
-            NVDEC_THROW_ERROR("No supported output format found", CUDA_ERROR_NOT_SUPPORTED);
+            THROW("No supported output format found" + TOSTR(ROCDEC_NOT_SUPPORTED));
     }
-    m_videoFormat = *pVideoFormat;
+    video_format_ = *pVideoFormat;
 
-    CUVIDDECODECREATEINFO videoDecodeCreateInfo = { 0 };
+    RocdecDecoderCreateInfo videoDecodeCreateInfo = { 0 };
     videoDecodeCreateInfo.CodecType = pVideoFormat->codec;
     videoDecodeCreateInfo.ChromaFormat = pVideoFormat->chroma_format;
-    videoDecodeCreateInfo.OutputFormat = m_eOutputFormat;
+    videoDecodeCreateInfo.OutputFormat = video_surface_format_;
     videoDecodeCreateInfo.bitDepthMinus8 = pVideoFormat->bit_depth_luma_minus8;
-    if (pVideoFormat->progressive_sequence)
-        videoDecodeCreateInfo.DeinterlaceMode = cudaVideoDeinterlaceMode_Weave;
-    else
-        videoDecodeCreateInfo.DeinterlaceMode = cudaVideoDeinterlaceMode_Adaptive;
     videoDecodeCreateInfo.ulNumOutputSurfaces = 2;
-    // With PreferCUVID, JPEG is still decoded by CUDA while video is decoded by NVDEC hardware
-    videoDecodeCreateInfo.ulCreationFlags = cudaVideoCreate_PreferCUVID;
     videoDecodeCreateInfo.ulNumDecodeSurfaces = nDecodeSurface;
-    videoDecodeCreateInfo.vidLock = m_ctxLock;
     videoDecodeCreateInfo.ulWidth = pVideoFormat->coded_width;
     videoDecodeCreateInfo.ulHeight = pVideoFormat->coded_height;
     // AV1 has max width/height of sequence in sequence header
-    if (pVideoFormat->codec == cudaVideoCodec_AV1 && pVideoFormat->seqhdr_data_length > 0)
+    if (pVideoFormat->codec == rocDecVideoCodec_AV1 && pVideoFormat->seqhdr_data_length > 0)
     {
         // dont overwrite if it is already set from cmdline or reconfig.txt
-        if (!(m_nMaxWidth > pVideoFormat->coded_width || m_nMaxHeight > pVideoFormat->coded_height))
+        if (!(max_width_ > pVideoFormat->coded_width || max_height_ > pVideoFormat->coded_height))
         {
-            CUVIDEOFORMATEX *vidFormatEx = (CUVIDEOFORMATEX *)pVideoFormat;
-            m_nMaxWidth = vidFormatEx->av1.max_width;
-            m_nMaxHeight = vidFormatEx->av1.max_height;
+            RocdecVideoFormatEx *vidFormatEx = (RocdecVideoFormatEx *)pVideoFormat;
+            max_width_ = vidFormatEx->max_width;
+            max_height_ = vidFormatEx->max_height;
         }
     }
-    if (m_nMaxWidth < (int)pVideoFormat->coded_width)
-        m_nMaxWidth = pVideoFormat->coded_width;
-    if (m_nMaxHeight < (int)pVideoFormat->coded_height)
-        m_nMaxHeight = pVideoFormat->coded_height;
-    videoDecodeCreateInfo.ulMaxWidth = m_nMaxWidth;
-    videoDecodeCreateInfo.ulMaxHeight = m_nMaxHeight;
+    if (max_width_ < (int)pVideoFormat->coded_width)
+        max_width_ = pVideoFormat->coded_width;
+    if (max_height_ < (int)pVideoFormat->coded_height)
+        max_height_ = pVideoFormat->coded_height;
+    videoDecodeCreateInfo.ulMaxWidth = max_width_;
+    videoDecodeCreateInfo.ulMaxHeight = max_height_;
 
-    if (!(m_cropRect.r && m_cropRect.b) && !(m_resizeDim.w && m_resizeDim.h)) {
-        m_nWidth = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
-        m_nLumaHeight = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
+    if (!(crop_rect_.r && crop_rect_.b) && !(resize_dim_.w && resize_dim_.h)) {
+        width_ = pVideoFormat->display_area.right - pVideoFormat->display_area.left;
+        height_ = pVideoFormat->display_area.bottom - pVideoFormat->display_area.top;
         videoDecodeCreateInfo.ulTargetWidth = pVideoFormat->coded_width;
         videoDecodeCreateInfo.ulTargetHeight = pVideoFormat->coded_height;
     } else {
-        if (m_resizeDim.w && m_resizeDim.h) {
+        if (resize_dim_.w && resize_dim_.h) {
             videoDecodeCreateInfo.display_area.left = pVideoFormat->display_area.left;
             videoDecodeCreateInfo.display_area.top = pVideoFormat->display_area.top;
             videoDecodeCreateInfo.display_area.right = pVideoFormat->display_area.right;
             videoDecodeCreateInfo.display_area.bottom = pVideoFormat->display_area.bottom;
-            m_nWidth = m_resizeDim.w;
-            m_nLumaHeight = m_resizeDim.h;
+            width_ = resize_dim_.w;
+            height_ = resize_dim_.h;
         }
 
-        if (m_cropRect.r && m_cropRect.b) {
-            videoDecodeCreateInfo.display_area.left = m_cropRect.l;
-            videoDecodeCreateInfo.display_area.top = m_cropRect.t;
-            videoDecodeCreateInfo.display_area.right = m_cropRect.r;
-            videoDecodeCreateInfo.display_area.bottom = m_cropRect.b;
-            m_nWidth = m_cropRect.r - m_cropRect.l;
-            m_nLumaHeight = m_cropRect.b - m_cropRect.t;
+        if (crop_rect_.r && crop_rect_.b) {
+            videoDecodeCreateInfo.display_area.left = crop_rect_.l;
+            videoDecodeCreateInfo.display_area.top = crop_rect_.t;
+            videoDecodeCreateInfo.display_area.right = crop_rect_.r;
+            videoDecodeCreateInfo.display_area.bottom = crop_rect_.b;
+            width_ = crop_rect_.r - crop_rect_.l;
+            height_ = crop_rect_.b - crop_rect_.t;
         }
-        videoDecodeCreateInfo.ulTargetWidth = m_nWidth;
-        videoDecodeCreateInfo.ulTargetHeight = m_nLumaHeight;
+        videoDecodeCreateInfo.ulTargetWidth = width_;
+        videoDecodeCreateInfo.ulTargetHeight = height_;
     }
 
-    m_nChromaHeight = (int)(ceil(m_nLumaHeight * GetChromaHeightFactor(m_eOutputFormat)));
-    m_nNumChromaPlanes = GetChromaPlaneCount(m_eOutputFormat);
-    m_nSurfaceHeight = videoDecodeCreateInfo.ulTargetHeight;
-    m_nSurfaceWidth = videoDecodeCreateInfo.ulTargetWidth;
-    m_displayRect.b = videoDecodeCreateInfo.display_area.bottom;
-    m_displayRect.t = videoDecodeCreateInfo.display_area.top;
-    m_displayRect.l = videoDecodeCreateInfo.display_area.left;
-    m_displayRect.r = videoDecodeCreateInfo.display_area.right;
+    chroma_height_ = (int)(ceil(height_ * GetChromaHeightFactor(video_surface_format_)));
+    num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
+    surface_height_ = videoDecodeCreateInfo.ulTargetHeight;
+    surface_width_ = videoDecodeCreateInfo.ulTargetWidth;
+    surface_stride_ = align(surface_width_, 256) * byte_per_pixel_;      // 256 alignment is enforced for internal VCN surface, keeping the same for ease of memcpy
+    // fill output_surface_info_
+    output_surface_info_.output_width = surface_width_;
+    output_surface_info_.output_height = surface_height_;
+    output_surface_info_.output_pitch  = surface_stride_;
+    output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
+    output_surface_info_.bytes_per_pixel = byte_per_pixel_;
+    output_surface_info_.surface_format = video_surface_format_;
+    output_surface_info_.num_chroma_planes = num_chroma_planes_;
+
+    disp_rect_.b = videoDecodeCreateInfo.display_area.bottom;
+    disp_rect_.t = videoDecodeCreateInfo.display_area.top;
+    disp_rect_.l = videoDecodeCreateInfo.display_area.left;
+    disp_rect_.r = videoDecodeCreateInfo.display_area.right;
 
     input_video_info_str_ << "Video Decoding Params:" << std::endl
         << "\tNum Surfaces : " << videoDecodeCreateInfo.ulNumDecodeSurfaces << std::endl
         << "\tCrop         : [" << videoDecodeCreateInfo.display_area.left << ", " << videoDecodeCreateInfo.display_area.top << ", "
         << videoDecodeCreateInfo.display_area.right << ", " << videoDecodeCreateInfo.display_area.bottom << "]" << std::endl
         << "\tResize       : " << videoDecodeCreateInfo.ulTargetWidth << "x" << videoDecodeCreateInfo.ulTargetHeight << std::endl
-        << "\tDeinterlace  : " << std::vector<const char *>{"Weave", "Bob", "Adaptive"}[videoDecodeCreateInfo.DeinterlaceMode]
     ;
     input_video_info_str_ << std::endl;
 
-    NVDEC_API_CALL(cuvidCreateDecoder(&m_hDecoder, &videoDecodeCreateInfo));
-    NvDecoder::addDecoderSessionOverHead(getDecoderSessionID(), elapsedTime);
+    ROCDEC_API_CALL(rocDecCreateDecoder(&roc_decoder_, &videoDecodeCreateInfo));
     return nDecodeSurface;
 }
 
 
-int RocVideoDecode::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat)
+int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat)
 {
-    THROW("ReconfigureDecoder is not supported in this version: " + TOSTR(errorCode));
+    THROW("ReconfigureDecoder is not supported in this version: " + TOSTR(ROCDEC_NOT_SUPPORTED));
     return ROCDEC_NOT_SUPPORTED;
 }
 
@@ -367,7 +362,7 @@ int RocVideoDecode::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat)
  * @param pPicParams 
  * @return int 1: success 0: fail
  */
-int RocVideoDecode::HandlePictureDecode(RocdecPicParams *pPicParams) {
+int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     if (!roc_decoder_)
     {
         THROW("Decoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
@@ -393,13 +388,11 @@ int RocVideoDecode::HandlePictureDecode(RocdecPicParams *pPicParams) {
  * @param pDispInfo 
  * @return int 0:fail 1: success
  */
-int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
+int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     RocdecProcParams video_proc_params = {};
     video_proc_params.progressive_frame = pDispInfo->progressive_frame;
-    video_proc_params.second_field = pDispInfo->repeat_first_field + 1;
     video_proc_params.top_field_first = pDispInfo->top_field_first;
-    video_proc_params.unpaired_field = pDispInfo->repeat_first_field < 0;
-    video_proc_params.output_stream = hip_stream_;
+    video_proc_params.output_hipstream = hip_stream_;
 
     if (b_extract_sei_message_)
     {
@@ -424,16 +417,16 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                             break;
                             case SEI_TYPE_USER_DATA_UNREGISTERED:
                             {
-                                fwrite(seiBuffer, sei_message[i].sei_message_size, 1, fp_sei_);
+                                fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
                             }
                             break;
                         }            
                     }
-                    if (m_eCodec == rocDecVideoCodec_AV1)
+                    if (codec_id_ == rocDecVideoCodec_AV1)
                     {
-                        fwrite(seiBuffer, sei_message[i].sei_message_size, 1, m_fpSEI);
+                        fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
                     }    
-                    seiBuffer += sei_message[i].sei_message_size;
+                    sei_buffer += sei_message[i].sei_message_size;
                 }
             }
             free(sei_message_display_q_[pDispInfo->picture_index].pSEIData);
@@ -442,15 +435,14 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     }
 
     void * src_dev_ptr[3] = { 0 };
-    unsigned int src_pitch[3] = { 0 };
-    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, &src_dev_ptr, &src_pitch, &video_proc_params));
+    uint32_t src_pitch[3] = { 0 };
+    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
 
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
     rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-    if (result == ROCDEC_SUCCESS && (dec_status.decodeStatus == rocDecodeStatus_Error || dec_status.decodeStatus == rocDecodeStatus_Error_Concealed))
-    {
-        std::cerr("Decode Error occurred for picture %d\n", pic_num_in_dec_order_[pDispInfo->picture_index]);
+    if (result == ROCDEC_SUCCESS && (dec_status.decodeStatus == rocDecodeStatus_Error || dec_status.decodeStatus == rocDecodeStatus_Error_Concealed)) {
+        std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
     }
     // copy the decoded surface info device or host
     uint8_t *p_dec_frame = nullptr;
@@ -463,35 +455,105 @@ int RocVideoDecode::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             DecFrameBuffer dec_frame = { 0 };
             if (b_use_device_mem_)
             {
-                // device memory pointer is always pitched
-                HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
+                // allocate based on piched or not
+                if (b_device_frame_pitched_)
+                    HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
+                else
+                    HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
             }
             else
             {
                 dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
             }
-            dec_frame.pts = pDispInfo->timestamp;
+            dec_frame.pts = pDispInfo->pts;
             vp_frames_.push_back(dec_frame);
         }
-        p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1];
+        p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
     }
 
     // Copy luma data
-    int luma_size = surface_width_ * height_ * byte_per_pixel_;
-    HIP_API_CALL(hipMemcpyAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
+    int dst_pitch = b_device_frame_pitched_? surface_stride_ : width_*byte_per_pixel_;
+    if (b_use_device_mem_) {
+        if (src_pitch[0] == dst_pitch) {
+            int luma_size = src_pitch[0] * height_;
+            HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
+        }else {
+            // use 2d copy to copy an ROI
+            HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, src_dev_ptr[0], src_pitch[0], width_*byte_per_pixel_, height_, hipMemcpyDeviceToDevice, hip_stream_));
+        } 
+    }
+    else
+        HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, width_*byte_per_pixel_, src_dev_ptr[0], src_pitch[0], width_*byte_per_pixel_, height_, hipMemcpyDeviceToHost, hip_stream_));
 
     // Copy chroma plane ( )
     // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
-    uint8_t *p_frame_uv = p_dec_frame + surface_width_ * height_ * byte_per_pixel_;
-    int chroma_size = chroma_height_ * surface_width_ * byte_per_pixel_;
-    HIP_API_CALL(hipMemcpyAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
+    uint8_t *p_frame_uv = p_dec_frame + dst_pitch * height_;
+    if (b_use_device_mem_) {
+        if (src_pitch[1] == dst_pitch) {
+            int chroma_size = chroma_height_ * dst_pitch;
+            HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
+        }else {
+            // use 2d copy to copy an ROI
+            HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], width_*byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+        }
+    }else
+        HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], width_*byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+
+    if (num_chroma_planes_ == 2) {
+        uint8_t *p_frame_uv = p_dec_frame + dst_pitch * height_*2;
+        if (b_use_device_mem_) {
+            if (src_pitch[2] == dst_pitch) {
+                int chroma_size = chroma_height_ * dst_pitch;
+                HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[2], chroma_size, hip_stream_));
+            }else {
+                // use 2d copy to copy an ROI
+                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], width_*byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+            }
+        }else
+            HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], width_*byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+    }
+
     HIP_API_CALL(hipStreamSynchronize(hip_stream_));
-    ROCDEC_API_CALL(rocDecUnmapVideoFrame(roc_decoder_, src_dev_ptr[0]));
+    ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, src_dev_ptr[0]));
+    return 1;
+}
+
+int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo)
+{
+    uint32_t sei_num_mesages = pSEIMessageInfo->sei_message_count;
+    RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->pSEIMessage;
+    size_t total_SEI_buff_size = 0;
+    if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
+        ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
+        return 0;
+    }
+    for (uint32_t i = 0; i < sei_num_mesages; i++) {
+        total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
+    }
+    if (!curr_sei_message_ptr_) {
+        ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
+        return 0;
+    }
+    curr_sei_message_ptr_->pSEIData = malloc(total_SEI_buff_size);
+    if (!curr_sei_message_ptr_->pSEIData) {
+        ERR("Out of Memory, Allocation failed for SEI Buffer");
+        return 0;
+    }
+    memcpy(curr_sei_message_ptr_->pSEIData, pSEIMessageInfo->pSEIData, total_SEI_buff_size);
+    curr_sei_message_ptr_->pSEIMessage = (RocdecSeiMessage *)malloc(sizeof(RocdecSeiMessage) * sei_num_mesages);
+    if (!curr_sei_message_ptr_->pSEIMessage) {
+        free(curr_sei_message_ptr_->pSEIData);
+        curr_sei_message_ptr_->pSEIData = NULL;
+        return 0;
+    }
+    memcpy(curr_sei_message_ptr_->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(RocdecSeiMessage) * sei_num_mesages);
+    curr_sei_message_ptr_->sei_message_count = pSEIMessageInfo->sei_message_count;
+    sei_message_display_q_[pSEIMessageInfo->picIdx] = *curr_sei_message_ptr_;
     return 1;
 }
 
 
-int RocVideoDecode::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
+int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
     int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
     RocdecSourceDataPacket packet = { 0 };
     packet.payload = data;
@@ -506,18 +568,19 @@ int RocVideoDecode::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags,
     return decoded_frame_cnt_;
 }
 
-uint8_t* RocVideoDecode::GetFrame(int64_t *pts) {
+uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
     if (decoded_frame_cnt_ > 0) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         decoded_frame_cnt_--;
-        if (pTimestamp)
-            *pTimestamp = vp_frames_[decoded_frame_cnt_ret_].pts;
-        return m_vpFrame[decoded_frame_cnt_ret_++].frame_ptr;
+        if (pts) *pts = vp_frames_[decoded_frame_cnt_ret_].pts;
+        return vp_frames_[decoded_frame_cnt_ret_++].frame_ptr;
     }
     return nullptr;
 }
 
-void RocVideoDecode::SaveImage(std::string output_file_name, void *dev_mem, OutputImageInfo *image_info, bool is_output_RGB) {
+#if 0 // may be needed for future
+
+void RocVideoDecoder::SaveImage(std::string output_file_name, void *dev_mem, OutputImageInfo *image_info, bool is_output_RGB) {
     uint8_t *hst_ptr = nullptr;
     uint64_t output_image_size = image_info->output_image_size_in_bytes;
     if (hst_ptr == nullptr) {
@@ -583,27 +646,27 @@ void RocVideoDecode::SaveImage(std::string output_file_name, void *dev_mem, Outp
         tmp_hst_ptr = nullptr;
     }
 }
+#endif
 
-void RocVideoDecode::GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id, std::string &drm_node) {
+void RocVideoDecoder::GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id) {
     device_name = hip_dev_prop_.name;
     gcn_arch_name = hip_dev_prop_.gcnArchName;
     pci_bus_id = hip_dev_prop_.pciBusID;
     pci_domain_id = hip_dev_prop_.pciDomainID;
     pci_device_id = hip_dev_prop_.pciDeviceID;
-    drm_node = drm_nodes_[device_id_];
 }
 
 
-bool RocVideoDecode::GetOutputImageInfo(OutputImageInfo **image_info) {
+bool RocVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     if (!width_ || !height_) {
-        std::cerr << "ERROR: RocVideoDecoder is not intialized" << std::endl;
+        std::cerr << "ERROR: RocVideoDecoderr is not intialized" << std::endl;
         return false;
     }
-    *image_info = &out_image_info_;
+    *surface_info = &output_surface_info_;
     return true;
 }
 
-bool RocVideoDecode::InitHIP(int device_id)
+bool RocVideoDecoder::InitHIP(int device_id)
 {
     HIP_API_CALL(hipGetDeviceCount(&num_devices_));
     if (num_devices_ < 1) {
@@ -618,58 +681,4 @@ bool RocVideoDecode::InitHIP(int device_id)
     HIP_API_CALL(hipGetDeviceProperties(&hip_dev_prop_, device_id));
     HIP_API_CALL(hipStreamCreate(&hip_stream_));
     return true;
-}
-
-void RocVideoDecode::InitDRMnodes() {
-    // build the DRM render node names
-    for (int i = 0; i < num_devices_; i++) {
-        drm_nodes_.push_back("/dev/dri/renderD" + std::to_string(128 + i));
-    }
-}
-
-
-bool RocVideoDecode::GetImageSizeHintInternal(RocDecImageFormat subsampling, const uint32_t width, const uint32_t height, uint32_t *output_stride, size_t *output_image_size) {
-    if ( output_stride == nullptr || output_image_size == nullptr) {
-        std::cerr << "invalid input parameters!" << std::endl;
-        return false;
-    }
-    int aligned_height = 0;
-    switch (subsampling) {
-        case ROCDEC_FMT_YUV420:
-            *output_stride = align(width, 256);
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * (aligned_height + (aligned_height >> 1));
-             break;
-        case ROCDEC_FMT_YUV444:
-            *output_stride = align(width, 256);
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * aligned_height * 3;
-            break;
-        case ROCDEC_FMT_YUV400:
-            *output_stride = align(width, 256);
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * aligned_height;
-            break;
-        case ROCDEC_FMT_RGB:
-            *output_stride = align(width, 256) * 3;
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * aligned_height;
-            break;
-        case ROCDEC_FMT_YUV420P10:
-            *output_stride = align(width, 128) * 2;
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * (aligned_height + (aligned_height >> 1));
-            break;
-        case ROCDEC_FMT_YUV420P12:
-            *output_stride = align(width, 128) * 2;
-            aligned_height = align(height, 16);
-            *output_image_size = *output_stride * (aligned_height + (aligned_height >> 1));
-            break;
-        default:
-            std::cerr << "ERROR: "<< GetPixFmtName(subsampling) <<" is not supported! " << std::endl;
-            return false;
-    }
-
-    return true;
-
 }

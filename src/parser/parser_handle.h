@@ -36,6 +36,7 @@ public:
     const char* error_msg() { return error.c_str(); }
     void capture_error(const std::string& err_msg) { error = err_msg; }
     rocDecStatus ParseVideoData(RocdecSourceDataPacket *pPacket) { return roc_parser_->ParseVideoData(pPacket); }
+    rocDecStatus DestroyParser() { return destroy_parser(); };
 
 private:
     std::shared_ptr<RocVideoParser> roc_parser_ = nullptr;    // class instantiation
@@ -59,5 +60,15 @@ private:
                 THROW("rocParser Initialization failed with error: "+ TOSTR(ret));
         }
     }
+    rocDecStatus destroy_parser() {
+      rocDecStatus ret = ROCDEC_NOT_INITIALIZED;
+        if (roc_parser_ ) {
+            ret = roc_parser_->UnInitialize();
+            if (ret != ROCDEC_SUCCESS)
+                THROW("rocParser UnInitialization failed with error: "+ TOSTR(ret));
+        }
+        return ret;
+    }
+
     std::string error;
 };
