@@ -1072,8 +1072,7 @@ int scaling_list_default_3 [1][2][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,1
 
 
 #if DBGINFO
-void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr)
-{
+void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
     MSG("=== hevc_video_parameter_set_t ===");
     MSG("vps_video_parameter_set_id               = " <<  vps_ptr->vps_video_parameter_set_id);
     MSG("vps_base_layer_internal_flag             = " <<  vps_ptr->vps_base_layer_internal_flag);
@@ -1088,8 +1087,7 @@ void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr)
     MSG("general_tier_flag                        = " <<  vps_ptr->profile_tier_level.general_tier_flag);
     MSG("general_profile_idc                      = " <<  vps_ptr->profile_tier_level.general_profile_idc);
     MSG_NO_NEWLINE("general_profile_compatibility_flag[32]: ");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << vps_ptr->profile_tier_level.general_profile_compatibility_flag[i]);
     }
     MSG("");
@@ -1102,20 +1100,17 @@ void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr)
 
     MSG("vps_sub_layer_ordering_info_present_flag = " <<  vps_ptr->vps_sub_layer_ordering_info_present_flag);
     MSG_NO_NEWLINE("vps_max_dec_pic_buffering_minus1[]: ");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << vps_ptr->vps_max_dec_pic_buffering_minus1[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("vps_max_num_reorder_pics[]: ");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << vps_ptr->vps_max_num_reorder_pics[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("vps_max_latency_increase_plus1[]: ");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << vps_ptr->vps_max_latency_increase_plus1[i]);
     }
     MSG("");
@@ -1128,8 +1123,7 @@ void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr)
     MSG("");
 }
 
-void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
-{
+void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("=== hevc_sequence_parameter_set_t ===");
     MSG("sps_video_parameter_set_id                = " <<  sps_ptr->sps_video_parameter_set_id);
     MSG("sps_max_sub_layers_minus1                 = " <<  sps_ptr->sps_max_sub_layers_minus1);
@@ -1140,8 +1134,7 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
     MSG("general_tier_flag                         = " <<  sps_ptr->profile_tier_level.general_tier_flag);
     MSG("general_profile_idc                       = " <<  sps_ptr->profile_tier_level.general_profile_idc);
     MSG("general_profile_compatibility_flag[32]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << sps_ptr->profile_tier_level.general_profile_compatibility_flag[i]);
     }
     MSG("");
@@ -1167,20 +1160,17 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
     MSG("log2_max_pic_order_cnt_lsb_minus4         = " <<  sps_ptr->log2_max_pic_order_cnt_lsb_minus4);
     MSG("sps_sub_layer_ordering_info_present_flag  = " <<  sps_ptr->sps_sub_layer_ordering_info_present_flag);
     MSG_NO_NEWLINE("sps_max_dec_pic_buffering_minus1[]:");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << sps_ptr->sps_max_dec_pic_buffering_minus1[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("sps_max_num_reorder_pics[]:");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << sps_ptr->sps_max_num_reorder_pics[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("sps_max_latency_increase_plus1[]:");
-    for(int i = 0; i < 7; i++)
-    {
+    for(int i = 0; i < 7; i++) {
         MSG_NO_NEWLINE(" " << sps_ptr->sps_max_latency_increase_plus1[i]);
     }
     MSG("");
@@ -1203,25 +1193,21 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
     MSG("pcm_loop_filter_disabled_flag             = " <<  sps_ptr->pcm_loop_filter_disabled_flag);
     MSG("num_short_term_ref_pic_sets               = " <<  sps_ptr->num_short_term_ref_pic_sets);
 
-    if ( sps_ptr->num_short_term_ref_pic_sets )
-    {
+    if (sps_ptr->num_short_term_ref_pic_sets) {
         MSG("Short term RPS:");
-        for(int i = 0; i < sps_ptr->num_short_term_ref_pic_sets; i++)
-        {
+        for(int i = 0; i < sps_ptr->num_short_term_ref_pic_sets; i++) {
             /*Todo: MSG("st_rps[%d]: " <<  i);
             MSG("inter_ref_pic_set_prediction_flag         = " <<  sps_ptr->st_rps[i].inter_ref_pic_set_prediction_flag);
             MSG("delta_idx_minus1                          = " <<  sps_ptr->st_rps[i].delta_idx_minus1);
             MSG("delta_rps_sign                            = " <<  sps_ptr->st_rps[i].delta_rps_sign);
             MSG("abs_delta_rps_minus1                      = " <<  sps_ptr->st_rps[i].abs_delta_rps_minus1);
             MSG("used_by_curr_pic_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_flag[j]);
             }
             MSG("");
             MSG("use_delta_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].use_delta_flag[j]);
             }
             MSG("");*/
@@ -1232,39 +1218,33 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
             MSG("num_of_delta_poc                          = " <<  sps_ptr->st_rps[i].num_of_delta_poc);
 
             MSG_NO_NEWLINE("delta_poc[16]:");
-            for(int j = 0; j < 16; j++)
-            {
+            for(int j = 0; j < 16; j++) {
                 MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].delta_poc[j]);
             }
             MSG("");
             MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-            for(int j = 0; j < 16; j++)
-            {
+            for(int j = 0; j < 16; j++) {
                 MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].used_by_curr_pic[j]);
             }
             MSG("");
 
             /* Todo MSG("delta_poc_s0_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].delta_poc_s0_minus1[j]);
             }
             MSG("");
             MSG("used_by_curr_pic_s0_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s0_flag[j]);
             }
             MSG("");
             MSG("delta_poc_s1_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].delta_poc_s1_minus1[j]);
             }
             MSG("");
             MSG("used_by_curr_pic_s1_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++)
-            {
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
                 MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s1_flag[j]);
             }
             MSG("");*/
@@ -1274,17 +1254,14 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
     MSG("long_term_ref_pics_present_flag           = " <<  sps_ptr->long_term_ref_pics_present_flag);
     MSG("num_long_term_ref_pics_sps                = " <<  sps_ptr->num_long_term_ref_pics_sps);
     
-    if ( sps_ptr->num_long_term_ref_pics_sps )
-    {
+    if (sps_ptr->num_long_term_ref_pics_sps) {
         MSG("lt_ref_pic_poc_lsb_sps[%u]:  " <<  sps_ptr->num_long_term_ref_pics_sps);
-        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++)
-        {
+        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++) {
             MSG_NO_NEWLINE(" " << sps_ptr->lt_ref_pic_poc_lsb_sps[i]);
         }
         MSG("");
         MSG("used_by_curr_pic_lt_sps_flag[%u]:  " <<  sps_ptr->num_long_term_ref_pics_sps);
-        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++)
-        {
+        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++) {
             MSG_NO_NEWLINE(" " << sps_ptr->used_by_curr_pic_lt_sps_flag[i]);
         }
         MSG("");
@@ -1298,8 +1275,7 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr)
     MSG("");
 }
 
-void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr)
-{
+void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
     MSG("=== hevc_picture_parameter_set_t ===");
     MSG("pps_pic_parameter_set_id                    = " <<  pps_ptr->pps_pic_parameter_set_id);
     MSG("pps_seq_parameter_set_id                    = " <<  pps_ptr->pps_seq_parameter_set_id);
@@ -1326,17 +1302,14 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr)
     MSG("num_tile_columns_minus1                     = " <<  pps_ptr->num_tile_columns_minus1);
     MSG("num_tile_rows_minus1                        = " <<  pps_ptr->num_tile_rows_minus1);
     MSG("uniform_spacing_flag                        = " <<  pps_ptr->uniform_spacing_flag);
-    if ( !pps_ptr->uniform_spacing_flag )
-    {
+    if (!pps_ptr->uniform_spacing_flag) {
         MSG_NO_NEWLINE("column_width_minus1[" << pps_ptr->num_tile_columns_minus1 << "]");
-        for (int i = 0; i < pps_ptr->num_tile_columns_minus1; i++)
-        {
+        for (int i = 0; i < pps_ptr->num_tile_columns_minus1; i++) {
             MSG_NO_NEWLINE(" " << pps_ptr->column_width_minus1[i]);
         }
         MSG("");
         MSG_NO_NEWLINE("row_height_minus1[" << pps_ptr->num_tile_rows_minus1 << "]");
-        for (int i = 0; i < pps_ptr->num_tile_rows_minus1; i++)
-        {
+        for (int i = 0; i < pps_ptr->num_tile_rows_minus1; i++) {
             MSG_NO_NEWLINE(" " << pps_ptr->row_height_minus1[i]);
         }
         MSG("");
@@ -1356,8 +1329,7 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr)
     MSG("");
 }
 
-void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr)
-{
+void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr) {
     MSG("=== hevc_slice_segment_header_t ===");
     MSG("first_slice_segment_in_pic_flag             = " <<  slice_header_ptr->first_slice_segment_in_pic_flag);
     MSG("no_output_of_prior_pics_flag                = " <<  slice_header_ptr->no_output_of_prior_pics_flag);
@@ -1378,14 +1350,12 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
         MSG("delta_rps_sign                              = " <<  slice_header_ptr->st_rps.delta_rps_sign);
         MSG("abs_delta_rps_minus1                        = " <<  slice_header_ptr->st_rps.abs_delta_rps_minus1);
         MSG_NO_NEWLINE("used_by_curr_pic_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_flag[j]);
         }
         MSG("");
         MSG_NO_NEWLINE("use_delta_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.use_delta_flag[j]);
         }
         MSG("");*/
@@ -1395,39 +1365,33 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
         MSG("num_of_delta_poc                            = " <<  slice_header_ptr->st_rps.num_of_delta_poc);
 
         MSG_NO_NEWLINE("delta_poc[16]:");
-        for(int j = 0; j < 16; j++)
-        {
+        for(int j = 0; j < 16; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc[j]);
         }
         MSG("");
         MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-        for(int j = 0; j < 16; j++)
-        {
+        for(int j = 0; j < 16; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic[j]);
         }
         MSG("");
 
         /* Todo: MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s0_minus1[j]);
         }
         MSG("");
         MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s0_flag[j]);
         }
         MSG("");
         MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s1_minus1[j]);
         }
         MSG("");
         MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++)
-        {
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
             MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s1_flag[j]);
         }
         MSG("");*/
@@ -1435,32 +1399,27 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("num_long_term_sps                           = " <<  slice_header_ptr->num_long_term_sps);
     MSG("num_long_term_pics                          = " <<  slice_header_ptr->num_long_term_pics);
     MSG_NO_NEWLINE("lt_idx_sps[]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->lt_idx_sps[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("poc_lsb_lt[]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->poc_lsb_lt[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("used_by_curr_pic_lt_flag[]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->used_by_curr_pic_lt_flag[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("delta_poc_msb_present_flag[]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->delta_poc_msb_present_flag[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("delta_poc_msb_cycle_lt[]:");
-    for(int i = 0; i < 32; i++)
-    {
+    for(int i = 0; i < 32; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->delta_poc_msb_cycle_lt[i]);
     }
     MSG("");
@@ -1474,14 +1433,12 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("ref_pic_list_modification_flag_l0           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l0);
     MSG("ref_pic_list_modification_flag_l1           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l1);
     MSG_NO_NEWLINE("list_entry_l0[]:");
-    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++)
-    {
+    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l0[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("list_entry_l1[]:");
-    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++)
-    {
+    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l1[i]);
     }
     MSG("");
