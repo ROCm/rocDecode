@@ -46,7 +46,7 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     bool status = ParseFrameData(p_data->payload, p_data->payload_size);
     if (!status) {
-        ERR(STR("Parser failed!\n"));
+        ERR(STR("Parser failed!"));
         return ROCDEC_RUNTIME_ERROR;
     }
     return ROCDEC_SUCCESS;
@@ -161,7 +161,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
         ret = GetNalUnit();
 
         if (ret == PARSER_NOT_FOUND) {
-            ERR(STR("Error: no start code found in the frame data.\n"));
+            ERR(STR("Error: no start code found in the frame data."));
             return false;
         }
 
@@ -608,7 +608,8 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     memset(&m_vps_[vps_id], 0, sizeof(m_vps_[vps_id]));
 
     m_vps_[vps_id].vps_video_parameter_set_id = vps_id;
-    m_vps_[vps_id].vps_reserved_three_2bits = Parser::ReadBits(nalu, offset, 2);
+    m_vps_[vps_id].vps_base_layer_internal_flag = Parser::GetBit(nalu, offset);
+    m_vps_[vps_id].vps_base_layer_available_flag = Parser::GetBit(nalu, offset);
     m_vps_[vps_id].vps_max_layers_minus1 = Parser::ReadBits(nalu, offset, 6);
     m_vps_[vps_id].vps_max_sub_layers_minus1 = Parser::ReadBits(nalu, offset, 3);
     m_vps_[vps_id].vps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
@@ -654,6 +655,10 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
         }
     }
     m_vps_[vps_id].vps_extension_flag = Parser::GetBit(nalu, offset);
+
+#if DBGINFO
+    PrintVps(&m_vps_[vps_id]);
+#endif // DBGINFO
 }
 
 void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) { 
@@ -762,6 +767,10 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         ParseVui(&m_sps_[sps_id].vui_parameters, m_sps_[sps_id].sps_max_sub_layers_minus1, nalu, size, offset);
     }
     m_sps_[sps_id].sps_extension_flag = Parser::GetBit(nalu, offset);
+
+#if DBGINFO
+    PrintSps(&m_sps_[sps_id]);
+#endif // DBGINFO
 }
 
 void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
@@ -829,6 +838,10 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
     m_pps_[pps_id].slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
     m_pps_[pps_id].pps_extension_flag = Parser::GetBit(nalu, offset);
+
+#if DBGINFO
+    PrintPps(&m_pps_[pps_id]);
+#endif // DBGINFO
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size) {
@@ -983,6 +996,11 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         m_sh_->dependent_slice_segment_flag = temp_sh.dependent_slice_segment_flag;
         m_sh_->slice_segment_address = temp_sh.slice_segment_address;
     }
+
+#if DBGINFO
+    PrintSliceSegHeader(m_sh_);
+#endif // DBGINFO
+
     return false;
 }
 
@@ -1051,3 +1069,396 @@ int scaling_list_default_1_2 [2][6][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16
 //size_id = 3
 int scaling_list_default_3 [1][2][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
                                           {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
+
+
+#if DBGINFO
+void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
+    MSG("=== hevc_video_parameter_set_t ===");
+    MSG("vps_video_parameter_set_id               = " <<  vps_ptr->vps_video_parameter_set_id);
+    MSG("vps_base_layer_internal_flag             = " <<  vps_ptr->vps_base_layer_internal_flag);
+    MSG("vps_base_layer_available_flag            = " <<  vps_ptr->vps_base_layer_available_flag);
+    MSG("vps_max_layers_minus1                    = " <<  vps_ptr->vps_max_layers_minus1);
+    MSG("vps_max_sub_layers_minus1                = " <<  vps_ptr->vps_max_sub_layers_minus1);
+    MSG("vps_temporal_id_nesting_flag             = " <<  vps_ptr->vps_temporal_id_nesting_flag);
+    MSG("vps_reserved_0xffff_16bits               = " <<  vps_ptr->vps_reserved_0xffff_16bits);
+
+    MSG("Profile tier level:");
+    MSG("general_profile_space                    = " <<  vps_ptr->profile_tier_level.general_profile_space);
+    MSG("general_tier_flag                        = " <<  vps_ptr->profile_tier_level.general_tier_flag);
+    MSG("general_profile_idc                      = " <<  vps_ptr->profile_tier_level.general_profile_idc);
+    MSG_NO_NEWLINE("general_profile_compatibility_flag[32]: ");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << vps_ptr->profile_tier_level.general_profile_compatibility_flag[i]);
+    }
+    MSG("");
+    MSG("general_progressive_source_flag          = " <<  vps_ptr->profile_tier_level.general_progressive_source_flag);
+    MSG("general_interlaced_source_flag           = " <<  vps_ptr->profile_tier_level.general_interlaced_source_flag);
+    MSG("general_non_packed_constraint_flag       = " <<  vps_ptr->profile_tier_level.general_non_packed_constraint_flag);
+    MSG("general_frame_only_constraint_flag       = " <<  vps_ptr->profile_tier_level.general_frame_only_constraint_flag);
+    MSG("general_reserved_zero_44bits             = " <<  vps_ptr->profile_tier_level.general_reserved_zero_44bits);
+    MSG("general_level_idc                        = " <<  vps_ptr->profile_tier_level.general_level_idc);
+
+    MSG("vps_sub_layer_ordering_info_present_flag = " <<  vps_ptr->vps_sub_layer_ordering_info_present_flag);
+    MSG_NO_NEWLINE("vps_max_dec_pic_buffering_minus1[]: ");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << vps_ptr->vps_max_dec_pic_buffering_minus1[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("vps_max_num_reorder_pics[]: ");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << vps_ptr->vps_max_num_reorder_pics[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("vps_max_latency_increase_plus1[]: ");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << vps_ptr->vps_max_latency_increase_plus1[i]);
+    }
+    MSG("");
+    MSG("vps_max_layer_id                         = " <<  vps_ptr->vps_max_layer_id);
+    MSG("vps_num_layer_sets_minus1                = " <<  vps_ptr->vps_num_layer_sets_minus1);
+    MSG("vps_timing_info_present_flag             = " <<  vps_ptr->vps_timing_info_present_flag);
+    MSG("vps_num_hrd_parameters                   = " <<  vps_ptr->vps_num_hrd_parameters);
+    MSG("vps_extension_flag                       = " <<  vps_ptr->vps_extension_flag);
+    MSG("vps_extension_data_flag                  = " <<  vps_ptr->vps_extension_data_flag);
+    MSG("");
+}
+
+void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
+    MSG("=== hevc_sequence_parameter_set_t ===");
+    MSG("sps_video_parameter_set_id                = " <<  sps_ptr->sps_video_parameter_set_id);
+    MSG("sps_max_sub_layers_minus1                 = " <<  sps_ptr->sps_max_sub_layers_minus1);
+    MSG("sps_temporal_id_nesting_flag              = " <<  sps_ptr->sps_temporal_id_nesting_flag);
+
+    MSG("Profile tier level:");
+    MSG("general_profile_space                     = " <<  sps_ptr->profile_tier_level.general_profile_space);
+    MSG("general_tier_flag                         = " <<  sps_ptr->profile_tier_level.general_tier_flag);
+    MSG("general_profile_idc                       = " <<  sps_ptr->profile_tier_level.general_profile_idc);
+    MSG("general_profile_compatibility_flag[32]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << sps_ptr->profile_tier_level.general_profile_compatibility_flag[i]);
+    }
+    MSG("");
+    MSG("general_progressive_source_flag           = " <<  sps_ptr->profile_tier_level.general_progressive_source_flag);
+    MSG("general_interlaced_source_flag            = " <<  sps_ptr->profile_tier_level.general_interlaced_source_flag);
+    MSG("general_non_packed_constraint_flag        = " <<  sps_ptr->profile_tier_level.general_non_packed_constraint_flag);
+    MSG("general_frame_only_constraint_flag        = " <<  sps_ptr->profile_tier_level.general_frame_only_constraint_flag);
+    MSG("general_reserved_zero_44bits              = " <<  sps_ptr->profile_tier_level.general_reserved_zero_44bits);
+    MSG("general_level_idc                         = " <<  sps_ptr->profile_tier_level.general_level_idc);
+
+    MSG("sps_seq_parameter_set_id                  = " <<  sps_ptr->sps_seq_parameter_set_id);
+    MSG("chroma_format_idc                         = " <<  sps_ptr->chroma_format_idc);
+    MSG("separate_colour_plane_flag                = " <<  sps_ptr->separate_colour_plane_flag);
+    MSG("pic_width_in_luma_samples                 = " <<  sps_ptr->pic_width_in_luma_samples);
+    MSG("pic_height_in_luma_samples                = " <<  sps_ptr->pic_height_in_luma_samples);
+    MSG("conformance_window_flag                   = " <<  sps_ptr->conformance_window_flag);
+    MSG("conf_win_left_offset                      = " <<  sps_ptr->conf_win_left_offset);
+    MSG("conf_win_right_offset                     = " <<  sps_ptr->conf_win_right_offset);
+    MSG("conf_win_top_offset                       = " <<  sps_ptr->conf_win_top_offset);
+    MSG("conf_win_bottom_offset                    = " <<  sps_ptr->conf_win_bottom_offset);
+    MSG("bit_depth_luma_minus8                     = " <<  sps_ptr->bit_depth_luma_minus8);
+    MSG("bit_depth_chroma_minus8                   = " <<  sps_ptr->bit_depth_chroma_minus8);
+    MSG("log2_max_pic_order_cnt_lsb_minus4         = " <<  sps_ptr->log2_max_pic_order_cnt_lsb_minus4);
+    MSG("sps_sub_layer_ordering_info_present_flag  = " <<  sps_ptr->sps_sub_layer_ordering_info_present_flag);
+    MSG_NO_NEWLINE("sps_max_dec_pic_buffering_minus1[]:");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << sps_ptr->sps_max_dec_pic_buffering_minus1[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("sps_max_num_reorder_pics[]:");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << sps_ptr->sps_max_num_reorder_pics[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("sps_max_latency_increase_plus1[]:");
+    for(int i = 0; i < 7; i++) {
+        MSG_NO_NEWLINE(" " << sps_ptr->sps_max_latency_increase_plus1[i]);
+    }
+    MSG("");
+    MSG("log2_min_luma_coding_block_size_minus3    = " <<  sps_ptr->log2_min_luma_coding_block_size_minus3);
+    MSG("log2_diff_max_min_luma_coding_block_size  = " <<  sps_ptr->log2_diff_max_min_luma_coding_block_size);
+    MSG("log2_min_transform_block_size_minus2      = " <<  sps_ptr->log2_min_transform_block_size_minus2);
+    MSG("log2_diff_max_min_transform_block_size    = " <<  sps_ptr->log2_diff_max_min_transform_block_size);
+    MSG("max_transform_hierarchy_depth_inter       = " <<  sps_ptr->max_transform_hierarchy_depth_inter);
+    MSG("max_transform_hierarchy_depth_intra       = " <<  sps_ptr->max_transform_hierarchy_depth_intra);
+    MSG("scaling_list_enabled_flag                 = " <<  sps_ptr->scaling_list_enabled_flag);
+    MSG("sps_scaling_list_data_present_flag        = " <<  sps_ptr->sps_scaling_list_data_present_flag);
+
+    MSG("amp_enabled_flag                          = " <<  sps_ptr->amp_enabled_flag);
+    MSG("sample_adaptive_offset_enabled_flag       = " <<  sps_ptr->sample_adaptive_offset_enabled_flag);
+    MSG("pcm_enabled_flag                          = " <<  sps_ptr->pcm_enabled_flag);
+    MSG("pcm_sample_bit_depth_luma_minus1          = " <<  sps_ptr->pcm_sample_bit_depth_luma_minus1);
+    MSG("pcm_sample_bit_depth_chroma_minus1        = " <<  sps_ptr->pcm_sample_bit_depth_chroma_minus1);
+    MSG("log2_min_pcm_luma_coding_block_size_minus3 = " <<  sps_ptr->log2_min_pcm_luma_coding_block_size_minus3);
+    MSG("log2_diff_max_min_pcm_luma_coding_block_size = " <<  sps_ptr->log2_diff_max_min_pcm_luma_coding_block_size);
+    MSG("pcm_loop_filter_disabled_flag             = " <<  sps_ptr->pcm_loop_filter_disabled_flag);
+    MSG("num_short_term_ref_pic_sets               = " <<  sps_ptr->num_short_term_ref_pic_sets);
+
+    if (sps_ptr->num_short_term_ref_pic_sets) {
+        MSG("Short term RPS:");
+        for(int i = 0; i < sps_ptr->num_short_term_ref_pic_sets; i++) {
+            /*Todo: MSG("st_rps[%d]: " <<  i);
+            MSG("inter_ref_pic_set_prediction_flag         = " <<  sps_ptr->st_rps[i].inter_ref_pic_set_prediction_flag);
+            MSG("delta_idx_minus1                          = " <<  sps_ptr->st_rps[i].delta_idx_minus1);
+            MSG("delta_rps_sign                            = " <<  sps_ptr->st_rps[i].delta_rps_sign);
+            MSG("abs_delta_rps_minus1                      = " <<  sps_ptr->st_rps[i].abs_delta_rps_minus1);
+            MSG("used_by_curr_pic_flag[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_flag[j]);
+            }
+            MSG("");
+            MSG("use_delta_flag[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].use_delta_flag[j]);
+            }
+            MSG("");*/
+
+            MSG("num_negative_pics                         = " <<  sps_ptr->st_rps[i].num_negative_pics);
+            MSG("num_positive_pics                         = " <<  sps_ptr->st_rps[i].num_positive_pics);
+            MSG("num_of_pics                               = " <<  sps_ptr->st_rps[i].num_of_pics);
+            MSG("num_of_delta_poc                          = " <<  sps_ptr->st_rps[i].num_of_delta_poc);
+
+            MSG_NO_NEWLINE("delta_poc[16]:");
+            for(int j = 0; j < 16; j++) {
+                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].delta_poc[j]);
+            }
+            MSG("");
+            MSG_NO_NEWLINE("used_by_curr_pic[16]:");
+            for(int j = 0; j < 16; j++) {
+                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].used_by_curr_pic[j]);
+            }
+            MSG("");
+
+            /* Todo MSG("delta_poc_s0_minus1[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].delta_poc_s0_minus1[j]);
+            }
+            MSG("");
+            MSG("used_by_curr_pic_s0_flag[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s0_flag[j]);
+            }
+            MSG("");
+            MSG("delta_poc_s1_minus1[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].delta_poc_s1_minus1[j]);
+            }
+            MSG("");
+            MSG("used_by_curr_pic_s1_flag[]: ");
+            for(int j = 0; j < HEVC_MAX_DPB; j++) {
+                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s1_flag[j]);
+            }
+            MSG("");*/
+        }
+    }
+
+    MSG("long_term_ref_pics_present_flag           = " <<  sps_ptr->long_term_ref_pics_present_flag);
+    MSG("num_long_term_ref_pics_sps                = " <<  sps_ptr->num_long_term_ref_pics_sps);
+    
+    if (sps_ptr->num_long_term_ref_pics_sps) {
+        MSG("lt_ref_pic_poc_lsb_sps[%u]:  " <<  sps_ptr->num_long_term_ref_pics_sps);
+        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++) {
+            MSG_NO_NEWLINE(" " << sps_ptr->lt_ref_pic_poc_lsb_sps[i]);
+        }
+        MSG("");
+        MSG("used_by_curr_pic_lt_sps_flag[%u]:  " <<  sps_ptr->num_long_term_ref_pics_sps);
+        for(int i = 0; i < sps_ptr->num_long_term_ref_pics_sps; i++) {
+            MSG_NO_NEWLINE(" " << sps_ptr->used_by_curr_pic_lt_sps_flag[i]);
+        }
+        MSG("");
+    }
+
+    MSG("sps_temporal_mvp_enabled_flag             = " <<  sps_ptr->sps_temporal_mvp_enabled_flag);
+    MSG("strong_intra_smoothing_enabled_flag       = " <<  sps_ptr->strong_intra_smoothing_enabled_flag);
+    MSG("vui_parameters_present_flag               = " <<  sps_ptr->vui_parameters_present_flag);
+
+    MSG("sps_extension_present_flag                = " <<  sps_ptr->sps_extension_flag);
+    MSG("");
+}
+
+void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
+    MSG("=== hevc_picture_parameter_set_t ===");
+    MSG("pps_pic_parameter_set_id                    = " <<  pps_ptr->pps_pic_parameter_set_id);
+    MSG("pps_seq_parameter_set_id                    = " <<  pps_ptr->pps_seq_parameter_set_id);
+    MSG("dependent_slice_segments_enabled_flag       = " <<  pps_ptr->dependent_slice_segments_enabled_flag);
+    MSG("output_flag_present_flag                    = " <<  pps_ptr->output_flag_present_flag);
+    MSG("num_extra_slice_header_bits                 = " <<  pps_ptr->num_extra_slice_header_bits);
+    MSG("sign_data_hiding_enabled_flag               = " <<  pps_ptr->sign_data_hiding_enabled_flag);
+    MSG("cabac_init_present_flag                     = " <<  pps_ptr->cabac_init_present_flag);
+    MSG("num_ref_idx_l0_default_active_minus1        = " <<  pps_ptr->num_ref_idx_l0_default_active_minus1);
+    MSG("num_ref_idx_l1_default_active_minus1        = " <<  pps_ptr->num_ref_idx_l1_default_active_minus1);
+    MSG("init_qp_minus26                             = " <<  pps_ptr->init_qp_minus26);
+    MSG("constrained_intra_pred_flag                 = " <<  pps_ptr->constrained_intra_pred_flag);
+    MSG("transform_skip_enabled_flag                 = " <<  pps_ptr->transform_skip_enabled_flag);
+    MSG("cu_qp_delta_enabled_flag                    = " <<  pps_ptr->cu_qp_delta_enabled_flag);
+    MSG("diff_cu_qp_delta_depth                      = " <<  pps_ptr->diff_cu_qp_delta_depth);
+    MSG("pps_cb_qp_offset                            = " <<  pps_ptr->pps_cb_qp_offset);
+    MSG("pps_cr_qp_offset                            = " <<  pps_ptr->pps_cr_qp_offset);
+    MSG("pps_slice_chroma_qp_offsets_present_flag    = " <<  pps_ptr->pps_slice_chroma_qp_offsets_present_flag);
+    MSG("weighted_pred_flag                          = " <<  pps_ptr->weighted_pred_flag);
+    MSG("weighted_bipred_flag                        = " <<  pps_ptr->weighted_bipred_flag);
+    MSG("transquant_bypass_enabled_flag              = " <<  pps_ptr->transquant_bypass_enabled_flag);
+    MSG("tiles_enabled_flag                          = " <<  pps_ptr->tiles_enabled_flag);
+    MSG("entropy_coding_sync_enabled_flag            = " <<  pps_ptr->entropy_coding_sync_enabled_flag);
+    MSG("num_tile_columns_minus1                     = " <<  pps_ptr->num_tile_columns_minus1);
+    MSG("num_tile_rows_minus1                        = " <<  pps_ptr->num_tile_rows_minus1);
+    MSG("uniform_spacing_flag                        = " <<  pps_ptr->uniform_spacing_flag);
+    if (!pps_ptr->uniform_spacing_flag) {
+        MSG_NO_NEWLINE("column_width_minus1[" << pps_ptr->num_tile_columns_minus1 << "]");
+        for (int i = 0; i < pps_ptr->num_tile_columns_minus1; i++) {
+            MSG_NO_NEWLINE(" " << pps_ptr->column_width_minus1[i]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("row_height_minus1[" << pps_ptr->num_tile_rows_minus1 << "]");
+        for (int i = 0; i < pps_ptr->num_tile_rows_minus1; i++) {
+            MSG_NO_NEWLINE(" " << pps_ptr->row_height_minus1[i]);
+        }
+        MSG("");
+    }
+    MSG("loop_filter_across_tiles_enabled_flag       = " <<  pps_ptr->loop_filter_across_tiles_enabled_flag);
+    MSG("pps_loop_filter_across_slices_enabled_flag  = " <<  pps_ptr->pps_loop_filter_across_slices_enabled_flag);
+    MSG("deblocking_filter_control_present_flag      = " <<  pps_ptr->deblocking_filter_control_present_flag);
+    MSG("deblocking_filter_override_enabled_flag     = " <<  pps_ptr->deblocking_filter_override_enabled_flag);
+    MSG("pps_deblocking_filter_disabled_flag         = " <<  pps_ptr->pps_deblocking_filter_disabled_flag);
+    MSG("pps_beta_offset_div2                        = " <<  pps_ptr->pps_beta_offset_div2);
+    MSG("pps_tc_offset_div2                          = " <<  pps_ptr->pps_tc_offset_div2);
+    MSG("pps_scaling_list_data_present_flag          = " <<  pps_ptr->pps_scaling_list_data_present_flag);
+    MSG("lists_modification_present_flag             = " <<  pps_ptr->lists_modification_present_flag);
+    MSG("log2_parallel_merge_level_minus2            = " <<  pps_ptr->log2_parallel_merge_level_minus2);
+    MSG("slice_segment_header_extension_present_flag = " <<  pps_ptr->slice_segment_header_extension_present_flag);
+    MSG("pps_extension_present_flag                  = " <<  pps_ptr->pps_extension_flag);
+    MSG("");
+}
+
+void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr) {
+    MSG("=== hevc_slice_segment_header_t ===");
+    MSG("first_slice_segment_in_pic_flag             = " <<  slice_header_ptr->first_slice_segment_in_pic_flag);
+    MSG("no_output_of_prior_pics_flag                = " <<  slice_header_ptr->no_output_of_prior_pics_flag);
+    MSG("slice_pic_parameter_set_id                  = " <<  slice_header_ptr->slice_pic_parameter_set_id);
+    MSG("dependent_slice_segment_flag                = " <<  slice_header_ptr->dependent_slice_segment_flag);
+    MSG("slice_segment_address                       = " <<  slice_header_ptr->slice_segment_address);
+    MSG("slice_type                                  = " <<  slice_header_ptr->slice_type);
+    MSG("pic_output_flag                             = " <<  slice_header_ptr->pic_output_flag);
+    MSG("colour_plane_id                             = " <<  slice_header_ptr->colour_plane_id);
+    MSG("slice_pic_order_cnt_lsb                     = " <<  slice_header_ptr->slice_pic_order_cnt_lsb);
+    MSG("short_term_ref_pic_set_sps_flag             = " <<  slice_header_ptr->short_term_ref_pic_set_sps_flag);
+    MSG("short_term_ref_pic_set_idx                  = " <<  slice_header_ptr->short_term_ref_pic_set_idx);
+
+    MSG("Short term RPS:");
+    {
+        /* Todo: MSG("inter_ref_pic_set_prediction_flag           = " <<  slice_header_ptr->st_rps.inter_ref_pic_set_prediction_flag);
+        MSG("delta_idx_minus1                            = " <<  slice_header_ptr->st_rps.delta_idx_minus1);
+        MSG("delta_rps_sign                              = " <<  slice_header_ptr->st_rps.delta_rps_sign);
+        MSG("abs_delta_rps_minus1                        = " <<  slice_header_ptr->st_rps.abs_delta_rps_minus1);
+        MSG_NO_NEWLINE("used_by_curr_pic_flag[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_flag[j]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("use_delta_flag[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.use_delta_flag[j]);
+        }
+        MSG("");*/
+        MSG("num_negative_pics                           = " <<  slice_header_ptr->st_rps.num_negative_pics);
+        MSG("num_positive_pics                           = " <<  slice_header_ptr->st_rps.num_positive_pics);
+        MSG("num_of_pics                                 = " <<  slice_header_ptr->st_rps.num_of_pics);
+        MSG("num_of_delta_poc                            = " <<  slice_header_ptr->st_rps.num_of_delta_poc);
+
+        MSG_NO_NEWLINE("delta_poc[16]:");
+        for(int j = 0; j < 16; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc[j]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("used_by_curr_pic[16]:");
+        for(int j = 0; j < 16; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic[j]);
+        }
+        MSG("");
+
+        /* Todo: MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s0_minus1[j]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s0_flag[j]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s1_minus1[j]);
+        }
+        MSG("");
+        MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
+        for(int j = 0; j < HEVC_MAX_DPB; j++) {
+            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s1_flag[j]);
+        }
+        MSG("");*/
+    }
+    MSG("num_long_term_sps                           = " <<  slice_header_ptr->num_long_term_sps);
+    MSG("num_long_term_pics                          = " <<  slice_header_ptr->num_long_term_pics);
+    MSG_NO_NEWLINE("lt_idx_sps[]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->lt_idx_sps[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("poc_lsb_lt[]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->poc_lsb_lt[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_lt_flag[]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->used_by_curr_pic_lt_flag[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("delta_poc_msb_present_flag[]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->delta_poc_msb_present_flag[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("delta_poc_msb_cycle_lt[]:");
+    for(int i = 0; i < 32; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->delta_poc_msb_cycle_lt[i]);
+    }
+    MSG("");
+    MSG("slice_temporal_mvp_enabled_flag             = " <<  slice_header_ptr->slice_temporal_mvp_enabled_flag);
+    MSG("slice_sao_luma_flag                         = " <<  slice_header_ptr->slice_sao_luma_flag);
+    MSG("slice_sao_chroma_flag                       = " <<  slice_header_ptr->slice_sao_chroma_flag);
+
+    /* Todo MSG("num_ref_idx_active_override_flag            = " <<  slice_header_ptr->num_ref_idx_active_override_flag);
+    MSG("num_ref_idx_l0_active_minus1                = %d " <<  slice_header_ptr->num_ref_idx_l0_active_minus1);
+    MSG("num_ref_idx_l1_active_minus1                = %d " <<  slice_header_ptr->num_ref_idx_l1_active_minus1);
+    MSG("ref_pic_list_modification_flag_l0           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l0);
+    MSG("ref_pic_list_modification_flag_l1           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l1);
+    MSG_NO_NEWLINE("list_entry_l0[]:");
+    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l0[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("list_entry_l1[]:");
+    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
+        MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l1[i]);
+    }
+    MSG("");
+    MSG("mvd_l1_zero_flag                            = " <<  slice_header_ptr->mvd_l1_zero_flag);
+    MSG("cabac_init_flag                             = " <<  slice_header_ptr->cabac_init_flag);
+    MSG("collocated_from_l0_flag                     = " <<  slice_header_ptr->collocated_from_l0_flag);
+    MSG("collocated_ref_idx                          = " <<  slice_header_ptr->collocated_ref_idx);
+    MSG("five_minus_max_num_merge_cand               = %d " <<  slice_header_ptr->five_minus_max_num_merge_cand);
+    MSG("slice_qp_delta                              = %d " <<  slice_header_ptr->slice_qp_delta);
+    MSG("slice_cb_qp_offset                          = %d " <<  slice_header_ptr->slice_cb_qp_offset);
+    MSG("slice_cr_qp_offset                          = %d " <<  slice_header_ptr->slice_cr_qp_offset);
+    MSG("cu_chroma_qp_offset_enabled_flag            = %d " <<  slice_header_ptr->cu_chroma_qp_offset_enabled_flag);
+    MSG("deblocking_filter_override_flag             = %d " <<  slice_header_ptr->deblocking_filter_override_flag);
+    MSG("slice_deblocking_filter_disabled_flag       = %d " <<  slice_header_ptr->slice_deblocking_filter_disabled_flag);
+    MSG("slice_beta_offset_div2                      = %d " <<  slice_header_ptr->slice_beta_offset_div2);
+    MSG("slice_tc_offset_div2                        = %d " <<  slice_header_ptr->slice_tc_offset_div2);
+    MSG("slice_loop_filter_across_slices_enabled_flag = %d " <<  slice_header_ptr->slice_loop_filter_across_slices_enabled_flag);
+    MSG("num_entry_point_offsets                     = %d " <<  slice_header_ptr->num_entry_point_offsets);
+    MSG("offset_len_minus1                           = %d " <<  slice_header_ptr->offset_len_minus1);
+    MSG("slice_segment_header_extension_length       = %d " <<  slice_header_ptr->slice_segment_header_extension_length);*/
+    MSG("");
+}
+#endif // DBGINFO

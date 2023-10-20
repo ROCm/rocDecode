@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 #pragma once
 
+#include "../commons.h"
 #include "roc_video_parser.h"
 
 #include <map>
@@ -319,7 +320,8 @@ protected:
      */
     typedef struct{
         uint32_t vps_video_parameter_set_id;                 //u(4)
-        uint32_t vps_reserved_three_2bits;                   //u(2)
+        uint32_t vps_base_layer_internal_flag;               //u(1)
+        uint32_t vps_base_layer_available_flag;              //u(1)
         uint32_t vps_max_layers_minus1;                      //u(6)
         uint32_t vps_max_sub_layers_minus1;                  //u(3)
         bool vps_temporal_id_nesting_flag;                   //u(1)
@@ -698,6 +700,13 @@ protected:
      * \return Returns OK if successful, else error code
      */
     int GetNalUnit();
+
+#if DBGINFO
+    void PrintVps(HEVCVideoParser::VpsData *vps_ptr);
+    void PrintSps(HEVCVideoParser::SpsData *sps_ptr);
+    void PrintPps(HEVCVideoParser::PpsData *pps_ptr);
+    void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
+#endif // DBGINFO
 
 private:
     /*! \brief Function to initialize the HEVC parser members
