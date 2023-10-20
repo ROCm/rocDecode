@@ -22,6 +22,12 @@ THE SOFTWARE.
 
 #include "roc_video_parser.h"
 
+RocVideoParser::RocVideoParser() {
+    pic_width_ = 0;
+    pic_height_ = 0;
+    pic_dimension_changed_ = false;
+}
+
 /**
  * @brief Initializes any parser related stuff for all parsers
  * 
@@ -39,6 +45,6 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
     pfn_get_sei_message_cb_ = pParams->pfnGetSEIMsg;       /**< Called when all SEI messages are parsed for particular frame        */
 
     parser_params_ = pParams;
-    
+
     return ROCDEC_SUCCESS;
 }

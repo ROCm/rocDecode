@@ -83,5 +83,5 @@ rocDecDestroyVideoParser(RocdecVideoParser handle) {
         ERR(e.what())
         return ROCDEC_RUNTIME_ERROR;
     }
-    return ret;  
+    return ret;
 }

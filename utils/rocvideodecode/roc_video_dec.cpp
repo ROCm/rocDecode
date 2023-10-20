@@ -394,22 +394,16 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     video_proc_params.top_field_first = pDispInfo->top_field_first;
     video_proc_params.output_hipstream = hip_stream_;
 
-    if (b_extract_sei_message_)
-    {
-        if (sei_message_display_q_[pDispInfo->picture_index].pSEIData)
-        {
+    if (b_extract_sei_message_) {
+        if (sei_message_display_q_[pDispInfo->picture_index].pSEIData) {
             // Write SEI Message
             uint8_t *sei_buffer = (uint8_t *)(sei_message_display_q_[pDispInfo->picture_index].pSEIData);
             uint32_t sei_num_messages = sei_message_display_q_[pDispInfo->picture_index].sei_message_count;
             RocdecSeiMessage *sei_message = sei_message_display_q_[pDispInfo->picture_index].pSEIMessage;
-            if (fp_sei_)
-            {
-                for (uint32_t i = 0; i < sei_num_messages; i++)
-                {
-                    if (codec_id_ == rocDecVideoCodec_H264 || rocDecVideoCodec_HEVC)
-                    {    
-                        switch (sei_message[i].sei_message_type)
-                        {
+            if (fp_sei_) {
+                for (uint32_t i = 0; i < sei_num_messages; i++) {
+                    if (codec_id_ == rocDecVideoCodec_H264 || rocDecVideoCodec_HEVC) {
+                        switch (sei_message[i].sei_message_type) {
                             case SEI_TYPE_TIME_CODE:
                             {
                                 //todo:: check if we need to write timecode
@@ -422,8 +416,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                             break;
                         }            
                     }
-                    if (codec_id_ == rocDecVideoCodec_AV1)
-                    {
+                    if (codec_id_ == rocDecVideoCodec_AV1) {
                         fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
                     }    
                     sei_buffer += sei_message[i].sei_message_size;
@@ -448,21 +441,18 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     uint8_t *p_dec_frame = nullptr;
     {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size())
-        {
+        if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size()) {
             // Not enough frames in stock
             num_alloced_frames_++;
             DecFrameBuffer dec_frame = { 0 };
-            if (b_use_device_mem_)
-            {
+            if (b_use_device_mem_) {
                 // allocate based on piched or not
                 if (b_device_frame_pitched_)
                     HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
                 else
                     HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
             }
-            else
-            {
+            else{
                 dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
             }
             dec_frame.pts = pDispInfo->pts;

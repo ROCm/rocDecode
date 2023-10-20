@@ -60,8 +60,7 @@ rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
 /**********************************************************************************************************************/
 rocDecStatus ROCDECAPI
 rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
-    rocDecStatus ret = RocDecoder::getDecoderCaps(pdc);
-    return ret;
+    return ROCDEC_NOT_IMPLEMENTED;
 }
 
 /*****************************************************************************************************/

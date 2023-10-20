@@ -32,7 +32,7 @@ THE SOFTWARE.
  */
 class RocVideoParser {
 public:
-    RocVideoParser() {};    // default constructor
+    RocVideoParser();    // default constructor
     RocVideoParser(RocdecParserParams *pParams) : parser_params_(pParams) {};
     virtual ~RocVideoParser() = default ;
     virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = pParams; };
@@ -51,6 +51,10 @@ protected:
     PFNVIDDECODECALLBACK pfn_decode_picture_cb_;        /**< Called when a picture is ready to be decoded (decode order)         */
     PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_;      /**< Called whenever a picture is ready to be displayed (display order)  */
     PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_;       /**< Called when all SEI messages are parsed for particular frame        */
+
+    uint32_t pic_width_;
+    uint32_t pic_height_;
+    bool pic_dimension_changed_;
 };
 
 enum ParserSeekOrigin {

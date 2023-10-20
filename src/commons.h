@@ -31,8 +31,12 @@ THE SOFTWARE.
 
 #if DBGINFO
 #define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#define MSG(X) std::clog << X << std::endl;
+#define MSG_NO_NEWLINE(X) std::clog << X;
 #else
 #define INFO(X) ;
+#define MSG(X) ;
+#define MSG_NO_NEWLINE(X) ;
 #endif
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
