@@ -27,15 +27,14 @@ RocVideoDecoder::RocVideoDecoder(hipCtx_t hip_ctx, bool b_use_device_mem, rocDec
               const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
               uint32_t clk_rate,  bool force_zero_latency) : hip_ctx_(hip_ctx), b_use_device_mem_(b_use_device_mem), codec_id_(codec), device_id_{device_id}, 
               b_low_latency_(b_low_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message), 
-              max_width_ (max_width), max_height_(max_height), b_force_zero_latency_(force_zero_latency)
-{
+              max_width_ (max_width), max_height_(max_height), b_force_zero_latency_(force_zero_latency) {
+
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
     }
     if (p_crop_rect) crop_rect_ = *p_crop_rect;
     if (p_resize_dim) resize_dim_ = *p_resize_dim;
-    if (b_extract_sei_message_)
-    {
+    if (b_extract_sei_message_) {
         fp_sei_ = fopen("rocdec_sei_message.txt", "wb");
         curr_sei_message_ptr_ = new RocdecSeiMessageInfo;
         memset(&sei_message_display_q_, 0, sizeof(sei_message_display_q_));
@@ -144,8 +143,7 @@ static const char * GetVideoChromaFormatName(rocDecVideoChromaFormat e_chroma_fo
 static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format)
 {
     float factor = 0.5;
-    switch (surface_format)
-    {
+    switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
     case rocDecVideoSurfaceFormat_P016:
         factor = 0.5;
@@ -162,8 +160,7 @@ static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format)
 static int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format)
 {
     int num_planes = 1;
-    switch (surface_format)
-    {
+    switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
     case rocDecVideoSurfaceFormat_P016:
         num_planes = 1;
@@ -249,8 +246,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
         video_surface_format_ = rocDecVideoSurfaceFormat_NV12;      // 422 output surface is not supported:: default to NV12
 
     // Check if output format supported. If not, check falback options
-    if (!(decode_caps.nOutputFormatMask & (1 << video_surface_format_)))
-    {
+    if (!(decode_caps.nOutputFormatMask & (1 << video_surface_format_))){
         if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_NV12))
             video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
         else if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_P016))
@@ -274,8 +270,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     videoDecodeCreateInfo.ulWidth = pVideoFormat->coded_width;
     videoDecodeCreateInfo.ulHeight = pVideoFormat->coded_height;
     // AV1 has max width/height of sequence in sequence header
-    if (pVideoFormat->codec == rocDecVideoCodec_AV1 && pVideoFormat->seqhdr_data_length > 0)
-    {
+    if (pVideoFormat->codec == rocDecVideoCodec_AV1 && pVideoFormat->seqhdr_data_length > 0) {
         // dont overwrite if it is already set from cmdline or reconfig.txt
         if (!(max_width_ > pVideoFormat->coded_width || max_height_ > pVideoFormat->coded_height))
         {
@@ -350,8 +345,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
 }
 
 
-int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat)
-{
+int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat) {
     THROW("ReconfigureDecoder is not supported in this version: " + TOSTR(ROCDEC_NOT_SUPPORTED));
     return ROCDEC_NOT_SUPPORTED;
 }
@@ -414,7 +408,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                                 fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
                             }
                             break;
-                        }            
+                        }
                     }
                     if (codec_id_ == rocDecVideoCodec_AV1) {
                         fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
@@ -429,7 +423,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 
     void * src_dev_ptr[3] = { 0 };
     uint32_t src_pitch[3] = { 0 };
-    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
+    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, &src_pitch, &video_proc_params));
 
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
@@ -508,8 +502,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     return 1;
 }
 
-int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo)
-{
+int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
     uint32_t sei_num_mesages = pSEIMessageInfo->sei_message_count;
     RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->pSEIMessage;
     size_t total_SEI_buff_size = 0;
