@@ -274,7 +274,7 @@ int HEVCVideoParser::GetNalUnit() {
     }        
 }
 
-void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
     if (profile_present_flag) {
         ptl->general_profile_space = Parser::ReadBits(nalu, offset, 2);
         ptl->general_tier_flag = Parser::GetBit(nalu, offset);
@@ -286,9 +286,9 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         ptl->general_interlaced_source_flag = Parser::GetBit(nalu, offset);
         ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
         ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
-        //ReadBits is limited to 32
-        offset += 44;
-        // Todo: add constrant flags parsing.
+        // ReadBits is limited to 32
+        offset += 44; // skip 44 bits
+        // Todo: add constrant flags parsing for higher profiles when needed
     }
 
     ptl->general_level_idc = Parser::ReadBits(nalu, offset, 8);
@@ -313,7 +313,9 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
             ptl->sub_layer_interlaced_source_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_non_packed_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_frame_only_constraint_flag[i] = Parser::GetBit(nalu, offset);
-            ptl->sub_layer_reserved_zero_44bits[i] = Parser::ReadBits(nalu, offset, 44);
+            // ReadBits is limited to 32
+            offset += 44;  // skip 44 bits
+            // Todo: add constrant flags parsing for higher profiles when needed
         }
         if (ptl->sub_layer_level_present_flag[i]) {
             ptl->sub_layer_level_idc[i] = Parser::ReadBits(nalu, offset, 8);
@@ -661,115 +663,120 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) { 
+void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
+    SpsData *sps_ptr = NULL;
     size_t offset = 0;
+
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset, 3);
     uint32_t sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
     H265ProfileTierLevel ptl;
     memset (&ptl, 0, sizeof(ptl));
     ParsePtl(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
+
     uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    memset(&m_sps_[sps_id], 0, sizeof(m_sps_[sps_id]));
-    m_sps_[sps_id].sps_video_parameter_set_id = vps_id;
-    m_sps_[sps_id].sps_max_sub_layers_minus1 = max_sub_layer_minus1;
-    m_sps_[sps_id].sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
-    memcpy (&m_sps_[sps_id].profile_tier_level, &ptl, sizeof(ptl));
-    m_sps_[sps_id].sps_seq_parameter_set_id = sps_id;
-    m_sps_[sps_id].chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
-    if (m_sps_[sps_id].chroma_format_idc == 3) {
-        m_sps_[sps_id].separate_colour_plane_flag = Parser::GetBit(nalu, offset);
+    sps_ptr = &m_sps_[sps_id];
+
+    memset(sps_ptr, 0, sizeof(SpsData));
+    sps_ptr->sps_video_parameter_set_id = vps_id;
+    sps_ptr->sps_max_sub_layers_minus1 = max_sub_layer_minus1;
+    sps_ptr->sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
+    memcpy (&sps_ptr->profile_tier_level, &ptl, sizeof(ptl));
+    sps_ptr->sps_seq_parameter_set_id = sps_id;
+    sps_ptr->chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
+    if (sps_ptr->chroma_format_idc == 3) {
+        sps_ptr->separate_colour_plane_flag = Parser::GetBit(nalu, offset);
     }
-    m_sps_[sps_id].pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].conformance_window_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].conformance_window_flag)
+    sps_ptr->pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->conformance_window_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->conformance_window_flag)
     {
-        m_sps_[sps_id].conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    m_sps_[sps_id].bit_depth_luma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].bit_depth_chroma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].sps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
-    for (int i = 0; i <= m_sps_[sps_id].sps_max_sub_layers_minus1; i++) {
-        if (m_sps_[sps_id].sps_sub_layer_ordering_info_present_flag || (i == 0)) {
-            m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_sps_[sps_id].sps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_sps_[sps_id].sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->bit_depth_luma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->bit_depth_chroma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->sps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
+    for (int i = 0; i <= sps_ptr->sps_max_sub_layers_minus1; i++) {
+        if (sps_ptr->sps_sub_layer_ordering_info_present_flag || (i == 0)) {
+            sps_ptr->sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sps_ptr->sps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sps_ptr->sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         else {
-            m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[i] = m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[0];
-            m_sps_[sps_id].sps_max_num_reorder_pics[i] = m_sps_[sps_id].sps_max_num_reorder_pics[0];
-            m_sps_[sps_id].sps_max_latency_increase_plus1[i] = m_sps_[sps_id].sps_max_latency_increase_plus1[0];
+            sps_ptr->sps_max_dec_pic_buffering_minus1[i] = sps_ptr->sps_max_dec_pic_buffering_minus1[0];
+            sps_ptr->sps_max_num_reorder_pics[i] = sps_ptr->sps_max_num_reorder_pics[0];
+            sps_ptr->sps_max_latency_increase_plus1[i] = sps_ptr->sps_max_latency_increase_plus1[0];
         }
     }
-    m_sps_[sps_id].log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int log2_min_cu_size = m_sps_[sps_id].log2_min_luma_coding_block_size_minus3 + 3;
+    int log2_min_cu_size = sps_ptr->log2_min_luma_coding_block_size_minus3 + 3;
 
-    m_sps_[sps_id].log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int max_cu_depth_delta = m_sps_[sps_id].log2_diff_max_min_luma_coding_block_size;
-    m_sps_[sps_id].max_cu_width = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
-    m_sps_[sps_id].max_cu_height = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
+    int max_cu_depth_delta = sps_ptr->log2_diff_max_min_luma_coding_block_size;
+    sps_ptr->max_cu_width = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
+    sps_ptr->max_cu_height = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
 
-    m_sps_[sps_id].log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    uint32_t quadtree_tu_log2_min_size = m_sps_[sps_id].log2_min_transform_block_size_minus2 + 2;
+    uint32_t quadtree_tu_log2_min_size = sps_ptr->log2_min_transform_block_size_minus2 + 2;
     int add_cu_depth = max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
-    m_sps_[sps_id].max_cu_depth = (max_cu_depth_delta + add_cu_depth);
+    sps_ptr->max_cu_depth = (max_cu_depth_delta + add_cu_depth);
 
-    m_sps_[sps_id].log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].scaling_list_enabled_flag) {
-        m_sps_[sps_id].sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
-        if (m_sps_[sps_id].sps_scaling_list_data_present_flag) {
-            ParseScalingList(&m_sps_[sps_id].scaling_list_data, nalu, size, offset);
+    sps_ptr->log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->scaling_list_enabled_flag) {
+        sps_ptr->sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
+        if (sps_ptr->sps_scaling_list_data_present_flag) {
+            ParseScalingList(&sps_ptr->scaling_list_data, nalu, size, offset);
         }
     }
-    m_sps_[sps_id].amp_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].sample_adaptive_offset_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].pcm_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].pcm_enabled_flag) {
-        m_sps_[sps_id].pcm_sample_bit_depth_luma_minus1 = Parser::ReadBits(nalu, offset, 4);
-        m_sps_[sps_id].pcm_sample_bit_depth_chroma_minus1 = Parser::ReadBits(nalu, offset, 4);
-        m_sps_[sps_id].log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->amp_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->sample_adaptive_offset_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->pcm_enabled_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->pcm_enabled_flag) {
+        sps_ptr->pcm_sample_bit_depth_luma_minus1 = Parser::ReadBits(nalu, offset, 4);
+        sps_ptr->pcm_sample_bit_depth_chroma_minus1 = Parser::ReadBits(nalu, offset, 4);
+        sps_ptr->log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
-    m_sps_[sps_id].num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i=0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
+    sps_ptr->num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
+    for (int i=0; i<sps_ptr->num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
-        ParseShortTermRefPicSet(&m_sps_[sps_id].st_rps[i], i, m_sps_[sps_id].num_short_term_ref_pic_sets, m_sps_[sps_id].st_rps, nalu, size, offset);
+        ParseShortTermRefPicSet(&sps_ptr->st_rps[i], i, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset);
     }
-    m_sps_[sps_id].long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].long_term_ref_pics_present_flag) {
-        m_sps_[sps_id].num_long_term_ref_pics_sps = Parser::ExpGolomb::ReadUe(nalu, offset);  //max is 32
-        m_sps_[sps_id].lt_rps.num_of_pics = m_sps_[sps_id].num_long_term_ref_pics_sps;
-        for (int i=0; i<m_sps_[sps_id].num_long_term_ref_pics_sps; i++) {
+    sps_ptr->long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->long_term_ref_pics_present_flag) {
+        sps_ptr->num_long_term_ref_pics_sps = Parser::ExpGolomb::ReadUe(nalu, offset);  //max is 32
+        sps_ptr->lt_rps.num_of_pics = sps_ptr->num_long_term_ref_pics_sps;
+        for (int i=0; i<sps_ptr->num_long_term_ref_pics_sps; i++) {
             //The number of bits used to represent lt_ref_pic_poc_lsb_sps[ i ] is equal to log2_max_pic_order_cnt_lsb_minus4 + 4.
-            m_sps_[sps_id].lt_ref_pic_poc_lsb_sps[i] = Parser::ReadBits(nalu, offset, (m_sps_[sps_id].log2_max_pic_order_cnt_lsb_minus4 + 4));
-            m_sps_[sps_id].used_by_curr_pic_lt_sps_flag[i] = Parser::GetBit(nalu, offset);
-            m_sps_[sps_id].lt_rps.pocs[i]=m_sps_[sps_id].lt_ref_pic_poc_lsb_sps[i];
-            m_sps_[sps_id].lt_rps.used_by_curr_pic[i] = m_sps_[sps_id].used_by_curr_pic_lt_sps_flag[i];            
+            sps_ptr->lt_ref_pic_poc_lsb_sps[i] = Parser::ReadBits(nalu, offset, (sps_ptr->log2_max_pic_order_cnt_lsb_minus4 + 4));
+            sps_ptr->used_by_curr_pic_lt_sps_flag[i] = Parser::GetBit(nalu, offset);
+            sps_ptr->lt_rps.pocs[i]=sps_ptr->lt_ref_pic_poc_lsb_sps[i];
+            sps_ptr->lt_rps.used_by_curr_pic[i] = sps_ptr->used_by_curr_pic_lt_sps_flag[i];            
         }
     }
-    m_sps_[sps_id].sps_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].strong_intra_smoothing_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].vui_parameters_present_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].vui_parameters_present_flag) {
+    sps_ptr->sps_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->strong_intra_smoothing_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->vui_parameters_present_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->vui_parameters_present_flag) {
         //vui_parameters()
-        ParseVui(&m_sps_[sps_id].vui_parameters, m_sps_[sps_id].sps_max_sub_layers_minus1, nalu, size, offset);
+        ParseVui(&sps_ptr->vui_parameters, sps_ptr->sps_max_sub_layers_minus1, nalu, size, offset);
     }
-    m_sps_[sps_id].sps_extension_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->sps_extension_flag = Parser::GetBit(nalu, offset);
 
 #if DBGINFO
-    PrintSps(&m_sps_[sps_id]);
+    PrintSps(sps_ptr);
 #endif // DBGINFO
 }
 
