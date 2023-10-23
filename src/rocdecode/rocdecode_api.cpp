@@ -133,7 +133,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderI
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                    void *pDevMemPtr[3], unsigned int pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
+                    void *pDevMemPtr[3], uint32_t (&pHorizontalPitch)[3], RocdecProcParams *pVidPostprocParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {

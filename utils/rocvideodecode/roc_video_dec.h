@@ -44,11 +44,9 @@ typedef enum{
 
 
 #define ROCDEC_API_CALL( rocDecAPI )                                                                                 \
-    do                                                                                                             \
-    {                                                                                                              \
+    do {                                                                                                            \
         rocDecStatus errorCode = rocDecAPI;                                                                             \
-        if( errorCode != ROCDEC_SUCCESS)                                                                             \
-        {                                                                                                          \
+        if( errorCode != ROCDEC_SUCCESS) {                                                                          \
             std::ostringstream errorLog;                                                                           \
             errorLog << #rocDecAPI << " returned error " << errorCode;                                              \
             THROW(errorLog.str() + TOSTR(errorCode)); \
@@ -56,11 +54,9 @@ typedef enum{
     } while (0)
 
 #define HIP_API_CALL( call )                                                                                                 \
-    do                                                                                                                           \
-    {                                                                                                                            \
+    do {                                                                                                                          \
         hipError_t hip_status = call;                                                                                            \
-        if (hip_status != hipSuccess)                                                                                            \
-        {                                                                                                                        \
+        if (hip_status != hipSuccess) {                                                                                          \
             const char *szErrName = NULL;                                                                                        \
             szErrName = hipGetErrorName(hip_status);                                                                             \
             std::ostringstream errorLog;                                                                                         \
@@ -101,7 +97,6 @@ typedef struct OutputSurfaceInfoType {
 } OutputSurfaceInfo;
 
 class RocVideoDecoder {
-    
     public:
       /**
        * @brief Construct a new Roc Video Decoder object
@@ -120,15 +115,10 @@ class RocVideoDecoder {
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVideoCodec codec, int device_id, bool b_low_latency, bool device_frame_pitched, 
+        RocVideoDecoder(int device_id, bool b_use_device_mem, rocDecVideoCodec codec, bool b_low_latency, bool device_frame_pitched,
                           const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
                           uint32_t clk_rate,  bool force_zero_latency);
         ~RocVideoDecoder();
-
-        /**
-        *  @brief  This function is used to get the current HIP context.
-        */
-        hipCtx_t GetContext() { return hip_ctx_; }
         
         /**
          * @brief Get the output frame width
@@ -290,7 +280,6 @@ class RocVideoDecoder {
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
         rocDecDecoderHandle roc_decoder_ = nullptr;
-        hipCtx_t hip_ctx_;
         bool b_use_device_mem_ = true;
         bool b_extract_sei_message_ = false;
         bool b_low_latency_ = true;

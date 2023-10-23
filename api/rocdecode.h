@@ -749,7 +749,7 @@ extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle hDeco
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                                           void *pDevMemPtr[3], uint32_t pHorizontalPitch[3],
+                                           void *pDevMemPtr[3], uint32_t (&pHorizontalPitch)[3],
                                            RocdecProcParams *pVidPostprocParams);
 
 /*****************************************************************************************************/

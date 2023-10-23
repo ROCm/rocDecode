@@ -22,11 +22,10 @@ THE SOFTWARE.
 
 #include "roc_video_dec.h"
 
-
-RocVideoDecoder::RocVideoDecoder(hipCtx_t hip_ctx, bool b_use_device_mem, rocDecVideoCodec codec, int device_id, bool b_low_latency, bool device_frame_pitched, 
+RocVideoDecoder::RocVideoDecoder(int device_id, bool b_use_device_mem, rocDecVideoCodec codec,  bool b_low_latency, bool device_frame_pitched,
               const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
-              uint32_t clk_rate,  bool force_zero_latency) : hip_ctx_(hip_ctx), b_use_device_mem_(b_use_device_mem), codec_id_(codec), device_id_{device_id}, 
-              b_low_latency_(b_low_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message), 
+              uint32_t clk_rate,  bool force_zero_latency) : device_id_{device_id}, b_use_device_mem_(b_use_device_mem), codec_id_(codec),
+              b_low_latency_(b_low_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message),
               max_width_ (max_width), max_height_(max_height), b_force_zero_latency_(force_zero_latency) {
 
     if (!InitHIP(device_id_)) {
@@ -140,8 +139,7 @@ static const char * GetVideoChromaFormatName(rocDecVideoChromaFormat e_chroma_fo
     return "Unknown";
 }
 
-static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format)
-{
+static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     float factor = 0.5;
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
@@ -157,8 +155,7 @@ static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format)
     return factor;
 }
 
-static int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format)
-{
+static int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
     int num_planes = 1;
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
@@ -423,7 +420,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 
     void * src_dev_ptr[3] = { 0 };
     uint32_t src_pitch[3] = { 0 };
-    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, &src_pitch, &video_proc_params));
+    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
 
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
@@ -649,8 +646,7 @@ bool RocVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     return true;
 }
 
-bool RocVideoDecoder::InitHIP(int device_id)
-{
+bool RocVideoDecoder::InitHIP(int device_id) {
     HIP_API_CALL(hipGetDeviceCount(&num_devices_));
     if (num_devices_ < 1) {
         std::cerr << "ERROR: didn't find any GPU!" << std::endl;
