@@ -50,3 +50,13 @@ rocDecStatus H264VideoParser::Initialize(RocdecParserParams *pParams) {
 rocDecStatus H264VideoParser::ParseVideoData(RocdecSourceDataPacket *pData) {
     return ROCDEC_NOT_IMPLEMENTED;
 }
+
+/**
+ * @brief function to uninitialize h264 parser
+ * 
+ * @return rocDecStatus 
+ */
+rocDecStatus H264VideoParser::UnInitialize() {
+  //todo::
+    return ROCDEC_NOT_IMPLEMENTED;
+}

@@ -132,7 +132,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
   install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp
+  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")

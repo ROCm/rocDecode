@@ -43,6 +43,17 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
     return ROCDEC_SUCCESS;
 }
 
+/**
+ * @brief function to uninitialize hevc parser
+ * 
+ * @return rocDecStatus 
+ */
+rocDecStatus HEVCVideoParser::UnInitialize() {
+    //todo:: do any uninitialization here
+    return ROCDEC_SUCCESS;
+}
+
+
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     bool status = ParseFrameData(p_data->payload, p_data->payload_size);
     if (!status) {

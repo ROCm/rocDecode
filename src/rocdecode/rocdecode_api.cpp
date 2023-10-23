@@ -58,19 +58,9 @@ rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
 /**********************************************************************************************************************/
-rocDecStatus ROCDECAPI 
-rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, RocdecDecodeCaps *pdc) {
-    auto handle = static_cast<DecHandle *> (hDecoder);
-    rocDecStatus ret;
-    try {
-        ret = handle->roc_decoder->getDecoderCaps(pdc);
-    }
-    catch(const std::exception& e) {
-        handle->capture_error(e.what());
-        ERR(e.what())
-        return ROCDEC_RUNTIME_ERROR;
-    }
-    return ret;
+rocDecStatus ROCDECAPI
+rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
+    return ROCDEC_NOT_IMPLEMENTED;
 }
 
 /*****************************************************************************************************/
@@ -100,7 +90,7 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams) {
 //! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
-RocdecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
+rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -143,7 +133,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderI
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                    void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
+                    void *pDevMemPtr[3], uint32_t (&pHorizontalPitch)[3], RocdecProcParams *pVidPostprocParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {

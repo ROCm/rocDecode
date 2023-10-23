@@ -19,40 +19,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #pragma once
+#include <stdexcept>
+#include <exception>
+#include <string>
+#include <iostream>
 
-#include "roc_video_parser.h"
+#define TOSTR(X) std::to_string(static_cast<int>(X))
+#define STR(X) std::string(X)
 
-class H264VideoParser : public RocVideoParser {
+#if DBGINFO
+#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define INFO(X) ;
+#endif
+#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
+
+class rocVideoDecodeException : public std::exception {
 public:
-    /**
-     * @brief Construct a new HEVCParser object
-     * 
-     */
-    H264VideoParser();
-    /**
-     * @brief Derived Function to Initialize the parser
-     * 
-     * @return rocDecStatus 
-     */
-    virtual rocDecStatus Initialize(RocdecParserParams *pParams);
-    /**
-     * @brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
-     * @brief Derived from base class
-     * 
-     * @param pData: Pointer to picture data
-     * @return rocDecStatus: returns success on completion, else error_code for failure
-     */
-    virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData);
-    /**
-     * @brief function to uninitialize h264 parser
-     * 
-     * @return rocDecStatus 
-     */
-    virtual rocDecStatus UnInitialize();     // derived method
 
-
-private:    
-
+    explicit rocVideoDecodeException(const std::string& message):_message(message){}
+    virtual const char* what() const throw() override {
+        return _message.c_str();
+    }
+private:
+    std::string _message;
 };
+
+#define THROW(X) throw rocVideoDecodeException(" { "+std::string(__func__)+" } " + X);

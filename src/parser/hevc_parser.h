@@ -59,12 +59,20 @@ public:
      */
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *p_data);
 
-    /*! \brief HEVCParser object destructor
+    /**
+     * @brief function to uninitialize hevc parser
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus UnInitialize();     // derived method
+
+    /**
+     * @brief HEVCParser object destructor
      */
     virtual ~HEVCVideoParser();
 
 protected:
-    /*! \brief Enumerator for the NAL Unit types - ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams.
+    /*! \brief Enumerator for the NAL Unit types - ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams
      */
     enum NalUnitType {
         NAL_UNIT_CODED_SLICE_TRAIL_N = 0, // 0

@@ -132,6 +132,21 @@ typedef struct {
     uint8_t raw_seqhdr_data[1024];  /**< OUT: Sequence header data    */
 } RocdecVideoFormatEx;
 
+/***************************************************************/
+//! \enum RocdecVideoPacketFlags
+//! Data packet flags
+//! Used in RocdecSourceDataPacket structure
+/***************************************************************/
+typedef enum {
+    ROCDEC_PKT_ENDOFSTREAM   = 0x01,   /**< Set when this is the last packet for this stream                              */
+    ROCDEC_PKT_TIMESTAMP     = 0x02,   /**< Timestamp is valid                                                            */
+    ROCDEC_PKT_DISCONTINUITY = 0x04,   /**< Set when a discontinuity has to be signalled                                  */
+    ROCDEC_PKT_ENDOFPICTURE  = 0x08,   /**< Set when the packet contains exactly one frame or one field                   */
+    ROCDEC_PKT_NOTIFY_EOS    = 0x10,   /**< If this flag is set along with ROCDEC_PKT_ENDOFSTREAM, an additional (dummy)
+                                           display callback will be invoked with null value of ROCDECPARSERDISPINFO which
+                                           should be interpreted as end of the stream.                                   */
+} RocdecVideoPacketFlags;
+
 /*****************************************************************************/
 //! \ingroup STRUCTS
 //! \struct RocdecSourceDataPacket
@@ -140,11 +155,11 @@ typedef struct {
 //! IN for rocDecParseVideoData
 /*****************************************************************************/
 typedef struct _RocdecSourceDataPacket {
-    uint32_t flags;            /**< IN: Combination of CUVID_PKT_XXX flags                              */
+    uint32_t flags;            /**< IN: Combination of ROCDEC_PKT_XXX flags                              */
     uint32_t payload_size;     /**< IN: number of bytes in the payload (may be zero if EOS flag is set) */
     const uint8_t *payload;   /**< IN: Pointer to packet payload data (may be NULL if EOS flag is set) */
     RocdecTimeStamp pts;                   /**< IN: Presentation time stamp (10MHz clock), only valid if
-                                             CUVID_PKT_TIMESTAMP flag is set                                 */
+                                             ROCDEC_PKT_TIMESTAMP flag is set                                 */
 } RocdecSourceDataPacket;
 
 
