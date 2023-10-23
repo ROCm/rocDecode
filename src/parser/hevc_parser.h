@@ -204,6 +204,7 @@ protected:
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
         int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
+        int32_t scaling_list_dc_coef[2][6];  // DC coefficient for 16x16 and 32x32
     } H265ScalingListData;
 
     /*! \brief Structure for Short Term Reference Picture Set
@@ -650,14 +651,21 @@ protected:
      */
     void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
     
+    /*! \brief Function to set the default values to the scaling list
+     * \param [out] sl_ptr A pointer to the scaling list <tt>H265ScalingListData</tt>
+     * \return No return value
+     */
+    void SetDefaultScalingList(H265ScalingListData *sl_ptr);
+
     /*! \brief Function to parse Scaling List
-     * \param [out] s_data A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
+     * \param [out] sl_ptr A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
      * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
      * \param [in] offset Reference to the offset in the input buffer
+     * \param [in] sps_ptr Pointer to the current SPS
      * \return No return value
      */
-    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size, size_t &offset);
+    void ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *data, size_t size, size_t &offset, SpsData *sps_ptr);
     
     /*! \brief Function to parse Video Usability Information
      * \param [out] vui A pointer of <tt>H265VuiParameters</tt> for the output from the parsed stream

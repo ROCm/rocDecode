@@ -386,59 +386,149 @@ void HEVCVideoParser::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf
     }
 }
 
-void HEVCVideoParser::ParseScalingList(H265ScalingListData * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+// Table 7-5. Default values of ScalingList[ 0 ][ matrixId ][ i ] with i = 0..15.
+static const uint8_t default_scaling_list_side_id_0[] = {
+    16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
+};
+
+// Table 7-6. Default values of ScalingList[ 1..3 ][ 0..2 ][ i ] with i = 0..63.
+static const uint8_t default_scaling_list_intra[] = {
+    16, 16, 16, 16, 17, 18, 21, 24,
+    16, 16, 16, 16, 17, 19, 22, 25,
+    16, 16, 17, 18, 20, 22, 25, 29,
+    16, 16, 18, 21, 24, 27, 31, 36,
+    17, 17, 20, 24, 30, 35, 41, 47,
+    18, 19, 22, 27, 35, 44, 54, 65,
+    21, 22, 25, 31, 41, 54, 70, 88,
+    24, 25, 29, 36, 47, 65, 88, 115
+};
+
+// Table 7-6. Default values of ScalingList[ 1..3 ][ 3..5 ][ i ] with i = 0..63.
+static const uint8_t default_scaling_list_inter[] = {
+    16, 16, 16, 16, 17, 18, 20, 24,
+    16, 16, 16, 17, 18, 20, 24, 25,
+    16, 16, 17, 18, 20, 24, 25, 28,
+    16, 17, 18, 20, 24, 25, 28, 33,
+    17, 18, 20, 24, 25, 28, 33, 41,
+    18, 20, 24, 25, 28, 33, 41, 54,
+    20, 24, 25, 28, 33, 41, 54, 71,
+    24, 25, 28, 33, 41, 54, 71, 91
+};
+
+static const int diag_scan_4x4[16] =
+{
+    0, 4, 1, 8,
+    5, 2,12, 9,
+    6, 3,13,10,
+    7,14,11,15
+};
+
+static const int diag_scan_8x8[64] =
+{
+    0, 8, 1, 16, 9, 2,24,17,
+    10, 3,32,25,18,11, 4,40,
+    33,26,19,12, 5,48,41,34,
+    27,20,13, 6,56,49,42,35,
+    28,21,14, 7,57,50,43,36,
+    29,22,15,58,51,44,37,30,
+    23,59,52,45,38,31,60,53,
+    46,39,61,54,47,62,55,63
+};
+
+void HEVCVideoParser::SetDefaultScalingList(H265ScalingListData *sl_ptr) {
+    int size_id, matrix_id, i;
+
+    // DC coefficient for 16x16 and 32x32
+    for (matrix_id = 0; matrix_id < 6; matrix_id++) {
+        sl_ptr->scaling_list_dc_coef[0][matrix_id] = 16;
+        sl_ptr->scaling_list_dc_coef[1][matrix_id] = 16;
+    }
+
+    // sizeId 0
+    for (matrix_id = 0; matrix_id < 6; matrix_id++) {
+        for (i = 0; i < 16; i++) {
+            sl_ptr->scaling_list[0][matrix_id][i] = default_scaling_list_side_id_0[i];
+        }
+    }
+
+    // sizeId 1..3, matrixId 0..2
+    for (size_id = 1; size_id <= 3; size_id++) {
+        for (matrix_id = 0; matrix_id <= 2; matrix_id++) {
+            for (i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[size_id][matrix_id][i] = default_scaling_list_intra[i];
+            }
+        }
+    }
+
+    // sizeId 1..3, matrixId 3..5
+    for (size_id = 1; size_id <= 3; size_id++) {
+        for (matrix_id = 3; matrix_id <= 5; matrix_id++) {
+            for (i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[size_id][matrix_id][i] = default_scaling_list_inter[i];
+            }
+        }
+    }
+}
+
+void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *nalu, size_t size, size_t& offset, SpsData *sps_ptr) {
     for (int size_id = 0; size_id < 4; size_id++) {
-        for (int matrix_id = 0; matrix_id < ((size_id == 3) ? 2 : 6); matrix_id++) {
-            s_data->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
-            if(!s_data->scaling_list_pred_mode_flag[size_id][matrix_id]) {
-                s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        for (int matrix_id = 0; matrix_id < 6; matrix_id += (size_id == 3) ? 3 : 1) {
+            sl_ptr->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
+            if(!sl_ptr->scaling_list_pred_mode_flag[size_id][matrix_id]) {
+                sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
+                // If scaling_list_pred_matrix_id_delta is 0, infer from default scaling list. We have filled the scaling
+                // list with default values earlier.
+                if (sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id])
+                {
+                    // Infer from the reference scaling list
+                    int ref_matrix_id = matrix_id - sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] * (size_id == 3 ? 3 : 1);
+                    int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+                    for (int i = 0; i < coef_num; i++)
+                    {
+                        sl_ptr->scaling_list[size_id][matrix_id][i] = sl_ptr->scaling_list[size_id][ref_matrix_id][i];
+                    }
 
-                int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
-                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
-
-                //fill in scaling_list_dc_coef_minus8
-                if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
-                    if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = 8;
+                    // Copy to DC coefficient for 16x16 or 32x32
+                    if (size_id > 1)
+                    {
+                        sl_ptr->scaling_list_dc_coef[size_id - 2][matrix_id] = sl_ptr->scaling_list_dc_coef[size_id - 2][ref_matrix_id];
                     }
-                }
-                else {
-                    if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = s_data->scaling_list_dc_coef_minus8[size_id-2][ref_matrix_id];
-                    }
-                }
-
-                for (int i = 0; i < coef_num; i++) {
-                    if (s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] == 0) {
-                        if (size_id == 0) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_0[size_id][matrix_id][i];
-                        }
-                        else if(size_id == 1 || size_id == 2) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_1_2[size_id][matrix_id][i];
-                        }
-                        else if(size_id == 3) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_3[size_id][matrix_id][i];
-                        }
-                    }
-                    else {
-                        s_data->scaling_list[size_id][matrix_id][i] = s_data->scaling_list[size_id][ref_matrix_id][i];
-                    }
-                }
+                }                
             }
             else {
                 int next_coef = 8;
                 int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
                 if (size_id > 1) {
-                    s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    next_coef = s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] + 8;
+                    sl_ptr->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = Parser::ExpGolomb::ReadSe(nalu, offset);
+                    next_coef = sl_ptr->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] + 8;
+                    // Record DC coefficient for 16x16 or 32x32
+                    sl_ptr->scaling_list_dc_coef[size_id - 2][matrix_id] = next_coef;
                 }
                 for (int i = 0; i < coef_num; i++) {
-                    s_data->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    next_coef = (next_coef + s_data->scaling_list_delta_coef +256) % 256;
-                    s_data->scaling_list[size_id][matrix_id][i] = next_coef;
+                    sl_ptr->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
+                    next_coef = (next_coef + sl_ptr->scaling_list_delta_coef + 256) % 256;
+                    if (size_id == 0) {
+                        sl_ptr->scaling_list[size_id][matrix_id][diag_scan_4x4[i]] = next_coef;
+                    }
+                    else {
+                        sl_ptr->scaling_list[size_id][matrix_id][diag_scan_8x8[i]] = next_coef;
+                    }
                 }
             }
         }
+    }
+
+    if (sps_ptr->chroma_format_idc == 3) {
+        for (int i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[3][1][i] = sl_ptr->scaling_list[2][1][i];
+            sl_ptr->scaling_list[3][2][i] = sl_ptr->scaling_list[2][2][i];
+            sl_ptr->scaling_list[3][4][i] = sl_ptr->scaling_list[2][4][i];
+            sl_ptr->scaling_list[3][5][i] = sl_ptr->scaling_list[2][5][i];
+        }
+        sl_ptr->scaling_list_dc_coef[1][1] = sl_ptr->scaling_list_dc_coef[0][1];
+        sl_ptr->scaling_list_dc_coef[1][2] = sl_ptr->scaling_list_dc_coef[0][2];
+        sl_ptr->scaling_list_dc_coef[1][4] = sl_ptr->scaling_list_dc_coef[0][4];
+        sl_ptr->scaling_list_dc_coef[1][5] = sl_ptr->scaling_list_dc_coef[0][5];
     }
 }
 
@@ -732,11 +822,15 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
     sps_ptr->max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
     sps_ptr->max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
+
     sps_ptr->scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
     if (sps_ptr->scaling_list_enabled_flag) {
+        // Set up default values first
+        SetDefaultScalingList(&sps_ptr->scaling_list_data);
+
         sps_ptr->sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
         if (sps_ptr->sps_scaling_list_data_present_flag) {
-            ParseScalingList(&sps_ptr->scaling_list_data, nalu, size, offset);
+            ParseScalingList(&sps_ptr->scaling_list_data, nalu, size, offset, sps_ptr);
         }
     }
     sps_ptr->amp_enabled_flag = Parser::GetBit(nalu, offset);
@@ -839,7 +933,13 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     }
     m_pps_[pps_id].pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
     if (m_pps_[pps_id].pps_scaling_list_data_present_flag) {
-        ParseScalingList(&m_pps_[pps_id].scaling_list_data, nalu, size, offset);
+        // Set up default values first
+        SetDefaultScalingList(&m_pps_[pps_id].scaling_list_data);
+
+        ParseScalingList(&m_pps_[pps_id].scaling_list_data, nalu, size, offset, &m_sps_[m_pps_[pps_id].pps_seq_parameter_set_id]);
+    }
+    else {
+        m_pps_[pps_id].scaling_list_data = m_sps_[m_pps_[pps_id].pps_seq_parameter_set_id].scaling_list_data;
     }
     m_pps_[pps_id].lists_modification_present_flag = Parser::GetBit(nalu, offset);
     m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1053,31 +1153,6 @@ size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, s
     return end_bytepos - begin_bytepos + reduce_count;
 }
 
-//size_id = 0
-int scaling_list_default_0 [1][6][16] =  {{{16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16}}};
-//size_id = 1, 2
-int scaling_list_default_1_2 [2][6][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}},
-                                           {{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
-//size_id = 3
-int scaling_list_default_3 [1][2][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                          {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
-
-
 #if DBGINFO
 void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
     MSG("=== hevc_video_parameter_set_t ===");
@@ -1189,6 +1264,16 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("max_transform_hierarchy_depth_intra       = " <<  sps_ptr->max_transform_hierarchy_depth_intra);
     MSG("scaling_list_enabled_flag                 = " <<  sps_ptr->scaling_list_enabled_flag);
     MSG("sps_scaling_list_data_present_flag        = " <<  sps_ptr->sps_scaling_list_data_present_flag);
+    MSG("Scaling list:");
+    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+            MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
+            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+                MSG_NO_NEWLINE(" " << sps_ptr->scaling_list_data.scaling_list[i][j][k]);
+            }
+            MSG("");
+        }
+    }
 
     MSG("amp_enabled_flag                          = " <<  sps_ptr->amp_enabled_flag);
     MSG("sample_adaptive_offset_enabled_flag       = " <<  sps_ptr->sample_adaptive_offset_enabled_flag);
@@ -1329,6 +1414,17 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
     MSG("pps_beta_offset_div2                        = " <<  pps_ptr->pps_beta_offset_div2);
     MSG("pps_tc_offset_div2                          = " <<  pps_ptr->pps_tc_offset_div2);
     MSG("pps_scaling_list_data_present_flag          = " <<  pps_ptr->pps_scaling_list_data_present_flag);
+    MSG("Scaling list:");
+    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+            MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
+            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+                MSG_NO_NEWLINE(" " << pps_ptr->scaling_list_data.scaling_list[i][j][k]);
+            }
+            MSG("");
+        }
+    }
+
     MSG("lists_modification_present_flag             = " <<  pps_ptr->lists_modification_present_flag);
     MSG("log2_parallel_merge_level_minus2            = " <<  pps_ptr->log2_parallel_merge_level_minus2);
     MSG("slice_segment_header_extension_present_flag = " <<  pps_ptr->slice_segment_header_extension_present_flag);
