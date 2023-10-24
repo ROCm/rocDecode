@@ -21,12 +21,17 @@
 #
 ################################################################################
 
-find_package(PkgConfig)
-pkg_check_modules(Libdrm libdrm)
+find_library(LIBDRM_LIBRARY NAMES drm)
+find_path(LIBDRM_INCLUDE_DIR NAMES drm/drm.h)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Libdrm DEFAULT_MSG LIBDRM_INCLUDE_DIR LIBDRM_LIBRARY)
+mark_as_advanced(LIBDRM_INCLUDE_DIR LIBDRM_LIBRARY)
+
 if(Libdrm_FOUND)
   if(NOT TARGET Libdrm::drm)
     add_library(Libdrm::drm UNKNOWN IMPORTED)
-    set_target_properties(Libdrm::drm PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${Libdrm_INCLUDE_DIRS}"
-        IMPORTED_LOCATION "${Libdrm_LINK_LIBRARIES}")
+    set_target_properties(Libdrm::drm PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LIBDRM_INCLUDE_DIR}"
+        IMPORTED_LOCATION "${LIBDRM_LIBRARY}")
   endif()
 endif()

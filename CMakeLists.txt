@@ -104,8 +104,9 @@ set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific ma
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 find_package(Libva QUIET)
+find_package(Libdrm QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
+if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 
   # FFMPEG
   include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
@@ -114,7 +115,9 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
   # LibVA
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
+  # LibDRM
+  include_directories(${LIBDRM_INCLUDE_DIR})
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
 
@@ -201,9 +204,9 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
 
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST
-      "vainfo, libva-dev, ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+      "vainfo, libva-dev, libdrm-dev, ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
   set(rocDecode_RPM_PACKAGE_LIST
-      "libva-devel,ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
+      "libva-devel, libdrm-devel, ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
   # set dependency to ROCm if set to TRUE, default to OFF
   set(ROCM_DEP_ROCMCORE OFF CACHE BOOL "Set rocm-core dependency")
   if(ROCM_DEP_ROCMCORE)
@@ -260,5 +263,8 @@ else()
   endif()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva-dev Not Found - please install libva-dev!")
+  endif()
+  if(NOT Libdrm_FOUND)
+    message(FATAL_ERROR "-- ERROR!: libdrm-dev Not Found - please install libdrm-dev!")
   endif()
 endif()
