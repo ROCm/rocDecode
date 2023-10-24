@@ -155,6 +155,52 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
+int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
+    memset(video_format_params_, 0, sizeof(video_format_params_));
+    video_format_params_.codec = rocDecVideoCodec_HEVC;
+    //TODO: Check the two frame_rate - setting default
+    video_format_params_.frame_rate.numerator = 0;
+    video_format_params_.frame_rate.denominator = 0;
+    video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
+    video_format_params_.bit_depth_chroma_minus8 = sps_data->bit_depth_chroma_minus8;
+    if (sps_data->general_progressive_source_flag && !sps_data->general_interlaced_source_flag)
+        video_format_params_.progressive_sequence = 1;
+    else if (!sps_data->general_progressive_source_flag && sps_data->general_interlaced_source_flag)
+        video_format_params_.progressive_sequence = 0;
+    //TODO: Check min_num_decode_surfaces - setting default
+    video_format_params_.min_num_decode_surfaces = 1;
+    video_format_params_.coded_width = sps_data->pic_width_in_luma_samples;
+    video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
+    if(sps_data->conformance_window_flag) {
+        video_format_params_.display_area.left = sps_data->conf_win_left_offset;
+        video_format_params_.display_area.top = sps_data->conf_win_top_offset;
+        video_format_params_.display_area.right = sps_data->conf_win_right_offset;
+        video_format_params_.display_area.bottom = sps_data->conf_win_bottom_offset;
+    }
+    video_format_params_.chroma_format = sps_data->chroma_format_idc;
+    //TODO: Check bitrate - setting default
+    video_format_params_.bitrate = 0;
+    if (sps_data->vui_parameters_present_flag) {
+        if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
+            video_format_params_.display_aspect_ratio.x = sps_data->vui_parameters.sar_width;
+            video_format_params_.display_aspect_ratio.y = sps_data->vui_parameters.sar_height;
+        }
+    }
+    if (sps_data->vui_parameters_present_flag) {
+        video_format_params_.video_signal_description.video_format = sps_data->vui_parameters.video_format;
+        video_format_params_.video_signal_description.video_full_range_flag = sps_data->vui_parameters.video_full_range_flag;
+        video_format_params_.video_signal_description.color_primaries = sps_data->vui_parameters.colour_primaries;
+        video_format_params_.video_signal_description.transfer_characteristics = sps_data->vui_parameters.transfer_characteristics;
+        video_format_params_.video_signal_description.matrix_coefficients = sps_data->vui_parameters.matrix_coeffs;
+        video_format_params_.video_signal_description.reserved_zero_bits = 4; // TODO: check - setting default
+    }
+    //TODO: check seqhdr_data_length
+    video_format_params_.seqhdr_data_length = 0;
+
+    //TODO: callback function with RocdecVideoFormat params filled out
+    pfn_sequece_cb_(&video_format_params_);
+}
+
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
     NalUnitHeader nal_unit_header;
@@ -778,6 +824,9 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         ParseVui(&m_sps_[sps_id].vui_parameters, m_sps_[sps_id].sps_max_sub_layers_minus1, nalu, size, offset);
     }
     m_sps_[sps_id].sps_extension_flag = Parser::GetBit(nalu, offset);
+    
+    // use parsed data to fill structure RocdecVideoFormat and callback function
+    int res = FillSeqCallbackFn(&m_sps_[sps_id]);
 
 #if DBGINFO
     PrintSps(&m_sps_[sps_id]);
