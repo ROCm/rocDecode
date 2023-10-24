@@ -210,12 +210,22 @@ protected:
     /*! \brief Structure for Short Term Reference Picture Set
      */
     typedef struct {
-        int32_t num_negative_pics;
-        int32_t num_positive_pics;
-        int32_t num_of_pics;
-        int32_t num_of_delta_poc;
-        int32_t delta_poc[16];
-        bool used_by_curr_pic[16];
+        uint32_t inter_ref_pic_set_prediction_flag;
+        uint32_t delta_idx_minus1;
+        uint32_t delta_rps_sign;
+        uint32_t abs_delta_rps_minus1;
+        uint32_t used_by_curr_pic_flag[16];
+        uint32_t use_delta_flag[16];
+        uint32_t num_negative_pics;  // NumNegativePics
+        uint32_t num_positive_pics;  // NumPositivePics
+        uint32_t num_of_pics;
+        uint32_t num_of_delta_poc;  // NumDeltaPocs
+        uint32_t delta_poc_s0_minus1[16];
+        uint32_t used_by_curr_pic_s0_flag[16];
+        uint32_t delta_poc_s1_minus1[16];
+        uint32_t used_by_curr_pic_s1_flag[16];
+        int32_t delta_poc[16];  // DeltaPocS0 + DeltaPocS1
+        bool used_by_curr_pic[16];  // UsedByCurrPicS0 + UsedByCurrPicS1
     } H265ShortTermRPS;
 
     /*! \brief Structure for Long Term Reference Picture Set
@@ -714,6 +724,7 @@ protected:
     void PrintSps(HEVCVideoParser::SpsData *sps_ptr);
     void PrintPps(HEVCVideoParser::PpsData *pps_ptr);
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
+    void PrintRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
 #endif // DBGINFO
 
 private:

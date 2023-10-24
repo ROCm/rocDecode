@@ -533,70 +533,71 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *na
 }
 
 void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    uint32_t inter_rps_pred = 0;
-    uint32_t delta_idx_minus1 = 0;
     int32_t i = 0;
 
     if (st_rps_idx != 0) {
-        inter_rps_pred = Parser::GetBit(nalu, offset);
+        rps->inter_ref_pic_set_prediction_flag = Parser::GetBit(nalu, offset);
     }
-    if (inter_rps_pred) {
-        uint32_t delta_rps_sign, abs_delta_rps_minus1;
-        bool used_by_curr_pic_flag[16] = {0};
-        bool use_delta_flag[16] = {0};
+    else {
+        rps->inter_ref_pic_set_prediction_flag = 0;
+    }
+    if (rps->inter_ref_pic_set_prediction_flag) {
         if (unsigned(st_rps_idx) == number_short_term_ref_pic_sets) {
-            delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+            rps->delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        delta_rps_sign = Parser::GetBit(nalu, offset);
-        abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        int32_t delta_rps = (int32_t) (1 - 2 * delta_rps_sign) * (abs_delta_rps_minus1 + 1);
-        int32_t ref_idx = st_rps_idx - delta_idx_minus1 - 1;
-        for (int j = 0; j <= (rps_ref[ref_idx].num_negative_pics + rps_ref[ref_idx].num_positive_pics); j++) {
-            used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
-            if (!used_by_curr_pic_flag[j]) {
-                use_delta_flag[j] = Parser::GetBit(nalu, offset);
+        else {
+            rps->delta_idx_minus1 = 0;
+        }
+        rps->delta_rps_sign = Parser::GetBit(nalu, offset);
+        rps->abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        int32_t delta_rps = (int32_t) (1 - 2 * rps->delta_rps_sign) * (rps->abs_delta_rps_minus1 + 1);
+        int32_t ref_idx = st_rps_idx - rps->delta_idx_minus1 - 1;
+        for (int j = 0; j <= (rps_ref[ref_idx].num_of_delta_poc); j++) {
+            rps->used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
+            if (!rps->used_by_curr_pic_flag[j]) {
+                rps->use_delta_flag[j] = Parser::GetBit(nalu, offset);
             }
             else {
-                use_delta_flag[j] = 1;
+                rps->use_delta_flag[j] = 1;
             }
         }
 
         for (int j = rps_ref[ref_idx].num_positive_pics - 1; j >= 0; j--) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics + j];  //positive delta_poc from ref_rps
-            if (delta_poc < 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics + j]) {
+            if (delta_poc < 0 && rps->use_delta_flag[rps_ref[ref_idx].num_negative_pics + j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics + j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics + j];
             }
         }
-        if (delta_rps < 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
+        if (delta_rps < 0 && rps->use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
             rps->delta_poc[i] = delta_rps;
-            rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
+            rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
         for (int j = 0; j < rps_ref[ref_idx].num_negative_pics; j++) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];
-            if (delta_poc < 0 && use_delta_flag[j]) {
+            if (delta_poc < 0 && rps->use_delta_flag[j]) {
                 rps->delta_poc[i]=delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[j];
             }
         }
         rps->num_negative_pics = i;
         
         for (int j = rps_ref[ref_idx].num_negative_pics - 1; j >= 0; j--) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];  //positive delta_poc from ref_rps
-            if (delta_poc > 0 && use_delta_flag[j]) {
+            if (delta_poc > 0 && rps->use_delta_flag[j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[j];
             }
         }
-        if (delta_rps > 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
+        if (delta_rps > 0 && rps->use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
             rps->delta_poc[i] = delta_rps;
-            rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
+            rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
         for (int j = 0; j < rps_ref[ref_idx].num_positive_pics; j++) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics+j];
-            if (delta_poc > 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics+j]) {
+            if (delta_poc > 0 && rps->use_delta_flag[rps_ref[ref_idx].num_negative_pics+j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics+j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics+j];
             }
         }
         rps->num_positive_pics = i - rps->num_negative_pics ;
@@ -608,21 +609,24 @@ void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_
         rps->num_positive_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         int32_t prev = 0;
         int32_t poc;
-        uint32_t delta_poc_s0_minus1,delta_poc_s1_minus1;
+        // DeltaPocS0, UsedByCurrPicS0
         for (int j = 0; j < rps->num_negative_pics; j++) {
-            delta_poc_s0_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-            poc = prev - delta_poc_s0_minus1 - 1;
+            rps->delta_poc_s0_minus1[j] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            poc = prev - rps->delta_poc_s0_minus1[j] - 1;
             prev = poc;
-            rps->delta_poc[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
+            rps->delta_poc[j] = poc;  // DeltaPocS0
+            rps->used_by_curr_pic_s0_flag[j] = Parser::GetBit(nalu, offset);
+            rps->used_by_curr_pic[j] = rps->used_by_curr_pic_s0_flag[j];  // UsedByCurrPicS0
         }
         prev = 0;
-        for (int j = rps->num_negative_pics; j < rps->num_negative_pics + rps->num_positive_pics; j++) {
-            delta_poc_s1_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-            poc = prev + delta_poc_s1_minus1 + 1;
+        // DeltaPocS1, UsedByCurrPicS1
+        for (int j = 0; j < rps->num_positive_pics; j++) {
+            rps->delta_poc_s1_minus1[j] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            poc = prev + rps->delta_poc_s1_minus1[j] + 1;
             prev = poc;
-            rps->delta_poc[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
+            rps->delta_poc[j + rps->num_negative_pics] = poc;  // DeltaPocS1
+            rps->used_by_curr_pic_s1_flag[j] = Parser::GetBit(nalu, offset);
+            rps->used_by_curr_pic[j + rps->num_negative_pics] = rps->used_by_curr_pic_s1_flag[j];  // UsedByCurrPicS1
         }
         rps->num_of_pics = rps->num_negative_pics + rps->num_positive_pics;
         rps->num_of_delta_poc = rps->num_negative_pics + rps->num_positive_pics;
@@ -1286,60 +1290,8 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("num_short_term_ref_pic_sets               = " <<  sps_ptr->num_short_term_ref_pic_sets);
 
     if (sps_ptr->num_short_term_ref_pic_sets) {
-        MSG("Short term RPS:");
         for(int i = 0; i < sps_ptr->num_short_term_ref_pic_sets; i++) {
-            /*Todo: MSG("st_rps[%d]: " <<  i);
-            MSG("inter_ref_pic_set_prediction_flag         = " <<  sps_ptr->st_rps[i].inter_ref_pic_set_prediction_flag);
-            MSG("delta_idx_minus1                          = " <<  sps_ptr->st_rps[i].delta_idx_minus1);
-            MSG("delta_rps_sign                            = " <<  sps_ptr->st_rps[i].delta_rps_sign);
-            MSG("abs_delta_rps_minus1                      = " <<  sps_ptr->st_rps[i].abs_delta_rps_minus1);
-            MSG("used_by_curr_pic_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_flag[j]);
-            }
-            MSG("");
-            MSG("use_delta_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].use_delta_flag[j]);
-            }
-            MSG("");*/
-
-            MSG("num_negative_pics                         = " <<  sps_ptr->st_rps[i].num_negative_pics);
-            MSG("num_positive_pics                         = " <<  sps_ptr->st_rps[i].num_positive_pics);
-            MSG("num_of_pics                               = " <<  sps_ptr->st_rps[i].num_of_pics);
-            MSG("num_of_delta_poc                          = " <<  sps_ptr->st_rps[i].num_of_delta_poc);
-
-            MSG_NO_NEWLINE("delta_poc[16]:");
-            for(int j = 0; j < 16; j++) {
-                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].delta_poc[j]);
-            }
-            MSG("");
-            MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-            for(int j = 0; j < 16; j++) {
-                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].used_by_curr_pic[j]);
-            }
-            MSG("");
-
-            /* Todo MSG("delta_poc_s0_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].delta_poc_s0_minus1[j]);
-            }
-            MSG("");
-            MSG("used_by_curr_pic_s0_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s0_flag[j]);
-            }
-            MSG("");
-            MSG("delta_poc_s1_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].delta_poc_s1_minus1[j]);
-            }
-            MSG("");
-            MSG("used_by_curr_pic_s1_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s1_flag[j]);
-            }
-            MSG("");*/
+            PrintRps(&sps_ptr->st_rps[i]);
         }
     }
 
@@ -1446,59 +1398,8 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("short_term_ref_pic_set_sps_flag             = " <<  slice_header_ptr->short_term_ref_pic_set_sps_flag);
     MSG("short_term_ref_pic_set_idx                  = " <<  slice_header_ptr->short_term_ref_pic_set_idx);
 
-    MSG("Short term RPS:");
-    {
-        /* Todo: MSG("inter_ref_pic_set_prediction_flag           = " <<  slice_header_ptr->st_rps.inter_ref_pic_set_prediction_flag);
-        MSG("delta_idx_minus1                            = " <<  slice_header_ptr->st_rps.delta_idx_minus1);
-        MSG("delta_rps_sign                              = " <<  slice_header_ptr->st_rps.delta_rps_sign);
-        MSG("abs_delta_rps_minus1                        = " <<  slice_header_ptr->st_rps.abs_delta_rps_minus1);
-        MSG_NO_NEWLINE("used_by_curr_pic_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_flag[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("use_delta_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.use_delta_flag[j]);
-        }
-        MSG("");*/
-        MSG("num_negative_pics                           = " <<  slice_header_ptr->st_rps.num_negative_pics);
-        MSG("num_positive_pics                           = " <<  slice_header_ptr->st_rps.num_positive_pics);
-        MSG("num_of_pics                                 = " <<  slice_header_ptr->st_rps.num_of_pics);
-        MSG("num_of_delta_poc                            = " <<  slice_header_ptr->st_rps.num_of_delta_poc);
+    PrintRps(&slice_header_ptr->st_rps);
 
-        MSG_NO_NEWLINE("delta_poc[16]:");
-        for(int j = 0; j < 16; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-        for(int j = 0; j < 16; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic[j]);
-        }
-        MSG("");
-
-        /* Todo: MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s0_minus1[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s0_flag[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s1_minus1[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s1_flag[j]);
-        }
-        MSG("");*/
-    }
     MSG("num_long_term_sps                           = " <<  slice_header_ptr->num_long_term_sps);
     MSG("num_long_term_pics                          = " <<  slice_header_ptr->num_long_term_pics);
     MSG_NO_NEWLINE("lt_idx_sps[]:");
@@ -1562,6 +1463,60 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("num_entry_point_offsets                     = %d " <<  slice_header_ptr->num_entry_point_offsets);
     MSG("offset_len_minus1                           = %d " <<  slice_header_ptr->offset_len_minus1);
     MSG("slice_segment_header_extension_length       = %d " <<  slice_header_ptr->slice_segment_header_extension_length);*/
+    MSG("");
+}
+
+void HEVCVideoParser::PrintRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr) {
+    MSG("==== Short-term reference picture set =====")
+    MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
+    MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
+    MSG("delta_rps_sign                              = " <<  rps_ptr->delta_rps_sign);
+    MSG("abs_delta_rps_minus1                        = " <<  rps_ptr->abs_delta_rps_minus1);
+    MSG_NO_NEWLINE("rps->used_by_curr_pic_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("use_delta_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->use_delta_flag[j]);
+    }
+    MSG("");
+    MSG("num_negative_pics                           = " <<  rps_ptr->num_negative_pics);
+    MSG("num_positive_pics                           = " <<  rps_ptr->num_positive_pics);
+    MSG("num_of_pics                                 = " <<  rps_ptr->num_of_pics);
+    MSG("num_of_delta_poc                            = " <<  rps_ptr->num_of_delta_poc);
+
+    MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s0_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s0_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s1_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s1_flag[j]);
+    }
+    MSG("");
+
+    MSG_NO_NEWLINE("delta_poc[16] (DeltaPocS0 + DeltaPocS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic[16] (UsedByCurrPicS0 + UsedByCurrPicS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic[j]);
+    }
     MSG("");
 }
 #endif // DBGINFO
