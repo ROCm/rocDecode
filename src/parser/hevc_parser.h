@@ -767,5 +767,5 @@ private:
     SliceHeaderData* AllocSliceHeader();
 
     // functions to fill structures for callback functions
-    int FillSeqCallbackFn(SpsData* sps_data);
+    void FillSeqCallbackFn(SpsData* sps_data);
 };

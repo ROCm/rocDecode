@@ -155,17 +155,16 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
-int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
-    memset(video_format_params_, 0, sizeof(video_format_params_));
+void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
     //TODO: Check the two frame_rate - setting default
     video_format_params_.frame_rate.numerator = 0;
     video_format_params_.frame_rate.denominator = 0;
     video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
     video_format_params_.bit_depth_chroma_minus8 = sps_data->bit_depth_chroma_minus8;
-    if (sps_data->general_progressive_source_flag && !sps_data->general_interlaced_source_flag)
+    if (sps_data->profile_tier_level.general_progressive_source_flag && !sps_data->profile_tier_level.general_interlaced_source_flag)
         video_format_params_.progressive_sequence = 1;
-    else if (!sps_data->general_progressive_source_flag && sps_data->general_interlaced_source_flag)
+    else if (!sps_data->profile_tier_level.general_progressive_source_flag && sps_data->profile_tier_level.general_interlaced_source_flag)
         video_format_params_.progressive_sequence = 0;
     //TODO: Check min_num_decode_surfaces - setting default
     video_format_params_.min_num_decode_surfaces = 1;
@@ -177,7 +176,7 @@ int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.display_area.right = sps_data->conf_win_right_offset;
         video_format_params_.display_area.bottom = sps_data->conf_win_bottom_offset;
     }
-    video_format_params_.chroma_format = sps_data->chroma_format_idc;
+    video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(sps_data->chroma_format_idc);
     //TODO: Check bitrate - setting default
     video_format_params_.bitrate = 0;
     if (sps_data->vui_parameters_present_flag) {
@@ -197,8 +196,8 @@ int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     //TODO: check seqhdr_data_length
     video_format_params_.seqhdr_data_length = 0;
 
-    //TODO: callback function with RocdecVideoFormat params filled out
-    pfn_sequece_cb_(&video_format_params_);
+    // callback function with RocdecVideoFormat params filled out
+    pfn_sequece_cb_ = PFNVIDSEQUENCECALLBACK(&video_format_params_);
 }
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
@@ -925,7 +924,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->sps_extension_flag = Parser::GetBit(nalu, offset);
     
     // use parsed data to fill structure RocdecVideoFormat and callback function
-    int res = FillSeqCallbackFn(sps_ptr);
+    FillSeqCallbackFn(sps_ptr);
 
 #if DBGINFO
     PrintSps(sps_ptr);
