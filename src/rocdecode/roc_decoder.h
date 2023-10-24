@@ -33,7 +33,6 @@ THE SOFTWARE.
 #include "../api/rocdecode.h"
 #include <hip/hip_runtime.h>
 
-
 class RocDecoder {
 public:
     RocDecoder(int device_id = 0);
@@ -47,7 +46,6 @@ public:
 private:
     rocDecStatus initHIP(int device_id);
     void initDRMnodes();
-
     int num_devices_;
     int device_id_;
     hipDeviceProp_t hip_dev_prop_;
