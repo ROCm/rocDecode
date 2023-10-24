@@ -102,24 +102,25 @@ endif()
 set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
 
 find_package(HIP QUIET)
-find_package(FFmpeg QUIET)
-find_package(Libva QUIET)
 find_package(Libdrm QUIET)
+find_package(Libva QUIET)
+find_package(FFmpeg QUIET)
 
 if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 
+  # HIP
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
+  # LibDRM
+  include_directories(${LIBDRM_INCLUDE_DIR})
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
+  # LibVA
+  include_directories(${LIBVA_INCLUDE_DIR})
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
   # FFMPEG
   include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                       ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
-  # LibVA
-  include_directories(${LIBVA_INCLUDE_DIR})
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
-  # LibDRM
-  include_directories(${LIBDRM_INCLUDE_DIR})
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
-  # HIP
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
 
   # local include files
   include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
@@ -246,11 +247,11 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   endif()
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
-    message("-- ${White}rocDecode -- CPACK_RPM_PACKAGE_REQUIRES:${CPACK_RPM_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode -- CPACK_RPM_PACKAGE_REQUIRES: ${CPACK_RPM_PACKAGE_REQUIRES}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
-    message("-- ${White}rocDecode -- CPACK_DEBIAN_PACKAGE_DEPENDS:${CPACK_DEBIAN_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode -- CPACK_DEBIAN_PACKAGE_DEPENDS: ${CPACK_DEBIAN_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
   include(CPack)
@@ -259,7 +260,7 @@ else()
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
   endif()
   if(NOT FFMPEG_FOUND)
-    message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please insatll FFMPEG!")
+    message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
   endif()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva-dev Not Found - please install libva-dev!")
