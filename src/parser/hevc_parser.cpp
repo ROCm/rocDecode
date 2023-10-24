@@ -415,16 +415,14 @@ static const uint8_t default_scaling_list_inter[] = {
     24, 25, 28, 33, 41, 54, 71, 91
 };
 
-static const int diag_scan_4x4[16] =
-{
+static const int diag_scan_4x4[16] = {
     0, 4, 1, 8,
     5, 2,12, 9,
     6, 3,13,10,
     7,14,11,15
 };
 
-static const int diag_scan_8x8[64] =
-{
+static const int diag_scan_8x8[64] = {
     0, 8, 1, 16, 9, 2,24,17,
     10, 3,32,25,18,11, 4,40,
     33,26,19,12, 5,48,41,34,
@@ -478,19 +476,16 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *na
                 sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
                 // If scaling_list_pred_matrix_id_delta is 0, infer from default scaling list. We have filled the scaling
                 // list with default values earlier.
-                if (sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id])
-                {
+                if (sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
                     // Infer from the reference scaling list
                     int ref_matrix_id = matrix_id - sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] * (size_id == 3 ? 3 : 1);
                     int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
-                    for (int i = 0; i < coef_num; i++)
-                    {
+                    for (int i = 0; i < coef_num; i++) {
                         sl_ptr->scaling_list[size_id][matrix_id][i] = sl_ptr->scaling_list[size_id][ref_matrix_id][i];
                     }
 
                     // Copy to DC coefficient for 16x16 or 32x32
-                    if (size_id > 1)
-                    {
+                    if (size_id > 1) {
                         sl_ptr->scaling_list_dc_coef[size_id - 2][matrix_id] = sl_ptr->scaling_list_dc_coef[size_id - 2][ref_matrix_id];
                     }
                 }                
@@ -784,8 +779,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
     sps_ptr->pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
     sps_ptr->conformance_window_flag = Parser::GetBit(nalu, offset);
-    if (sps_ptr->conformance_window_flag)
-    {
+    if (sps_ptr->conformance_window_flag) {
         sps_ptr->conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         sps_ptr->conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
         sps_ptr->conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1007,6 +1001,9 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         m_sh_->slice_type = Parser::ExpGolomb::ReadUe(nalu, offset);
         if (pps_ptr->output_flag_present_flag) {
             m_sh_->pic_output_flag = Parser::GetBit(nalu, offset);
+        }
+        else {
+            m_sh_->pic_output_flag = 1;  // default value
         }
         if (sps_ptr->separate_colour_plane_flag) {
             m_sh_->colour_plane_id = Parser::ReadBits(nalu, offset, 2);
