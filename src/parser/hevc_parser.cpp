@@ -881,77 +881,78 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
 void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     size_t offset = 0;
     uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    memset(&m_pps_[pps_id], 0, sizeof(m_pps_[pps_id]));
+    PpsData *pps_ptr = &m_pps_[pps_id];
+    memset(pps_ptr, 0, sizeof(PpsData));
 
-    m_pps_[pps_id].pps_pic_parameter_set_id = pps_id;
-    m_pps_[pps_id].pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].output_flag_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].num_extra_slice_header_bits = Parser::ReadBits(nalu, offset, 3);
-    m_pps_[pps_id].sign_data_hiding_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].cabac_init_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].init_qp_minus26 = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].constrained_intra_pred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].transform_skip_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].cu_qp_delta_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].cu_qp_delta_enabled_flag) {
-        m_pps_[pps_id].diff_cu_qp_delta_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->pps_pic_parameter_set_id = pps_id;
+    pps_ptr->pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->output_flag_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->num_extra_slice_header_bits = Parser::ReadBits(nalu, offset, 3);
+    pps_ptr->sign_data_hiding_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->cabac_init_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->init_qp_minus26 = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->constrained_intra_pred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->transform_skip_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->cu_qp_delta_enabled_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->cu_qp_delta_enabled_flag) {
+        pps_ptr->diff_cu_qp_delta_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    m_pps_[pps_id].pps_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].pps_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].pps_slice_chroma_qp_offsets_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].weighted_pred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].weighted_bipred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].transquant_bypass_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].tiles_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].entropy_coding_sync_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].tiles_enabled_flag) {
-        m_pps_[pps_id].num_tile_columns_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_pps_[pps_id].num_tile_rows_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_pps_[pps_id].uniform_spacing_flag = Parser::GetBit(nalu, offset);
-        if (!m_pps_[pps_id].uniform_spacing_flag) {
-            for (int i = 0; i < m_pps_[pps_id].num_tile_columns_minus1; i++) {
-                m_pps_[pps_id].column_width_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->pps_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_slice_chroma_qp_offsets_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->weighted_pred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->weighted_bipred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->transquant_bypass_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->tiles_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->entropy_coding_sync_enabled_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->tiles_enabled_flag) {
+        pps_ptr->num_tile_columns_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pps_ptr->num_tile_rows_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pps_ptr->uniform_spacing_flag = Parser::GetBit(nalu, offset);
+        if (!pps_ptr->uniform_spacing_flag) {
+            for (int i = 0; i < pps_ptr->num_tile_columns_minus1; i++) {
+                pps_ptr->column_width_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
-            for (int i = 0; i < m_pps_[pps_id].num_tile_rows_minus1; i++) {
-                m_pps_[pps_id].row_height_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            for (int i = 0; i < pps_ptr->num_tile_rows_minus1; i++) {
+                pps_ptr->row_height_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
         }
-        m_pps_[pps_id].loop_filter_across_tiles_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->loop_filter_across_tiles_enabled_flag = Parser::GetBit(nalu, offset);
     }
     else {
-        m_pps_[pps_id].loop_filter_across_tiles_enabled_flag = 1;
-        m_pps_[pps_id].uniform_spacing_flag = 1;
+        pps_ptr->loop_filter_across_tiles_enabled_flag = 1;
+        pps_ptr->uniform_spacing_flag = 1;
     }
-    m_pps_[pps_id].pps_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].deblocking_filter_control_present_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].deblocking_filter_control_present_flag) {
-        m_pps_[pps_id].deblocking_filter_override_enabled_flag = Parser::GetBit(nalu, offset);
-        m_pps_[pps_id].pps_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
-        if (!m_pps_[pps_id].pps_deblocking_filter_disabled_flag) {
-            m_pps_[pps_id].pps_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
-            m_pps_[pps_id].pps_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->deblocking_filter_control_present_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->deblocking_filter_control_present_flag) {
+        pps_ptr->deblocking_filter_override_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->pps_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
+        if (!pps_ptr->pps_deblocking_filter_disabled_flag) {
+            pps_ptr->pps_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+            pps_ptr->pps_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
         }
     }
-    m_pps_[pps_id].pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].pps_scaling_list_data_present_flag) {
+    pps_ptr->pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->pps_scaling_list_data_present_flag) {
         // Set up default values first
-        SetDefaultScalingList(&m_pps_[pps_id].scaling_list_data);
+        SetDefaultScalingList(&pps_ptr->scaling_list_data);
 
-        ParseScalingList(&m_pps_[pps_id].scaling_list_data, nalu, size, offset, &m_sps_[m_pps_[pps_id].pps_seq_parameter_set_id]);
+        ParseScalingList(&pps_ptr->scaling_list_data, nalu, size, offset, &m_sps_[pps_ptr->pps_seq_parameter_set_id]);
     }
     else {
-        m_pps_[pps_id].scaling_list_data = m_sps_[m_pps_[pps_id].pps_seq_parameter_set_id].scaling_list_data;
+        pps_ptr->scaling_list_data = m_sps_[pps_ptr->pps_seq_parameter_set_id].scaling_list_data;
     }
-    m_pps_[pps_id].lists_modification_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].pps_extension_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->lists_modification_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->pps_extension_flag = Parser::GetBit(nalu, offset);
 
 #if DBGINFO
-    PrintPps(&m_pps_[pps_id]);
+    PrintPps(pps_ptr);
 #endif // DBGINFO
 }
 
