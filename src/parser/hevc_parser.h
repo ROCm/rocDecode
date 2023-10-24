@@ -212,17 +212,28 @@ protected:
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
         int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
+        int32_t scaling_list_dc_coef[2][6];  // DC coefficient for 16x16 and 32x32
     } H265ScalingListData;
 
     /*! \brief Structure for Short Term Reference Picture Set
      */
     typedef struct {
-        int32_t num_negative_pics;
-        int32_t num_positive_pics;
-        int32_t num_of_pics;
-        int32_t num_of_delta_poc;
-        int32_t delta_poc[16];
-        bool used_by_curr_pic[16];
+        uint32_t inter_ref_pic_set_prediction_flag;
+        uint32_t delta_idx_minus1;
+        uint32_t delta_rps_sign;
+        uint32_t abs_delta_rps_minus1;
+        uint32_t used_by_curr_pic_flag[16];
+        uint32_t use_delta_flag[16];
+        uint32_t num_negative_pics;  // NumNegativePics
+        uint32_t num_positive_pics;  // NumPositivePics
+        uint32_t num_of_pics;
+        uint32_t num_of_delta_poc;  // NumDeltaPocs
+        uint32_t delta_poc_s0_minus1[16];
+        uint32_t used_by_curr_pic_s0_flag[16];
+        uint32_t delta_poc_s1_minus1[16];
+        uint32_t used_by_curr_pic_s1_flag[16];
+        int32_t delta_poc[16];  // DeltaPocS0 + DeltaPocS1
+        bool used_by_curr_pic[16];  // UsedByCurrPicS0 + UsedByCurrPicS1
     } H265ShortTermRPS;
 
     /*! \brief Structure for Long Term Reference Picture Set
@@ -388,9 +399,9 @@ protected:
         uint32_t bit_depth_chroma_minus8;                    //ue(v)
         uint32_t log2_max_pic_order_cnt_lsb_minus4;          //ue(v)
         bool sps_sub_layer_ordering_info_present_flag;       //u(1)
-        uint32_t sps_max_dec_pic_buffering_minus1[6];        //ue(v)
-        uint32_t sps_max_num_reorder_pics[6];                //ue(v)
-        uint32_t sps_max_latency_increase_plus1[6];          //ue(v)
+        uint32_t sps_max_dec_pic_buffering_minus1[7];        //ue(v)
+        uint32_t sps_max_num_reorder_pics[7];                //ue(v)
+        uint32_t sps_max_latency_increase_plus1[7];          //ue(v)
         uint32_t log2_min_luma_coding_block_size_minus3;     //ue(v)
         uint32_t log2_diff_max_min_luma_coding_block_size;   //ue(v)
         uint32_t log2_min_transform_block_size_minus2;       //ue(v)
@@ -658,14 +669,21 @@ protected:
      */
     void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
     
+    /*! \brief Function to set the default values to the scaling list
+     * \param [out] sl_ptr A pointer to the scaling list <tt>H265ScalingListData</tt>
+     * \return No return value
+     */
+    void SetDefaultScalingList(H265ScalingListData *sl_ptr);
+
     /*! \brief Function to parse Scaling List
-     * \param [out] s_data A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
+     * \param [out] sl_ptr A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
      * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
      * \param [in] offset Reference to the offset in the input buffer
+     * \param [in] sps_ptr Pointer to the current SPS
      * \return No return value
      */
-    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size, size_t &offset);
+    void ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *data, size_t size, size_t &offset, SpsData *sps_ptr);
     
     /*! \brief Function to parse Video Usability Information
      * \param [out] vui A pointer of <tt>H265VuiParameters</tt> for the output from the parsed stream
@@ -714,6 +732,7 @@ protected:
     void PrintSps(HEVCVideoParser::SpsData *sps_ptr);
     void PrintPps(HEVCVideoParser::PpsData *pps_ptr);
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
+    void PrintRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
 #endif // DBGINFO
 
 private:
