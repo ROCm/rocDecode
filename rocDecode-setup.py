@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright 2023, AMD ROCm rocDecode"
-__version__ = "1.1"
+__version__ = "1.2"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -115,12 +115,12 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libva-dev ffmpeg libavcodec-dev libavformat-dev libswscale-dev')
+              ' install vainfo libva-dev libdrm-dev ffmpeg libavcodec-dev libavformat-dev libswscale-dev')
 else:
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install autoconf automake bzip2 bzip2-devel freetype-devel')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install gcc-c++ libtool make pkgconfig zlib-devel libva-devel')
+              ' install gcc-c++ libtool make pkgconfig zlib-devel libva-devel libdrm-devel')
     # Nasm
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install nasm')
