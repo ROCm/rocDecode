@@ -26,7 +26,7 @@ set(ROC_VIDEO_DEC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../utils/rocvideodecode)
 # videoDecode
 add_test(
   NAME
-    video_decode
+    video_decode-H264
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
