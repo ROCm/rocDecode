@@ -162,6 +162,14 @@ protected:
         H265_SCALING_LIST_SIZE_NUM
     };
 
+    /*! \brief Slice type
+     */
+    enum HevcSliceType {
+        HEVC_SLICE_TYPE_B = 0,
+        HEVC_SLICE_TYPE_P,
+        HEVC_SLICE_TYPE_I
+    };
+
     /*! \brief Structure for Profile Tier Levels
      */
     typedef struct {
@@ -319,6 +327,23 @@ protected:
         uint32_t log2_max_mv_length_horizontal;              //ue(v)
         uint32_t log2_max_mv_length_vertical;                //ue(v)
     } H265VuiParameters;
+
+    typedef struct {
+        uint32_t    luma_log2_weight_denom;                     //ue(v)
+        int32_t     delta_chroma_log2_weight_denom;             //se(v)
+        uint8_t     luma_weight_l0_flag[16];                    //u(1)
+        uint8_t     chroma_weight_l0_flag[16];                  //u(1)
+        int32_t     delta_luma_weight_l0[16];                   //se(v)
+        int32_t     luma_offset_l0[16];                         //se(v)
+        int32_t     delta_chroma_weight_l0[16][2];              //se(v)
+        int32_t     delta_chroma_offset_l0[16][2];              //se(v)
+        uint8_t     luma_weight_l1_flag[16];                    //u(1)
+        uint8_t     chroma_weight_l1_flag[16];                  //u(1)
+        int32_t     delta_luma_weight_l1[16];                   //se(v)
+        int32_t     luma_offset_l1[16];                         //se(v)
+        int32_t     delta_chroma_weight_l1[16][2];              //se(v)
+        int32_t     delta_chroma_offset_l1[16][2];              //se(v)
+    } HevcPredWeightTable;
 
     /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
      */
@@ -480,7 +505,20 @@ protected:
         bool lists_modification_present_flag;                //u(1)
         uint32_t log2_parallel_merge_level_minus2;           //ue(v)
         bool slice_segment_header_extension_present_flag;    //u(1)
-        bool pps_extension_flag;                             //u(1)
+        bool pps_extension_present_flag;                     //u(1)
+        bool pps_range_extension_flag;                       //u(1)
+        bool pps_multilayer_extension_flag;                  //u(1)
+        uint32_t pps_extension_6bits;                        //u(6)
+        // pps_range_extension()
+        uint32_t log2_max_transform_skip_block_size_minus2;  //ue(v)
+        uint8_t cross_component_prediction_enabled_flag;     //u(1)
+        uint8_t chroma_qp_offset_list_enabled_flag;          //u(1)
+        uint32_t diff_cu_chroma_qp_offset_depth;             //ue(v)
+        uint32_t chroma_qp_offset_list_len_minus1;           //ue(v)
+        int32_t cb_qp_offset_list[6];                        //se(v)
+        int32_t cr_qp_offset_list[6];                        //se(v)
+        uint32_t log2_sao_offset_scale_luma;                 //ue(v)
+        uint32_t log2_sao_offset_scale_chroma;               //ue(v)
         bool pps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
         H265RbspTrailingBits rbsp_trailing_bits;
@@ -532,14 +570,21 @@ protected:
         bool num_ref_idx_active_override_flag;               //u(1)
         uint32_t num_ref_idx_l0_active_minus1;               //ue(v)
         uint32_t num_ref_idx_l1_active_minus1;               //ue(v)
+        // Reference picture list modification
+        uint32_t ref_pic_list_modification_flag_l0;          //u(1)
+        uint32_t list_entry_l0[16];                          //u(v)
+        uint32_t ref_pic_list_modification_flag_l1;          //u(1)
+        uint32_t list_entry_l1[16];                          //u(v)
         bool mvd_l1_zero_flag;                               //u(1)
         bool cabac_init_flag;                                //u(1)
         bool collocated_from_l0_flag;                        //u(1)
+        HevcPredWeightTable pred_weight_table;
         uint32_t collocated_ref_idx;                         //ue(v)
         uint32_t five_minus_max_num_merge_cand;              //ue(v)
         int32_t slice_qp_delta;                              //se(v)
         int32_t slice_cb_qp_offset;                          //se(v)
         int32_t slice_cr_qp_offset;                          //se(v)
+        uint8_t cu_chroma_qp_offset_enabled_flag;            //u(1)
         bool deblocking_filter_override_flag;                //u(1)
         bool slice_deblocking_filter_disabled_flag;          //u(1)
         int32_t slice_beta_offset_div2;                      //se(v)
@@ -697,8 +742,16 @@ protected:
      * \param [in] offset Reference to the offset in the input buffer
      * \return No return value
      */
-    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
+    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size, size_t &offset);
     
+    /*! \brief Function to parse weighted prediction table
+     * \param [in/out] Slice_header_ptr Pointer to the slice segment header
+     * \param [in] chroma_array_type ChromaArrayType
+     * \param [in] stream_ptr Bit stream pointer
+     * \param [in/out] offset Bit offset of the current parsing action
+     */
+    void ParsePredWeightTable(HEVCVideoParser::SliceHeaderData *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset);
+
     /*! \brief Function to parse Slice Header
      * \param [in] nal_unit_type Input of <tt>uint32_t</tt> containing the enumerator value to the NAL Unit Type
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -724,7 +777,8 @@ protected:
     void PrintSps(HEVCVideoParser::SpsData *sps_ptr);
     void PrintPps(HEVCVideoParser::PpsData *pps_ptr);
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
-    void PrintRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
+    void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
+    void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
 #endif // DBGINFO
 
 private:
