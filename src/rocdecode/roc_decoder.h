@@ -33,22 +33,19 @@ THE SOFTWARE.
 #include "../api/rocdecode.h"
 #include <hip/hip_runtime.h>
 
-
 class RocDecoder {
 public:
     RocDecoder(int device_id = 0);
     ~RocDecoder();
-    rocDecStatus getDecoderCaps(RocdecDecodeCaps *pdc);
     rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
     rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
     rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
+    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
     rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
 private:
     rocDecStatus initHIP(int device_id);
     void initDRMnodes();
-
     int num_devices_;
     int device_id_;
     hipDeviceProp_t hip_dev_prop_;

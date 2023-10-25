@@ -21,7 +21,9 @@ THE SOFTWARE.
 */
 #include "dec_handle.h"
 #include "rocdecode.h"
+#include "roc_decoder_caps.h"
 #include "../commons.h"
+
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci)
@@ -58,19 +60,35 @@ rocDecDestroyDecoder(rocDecDecoderHandle hDecoder) {
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
 /**********************************************************************************************************************/
-rocDecStatus ROCDECAPI 
-rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, RocdecDecodeCaps *pdc) {
-    auto handle = static_cast<DecHandle *> (hDecoder);
-    rocDecStatus ret;
-    try {
-        ret = handle->roc_decoder->getDecoderCaps(pdc);
+rocDecStatus ROCDECAPI
+rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
+    if (pdc == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
     }
-    catch(const std::exception& e) {
-        handle->capture_error(e.what());
-        ERR(e.what())
-        return ROCDEC_RUNTIME_ERROR;
+    hipError_t hip_status = hipSuccess;
+    int num_devices = 0;
+    hipDeviceProp_t hip_dev_prop;
+    hip_status = hipGetDeviceCount(&num_devices);
+    if (hip_status != hipSuccess) {
+        ERR("ERROR: hipGetDeviceCount failed!" + TOSTR(hip_status));
+        return ROCDEC_DEVICE_INVALID;
     }
-    return ret;
+    if (num_devices < 1) {
+        ERR("ERROR: didn't find any GPU!");
+        return ROCDEC_DEVICE_INVALID;
+    }
+    if (pdc->deviceid >= num_devices) {
+        ERR("ERROR: the requested device_id is not found! ");
+        return ROCDEC_DEVICE_INVALID;
+    }
+    hip_status = hipGetDeviceProperties(&hip_dev_prop, pdc->deviceid);
+    if (hip_status != hipSuccess) {
+        ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(pdc->deviceid) + " ) failed! (" + TOSTR(hip_status) + ")" );
+        return ROCDEC_DEVICE_INVALID;
+    }
+
+    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInastance();
+    return vcn_codec_spec.GetDecoderCaps(hip_dev_prop.gcnArchName, pdc);
 }
 
 /*****************************************************************************************************/
@@ -100,7 +118,7 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams) {
 //! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
-RocdecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
+rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
@@ -143,7 +161,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderI
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                    void *pDevMemPtr[3], unsigned int *pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams) {
+                    void *pDevMemPtr[3], uint32_t (&pHorizontalPitch)[3], RocdecProcParams *pVidPostprocParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {

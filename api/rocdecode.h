@@ -108,7 +108,7 @@ typedef enum rocDecVideoSurfaceFormat_enum {
     rocDecVideoSurfaceFormat_NV12=0,          /**< Semi-Planar YUV [Y plane followed by interleaved UV plane]     */
     rocDecVideoSurfaceFormat_P016=1,          /**< 16 bit Semi-Planar YUV [Y plane followed by interleaved UV plane].
                                                  Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0)      */
-    rocDecVideoSurfaceFormat_YUV444=2,        /**< Planar YUV [Y plane followed by U and V planes]                */
+    rocDecVideoSurfaceFormat_YUV444=2,        /**< Planar YUV [Y plane followed by U and V planes]           */
     rocDecVideoSurfaceFormat_YUV444_16Bit=3,  /**< 16 bit Planar YUV [Y plane followed by U and V planes]. 
                                                  Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0)      */
 } rocDecVideoSurfaceFormat;
@@ -124,6 +124,7 @@ typedef enum rocDecVideoChromaFormat_enum {
     rocDecVideoChromaFormat_422,           /**< YUV 4:2:2  */
     rocDecVideoChromaFormat_444            /**< YUV 4:4:4  */
 } rocDecVideoChromaFormat;
+
 
 /*************************************************************************/
 //! \enum rocDecDecodeStatus
@@ -144,6 +145,8 @@ typedef enum rocDecodeStatus_enum {
 //! This structure is used in rocDecGetDecoderCaps API
 /**************************************************************************************************************/
 typedef struct _RocdecDecodeCaps {
+    uint8_t                   deviceid;                   /**< IN: the device id for which query the decode capability
+                                                            0 for the first device, 1 for the second device on the system, etc.*/
     rocDecVideoCodec          eCodecType;                 /**< IN: rocDecVideoCodec_XXX                                             */
     rocDecVideoChromaFormat   eChromaFormat;              /**< IN: rocDecVideoChromaFormat_XXX                                      */
     uint32_t              nBitDepthMinus8;            /**< IN: The Value "BitDepth minus 8"                                   */
@@ -178,14 +181,14 @@ typedef struct _RocdecDecoderCreateInfo {
     uint32_t ulMaxWidth;             /**< IN: Coded sequence max width in pixels used with reconfigure Decoder           */
     uint32_t ulMaxHeight;            /**< IN: Coded sequence max height in pixels used with reconfigure Decoder          */                                           
     /**
-    * IN: area of the frame that should be copied
+    * IN: area of the frame that should be displayed
     */
     struct {
         int16_t left;
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } roi_area;
+    } display_area;
 
     rocDecVideoSurfaceFormat OutputFormat;       /**< IN: rocDecVideoSurfaceFormat_XXX                                     */
     uint32_t ulTargetWidth;               /**< IN: Post-processed output width (Should be aligned to 2)           */
@@ -203,7 +206,6 @@ typedef struct _RocdecDecoderCreateInfo {
         int16_t bottom;
     } target_rect;
 
-    uint32_t enableHistogram;             /**< IN: enable histogram output, if supported */
     uint32_t Reserved2[4];                /**< Reserved for future use - set to zero */
 } RocdecDecoderCreateInfo;
 
@@ -668,7 +670,7 @@ typedef struct _RocdecProcParams
     uint64_t raw_output_dptr;                 /**< IN: Output HIP device mem ptr for raw YUV extensions                              */
     uint32_t raw_output_pitch;                /**< IN: pitch in bytes of raw YUV output (should be aligned appropriately)     */
     uint32_t raw_output_format;               /**< IN: Output YUV format (rocDecVideoCodec_enum)                                 */
-    hipStream_t output_hstream;               /**< IN: stream object used by rocDecMapVideoFrame                               */
+    hipStream_t output_hipstream;               /**< IN: stream object used by rocDecMapVideoFrame                               */
     uint32_t Reserved[16];                    /**< Reserved for future use (set to zero)                                      */
 } RocdecProcParams;
 
@@ -714,10 +716,10 @@ extern rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle hDecoder)
 //! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(RocdecDecodeCaps *pdc)
 //! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
 //! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of RocdecDecodeCaps structure
-//! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
+//! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters (for GPU device) if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
 /**********************************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecGetDecoderCaps(rocDecDecoderHandle hDecoder, RocdecDecodeCaps *pdc);
+extern rocDecStatus ROCDECAPI rocDecGetDecoderCaps(RocdecDecodeCaps *pdc);
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams)
@@ -746,10 +748,10 @@ extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle hDeco
 //!                                           uint32_t *pDevMemPtr, uint32_t *pHorizontalPitch,
 //!                                           RocdecProcParams *pVidPostprocParams);
 //! Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
-//! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately
+//! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
-                                           void *pDevMemPtr[3], uint32_t *pHorizontalPitch[3],
+                                           void *pDevMemPtr[3], uint32_t (&pHorizontalPitch)[3],
                                            RocdecProcParams *pVidPostprocParams);
 
 /*****************************************************************************************************/

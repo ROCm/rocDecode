@@ -39,7 +39,14 @@ find_program(MAKE_NSIS_EXE makensis)
 find_program(RPMBUILD_EXE rpmbuild)
 find_program(DPKG_EXE dpkg)
 
-set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
+# ROCM Path
+if(DEFINED ENV{ROCM_PATH})
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
+elseif(ROCM_PATH)
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
+else()
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
+endif()
 # avoid setting the default installation path to /usr/local
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${ROCM_PATH} CACHE PATH "rocDecode default installation path" FORCE)
@@ -132,7 +139,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND)
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
   install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp
+  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")

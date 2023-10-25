@@ -43,6 +43,17 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
     return ROCDEC_SUCCESS;
 }
 
+/**
+ * @brief function to uninitialize hevc parser
+ * 
+ * @return rocDecStatus 
+ */
+rocDecStatus HEVCVideoParser::UnInitialize() {
+    //todo:: do any uninitialization here
+    return ROCDEC_SUCCESS;
+}
+
+
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     bool status = ParseFrameData(p_data->payload, p_data->payload_size);
     if (!status) {
@@ -1746,6 +1757,60 @@ void HEVCVideoParser::PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_p
     MSG_NO_NEWLINE("used_by_curr_pic[]:");
     for(int j = 0; j < 32; j++) {
         MSG_NO_NEWLINE(" " << lt_info_ptr->used_by_curr_pic[j]);
+    }
+    MSG("");
+}
+
+void HEVCVideoParser::PrintRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr) {
+    MSG("==== Short-term reference picture set =====")
+    MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
+    MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
+    MSG("delta_rps_sign                              = " <<  rps_ptr->delta_rps_sign);
+    MSG("abs_delta_rps_minus1                        = " <<  rps_ptr->abs_delta_rps_minus1);
+    MSG_NO_NEWLINE("rps->used_by_curr_pic_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("use_delta_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->use_delta_flag[j]);
+    }
+    MSG("");
+    MSG("num_negative_pics                           = " <<  rps_ptr->num_negative_pics);
+    MSG("num_positive_pics                           = " <<  rps_ptr->num_positive_pics);
+    MSG("num_of_pics                                 = " <<  rps_ptr->num_of_pics);
+    MSG("num_of_delta_poc                            = " <<  rps_ptr->num_of_delta_poc);
+
+    MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s0_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s0_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s1_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s1_flag[j]);
+    }
+    MSG("");
+
+    MSG_NO_NEWLINE("delta_poc[16] (DeltaPocS0 + DeltaPocS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic[16] (UsedByCurrPicS0 + UsedByCurrPicS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic[j]);
     }
     MSG("");
 }

@@ -65,3 +65,23 @@ rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) 
     }
     return ret;  
 }
+
+/************************************************************************************************/
+//! \ingroup FUNCTS
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle)
+//! Destroy the video parser object
+/************************************************************************************************/
+extern rocDecStatus ROCDECAPI
+rocDecDestroyVideoParser(RocdecVideoParser handle) {
+    auto parser_hdl = static_cast<RocParserHandle *> (handle);
+    rocDecStatus ret;
+    try {
+        ret = parser_hdl->DestroyParser();
+    }
+    catch(const std::exception& e) {
+        parser_hdl->capture_error(e.what());
+        ERR(e.what())
+        return ROCDEC_RUNTIME_ERROR;
+    }
+    return ret;
+}
