@@ -22,7 +22,7 @@
 ################################################################################
 
 find_library(LIBDRM_LIBRARY NAMES drm)
-find_path(LIBDRM_INCLUDE_DIR NAMES drm/drm.h)
+find_path(LIBDRM_INCLUDE_DIR NAMES drm.h PATHS /usr/include/libdrm /usr/include/drm)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Libdrm DEFAULT_MSG LIBDRM_INCLUDE_DIR LIBDRM_LIBRARY)
