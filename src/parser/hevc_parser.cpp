@@ -169,7 +169,7 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     else // default value
         video_format_params_.progressive_sequence = 1;
     // TODO: Change for different layers, using 0th layer currently
-    video_format_params_.min_num_decode_surfaces = sps_data->sps_max_dec_pic_buffering_minus1[0];
+    video_format_params_.min_num_decode_surfaces = sps_data->sps_max_dec_pic_buffering_minus1[0] + 1;
     video_format_params_.coded_width = sps_data->pic_width_in_luma_samples;
     video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
     video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(sps_data->chroma_format_idc);
@@ -202,8 +202,8 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     if(sps_data->conformance_window_flag) {
         video_format_params_.display_area.left = sub_width_c * sps_data->conf_win_left_offset;
         video_format_params_.display_area.top = sub_height_c * sps_data->conf_win_top_offset;
-        video_format_params_.display_area.right = sps_data->pic_width_in_luma_samples - (sub_width_c * sps_data->conf_win_right_offset + 1);
-        video_format_params_.display_area.bottom = sps_data->pic_height_in_luma_samples - (sub_height_c * sps_data->conf_win_bottom_offset + 1);
+        video_format_params_.display_area.right = sps_data->pic_width_in_luma_samples - (sub_width_c * sps_data->conf_win_right_offset);
+        video_format_params_.display_area.bottom = sps_data->pic_height_in_luma_samples - (sub_height_c * sps_data->conf_win_bottom_offset);
     } 
     else { // default values
         video_format_params_.display_area.left = 0;
