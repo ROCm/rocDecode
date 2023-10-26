@@ -166,36 +166,38 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.progressive_sequence = 1;
     else if (!sps_data->profile_tier_level.general_progressive_source_flag && sps_data->profile_tier_level.general_interlaced_source_flag)
         video_format_params_.progressive_sequence = 0;
+    else // default value
+        video_format_params_.progressive_sequence = 1;
     // TODO: Change for different layers, using 0th layer currently
     video_format_params_.min_num_decode_surfaces = sps_data->sps_max_dec_pic_buffering_minus1[0];
     video_format_params_.coded_width = sps_data->pic_width_in_luma_samples;
     video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
     video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(sps_data->chroma_format_idc);
     int sub_width_c, sub_height_c;
-    switch (video_format_params_.chroma_format) {
-        case 0: {
+    switch (sps_data->chroma_format_idc) {
+        case rocDecVideoChromaFormat_Monochrome: {
             sub_width_c = 1;
             sub_height_c = 1;
             break;
         }
-        case 1: {
+        case rocDecVideoChromaFormat_420: {
             sub_width_c = 2;
             sub_height_c = 2;
             break;
         }
-        case 2: {
+        case rocDecVideoChromaFormat_422: {
             sub_width_c = 2;
             sub_height_c = 1;
             break;
         }
-        case 3: {
+        case rocDecVideoChromaFormat_444: {
             sub_width_c = 1;
             sub_height_c = 1;
             break;
         }
         default:
-            // Do nothing for now.
-            break;  
+            ERR(STR("Error: Sequence Callback function - Chroma Format is not supported"));
+            return;  
     }
     if(sps_data->conformance_window_flag) {
         video_format_params_.display_area.left = sub_width_c * sps_data->conf_win_left_offset;
