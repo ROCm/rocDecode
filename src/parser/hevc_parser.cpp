@@ -174,7 +174,7 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
     video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(sps_data->chroma_format_idc);
     int sub_width_c, sub_height_c;
-    switch (sps_data->chroma_format_idc) {
+    switch (video_format_params_.chroma_format) {
         case rocDecVideoChromaFormat_Monochrome: {
             sub_width_c = 1;
             sub_height_c = 1;
