@@ -60,6 +60,13 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         ERR(STR("Parser failed!"));
         return ROCDEC_RUNTIME_ERROR;
     }
+
+    // Init Roc decoder for the first time or reconfigure the existing decoder
+    if (new_sps_activated_) {
+        FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
+        new_sps_activated_ = false;
+    }
+
     return ROCDEC_SUCCESS;
 }
 
@@ -306,7 +313,10 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 case NAL_UNIT_CODED_SLICE_RASL_R: {
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                    // For each picture, only parse the first slice header
+                    if (slice_num_ == 0) {
+                        ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                    }
                     slice_num_++;
                     break;
                 }
@@ -1139,7 +1149,10 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
     temp_sh.slice_pic_parameter_set_id = m_sh_->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &m_pps_[m_active_pps_id_];
-    m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
+    if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
+        m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
+        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+    }
     sps_ptr = &m_sps_[m_active_sps_id_];
     m_active_vps_id_ = sps_ptr->sps_video_parameter_set_id;
 
@@ -1147,10 +1160,6 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     if ( pic_width_ != sps_ptr->pic_width_in_luma_samples || pic_height_ != sps_ptr->pic_height_in_luma_samples) {
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
-        pic_dimension_changed_ = true;  // Note: clear this flag after the actions with size change are taken.
-        
-        // called to fill structure RocdecVideoFormat and callback function if pic_dimensions_changed
-        FillSeqCallbackFn(sps_ptr);
     }
 
     if (!m_sh_->first_slice_segment_in_pic_flag) {
