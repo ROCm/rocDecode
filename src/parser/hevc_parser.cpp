@@ -62,12 +62,11 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     // Init Roc decoder for the first time or reconfigure the existing decoder
-    if (new_sps_activated_)
-    {
+    if (new_sps_activated_) {
         FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
         new_sps_activated_ = false;
     }
-    
+
     return ROCDEC_SUCCESS;
 }
 
@@ -315,7 +314,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
-                    if ( slice_num_ == 0) {
+                    if (slice_num_ == 0) {
                         ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
                     }
                     slice_num_++;
