@@ -819,4 +819,7 @@ private:
      * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
      */
     SliceHeaderData* AllocSliceHeader();
+
+    // functions to fill structures for callback functions
+    void FillSeqCallbackFn(SpsData* sps_data);
 };
