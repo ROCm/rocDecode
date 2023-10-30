@@ -54,7 +54,9 @@ protected:
 
     uint32_t pic_width_;
     uint32_t pic_height_;
-    bool pic_dimension_changed_;
+    bool new_sps_activated_;
+
+    RocdecVideoFormat video_format_params_;
 };
 
 enum ParserSeekOrigin {

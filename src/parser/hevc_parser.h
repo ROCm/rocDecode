@@ -170,6 +170,14 @@ protected:
         H265_SCALING_LIST_SIZE_NUM
     };
 
+    /*! \brief Slice type
+     */
+    enum HevcSliceType {
+        HEVC_SLICE_TYPE_B = 0,
+        HEVC_SLICE_TYPE_P,
+        HEVC_SLICE_TYPE_I
+    };
+
     /*! \brief Structure for Profile Tier Levels
      */
     typedef struct {
@@ -212,17 +220,28 @@ protected:
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
         int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
+        int32_t scaling_list_dc_coef[2][6];  // DC coefficient for 16x16 and 32x32
     } H265ScalingListData;
 
     /*! \brief Structure for Short Term Reference Picture Set
      */
     typedef struct {
-        int32_t num_negative_pics;
-        int32_t num_positive_pics;
-        int32_t num_of_pics;
-        int32_t num_of_delta_poc;
-        int32_t delta_poc[16];
-        bool used_by_curr_pic[16];
+        uint32_t inter_ref_pic_set_prediction_flag;
+        uint32_t delta_idx_minus1;
+        uint32_t delta_rps_sign;
+        uint32_t abs_delta_rps_minus1;
+        uint32_t used_by_curr_pic_flag[16];
+        uint32_t use_delta_flag[16];
+        uint32_t num_negative_pics;  // NumNegativePics
+        uint32_t num_positive_pics;  // NumPositivePics
+        uint32_t num_of_pics;
+        uint32_t num_of_delta_poc;  // NumDeltaPocs
+        uint32_t delta_poc_s0_minus1[16];
+        uint32_t used_by_curr_pic_s0_flag[16];
+        uint32_t delta_poc_s1_minus1[16];
+        uint32_t used_by_curr_pic_s1_flag[16];
+        int32_t delta_poc[16];  // DeltaPocS0 + DeltaPocS1
+        bool used_by_curr_pic[16];  // UsedByCurrPicS0 + UsedByCurrPicS1
     } H265ShortTermRPS;
 
     /*! \brief Structure for Long Term Reference Picture Set
@@ -317,6 +336,23 @@ protected:
         uint32_t log2_max_mv_length_vertical;                //ue(v)
     } H265VuiParameters;
 
+    typedef struct {
+        uint32_t    luma_log2_weight_denom;                     //ue(v)
+        int32_t     delta_chroma_log2_weight_denom;             //se(v)
+        uint8_t     luma_weight_l0_flag[16];                    //u(1)
+        uint8_t     chroma_weight_l0_flag[16];                  //u(1)
+        int32_t     delta_luma_weight_l0[16];                   //se(v)
+        int32_t     luma_offset_l0[16];                         //se(v)
+        int32_t     delta_chroma_weight_l0[16][2];              //se(v)
+        int32_t     delta_chroma_offset_l0[16][2];              //se(v)
+        uint8_t     luma_weight_l1_flag[16];                    //u(1)
+        uint8_t     chroma_weight_l1_flag[16];                  //u(1)
+        int32_t     delta_luma_weight_l1[16];                   //se(v)
+        int32_t     luma_offset_l1[16];                         //se(v)
+        int32_t     delta_chroma_weight_l1[16][2];              //se(v)
+        int32_t     delta_chroma_offset_l1[16][2];              //se(v)
+    } HevcPredWeightTable;
+
     /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
      */
     typedef struct {
@@ -388,9 +424,9 @@ protected:
         uint32_t bit_depth_chroma_minus8;                    //ue(v)
         uint32_t log2_max_pic_order_cnt_lsb_minus4;          //ue(v)
         bool sps_sub_layer_ordering_info_present_flag;       //u(1)
-        uint32_t sps_max_dec_pic_buffering_minus1[6];        //ue(v)
-        uint32_t sps_max_num_reorder_pics[6];                //ue(v)
-        uint32_t sps_max_latency_increase_plus1[6];          //ue(v)
+        uint32_t sps_max_dec_pic_buffering_minus1[7];        //ue(v)
+        uint32_t sps_max_num_reorder_pics[7];                //ue(v)
+        uint32_t sps_max_latency_increase_plus1[7];          //ue(v)
         uint32_t log2_min_luma_coding_block_size_minus3;     //ue(v)
         uint32_t log2_diff_max_min_luma_coding_block_size;   //ue(v)
         uint32_t log2_min_transform_block_size_minus2;       //ue(v)
@@ -477,7 +513,20 @@ protected:
         bool lists_modification_present_flag;                //u(1)
         uint32_t log2_parallel_merge_level_minus2;           //ue(v)
         bool slice_segment_header_extension_present_flag;    //u(1)
-        bool pps_extension_flag;                             //u(1)
+        bool pps_extension_present_flag;                     //u(1)
+        bool pps_range_extension_flag;                       //u(1)
+        bool pps_multilayer_extension_flag;                  //u(1)
+        uint32_t pps_extension_6bits;                        //u(6)
+        // pps_range_extension()
+        uint32_t log2_max_transform_skip_block_size_minus2;  //ue(v)
+        uint8_t cross_component_prediction_enabled_flag;     //u(1)
+        uint8_t chroma_qp_offset_list_enabled_flag;          //u(1)
+        uint32_t diff_cu_chroma_qp_offset_depth;             //ue(v)
+        uint32_t chroma_qp_offset_list_len_minus1;           //ue(v)
+        int32_t cb_qp_offset_list[6];                        //se(v)
+        int32_t cr_qp_offset_list[6];                        //se(v)
+        uint32_t log2_sao_offset_scale_luma;                 //ue(v)
+        uint32_t log2_sao_offset_scale_chroma;               //ue(v)
         bool pps_extension_data_flag;                        //u(1)
         //rbsp_trailing_bits( )
         H265RbspTrailingBits rbsp_trailing_bits;
@@ -529,14 +578,21 @@ protected:
         bool num_ref_idx_active_override_flag;               //u(1)
         uint32_t num_ref_idx_l0_active_minus1;               //ue(v)
         uint32_t num_ref_idx_l1_active_minus1;               //ue(v)
+        // Reference picture list modification
+        uint32_t ref_pic_list_modification_flag_l0;          //u(1)
+        uint32_t list_entry_l0[16];                          //u(v)
+        uint32_t ref_pic_list_modification_flag_l1;          //u(1)
+        uint32_t list_entry_l1[16];                          //u(v)
         bool mvd_l1_zero_flag;                               //u(1)
         bool cabac_init_flag;                                //u(1)
         bool collocated_from_l0_flag;                        //u(1)
+        HevcPredWeightTable pred_weight_table;
         uint32_t collocated_ref_idx;                         //ue(v)
         uint32_t five_minus_max_num_merge_cand;              //ue(v)
         int32_t slice_qp_delta;                              //se(v)
         int32_t slice_cb_qp_offset;                          //se(v)
         int32_t slice_cr_qp_offset;                          //se(v)
+        uint8_t cu_chroma_qp_offset_enabled_flag;            //u(1)
         bool deblocking_filter_override_flag;                //u(1)
         bool slice_deblocking_filter_disabled_flag;          //u(1)
         int32_t slice_beta_offset_div2;                      //se(v)
@@ -658,14 +714,21 @@ protected:
      */
     void ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset);
     
+    /*! \brief Function to set the default values to the scaling list
+     * \param [out] sl_ptr A pointer to the scaling list <tt>H265ScalingListData</tt>
+     * \return No return value
+     */
+    void SetDefaultScalingList(H265ScalingListData *sl_ptr);
+
     /*! \brief Function to parse Scaling List
-     * \param [out] s_data A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
+     * \param [out] sl_ptr A pointer of <tt>H265ScalingListData</tt> for the output from the parsed stream
      * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
      * \param [in] offset Reference to the offset in the input buffer
+     * \param [in] sps_ptr Pointer to the current SPS
      * \return No return value
      */
-    void ParseScalingList(H265ScalingListData * s_data, uint8_t *data, size_t size, size_t &offset);
+    void ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *data, size_t size, size_t &offset, SpsData *sps_ptr);
     
     /*! \brief Function to parse Video Usability Information
      * \param [out] vui A pointer of <tt>H265VuiParameters</tt> for the output from the parsed stream
@@ -687,8 +750,16 @@ protected:
      * \param [in] offset Reference to the offset in the input buffer
      * \return No return value
      */
-    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size,size_t &offset);
+    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size, size_t &offset);
     
+    /*! \brief Function to parse weighted prediction table
+     * \param [in/out] Slice_header_ptr Pointer to the slice segment header
+     * \param [in] chroma_array_type ChromaArrayType
+     * \param [in] stream_ptr Bit stream pointer
+     * \param [in/out] offset Bit offset of the current parsing action
+     */
+    void ParsePredWeightTable(HEVCVideoParser::SliceHeaderData *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset);
+
     /*! \brief Function to parse Slice Header
      * \param [in] nal_unit_type Input of <tt>uint32_t</tt> containing the enumerator value to the NAL Unit Type
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -714,6 +785,8 @@ protected:
     void PrintSps(HEVCVideoParser::SpsData *sps_ptr);
     void PrintPps(HEVCVideoParser::PpsData *pps_ptr);
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
+    void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
+    void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
 #endif // DBGINFO
 
 private:
@@ -746,4 +819,7 @@ private:
      * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
      */
     SliceHeaderData* AllocSliceHeader();
+
+    // functions to fill structures for callback functions
+    void FillSeqCallbackFn(SpsData* sps_data);
 };

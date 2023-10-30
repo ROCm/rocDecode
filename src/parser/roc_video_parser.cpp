@@ -25,7 +25,7 @@ THE SOFTWARE.
 RocVideoParser::RocVideoParser() {
     pic_width_ = 0;
     pic_height_ = 0;
-    pic_dimension_changed_ = false;
+    new_sps_activated_ = false;
 }
 
 /**

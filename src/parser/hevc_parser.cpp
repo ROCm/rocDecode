@@ -60,6 +60,13 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         ERR(STR("Parser failed!"));
         return ROCDEC_RUNTIME_ERROR;
     }
+
+    // Init Roc decoder for the first time or reconfigure the existing decoder
+    if (new_sps_activated_) {
+        FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
+        new_sps_activated_ = false;
+    }
+
     return ROCDEC_SUCCESS;
 }
 
@@ -155,6 +162,90 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
+void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
+    video_format_params_.codec = rocDecVideoCodec_HEVC;
+    // TODO: Check the two frame_rate - setting default
+    video_format_params_.frame_rate.numerator = 0;
+    video_format_params_.frame_rate.denominator = 0;
+    video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
+    video_format_params_.bit_depth_chroma_minus8 = sps_data->bit_depth_chroma_minus8;
+    if (sps_data->profile_tier_level.general_progressive_source_flag && !sps_data->profile_tier_level.general_interlaced_source_flag)
+        video_format_params_.progressive_sequence = 1;
+    else if (!sps_data->profile_tier_level.general_progressive_source_flag && sps_data->profile_tier_level.general_interlaced_source_flag)
+        video_format_params_.progressive_sequence = 0;
+    else // default value
+        video_format_params_.progressive_sequence = 1;
+    // TODO: Change for different layers, using 0th layer currently
+    video_format_params_.min_num_decode_surfaces = sps_data->sps_max_dec_pic_buffering_minus1[0] + 1;
+    video_format_params_.coded_width = sps_data->pic_width_in_luma_samples;
+    video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
+    video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(sps_data->chroma_format_idc);
+    int sub_width_c, sub_height_c;
+    switch (video_format_params_.chroma_format) {
+        case rocDecVideoChromaFormat_Monochrome: {
+            sub_width_c = 1;
+            sub_height_c = 1;
+            break;
+        }
+        case rocDecVideoChromaFormat_420: {
+            sub_width_c = 2;
+            sub_height_c = 2;
+            break;
+        }
+        case rocDecVideoChromaFormat_422: {
+            sub_width_c = 2;
+            sub_height_c = 1;
+            break;
+        }
+        case rocDecVideoChromaFormat_444: {
+            sub_width_c = 1;
+            sub_height_c = 1;
+            break;
+        }
+        default:
+            ERR(STR("Error: Sequence Callback function - Chroma Format is not supported"));
+            return;  
+    }
+    if(sps_data->conformance_window_flag) {
+        video_format_params_.display_area.left = sub_width_c * sps_data->conf_win_left_offset;
+        video_format_params_.display_area.top = sub_height_c * sps_data->conf_win_top_offset;
+        video_format_params_.display_area.right = sps_data->pic_width_in_luma_samples - (sub_width_c * sps_data->conf_win_right_offset);
+        video_format_params_.display_area.bottom = sps_data->pic_height_in_luma_samples - (sub_height_c * sps_data->conf_win_bottom_offset);
+    } 
+    else { // default values
+        video_format_params_.display_area.left = 0;
+        video_format_params_.display_area.top = 0;
+        video_format_params_.display_area.right = video_format_params_.coded_width;
+        video_format_params_.display_area.bottom = video_format_params_.coded_height;
+    }
+    
+    // TODO: Check bitrate - setting default
+    video_format_params_.bitrate = 0;
+    if (sps_data->vui_parameters_present_flag) {
+        if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
+            video_format_params_.display_aspect_ratio.x = sps_data->vui_parameters.sar_width;
+            video_format_params_.display_aspect_ratio.y = sps_data->vui_parameters.sar_height;
+        }
+        else { // default values
+            video_format_params_.display_aspect_ratio.x = 0;
+            video_format_params_.display_aspect_ratio.y = 0;
+        }
+    }
+    if (sps_data->vui_parameters_present_flag) {
+        video_format_params_.video_signal_description.video_format = sps_data->vui_parameters.video_format;
+        video_format_params_.video_signal_description.video_full_range_flag = sps_data->vui_parameters.video_full_range_flag;
+        video_format_params_.video_signal_description.color_primaries = sps_data->vui_parameters.colour_primaries;
+        video_format_params_.video_signal_description.transfer_characteristics = sps_data->vui_parameters.transfer_characteristics;
+        video_format_params_.video_signal_description.matrix_coefficients = sps_data->vui_parameters.matrix_coeffs;
+        video_format_params_.video_signal_description.reserved_zero_bits = 0;
+    }
+    // TODO: check seqhdr_data_length
+    video_format_params_.seqhdr_data_length = 0;
+
+    // callback function with RocdecVideoFormat params filled out
+    pfn_sequece_cb_ = PFNVIDSEQUENCECALLBACK(&video_format_params_);
+}
+
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
     NalUnitHeader nal_unit_header;
@@ -222,7 +313,10 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 case NAL_UNIT_CODED_SLICE_RASL_R: {
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                    // For each picture, only parse the first slice header
+                    if (slice_num_ == 0) {
+                        ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                    }
                     slice_num_++;
                     break;
                 }
@@ -285,7 +379,7 @@ int HEVCVideoParser::GetNalUnit() {
     }        
 }
 
-void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
     if (profile_present_flag) {
         ptl->general_profile_space = Parser::ReadBits(nalu, offset, 2);
         ptl->general_tier_flag = Parser::GetBit(nalu, offset);
@@ -297,9 +391,9 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
         ptl->general_interlaced_source_flag = Parser::GetBit(nalu, offset);
         ptl->general_non_packed_constraint_flag = Parser::GetBit(nalu, offset);
         ptl->general_frame_only_constraint_flag = Parser::GetBit(nalu, offset);
-        //ReadBits is limited to 32
-        offset += 44;
-        // Todo: add constrant flags parsing.
+        // ReadBits is limited to 32
+        offset += 44; // skip 44 bits
+        // Todo: add constrant flags parsing for higher profiles when needed
     }
 
     ptl->general_level_idc = Parser::ReadBits(nalu, offset, 8);
@@ -324,7 +418,9 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
             ptl->sub_layer_interlaced_source_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_non_packed_constraint_flag[i] = Parser::GetBit(nalu, offset);
             ptl->sub_layer_frame_only_constraint_flag[i] = Parser::GetBit(nalu, offset);
-            ptl->sub_layer_reserved_zero_44bits[i] = Parser::ReadBits(nalu, offset, 44);
+            // ReadBits is limited to 32
+            offset += 44;  // skip 44 bits
+            // Todo: add constrant flags parsing for higher profiles when needed
         }
         if (ptl->sub_layer_level_present_flag[i]) {
             ptl->sub_layer_level_idc[i] = Parser::ReadBits(nalu, offset, 8);
@@ -395,127 +491,213 @@ void HEVCVideoParser::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf
     }
 }
 
-void HEVCVideoParser::ParseScalingList(H265ScalingListData * s_data, uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    for (int size_id = 0; size_id < 4; size_id++) {
-        for (int matrix_id = 0; matrix_id < ((size_id == 3) ? 2 : 6); matrix_id++) {
-            s_data->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
-            if(!s_data->scaling_list_pred_mode_flag[size_id][matrix_id]) {
-                s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
+// Table 7-5. Default values of ScalingList[ 0 ][ matrixId ][ i ] with i = 0..15.
+static const uint8_t default_scaling_list_side_id_0[] = {
+    16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
+};
 
-                int ref_matrix_id = matrix_id - s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id];
-                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+// Table 7-6. Default values of ScalingList[ 1..3 ][ 0..2 ][ i ] with i = 0..63.
+static const uint8_t default_scaling_list_intra[] = {
+    16, 16, 16, 16, 17, 18, 21, 24,
+    16, 16, 16, 16, 17, 19, 22, 25,
+    16, 16, 17, 18, 20, 22, 25, 29,
+    16, 16, 18, 21, 24, 27, 31, 36,
+    17, 17, 20, 24, 30, 35, 41, 47,
+    18, 19, 22, 27, 35, 44, 54, 65,
+    21, 22, 25, 31, 41, 54, 70, 88,
+    24, 25, 29, 36, 47, 65, 88, 115
+};
 
-                //fill in scaling_list_dc_coef_minus8
-                if (!s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
-                    if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = 8;
-                    }
-                }
-                else {
-                    if (size_id > 1) {
-                        s_data->scaling_list_dc_coef_minus8[size_id-2][matrix_id] = s_data->scaling_list_dc_coef_minus8[size_id-2][ref_matrix_id];
-                    }
-                }
+// Table 7-6. Default values of ScalingList[ 1..3 ][ 3..5 ][ i ] with i = 0..63.
+static const uint8_t default_scaling_list_inter[] = {
+    16, 16, 16, 16, 17, 18, 20, 24,
+    16, 16, 16, 17, 18, 20, 24, 25,
+    16, 16, 17, 18, 20, 24, 25, 28,
+    16, 17, 18, 20, 24, 25, 28, 33,
+    17, 18, 20, 24, 25, 28, 33, 41,
+    18, 20, 24, 25, 28, 33, 41, 54,
+    20, 24, 25, 28, 33, 41, 54, 71,
+    24, 25, 28, 33, 41, 54, 71, 91
+};
 
-                for (int i = 0; i < coef_num; i++) {
-                    if (s_data->scaling_list_pred_matrix_id_delta[size_id][matrix_id] == 0) {
-                        if (size_id == 0) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_0[size_id][matrix_id][i];
-                        }
-                        else if(size_id == 1 || size_id == 2) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_1_2[size_id][matrix_id][i];
-                        }
-                        else if(size_id == 3) {
-                            s_data->scaling_list[size_id][matrix_id][i] = scaling_list_default_3[size_id][matrix_id][i];
-                        }
-                    }
-                    else {
-                        s_data->scaling_list[size_id][matrix_id][i] = s_data->scaling_list[size_id][ref_matrix_id][i];
-                    }
-                }
+static const int diag_scan_4x4[16] = {
+    0, 4, 1, 8,
+    5, 2,12, 9,
+    6, 3,13,10,
+    7,14,11,15
+};
+
+static const int diag_scan_8x8[64] = {
+    0, 8, 1, 16, 9, 2,24,17,
+    10, 3,32,25,18,11, 4,40,
+    33,26,19,12, 5,48,41,34,
+    27,20,13, 6,56,49,42,35,
+    28,21,14, 7,57,50,43,36,
+    29,22,15,58,51,44,37,30,
+    23,59,52,45,38,31,60,53,
+    46,39,61,54,47,62,55,63
+};
+
+void HEVCVideoParser::SetDefaultScalingList(H265ScalingListData *sl_ptr) {
+    int size_id, matrix_id, i;
+
+    // DC coefficient for 16x16 and 32x32
+    for (matrix_id = 0; matrix_id < 6; matrix_id++) {
+        sl_ptr->scaling_list_dc_coef[0][matrix_id] = 16;
+        sl_ptr->scaling_list_dc_coef[1][matrix_id] = 16;
+    }
+
+    // sizeId 0
+    for (matrix_id = 0; matrix_id < 6; matrix_id++) {
+        for (i = 0; i < 16; i++) {
+            sl_ptr->scaling_list[0][matrix_id][i] = default_scaling_list_side_id_0[i];
+        }
+    }
+
+    // sizeId 1..3, matrixId 0..2
+    for (size_id = 1; size_id <= 3; size_id++) {
+        for (matrix_id = 0; matrix_id <= 2; matrix_id++) {
+            for (i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[size_id][matrix_id][i] = default_scaling_list_intra[i];
             }
-            else {
-                int next_coef = 8;
-                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
-                if (size_id > 1) {
-                    s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    next_coef = s_data->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] + 8;
-                }
-                for (int i = 0; i < coef_num; i++) {
-                    s_data->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
-                    next_coef = (next_coef + s_data->scaling_list_delta_coef +256) % 256;
-                    s_data->scaling_list[size_id][matrix_id][i] = next_coef;
-                }
+        }
+    }
+
+    // sizeId 1..3, matrixId 3..5
+    for (size_id = 1; size_id <= 3; size_id++) {
+        for (matrix_id = 3; matrix_id <= 5; matrix_id++) {
+            for (i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[size_id][matrix_id][i] = default_scaling_list_inter[i];
             }
         }
     }
 }
 
+void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *nalu, size_t size, size_t& offset, SpsData *sps_ptr) {
+    for (int size_id = 0; size_id < 4; size_id++) {
+        for (int matrix_id = 0; matrix_id < 6; matrix_id += (size_id == 3) ? 3 : 1) {
+            sl_ptr->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
+            if(!sl_ptr->scaling_list_pred_mode_flag[size_id][matrix_id]) {
+                sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] = Parser::ExpGolomb::ReadUe(nalu, offset);
+                // If scaling_list_pred_matrix_id_delta is 0, infer from default scaling list. We have filled the scaling
+                // list with default values earlier.
+                if (sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id]) {
+                    // Infer from the reference scaling list
+                    int ref_matrix_id = matrix_id - sl_ptr->scaling_list_pred_matrix_id_delta[size_id][matrix_id] * (size_id == 3 ? 3 : 1);
+                    int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+                    for (int i = 0; i < coef_num; i++) {
+                        sl_ptr->scaling_list[size_id][matrix_id][i] = sl_ptr->scaling_list[size_id][ref_matrix_id][i];
+                    }
+
+                    // Copy to DC coefficient for 16x16 or 32x32
+                    if (size_id > 1) {
+                        sl_ptr->scaling_list_dc_coef[size_id - 2][matrix_id] = sl_ptr->scaling_list_dc_coef[size_id - 2][ref_matrix_id];
+                    }
+                }                
+            }
+            else {
+                int next_coef = 8;
+                int coef_num = std::min(64, (1 << (4 + (size_id << 1))));
+                if (size_id > 1) {
+                    sl_ptr->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] = Parser::ExpGolomb::ReadSe(nalu, offset);
+                    next_coef = sl_ptr->scaling_list_dc_coef_minus8[size_id - 2][matrix_id] + 8;
+                    // Record DC coefficient for 16x16 or 32x32
+                    sl_ptr->scaling_list_dc_coef[size_id - 2][matrix_id] = next_coef;
+                }
+                for (int i = 0; i < coef_num; i++) {
+                    sl_ptr->scaling_list_delta_coef = Parser::ExpGolomb::ReadSe(nalu, offset);
+                    next_coef = (next_coef + sl_ptr->scaling_list_delta_coef + 256) % 256;
+                    if (size_id == 0) {
+                        sl_ptr->scaling_list[size_id][matrix_id][diag_scan_4x4[i]] = next_coef;
+                    }
+                    else {
+                        sl_ptr->scaling_list[size_id][matrix_id][diag_scan_8x8[i]] = next_coef;
+                    }
+                }
+            }
+        }
+    }
+
+    if (sps_ptr->chroma_format_idc == 3) {
+        for (int i = 0; i < 64; i++) {
+            sl_ptr->scaling_list[3][1][i] = sl_ptr->scaling_list[2][1][i];
+            sl_ptr->scaling_list[3][2][i] = sl_ptr->scaling_list[2][2][i];
+            sl_ptr->scaling_list[3][4][i] = sl_ptr->scaling_list[2][4][i];
+            sl_ptr->scaling_list[3][5][i] = sl_ptr->scaling_list[2][5][i];
+        }
+        sl_ptr->scaling_list_dc_coef[1][1] = sl_ptr->scaling_list_dc_coef[0][1];
+        sl_ptr->scaling_list_dc_coef[1][2] = sl_ptr->scaling_list_dc_coef[0][2];
+        sl_ptr->scaling_list_dc_coef[1][4] = sl_ptr->scaling_list_dc_coef[0][4];
+        sl_ptr->scaling_list_dc_coef[1][5] = sl_ptr->scaling_list_dc_coef[0][5];
+    }
+}
+
 void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
-    uint32_t inter_rps_pred = 0;
-    uint32_t delta_idx_minus1 = 0;
     int32_t i = 0;
 
     if (st_rps_idx != 0) {
-        inter_rps_pred = Parser::GetBit(nalu, offset);
+        rps->inter_ref_pic_set_prediction_flag = Parser::GetBit(nalu, offset);
     }
-    if (inter_rps_pred) {
-        uint32_t delta_rps_sign, abs_delta_rps_minus1;
-        bool used_by_curr_pic_flag[16] = {0};
-        bool use_delta_flag[16] = {0};
+    else {
+        rps->inter_ref_pic_set_prediction_flag = 0;
+    }
+    if (rps->inter_ref_pic_set_prediction_flag) {
         if (unsigned(st_rps_idx) == number_short_term_ref_pic_sets) {
-            delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+            rps->delta_idx_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        delta_rps_sign = Parser::GetBit(nalu, offset);
-        abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        int32_t delta_rps = (int32_t) (1 - 2 * delta_rps_sign) * (abs_delta_rps_minus1 + 1);
-        int32_t ref_idx = st_rps_idx - delta_idx_minus1 - 1;
-        for (int j = 0; j <= (rps_ref[ref_idx].num_negative_pics + rps_ref[ref_idx].num_positive_pics); j++) {
-            used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
-            if (!used_by_curr_pic_flag[j]) {
-                use_delta_flag[j] = Parser::GetBit(nalu, offset);
+        else {
+            rps->delta_idx_minus1 = 0;
+        }
+        rps->delta_rps_sign = Parser::GetBit(nalu, offset);
+        rps->abs_delta_rps_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        int32_t delta_rps = (int32_t) (1 - 2 * rps->delta_rps_sign) * (rps->abs_delta_rps_minus1 + 1);
+        int32_t ref_idx = st_rps_idx - rps->delta_idx_minus1 - 1;
+        for (int j = 0; j <= (rps_ref[ref_idx].num_of_delta_poc); j++) {
+            rps->used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
+            if (!rps->used_by_curr_pic_flag[j]) {
+                rps->use_delta_flag[j] = Parser::GetBit(nalu, offset);
             }
             else {
-                use_delta_flag[j] = 1;
+                rps->use_delta_flag[j] = 1;
             }
         }
 
         for (int j = rps_ref[ref_idx].num_positive_pics - 1; j >= 0; j--) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics + j];  //positive delta_poc from ref_rps
-            if (delta_poc < 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics + j]) {
+            if (delta_poc < 0 && rps->use_delta_flag[rps_ref[ref_idx].num_negative_pics + j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics + j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics + j];
             }
         }
-        if (delta_rps < 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
+        if (delta_rps < 0 && rps->use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
             rps->delta_poc[i] = delta_rps;
-            rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
+            rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
         for (int j = 0; j < rps_ref[ref_idx].num_negative_pics; j++) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];
-            if (delta_poc < 0 && use_delta_flag[j]) {
+            if (delta_poc < 0 && rps->use_delta_flag[j]) {
                 rps->delta_poc[i]=delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[j];
             }
         }
         rps->num_negative_pics = i;
         
         for (int j = rps_ref[ref_idx].num_negative_pics - 1; j >= 0; j--) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[j];  //positive delta_poc from ref_rps
-            if (delta_poc > 0 && use_delta_flag[j]) {
+            if (delta_poc > 0 && rps->use_delta_flag[j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[j];
             }
         }
-        if (delta_rps > 0 && use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
+        if (delta_rps > 0 && rps->use_delta_flag[rps_ref[ref_idx].num_of_pics]) {
             rps->delta_poc[i] = delta_rps;
-            rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
+            rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_of_pics];
         }
         for (int j = 0; j < rps_ref[ref_idx].num_positive_pics; j++) {
             int32_t delta_poc = delta_rps + rps_ref[ref_idx].delta_poc[rps_ref[ref_idx].num_negative_pics+j];
-            if (delta_poc > 0 && use_delta_flag[rps_ref[ref_idx].num_negative_pics+j]) {
+            if (delta_poc > 0 && rps->use_delta_flag[rps_ref[ref_idx].num_negative_pics+j]) {
                 rps->delta_poc[i] = delta_poc;
-                rps->used_by_curr_pic[i++] = used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics+j];
+                rps->used_by_curr_pic[i++] = rps->used_by_curr_pic_flag[rps_ref[ref_idx].num_negative_pics+j];
             }
         }
         rps->num_positive_pics = i - rps->num_negative_pics ;
@@ -527,24 +709,80 @@ void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_
         rps->num_positive_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         int32_t prev = 0;
         int32_t poc;
-        uint32_t delta_poc_s0_minus1,delta_poc_s1_minus1;
+        // DeltaPocS0, UsedByCurrPicS0
         for (int j = 0; j < rps->num_negative_pics; j++) {
-            delta_poc_s0_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-            poc = prev - delta_poc_s0_minus1 - 1;
+            rps->delta_poc_s0_minus1[j] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            poc = prev - rps->delta_poc_s0_minus1[j] - 1;
             prev = poc;
-            rps->delta_poc[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
+            rps->delta_poc[j] = poc;  // DeltaPocS0
+            rps->used_by_curr_pic_s0_flag[j] = Parser::GetBit(nalu, offset);
+            rps->used_by_curr_pic[j] = rps->used_by_curr_pic_s0_flag[j];  // UsedByCurrPicS0
         }
         prev = 0;
-        for (int j = rps->num_negative_pics; j < rps->num_negative_pics + rps->num_positive_pics; j++) {
-            delta_poc_s1_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-            poc = prev + delta_poc_s1_minus1 + 1;
+        // DeltaPocS1, UsedByCurrPicS1
+        for (int j = 0; j < rps->num_positive_pics; j++) {
+            rps->delta_poc_s1_minus1[j] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            poc = prev + rps->delta_poc_s1_minus1[j] + 1;
             prev = poc;
-            rps->delta_poc[j] = poc;
-            rps->used_by_curr_pic[j] = Parser::GetBit(nalu, offset);
+            rps->delta_poc[j + rps->num_negative_pics] = poc;  // DeltaPocS1
+            rps->used_by_curr_pic_s1_flag[j] = Parser::GetBit(nalu, offset);
+            rps->used_by_curr_pic[j + rps->num_negative_pics] = rps->used_by_curr_pic_s1_flag[j];  // UsedByCurrPicS1
         }
         rps->num_of_pics = rps->num_negative_pics + rps->num_positive_pics;
         rps->num_of_delta_poc = rps->num_negative_pics + rps->num_positive_pics;
+    }
+}
+
+void HEVCVideoParser::ParsePredWeightTable(HEVCVideoParser::SliceHeaderData *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset) {
+    HevcPredWeightTable *pred_weight_table_ptr = &slice_header_ptr->pred_weight_table;
+    int i, j;
+
+    pred_weight_table_ptr->luma_log2_weight_denom = Parser::ExpGolomb::ReadUe(stream_ptr, offset);
+    if (chroma_array_type) {
+        pred_weight_table_ptr->delta_chroma_log2_weight_denom = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+    }
+    for (i = 0; i <= slice_header_ptr->num_ref_idx_l0_active_minus1; i++) {
+        pred_weight_table_ptr->luma_weight_l0_flag[i] = Parser::GetBit(stream_ptr, offset);
+    }
+    if (chroma_array_type) {
+        for (i = 0; i <= slice_header_ptr->num_ref_idx_l0_active_minus1; i++) {
+            pred_weight_table_ptr->chroma_weight_l0_flag[i] = Parser::GetBit(stream_ptr, offset);
+        }
+    }
+    for (i = 0; i <= slice_header_ptr->num_ref_idx_l0_active_minus1; i++) {
+        if (pred_weight_table_ptr->luma_weight_l0_flag[i]) {
+            pred_weight_table_ptr->delta_luma_weight_l0[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+            pred_weight_table_ptr->luma_offset_l0[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+        }
+        if (pred_weight_table_ptr->chroma_weight_l0_flag[i]) {
+            for (j = 0; j < 2; j++) {
+                pred_weight_table_ptr->delta_chroma_weight_l0[i][j] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+                pred_weight_table_ptr->delta_chroma_offset_l0[i][j] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+            }
+        }
+    }
+
+    if (slice_header_ptr->slice_type == HEVC_SLICE_TYPE_B) {
+        for (i = 0; i <= slice_header_ptr->num_ref_idx_l1_active_minus1; i++) {
+            pred_weight_table_ptr->luma_weight_l1_flag[i] = Parser::GetBit(stream_ptr, offset);
+        }
+        if (chroma_array_type) {
+            for (i = 0; i <= slice_header_ptr->num_ref_idx_l1_active_minus1; i++) {
+                pred_weight_table_ptr->chroma_weight_l1_flag[i] = Parser::GetBit(stream_ptr, offset);
+            }
+        }
+        for (i = 0; i <= slice_header_ptr->num_ref_idx_l1_active_minus1; i++) {
+            if (pred_weight_table_ptr->luma_weight_l1_flag[i]) {
+                pred_weight_table_ptr->delta_luma_weight_l1[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+                pred_weight_table_ptr->luma_offset_l1[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+            }
+            if (pred_weight_table_ptr->chroma_weight_l1_flag[i]) {
+                for (j = 0; j < 2; j++) {
+                    pred_weight_table_ptr->delta_chroma_weight_l1[i][j] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+                    pred_weight_table_ptr->delta_chroma_offset_l1[i][j] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+                }
+            }
+        }
     }
 }
 
@@ -672,186 +910,225 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) { 
+void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
+    SpsData *sps_ptr = NULL;
     size_t offset = 0;
+
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset, 3);
     uint32_t sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
     H265ProfileTierLevel ptl;
     memset (&ptl, 0, sizeof(ptl));
     ParsePtl(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
+
     uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    memset(&m_sps_[sps_id], 0, sizeof(m_sps_[sps_id]));
-    m_sps_[sps_id].sps_video_parameter_set_id = vps_id;
-    m_sps_[sps_id].sps_max_sub_layers_minus1 = max_sub_layer_minus1;
-    m_sps_[sps_id].sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
-    memcpy (&m_sps_[sps_id].profile_tier_level, &ptl, sizeof(ptl));
-    m_sps_[sps_id].sps_seq_parameter_set_id = sps_id;
-    m_sps_[sps_id].chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
-    if (m_sps_[sps_id].chroma_format_idc == 3) {
-        m_sps_[sps_id].separate_colour_plane_flag = Parser::GetBit(nalu, offset);
+    sps_ptr = &m_sps_[sps_id];
+
+    memset(sps_ptr, 0, sizeof(SpsData));
+    sps_ptr->sps_video_parameter_set_id = vps_id;
+    sps_ptr->sps_max_sub_layers_minus1 = max_sub_layer_minus1;
+    sps_ptr->sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
+    memcpy (&sps_ptr->profile_tier_level, &ptl, sizeof(ptl));
+    sps_ptr->sps_seq_parameter_set_id = sps_id;
+    sps_ptr->chroma_format_idc = Parser::ExpGolomb::ReadUe(nalu, offset);
+    if (sps_ptr->chroma_format_idc == 3) {
+        sps_ptr->separate_colour_plane_flag = Parser::GetBit(nalu, offset);
     }
-    m_sps_[sps_id].pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].conformance_window_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].conformance_window_flag)
-    {
-        m_sps_[sps_id].conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->pic_width_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->pic_height_in_luma_samples = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->conformance_window_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->conformance_window_flag) {
+        sps_ptr->conf_win_left_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_right_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_top_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->conf_win_bottom_offset = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    m_sps_[sps_id].bit_depth_luma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].bit_depth_chroma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].sps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
-    for (int i = 0; i <= m_sps_[sps_id].sps_max_sub_layers_minus1; i++) {
-        if (m_sps_[sps_id].sps_sub_layer_ordering_info_present_flag || (i == 0)) {
-            m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_sps_[sps_id].sps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_sps_[sps_id].sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->bit_depth_luma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->bit_depth_chroma_minus8 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->sps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
+    for (int i = 0; i <= sps_ptr->sps_max_sub_layers_minus1; i++) {
+        if (sps_ptr->sps_sub_layer_ordering_info_present_flag || (i == 0)) {
+            sps_ptr->sps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sps_ptr->sps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            sps_ptr->sps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         else {
-            m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[i] = m_sps_[sps_id].sps_max_dec_pic_buffering_minus1[0];
-            m_sps_[sps_id].sps_max_num_reorder_pics[i] = m_sps_[sps_id].sps_max_num_reorder_pics[0];
-            m_sps_[sps_id].sps_max_latency_increase_plus1[i] = m_sps_[sps_id].sps_max_latency_increase_plus1[0];
+            sps_ptr->sps_max_dec_pic_buffering_minus1[i] = sps_ptr->sps_max_dec_pic_buffering_minus1[0];
+            sps_ptr->sps_max_num_reorder_pics[i] = sps_ptr->sps_max_num_reorder_pics[0];
+            sps_ptr->sps_max_latency_increase_plus1[i] = sps_ptr->sps_max_latency_increase_plus1[0];
         }
     }
-    m_sps_[sps_id].log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_min_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int log2_min_cu_size = m_sps_[sps_id].log2_min_luma_coding_block_size_minus3 + 3;
+    int log2_min_cu_size = sps_ptr->log2_min_luma_coding_block_size_minus3 + 3;
 
-    m_sps_[sps_id].log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_diff_max_min_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    int max_cu_depth_delta = m_sps_[sps_id].log2_diff_max_min_luma_coding_block_size;
-    m_sps_[sps_id].max_cu_width = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
-    m_sps_[sps_id].max_cu_height = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
+    int max_cu_depth_delta = sps_ptr->log2_diff_max_min_luma_coding_block_size;
+    sps_ptr->max_cu_width = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
+    sps_ptr->max_cu_height = ( 1<<(log2_min_cu_size + max_cu_depth_delta));
 
-    m_sps_[sps_id].log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
-    uint32_t quadtree_tu_log2_min_size = m_sps_[sps_id].log2_min_transform_block_size_minus2 + 2;
+    uint32_t quadtree_tu_log2_min_size = sps_ptr->log2_min_transform_block_size_minus2 + 2;
     int add_cu_depth = max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
-    m_sps_[sps_id].max_cu_depth = (max_cu_depth_delta + add_cu_depth);
+    sps_ptr->max_cu_depth = (max_cu_depth_delta + add_cu_depth);
 
-    m_sps_[sps_id].log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_sps_[sps_id].scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].scaling_list_enabled_flag) {
-        m_sps_[sps_id].sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
-        if (m_sps_[sps_id].sps_scaling_list_data_present_flag) {
-            ParseScalingList(&m_sps_[sps_id].scaling_list_data, nalu, size, offset);
+    sps_ptr->log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->max_transform_hierarchy_depth_inter = Parser::ExpGolomb::ReadUe(nalu, offset);
+    sps_ptr->max_transform_hierarchy_depth_intra = Parser::ExpGolomb::ReadUe(nalu, offset);
+
+    sps_ptr->scaling_list_enabled_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->scaling_list_enabled_flag) {
+        // Set up default values first
+        SetDefaultScalingList(&sps_ptr->scaling_list_data);
+
+        sps_ptr->sps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
+        if (sps_ptr->sps_scaling_list_data_present_flag) {
+            ParseScalingList(&sps_ptr->scaling_list_data, nalu, size, offset, sps_ptr);
         }
     }
-    m_sps_[sps_id].amp_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].sample_adaptive_offset_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].pcm_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].pcm_enabled_flag) {
-        m_sps_[sps_id].pcm_sample_bit_depth_luma_minus1 = Parser::ReadBits(nalu, offset, 4);
-        m_sps_[sps_id].pcm_sample_bit_depth_chroma_minus1 = Parser::ReadBits(nalu, offset, 4);
-        m_sps_[sps_id].log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_sps_[sps_id].pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->amp_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->sample_adaptive_offset_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->pcm_enabled_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->pcm_enabled_flag) {
+        sps_ptr->pcm_sample_bit_depth_luma_minus1 = Parser::ReadBits(nalu, offset, 4);
+        sps_ptr->pcm_sample_bit_depth_chroma_minus1 = Parser::ReadBits(nalu, offset, 4);
+        sps_ptr->log2_min_pcm_luma_coding_block_size_minus3 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->log2_diff_max_min_pcm_luma_coding_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
+        sps_ptr->pcm_loop_filter_disabled_flag = Parser::GetBit(nalu, offset);
     }
-    m_sps_[sps_id].num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i=0; i<m_sps_[sps_id].num_short_term_ref_pic_sets; i++) {
+    sps_ptr->num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
+    for (int i=0; i<sps_ptr->num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
-        ParseShortTermRefPicSet(&m_sps_[sps_id].st_rps[i], i, m_sps_[sps_id].num_short_term_ref_pic_sets, m_sps_[sps_id].st_rps, nalu, size, offset);
+        ParseShortTermRefPicSet(&sps_ptr->st_rps[i], i, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset);
     }
-    m_sps_[sps_id].long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].long_term_ref_pics_present_flag) {
-        m_sps_[sps_id].num_long_term_ref_pics_sps = Parser::ExpGolomb::ReadUe(nalu, offset);  //max is 32
-        m_sps_[sps_id].lt_rps.num_of_pics = m_sps_[sps_id].num_long_term_ref_pics_sps;
-        for (int i=0; i<m_sps_[sps_id].num_long_term_ref_pics_sps; i++) {
+    sps_ptr->long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->long_term_ref_pics_present_flag) {
+        sps_ptr->num_long_term_ref_pics_sps = Parser::ExpGolomb::ReadUe(nalu, offset);  //max is 32
+        sps_ptr->lt_rps.num_of_pics = sps_ptr->num_long_term_ref_pics_sps;
+        for (int i=0; i<sps_ptr->num_long_term_ref_pics_sps; i++) {
             //The number of bits used to represent lt_ref_pic_poc_lsb_sps[ i ] is equal to log2_max_pic_order_cnt_lsb_minus4 + 4.
-            m_sps_[sps_id].lt_ref_pic_poc_lsb_sps[i] = Parser::ReadBits(nalu, offset, (m_sps_[sps_id].log2_max_pic_order_cnt_lsb_minus4 + 4));
-            m_sps_[sps_id].used_by_curr_pic_lt_sps_flag[i] = Parser::GetBit(nalu, offset);
-            m_sps_[sps_id].lt_rps.pocs[i]=m_sps_[sps_id].lt_ref_pic_poc_lsb_sps[i];
-            m_sps_[sps_id].lt_rps.used_by_curr_pic[i] = m_sps_[sps_id].used_by_curr_pic_lt_sps_flag[i];            
+            sps_ptr->lt_ref_pic_poc_lsb_sps[i] = Parser::ReadBits(nalu, offset, (sps_ptr->log2_max_pic_order_cnt_lsb_minus4 + 4));
+            sps_ptr->used_by_curr_pic_lt_sps_flag[i] = Parser::GetBit(nalu, offset);
+            sps_ptr->lt_rps.pocs[i]=sps_ptr->lt_ref_pic_poc_lsb_sps[i];
+            sps_ptr->lt_rps.used_by_curr_pic[i] = sps_ptr->used_by_curr_pic_lt_sps_flag[i];            
         }
     }
-    m_sps_[sps_id].sps_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].strong_intra_smoothing_enabled_flag = Parser::GetBit(nalu, offset);
-    m_sps_[sps_id].vui_parameters_present_flag = Parser::GetBit(nalu, offset);
-    if (m_sps_[sps_id].vui_parameters_present_flag) {
+    sps_ptr->sps_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->strong_intra_smoothing_enabled_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->vui_parameters_present_flag = Parser::GetBit(nalu, offset);
+    if (sps_ptr->vui_parameters_present_flag) {
         //vui_parameters()
-        ParseVui(&m_sps_[sps_id].vui_parameters, m_sps_[sps_id].sps_max_sub_layers_minus1, nalu, size, offset);
+        ParseVui(&sps_ptr->vui_parameters, sps_ptr->sps_max_sub_layers_minus1, nalu, size, offset);
     }
-    m_sps_[sps_id].sps_extension_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->sps_extension_flag = Parser::GetBit(nalu, offset);
 
 #if DBGINFO
-    PrintSps(&m_sps_[sps_id]);
+    PrintSps(sps_ptr);
 #endif // DBGINFO
 }
 
 void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     size_t offset = 0;
     uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    memset(&m_pps_[pps_id], 0, sizeof(m_pps_[pps_id]));
+    PpsData *pps_ptr = &m_pps_[pps_id];
+    memset(pps_ptr, 0, sizeof(PpsData));
 
-    m_pps_[pps_id].pps_pic_parameter_set_id = pps_id;
-    m_pps_[pps_id].pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].output_flag_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].num_extra_slice_header_bits = Parser::ReadBits(nalu, offset, 3);
-    m_pps_[pps_id].sign_data_hiding_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].cabac_init_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].init_qp_minus26 = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].constrained_intra_pred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].transform_skip_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].cu_qp_delta_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].cu_qp_delta_enabled_flag) {
-        m_pps_[pps_id].diff_cu_qp_delta_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->pps_pic_parameter_set_id = pps_id;
+    pps_ptr->pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->dependent_slice_segments_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->output_flag_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->num_extra_slice_header_bits = Parser::ReadBits(nalu, offset, 3);
+    pps_ptr->sign_data_hiding_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->cabac_init_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->num_ref_idx_l0_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->num_ref_idx_l1_default_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->init_qp_minus26 = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->constrained_intra_pred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->transform_skip_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->cu_qp_delta_enabled_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->cu_qp_delta_enabled_flag) {
+        pps_ptr->diff_cu_qp_delta_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
-    m_pps_[pps_id].pps_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].pps_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-    m_pps_[pps_id].pps_slice_chroma_qp_offsets_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].weighted_pred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].weighted_bipred_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].transquant_bypass_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].tiles_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].entropy_coding_sync_enabled_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].tiles_enabled_flag) {
-        m_pps_[pps_id].num_tile_columns_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_pps_[pps_id].num_tile_rows_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-        m_pps_[pps_id].uniform_spacing_flag = Parser::GetBit(nalu, offset);
-        if (!m_pps_[pps_id].uniform_spacing_flag) {
-            for (int i = 0; i < m_pps_[pps_id].num_tile_columns_minus1; i++) {
-                m_pps_[pps_id].column_width_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->pps_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_slice_chroma_qp_offsets_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->weighted_pred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->weighted_bipred_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->transquant_bypass_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->tiles_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->entropy_coding_sync_enabled_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->tiles_enabled_flag) {
+        pps_ptr->num_tile_columns_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pps_ptr->num_tile_rows_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pps_ptr->uniform_spacing_flag = Parser::GetBit(nalu, offset);
+        if (!pps_ptr->uniform_spacing_flag) {
+            for (int i = 0; i < pps_ptr->num_tile_columns_minus1; i++) {
+                pps_ptr->column_width_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
-            for (int i = 0; i < m_pps_[pps_id].num_tile_rows_minus1; i++) {
-                m_pps_[pps_id].row_height_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            for (int i = 0; i < pps_ptr->num_tile_rows_minus1; i++) {
+                pps_ptr->row_height_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             }
         }
-        m_pps_[pps_id].loop_filter_across_tiles_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->loop_filter_across_tiles_enabled_flag = Parser::GetBit(nalu, offset);
     }
     else {
-        m_pps_[pps_id].loop_filter_across_tiles_enabled_flag = 1;
-        m_pps_[pps_id].uniform_spacing_flag = 1;
+        pps_ptr->loop_filter_across_tiles_enabled_flag = 1;
+        pps_ptr->uniform_spacing_flag = 1;
     }
-    m_pps_[pps_id].pps_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].deblocking_filter_control_present_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].deblocking_filter_control_present_flag) {
-        m_pps_[pps_id].deblocking_filter_override_enabled_flag = Parser::GetBit(nalu, offset);
-        m_pps_[pps_id].pps_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
-        if (!m_pps_[pps_id].pps_deblocking_filter_disabled_flag) {
-            m_pps_[pps_id].pps_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
-            m_pps_[pps_id].pps_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+    pps_ptr->pps_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->deblocking_filter_control_present_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->deblocking_filter_control_present_flag) {
+        pps_ptr->deblocking_filter_override_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->pps_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
+        if (!pps_ptr->pps_deblocking_filter_disabled_flag) {
+            pps_ptr->pps_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+            pps_ptr->pps_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
         }
     }
-    m_pps_[pps_id].pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
-    if (m_pps_[pps_id].pps_scaling_list_data_present_flag) {
-        ParseScalingList(&m_pps_[pps_id].scaling_list_data, nalu, size, offset);
+    pps_ptr->pps_scaling_list_data_present_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->pps_scaling_list_data_present_flag) {
+        // Set up default values first
+        SetDefaultScalingList(&pps_ptr->scaling_list_data);
+
+        ParseScalingList(&pps_ptr->scaling_list_data, nalu, size, offset, &m_sps_[pps_ptr->pps_seq_parameter_set_id]);
     }
-    m_pps_[pps_id].lists_modification_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    m_pps_[pps_id].slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
-    m_pps_[pps_id].pps_extension_flag = Parser::GetBit(nalu, offset);
+    else {
+        pps_ptr->scaling_list_data = m_sps_[pps_ptr->pps_seq_parameter_set_id].scaling_list_data;
+    }
+    pps_ptr->lists_modification_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    pps_ptr->slice_segment_header_extension_present_flag = Parser::GetBit(nalu, offset);
+    pps_ptr->pps_extension_present_flag = Parser::GetBit(nalu, offset);
+    if (pps_ptr->pps_extension_present_flag) {
+        pps_ptr->pps_range_extension_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->pps_multilayer_extension_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->pps_extension_6bits = Parser::ReadBits(nalu, offset, 6);
+    }
+
+    // pps_range_extension()
+    if (pps_ptr->pps_range_extension_flag) {
+        if (pps_ptr->transform_skip_enabled_flag) {
+            pps_ptr->log2_max_transform_skip_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
+        }
+        pps_ptr->cross_component_prediction_enabled_flag = Parser::GetBit(nalu, offset);
+        pps_ptr->chroma_qp_offset_list_enabled_flag = Parser::GetBit(nalu, offset);
+        if (pps_ptr->chroma_qp_offset_list_enabled_flag) {
+            pps_ptr->diff_cu_chroma_qp_offset_depth = Parser::ExpGolomb::ReadUe(nalu, offset);
+            pps_ptr->chroma_qp_offset_list_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+            for (int i = 0; i <= pps_ptr->chroma_qp_offset_list_len_minus1; i++) {
+                pps_ptr->cb_qp_offset_list[i] = Parser::ExpGolomb::ReadSe(nalu, offset);
+                pps_ptr->cr_qp_offset_list[i] = Parser::ExpGolomb::ReadSe(nalu, offset);
+            }
+        }
+        pps_ptr->log2_sao_offset_scale_luma = Parser::ExpGolomb::ReadUe(nalu, offset);
+        pps_ptr->log2_sao_offset_scale_chroma = Parser::ExpGolomb::ReadUe(nalu, offset);
+    }
 
 #if DBGINFO
-    PrintPps(&m_pps_[pps_id]);
+    PrintPps(pps_ptr);
 #endif // DBGINFO
 }
 
@@ -860,6 +1137,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     SpsData *sps_ptr = NULL;
     size_t offset = 0;
     SliceHeaderData temp_sh;
+    memset(m_sh_, 0, sizeof(SliceHeaderData));
     memset(&temp_sh, 0, sizeof(temp_sh));
 
     temp_sh.first_slice_segment_in_pic_flag = m_sh_->first_slice_segment_in_pic_flag = Parser::GetBit(nalu, offset);
@@ -871,16 +1149,17 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
     temp_sh.slice_pic_parameter_set_id = m_sh_->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &m_pps_[m_active_pps_id_];
-    m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
+    if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
+        m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
+        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+    }
     sps_ptr = &m_sps_[m_active_sps_id_];
     m_active_vps_id_ = sps_ptr->sps_video_parameter_set_id;
 
     // Check video dimension change
-    if ( pic_width_ != sps_ptr->pic_width_in_luma_samples || pic_height_ != sps_ptr->pic_height_in_luma_samples)
-    {
+    if ( pic_width_ != sps_ptr->pic_width_in_luma_samples || pic_height_ != sps_ptr->pic_height_in_luma_samples) {
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
-        pic_dimension_changed_ = true;  // Note: clear this flag after the actions with size change are taken.
     }
 
     if (!m_sh_->first_slice_segment_in_pic_flag) {
@@ -906,6 +1185,9 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         m_sh_->slice_type = Parser::ExpGolomb::ReadUe(nalu, offset);
         if (pps_ptr->output_flag_present_flag) {
             m_sh_->pic_output_flag = Parser::GetBit(nalu, offset);
+        }
+        else {
+            m_sh_->pic_output_flag = 1;  // default value
         }
         if (sps_ptr->separate_colour_plane_flag) {
             m_sh_->colour_plane_id = Parser::ReadBits(nalu, offset, 2);
@@ -956,6 +1238,9 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                 if (num_bits > 0) {
                     m_sh_->short_term_ref_pic_set_idx = Parser::ReadBits(nalu, offset, num_bits);
                 }
+
+                // Copy the SPS RPS to slice RPS
+                m_sh_->st_rps = sps_ptr->st_rps[m_sh_->short_term_ref_pic_set_idx];
             }
             m_sh_->short_term_ref_pic_set_size = offset - pos;
 
@@ -975,16 +1260,16 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                         if (sps_ptr->num_long_term_ref_pics_sps > 1) {
                             if( bits_for_ltrp_in_sps > 0) {
                                 m_sh_->lt_idx_sps[i] = Parser::ReadBits(nalu, offset, bits_for_ltrp_in_sps);
-                                m_sh_->lt_rps.pocs[i] = sps_ptr->lt_rps.pocs[m_sh_->lt_idx_sps[i]];
-                                m_sh_->lt_rps.used_by_curr_pic[i] = sps_ptr->lt_rps.used_by_curr_pic[m_sh_->lt_idx_sps[i]];
+                                m_sh_->lt_rps.pocs[i] = sps_ptr->lt_rps.pocs[m_sh_->lt_idx_sps[i]];  // PocLsbLt[]
+                                m_sh_->lt_rps.used_by_curr_pic[i] = sps_ptr->lt_rps.used_by_curr_pic[m_sh_->lt_idx_sps[i]];  // UsedByCurrPicLt[]
                             }
                         }
                     }
                     else {
                         m_sh_->poc_lsb_lt[i] = Parser::ReadBits(nalu, offset, (sps_ptr->log2_max_pic_order_cnt_lsb_minus4 + 4));
                         m_sh_->used_by_curr_pic_lt_flag[i] = Parser::GetBit(nalu, offset);
-                        m_sh_->lt_rps.pocs[i] = m_sh_->poc_lsb_lt[i];
-                        m_sh_->lt_rps.used_by_curr_pic[i] = m_sh_->used_by_curr_pic_lt_flag[i];
+                        m_sh_->lt_rps.pocs[i] = m_sh_->poc_lsb_lt[i];  // PocLsbLt[]
+                        m_sh_->lt_rps.used_by_curr_pic[i] = m_sh_->used_by_curr_pic_lt_flag[i];  // UsedByCurrPicLt[]
                     }
                     m_sh_->delta_poc_msb_present_flag[i] = Parser::GetBit(nalu, offset);
                     if (m_sh_->delta_poc_msb_present_flag[i]) {
@@ -996,6 +1281,120 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                 m_sh_->slice_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
             }
         }
+
+        int chroma_array_type = sps_ptr->separate_colour_plane_flag ? 0 : sps_ptr->chroma_format_idc;  // ChromaArrayType
+        if (sps_ptr->sample_adaptive_offset_enabled_flag) {
+            m_sh_->slice_sao_luma_flag = Parser::GetBit(nalu, offset);
+            if (chroma_array_type)
+            {
+                m_sh_->slice_sao_chroma_flag = Parser::GetBit(nalu, offset);
+            }
+        }
+
+        if (m_sh_->slice_type == HEVC_SLICE_TYPE_P || m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+            m_sh_->num_ref_idx_active_override_flag = Parser::GetBit(nalu, offset);
+            if (m_sh_->num_ref_idx_active_override_flag) {
+                m_sh_->num_ref_idx_l0_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+                if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                    m_sh_->num_ref_idx_l1_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+                }
+            }
+            else {
+                m_sh_->num_ref_idx_l0_active_minus1 = pps_ptr->num_ref_idx_l0_default_active_minus1;
+                if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                    m_sh_->num_ref_idx_l1_active_minus1 = pps_ptr->num_ref_idx_l1_default_active_minus1;
+                }
+            }
+
+            // 7.3.6.2 Reference picture list modification
+            // Calculate NumPicTotalCurr
+            int num_pic_total_curr = 0;
+            H265ShortTermRPS *st_rps_ptr = &m_sh_->st_rps;
+            // Check the combined list
+            for (int i = 0; i < st_rps_ptr->num_of_delta_poc; i++) {
+                if (st_rps_ptr->used_by_curr_pic[i]) {
+                    num_pic_total_curr++;
+                }
+            }
+
+            H265LongTermRPS *lt_rps_ptr = &m_sh_->lt_rps;
+            // Check the combined list
+            for (int i = 0; i < lt_rps_ptr->num_of_pics; i++) {
+                if (lt_rps_ptr->used_by_curr_pic[i]) {
+                    num_pic_total_curr++;
+                }
+            }
+
+            if (pps_ptr->lists_modification_present_flag && num_pic_total_curr > 1)
+            {
+                int list_entry_bits = 0;
+                while ((1 << list_entry_bits) < num_pic_total_curr) {
+                    list_entry_bits++;
+                }
+
+                m_sh_->ref_pic_list_modification_flag_l0 = Parser::GetBit(nalu, offset);
+                if (m_sh_->ref_pic_list_modification_flag_l0) {
+                    for (int i = 0; i < m_sh_->num_ref_idx_l0_active_minus1; i++) {
+                        m_sh_->list_entry_l0[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
+                    }
+                }
+
+                if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                    m_sh_->ref_pic_list_modification_flag_l1 = Parser::GetBit(nalu, offset);
+                    if (m_sh_->ref_pic_list_modification_flag_l1) {
+                        for (int i = 0; i < m_sh_->num_ref_idx_l1_active_minus1; i++) {
+                            m_sh_->list_entry_l1[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
+                        }
+                    }
+                }
+            }
+
+            if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                m_sh_->mvd_l1_zero_flag = Parser::GetBit(nalu, offset);
+            }
+            if (pps_ptr->cabac_init_present_flag) {
+                m_sh_->cabac_init_flag = Parser::GetBit(nalu, offset);
+            }
+
+            if (m_sh_->slice_temporal_mvp_enabled_flag) {
+                if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                    m_sh_->collocated_from_l0_flag = Parser::GetBit(nalu, offset);
+                }
+                if ((m_sh_->collocated_from_l0_flag && m_sh_->num_ref_idx_l0_active_minus1 > 0) || (!m_sh_->collocated_from_l0_flag && m_sh_->num_ref_idx_l1_active_minus1 > 0)) {
+                    m_sh_->collocated_ref_idx = Parser::ExpGolomb::ReadUe(nalu, offset);
+                }
+            }
+
+            if ((pps_ptr->weighted_pred_flag && m_sh_->slice_type == HEVC_SLICE_TYPE_P) || (pps_ptr->weighted_bipred_flag && m_sh_->slice_type == HEVC_SLICE_TYPE_B)) {
+                ParsePredWeightTable(m_sh_, chroma_array_type, nalu, offset);
+            }
+            m_sh_->five_minus_max_num_merge_cand = Parser::ExpGolomb::ReadUe(nalu, offset);
+        }
+
+        m_sh_->slice_qp_delta = Parser::ExpGolomb::ReadSe(nalu, offset);
+        if (pps_ptr->pps_slice_chroma_qp_offsets_present_flag) {
+            m_sh_->slice_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+            m_sh_->slice_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+        }
+        if (pps_ptr->chroma_qp_offset_list_enabled_flag) {
+            m_sh_->cu_chroma_qp_offset_enabled_flag = Parser::GetBit(nalu, offset);
+        }
+        if (pps_ptr->deblocking_filter_override_enabled_flag) {
+            m_sh_->deblocking_filter_override_flag = Parser::GetBit(nalu, offset);
+        }
+        if (m_sh_->deblocking_filter_override_flag) {
+            m_sh_->slice_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
+            if ( !m_sh_->slice_deblocking_filter_disabled_flag ) {
+                m_sh_->slice_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+                m_sh_->slice_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+            }
+        }
+
+        if (pps_ptr->pps_loop_filter_across_slices_enabled_flag && (m_sh_->slice_sao_luma_flag || m_sh_->slice_sao_chroma_flag ||
+!m_sh_->slice_deblocking_filter_disabled_flag)) {
+            m_sh_->slice_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
+        }
+
         memcpy(m_sh_copy_, m_sh_, sizeof(*m_sh_));
     }
     else {
@@ -1006,6 +1405,23 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         m_sh_->slice_pic_parameter_set_id = temp_sh.slice_pic_parameter_set_id;
         m_sh_->dependent_slice_segment_flag = temp_sh.dependent_slice_segment_flag;
         m_sh_->slice_segment_address = temp_sh.slice_segment_address;
+    }
+
+    if (pps_ptr->tiles_enabled_flag || pps_ptr->entropy_coding_sync_enabled_flag) {
+        m_sh_->num_entry_point_offsets = Parser::ExpGolomb::ReadUe(nalu, offset);
+        if (m_sh_->num_entry_point_offsets) {
+            m_sh_->offset_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+            for (int i = 0; i < m_sh_->num_entry_point_offsets; i++) {
+                m_sh_->entry_point_offset_minus1[i] = Parser::ReadBits(nalu, offset, m_sh_->offset_len_minus1 + 1);
+            }
+        }
+    }
+
+    if (pps_ptr->slice_segment_header_extension_present_flag) {
+        m_sh_->slice_segment_header_extension_length = Parser::ExpGolomb::ReadUe(nalu, offset);
+        for (int i = 0; i < m_sh_->slice_segment_header_extension_length; i++) {
+            m_sh_->slice_segment_header_extension_data_byte[i] = Parser::ReadBits(nalu, offset, 8);
+        }
     }
 
 #if DBGINFO
@@ -1056,31 +1472,6 @@ size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, s
     }
     return end_bytepos - begin_bytepos + reduce_count;
 }
-
-//size_id = 0
-int scaling_list_default_0 [1][6][16] =  {{{16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16},
-                                           {16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16}}};
-//size_id = 1, 2
-int scaling_list_default_1_2 [2][6][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}},
-                                           {{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91},
-                                            {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
-//size_id = 3
-int scaling_list_default_3 [1][2][64] = {{{16,16,16,16,16,16,16,16,16,16,17,16,17,16,17,18,17,18,18,17,18,21,19,20,21,20,19,21,24,22,22,24,24,22,22,24,25,25,27,30,27,25,25,29,31,35,35,31,29,36,41,44,41,36,47,54,54,47,65,70,65,88,88,115},
-                                          {16,16,16,16,16,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,18,20,20,20,20,20,20,20,24,24,24,24,24,24,24,24,25,25,25,25,25,25,25,28,28,28,28,28,28,33,33,33,33,33,41,41,41,41,54,54,54,71,71,91}}};
-
 
 #if DBGINFO
 void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
@@ -1193,6 +1584,16 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("max_transform_hierarchy_depth_intra       = " <<  sps_ptr->max_transform_hierarchy_depth_intra);
     MSG("scaling_list_enabled_flag                 = " <<  sps_ptr->scaling_list_enabled_flag);
     MSG("sps_scaling_list_data_present_flag        = " <<  sps_ptr->sps_scaling_list_data_present_flag);
+    MSG("Scaling list:");
+    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+            MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
+            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+                MSG_NO_NEWLINE(" " << sps_ptr->scaling_list_data.scaling_list[i][j][k]);
+            }
+            MSG("");
+        }
+    }
 
     MSG("amp_enabled_flag                          = " <<  sps_ptr->amp_enabled_flag);
     MSG("sample_adaptive_offset_enabled_flag       = " <<  sps_ptr->sample_adaptive_offset_enabled_flag);
@@ -1205,60 +1606,8 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("num_short_term_ref_pic_sets               = " <<  sps_ptr->num_short_term_ref_pic_sets);
 
     if (sps_ptr->num_short_term_ref_pic_sets) {
-        MSG("Short term RPS:");
         for(int i = 0; i < sps_ptr->num_short_term_ref_pic_sets; i++) {
-            /*Todo: MSG("st_rps[%d]: " <<  i);
-            MSG("inter_ref_pic_set_prediction_flag         = " <<  sps_ptr->st_rps[i].inter_ref_pic_set_prediction_flag);
-            MSG("delta_idx_minus1                          = " <<  sps_ptr->st_rps[i].delta_idx_minus1);
-            MSG("delta_rps_sign                            = " <<  sps_ptr->st_rps[i].delta_rps_sign);
-            MSG("abs_delta_rps_minus1                      = " <<  sps_ptr->st_rps[i].abs_delta_rps_minus1);
-            MSG("used_by_curr_pic_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_flag[j]);
-            }
-            MSG("");
-            MSG("use_delta_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].use_delta_flag[j]);
-            }
-            MSG("");*/
-
-            MSG("num_negative_pics                         = " <<  sps_ptr->st_rps[i].num_negative_pics);
-            MSG("num_positive_pics                         = " <<  sps_ptr->st_rps[i].num_positive_pics);
-            MSG("num_of_pics                               = " <<  sps_ptr->st_rps[i].num_of_pics);
-            MSG("num_of_delta_poc                          = " <<  sps_ptr->st_rps[i].num_of_delta_poc);
-
-            MSG_NO_NEWLINE("delta_poc[16]:");
-            for(int j = 0; j < 16; j++) {
-                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].delta_poc[j]);
-            }
-            MSG("");
-            MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-            for(int j = 0; j < 16; j++) {
-                MSG_NO_NEWLINE(" " << sps_ptr->st_rps[i].used_by_curr_pic[j]);
-            }
-            MSG("");
-
-            /* Todo MSG("delta_poc_s0_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].delta_poc_s0_minus1[j]);
-            }
-            MSG("");
-            MSG("used_by_curr_pic_s0_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s0_flag[j]);
-            }
-            MSG("");
-            MSG("delta_poc_s1_minus1[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].delta_poc_s1_minus1[j]);
-            }
-            MSG("");
-            MSG("used_by_curr_pic_s1_flag[]: ");
-            for(int j = 0; j < HEVC_MAX_DPB; j++) {
-                MSG(" ", sps_ptr->st_rps[i].used_by_curr_pic_s1_flag[j]);
-            }
-            MSG("");*/
+            PrintStRps(&sps_ptr->st_rps[i]);
         }
     }
 
@@ -1277,6 +1626,8 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
         }
         MSG("");
     }
+
+    PrintLtRefInfo(&sps_ptr->lt_rps);
 
     MSG("sps_temporal_mvp_enabled_flag             = " <<  sps_ptr->sps_temporal_mvp_enabled_flag);
     MSG("strong_intra_smoothing_enabled_flag       = " <<  sps_ptr->strong_intra_smoothing_enabled_flag);
@@ -1333,10 +1684,21 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
     MSG("pps_beta_offset_div2                        = " <<  pps_ptr->pps_beta_offset_div2);
     MSG("pps_tc_offset_div2                          = " <<  pps_ptr->pps_tc_offset_div2);
     MSG("pps_scaling_list_data_present_flag          = " <<  pps_ptr->pps_scaling_list_data_present_flag);
+    MSG("Scaling list:");
+    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+            MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
+            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+                MSG_NO_NEWLINE(" " << pps_ptr->scaling_list_data.scaling_list[i][j][k]);
+            }
+            MSG("");
+        }
+    }
+
     MSG("lists_modification_present_flag             = " <<  pps_ptr->lists_modification_present_flag);
     MSG("log2_parallel_merge_level_minus2            = " <<  pps_ptr->log2_parallel_merge_level_minus2);
     MSG("slice_segment_header_extension_present_flag = " <<  pps_ptr->slice_segment_header_extension_present_flag);
-    MSG("pps_extension_present_flag                  = " <<  pps_ptr->pps_extension_flag);
+    MSG("pps_extension_present_flag                  = " <<  pps_ptr->pps_extension_present_flag);
     MSG("");
 }
 
@@ -1354,59 +1716,8 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("short_term_ref_pic_set_sps_flag             = " <<  slice_header_ptr->short_term_ref_pic_set_sps_flag);
     MSG("short_term_ref_pic_set_idx                  = " <<  slice_header_ptr->short_term_ref_pic_set_idx);
 
-    MSG("Short term RPS:");
-    {
-        /* Todo: MSG("inter_ref_pic_set_prediction_flag           = " <<  slice_header_ptr->st_rps.inter_ref_pic_set_prediction_flag);
-        MSG("delta_idx_minus1                            = " <<  slice_header_ptr->st_rps.delta_idx_minus1);
-        MSG("delta_rps_sign                              = " <<  slice_header_ptr->st_rps.delta_rps_sign);
-        MSG("abs_delta_rps_minus1                        = " <<  slice_header_ptr->st_rps.abs_delta_rps_minus1);
-        MSG_NO_NEWLINE("used_by_curr_pic_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_flag[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("use_delta_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.use_delta_flag[j]);
-        }
-        MSG("");*/
-        MSG("num_negative_pics                           = " <<  slice_header_ptr->st_rps.num_negative_pics);
-        MSG("num_positive_pics                           = " <<  slice_header_ptr->st_rps.num_positive_pics);
-        MSG("num_of_pics                                 = " <<  slice_header_ptr->st_rps.num_of_pics);
-        MSG("num_of_delta_poc                            = " <<  slice_header_ptr->st_rps.num_of_delta_poc);
+    PrintStRps(&slice_header_ptr->st_rps);
 
-        MSG_NO_NEWLINE("delta_poc[16]:");
-        for(int j = 0; j < 16; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic[16]:");
-        for(int j = 0; j < 16; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic[j]);
-        }
-        MSG("");
-
-        /* Todo: MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s0_minus1[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s0_flag[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.delta_poc_s1_minus1[j]);
-        }
-        MSG("");
-        MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
-        for(int j = 0; j < HEVC_MAX_DPB; j++) {
-            MSG_NO_NEWLINE(" " << slice_header_ptr->st_rps.used_by_curr_pic_s1_flag[j]);
-        }
-        MSG("");*/
-    }
     MSG("num_long_term_sps                           = " <<  slice_header_ptr->num_long_term_sps);
     MSG("num_long_term_pics                          = " <<  slice_header_ptr->num_long_term_pics);
     MSG_NO_NEWLINE("lt_idx_sps[]:");
@@ -1434,22 +1745,25 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
         MSG_NO_NEWLINE(" " << slice_header_ptr->delta_poc_msb_cycle_lt[i]);
     }
     MSG("");
+
+    PrintLtRefInfo(&slice_header_ptr->lt_rps);
+
     MSG("slice_temporal_mvp_enabled_flag             = " <<  slice_header_ptr->slice_temporal_mvp_enabled_flag);
     MSG("slice_sao_luma_flag                         = " <<  slice_header_ptr->slice_sao_luma_flag);
     MSG("slice_sao_chroma_flag                       = " <<  slice_header_ptr->slice_sao_chroma_flag);
 
-    /* Todo MSG("num_ref_idx_active_override_flag            = " <<  slice_header_ptr->num_ref_idx_active_override_flag);
-    MSG("num_ref_idx_l0_active_minus1                = %d " <<  slice_header_ptr->num_ref_idx_l0_active_minus1);
-    MSG("num_ref_idx_l1_active_minus1                = %d " <<  slice_header_ptr->num_ref_idx_l1_active_minus1);
+    MSG("num_ref_idx_active_override_flag            = " <<  slice_header_ptr->num_ref_idx_active_override_flag);
+    MSG("num_ref_idx_l0_active_minus1                = " <<  slice_header_ptr->num_ref_idx_l0_active_minus1);
+    MSG("num_ref_idx_l1_active_minus1                = " <<  slice_header_ptr->num_ref_idx_l1_active_minus1);
     MSG("ref_pic_list_modification_flag_l0           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l0);
     MSG("ref_pic_list_modification_flag_l1           = " <<  slice_header_ptr->ref_pic_list_modification_flag_l1);
     MSG_NO_NEWLINE("list_entry_l0[]:");
-    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
+    for(int i = 0; i < 16; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l0[i]);
     }
     MSG("");
     MSG_NO_NEWLINE("list_entry_l1[]:");
-    for(int i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
+    for(int i = 0; i < 16; i++) {
         MSG_NO_NEWLINE(" " << slice_header_ptr->list_entry_l1[i]);
     }
     MSG("");
@@ -1457,19 +1771,88 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("cabac_init_flag                             = " <<  slice_header_ptr->cabac_init_flag);
     MSG("collocated_from_l0_flag                     = " <<  slice_header_ptr->collocated_from_l0_flag);
     MSG("collocated_ref_idx                          = " <<  slice_header_ptr->collocated_ref_idx);
-    MSG("five_minus_max_num_merge_cand               = %d " <<  slice_header_ptr->five_minus_max_num_merge_cand);
-    MSG("slice_qp_delta                              = %d " <<  slice_header_ptr->slice_qp_delta);
-    MSG("slice_cb_qp_offset                          = %d " <<  slice_header_ptr->slice_cb_qp_offset);
-    MSG("slice_cr_qp_offset                          = %d " <<  slice_header_ptr->slice_cr_qp_offset);
-    MSG("cu_chroma_qp_offset_enabled_flag            = %d " <<  slice_header_ptr->cu_chroma_qp_offset_enabled_flag);
-    MSG("deblocking_filter_override_flag             = %d " <<  slice_header_ptr->deblocking_filter_override_flag);
-    MSG("slice_deblocking_filter_disabled_flag       = %d " <<  slice_header_ptr->slice_deblocking_filter_disabled_flag);
-    MSG("slice_beta_offset_div2                      = %d " <<  slice_header_ptr->slice_beta_offset_div2);
-    MSG("slice_tc_offset_div2                        = %d " <<  slice_header_ptr->slice_tc_offset_div2);
-    MSG("slice_loop_filter_across_slices_enabled_flag = %d " <<  slice_header_ptr->slice_loop_filter_across_slices_enabled_flag);
-    MSG("num_entry_point_offsets                     = %d " <<  slice_header_ptr->num_entry_point_offsets);
-    MSG("offset_len_minus1                           = %d " <<  slice_header_ptr->offset_len_minus1);
-    MSG("slice_segment_header_extension_length       = %d " <<  slice_header_ptr->slice_segment_header_extension_length);*/
+    MSG("five_minus_max_num_merge_cand               = " <<  slice_header_ptr->five_minus_max_num_merge_cand);
+    MSG("slice_qp_delta                              = " <<  slice_header_ptr->slice_qp_delta);
+    MSG("slice_cb_qp_offset                          = " <<  slice_header_ptr->slice_cb_qp_offset);
+    MSG("slice_cr_qp_offset                          = " <<  slice_header_ptr->slice_cr_qp_offset);
+    MSG("cu_chroma_qp_offset_enabled_flag            = " <<  slice_header_ptr->cu_chroma_qp_offset_enabled_flag);
+    MSG("deblocking_filter_override_flag             = " <<  slice_header_ptr->deblocking_filter_override_flag);
+    MSG("slice_deblocking_filter_disabled_flag       = " <<  slice_header_ptr->slice_deblocking_filter_disabled_flag);
+    MSG("slice_beta_offset_div2                      = " <<  slice_header_ptr->slice_beta_offset_div2);
+    MSG("slice_tc_offset_div2                        = " <<  slice_header_ptr->slice_tc_offset_div2);
+    MSG("slice_loop_filter_across_slices_enabled_flag = " <<  slice_header_ptr->slice_loop_filter_across_slices_enabled_flag);
+    MSG("num_entry_point_offsets                     = " <<  slice_header_ptr->num_entry_point_offsets);
+    MSG("offset_len_minus1                           = " <<  slice_header_ptr->offset_len_minus1);
+    MSG("slice_segment_header_extension_length       = " <<  slice_header_ptr->slice_segment_header_extension_length);
+    MSG("");
+}
+
+void HEVCVideoParser::PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr) {
+    MSG("==== Short-term reference picture set =====")
+    MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
+    MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
+    MSG("delta_rps_sign                              = " <<  rps_ptr->delta_rps_sign);
+    MSG("abs_delta_rps_minus1                        = " <<  rps_ptr->abs_delta_rps_minus1);
+    MSG_NO_NEWLINE("rps->used_by_curr_pic_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("use_delta_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->use_delta_flag[j]);
+    }
+    MSG("");
+    MSG("num_negative_pics                           = " <<  rps_ptr->num_negative_pics);
+    MSG("num_positive_pics                           = " <<  rps_ptr->num_positive_pics);
+    MSG("num_of_pics                                 = " <<  rps_ptr->num_of_pics);
+    MSG("num_of_delta_poc                            = " <<  rps_ptr->num_of_delta_poc);
+
+    MSG_NO_NEWLINE("delta_poc_s0_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s0_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s0_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s0_flag[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("delta_poc_s1_minus1[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc_s1_minus1[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic_s1_flag[]:");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic_s1_flag[j]);
+    }
+    MSG("");
+
+    MSG_NO_NEWLINE("delta_poc[16] (DeltaPocS0 + DeltaPocS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->delta_poc[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic[16] (UsedByCurrPicS0 + UsedByCurrPicS1):");
+    for(int j = 0; j < 16; j++) {
+        MSG_NO_NEWLINE(" " << rps_ptr->used_by_curr_pic[j]);
+    }
+    MSG("");
+}
+
+void HEVCVideoParser::PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr) {
+    MSG("==== Long-term reference picture info =====");
+    MSG("num_of_pics                 = " <<  lt_info_ptr->num_of_pics);
+    MSG_NO_NEWLINE("pocs[]:");
+    for(int j = 0; j < 32; j++) {
+        MSG_NO_NEWLINE(" " << lt_info_ptr->pocs[j]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("used_by_curr_pic[]:");
+    for(int j = 0; j < 32; j++) {
+        MSG_NO_NEWLINE(" " << lt_info_ptr->used_by_curr_pic[j]);
+    }
     MSG("");
 }
 #endif // DBGINFO

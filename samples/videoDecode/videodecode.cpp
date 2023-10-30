@@ -27,7 +27,11 @@ THE SOFTWARE.
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
-#include <filesystem>
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
+    #include <filesystem>
+#else
+    #include <experimental/filesystem>
+#endif
 #include "video_demuxer.hpp"
 #include "roc_video_dec.h"
 

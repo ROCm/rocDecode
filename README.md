@@ -18,6 +18,11 @@ rocDecode is a high performance video decode SDK for AMD hardware
   sudo apt install libva-dev
   ```
 
+* libdrm-dev `2.4` or later
+  ```
+  sudo apt install libdrm-dev
+  ```
+
 * [FFMPEG](https://ffmpeg.org/about.html)
   ```
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
@@ -71,4 +76,5 @@ doxygen .Doxyfile
   + amdgpu-core - `1:5.6.50601-1649308`
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
-* rocDecode Setup Script - `V1.1`
+* libdrm-dev - `2.4.107` / `2.4.113`
+* rocDecode Setup Script - `V1.2`

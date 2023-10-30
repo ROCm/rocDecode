@@ -21,34 +21,31 @@ THE SOFTWARE.
 */
 
 #pragma once
-
-#include <assert.h>
-#include <stdint.h>
-#include <vector>
+#include <stdexcept>
+#include <exception>
 #include <string>
 #include <iostream>
-#include <sstream>
-#include <string.h>
-#include <map>
-#include "../api/rocdecode.h"
-#include <hip/hip_runtime.h>
 
-class RocDecoder {
+#define TOSTR(X) std::to_string(static_cast<int>(X))
+#define STR(X) std::string(X)
+
+#if DBGINFO
+#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define INFO(X) ;
+#endif
+#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+
+
+class rocVideoDecodeException : public std::exception {
 public:
-    RocDecoder(int device_id = 0);
-    ~RocDecoder();
-    rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
-    rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
-    rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
-    rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
+    explicit rocVideoDecodeException(const std::string& message):_message(message){}
+    virtual const char* what() const throw() override {
+        return _message.c_str();
+    }
 private:
-    rocDecStatus initHIP(int device_id);
-    void initDRMnodes();
-    int num_devices_;
-    int device_id_;
-    hipDeviceProp_t hip_dev_prop_;
-    hipStream_t hip_stream_;
-    std::vector<std::string> drm_nodes_;
+    std::string _message;
 };
+
+#define THROW(X) throw rocVideoDecodeException(" { "+std::string(__func__)+" } " + X);

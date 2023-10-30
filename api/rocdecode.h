@@ -145,6 +145,8 @@ typedef enum rocDecodeStatus_enum {
 //! This structure is used in rocDecGetDecoderCaps API
 /**************************************************************************************************************/
 typedef struct _RocdecDecodeCaps {
+    uint8_t                   deviceid;                   /**< IN: the device id for which query the decode capability
+                                                            0 for the first device, 1 for the second device on the system, etc.*/
     rocDecVideoCodec          eCodecType;                 /**< IN: rocDecVideoCodec_XXX                                             */
     rocDecVideoChromaFormat   eChromaFormat;              /**< IN: rocDecVideoChromaFormat_XXX                                      */
     uint32_t              nBitDepthMinus8;            /**< IN: The Value "BitDepth minus 8"                                   */
