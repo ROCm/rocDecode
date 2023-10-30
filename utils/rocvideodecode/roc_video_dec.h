@@ -30,10 +30,12 @@ THE SOFTWARE.
 #include <iostream>
 #include <sstream>
 #include <string.h>
+#include <queue>
+#include <stdexcept>
+#include <exception>
 #include <hip/hip_runtime.h>
 #include "rocdecode.h"
 #include "rocparser.h"
-#include "commons.h"
 
 #define MAX_FRAME_NUM     16
 
@@ -42,6 +44,35 @@ typedef enum{
     SEI_TYPE_USER_DATA_UNREGISTERED = 5
 }SEI_H264_HEVC_PAYLOAD_TYPE;
 
+typedef enum {
+    OUT_SURFACE_MEM_DEV_INTERNAL = 0,       /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
+    OUT_SURFACE_MEM_DEV_COPIED  = 1,        /**<  decoded output will be copied to a separate device memory (the user doesn't need to call release) **/
+    OUT_SURFACE_MEM_HOST_COPIED  = 2        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
+}OUTPUT_SURF_MEMORY_TYPE;
+
+#define TOSTR(X) std::to_string(static_cast<int>(X))
+#define STR(X) std::string(X)
+
+#if DBGINFO
+#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#else
+#define INFO(X) ;
+#endif
+#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+
+
+class rocVideoDecodeException : public std::exception {
+public:
+
+    explicit rocVideoDecodeException(const std::string& message):_message(message){}
+    virtual const char* what() const throw() override {
+        return _message.c_str();
+    }
+private:
+    std::string _message;
+};
+
+#define THROW(X) throw rocVideoDecodeException(" { "+std::string(__func__)+" } " + X);
 
 #define ROCDEC_API_CALL( rocDecAPI )                                                                                 \
     do {                                                                                                            \
@@ -71,10 +102,6 @@ struct Rect {
     int l, t, r, b;
 };
 
-struct Dim {
-    int w, h;
-};
-
 static inline int align(int value, int alignment) {
    return (value + alignment - 1) & ~(alignment - 1);
 }
@@ -89,6 +116,7 @@ typedef struct OutputSurfaceInfoType {
     uint32_t output_width;               /**< Output width of decoded surface*/
     uint32_t output_height;              /**< Output height of decoded surface*/
     uint32_t output_pitch;            /**< Output pitch in bytes of luma plane, chroma pitch can be inferred based on chromaFormat*/
+    uint32_t output_vstride;          /**< Output vertical stride in case of using internal mem pointer **/
     uint32_t bytes_per_pixel;            /**< Output BytesPerPixel of decoded image*/
     uint32_t bit_depth;                  /**< Output BitDepth of the image*/
     uint32_t num_chroma_planes;          /**< Output Chroma number of planes*/
@@ -108,16 +136,15 @@ class RocVideoDecoder {
        * @param b_low_latency 
        * @param device_frame_pitched 
        * @param p_crop_rect 
-       * @param p_resize_dim 
        * @param extract_user_SEI_Message 
        * @param max_width 
        * @param max_height 
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(int device_id, bool b_use_device_mem, rocDecVideoCodec codec, bool b_low_latency, bool device_frame_pitched,
-                          const Rect *p_crop_rect, const Dim *p_resize_dim, bool extract_user_SEI_Message, int max_width, int max_height,
-                          uint32_t clk_rate,  bool force_zero_latency);
+        RocVideoDecoder(int device_id,  OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool device_frame_pitched,
+                          const Rect *p_crop_rect, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
+                          uint32_t clk_rate = 1000,  bool force_zero_latency = false);
         ~RocVideoDecoder();
         
         /**
@@ -202,6 +229,15 @@ class RocVideoDecoder {
         uint8_t* GetFrame(int64_t *pts);
 
         /**
+         * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
+         * 
+         * @param pTimestamp - timestamp of the frame to be released (unmapped)
+         * @return true      - success
+         * @return false     - falied
+         */
+        bool ReleaseFrame(int64_t pTimestamp);
+
+        /**
          * @brief utility function to save image to a file
          * 
          * @param output_file_name - file to write
@@ -280,7 +316,7 @@ class RocVideoDecoder {
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
         rocDecDecoderHandle roc_decoder_ = nullptr;
-        bool b_use_device_mem_ = true;
+        OUTPUT_SURF_MEMORY_TYPE out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
         bool b_low_latency_ = true;
         bool b_force_zero_latency_ = true;
@@ -308,13 +344,14 @@ class RocVideoDecoder {
         uint32_t num_chroma_planes_;
         uint32_t num_components_;
         uint32_t surface_stride_;
+        uint32_t surface_vstride_;      // vertical stride between planes: used when using internal dev memory
         size_t surface_size_;
         OutputSurfaceInfo output_surface_info_;
         std::mutex mtx_vp_frame_;
         std::vector<DecFrameBuffer> vp_frames_;      // vector of decoded frames
+        std::queue<DecFrameBuffer> vp_frames_q_;
         Rect disp_rect_ = {};
         Rect crop_rect_ = {};
-        Dim resize_dim_ = {};
         FILE *fp_sei_ = NULL;
         FILE *fp_out_ = NULL;
 };

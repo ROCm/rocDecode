@@ -29,13 +29,14 @@ THE SOFTWARE.
 #include <libgen.h>
 #include <filesystem>
 #include "video_demuxer.hpp"
-#include "rocdecode.h"
+#include "roc_video_dec.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
-    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl;
+    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
     exit(0);
 }
 
@@ -45,6 +46,9 @@ int main(int argc, char **argv) {
     int dumpOutputFrames = 0;
     int isOutputRGB = 0;
     int deviceId = 0;
+    Rect crop_rect = {};
+    Rect *p_crop_rect = nullptr;
+    OUTPUT_SURF_MEMORY_TYPE mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
     // Parse command-line arguments
     if(argc < 1) {
         ShowHelpAndExit();
@@ -75,11 +79,22 @@ int main(int argc, char **argv) {
             deviceId = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-crop")) {
+            if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
+                ShowHelpAndExit("-crop");
+            }
+            if ((crop_rect.r - crop_rect.l) % 2 == 1 || (crop_rect.b - crop_rect.t) % 2 == 1) {
+                std::cout << "output crop rectangle must have width and height of even numbers" << std::endl;
+                exit(1);
+            }
+            p_crop_rect = &crop_rect;
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
 
     VideoDemuxer demuxer(inputFilePath.c_str());
-    //VideoDecode viddec(deviceId);
+    RocVideoDecoder viddec(deviceId, mem_type, AVCodec2RocDecVideoCodec(demuxer.GetCodecID()), false, true, p_crop_rect);
 
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
