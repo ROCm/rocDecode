@@ -33,13 +33,14 @@ rocDecStatus ROCDECAPI
 rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci) {
     rocDecDecoderHandle handle = nullptr;
     try {
-        handle = new DecHandle();
+        handle = new DecHandle(*pdci);
     } 
     catch(const std::exception& e) {
         ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        return ROCDEC_NOT_INITIALIZED;
     }
     *phDecoder = handle;
-    return ROCDEC_SUCCESS;
+    return static_cast<DecHandle *>(handle)->roc_decoder->InitializeDecoder();
 }
 
 /*****************************************************************************************************/

@@ -82,6 +82,28 @@ public:
             return ROCDEC_DEVICE_INVALID;
         }
     }
+    bool IsCodecConfigSupported(std::string gcn_arch_name, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
+        std::lock_guard<std::mutex> lock(mutex);
+        auto it = vcn_spec_table.find(gcn_arch_name);
+        if (it != vcn_spec_table.end()) {
+            const VcnCodecsSpec& vcn_spec = it->second;
+            auto it1 = vcn_spec.codecs_spec.find(codec_type);
+            if (it1 != vcn_spec.codecs_spec.end()) {
+                const CodecSpec& codec_spec = it1->second;
+                auto it_chroma_format = std::find(codec_spec.chroma_format.begin(), codec_spec.chroma_format.end(), chroma_format);
+                auto it_bitdepth_minus8 = std::find(codec_spec.bitdepth_minus8.begin(), codec_spec.bitdepth_minus8.end(), bit_depth_minus8);
+                if (it_chroma_format != codec_spec.chroma_format.end() && it_bitdepth_minus8 != codec_spec.bitdepth_minus8.end()) {
+                    return (codec_spec.output_format_mask & (static_cast<int>(output_format) + 1));
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 private:
     std::unordered_map<std::string, VcnCodecsSpec> vcn_spec_table;
     std::mutex mutex;

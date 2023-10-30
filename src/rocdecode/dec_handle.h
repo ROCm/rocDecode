@@ -32,7 +32,7 @@ THE SOFTWARE.
  */
 struct DecHandle {
 
-    explicit DecHandle() : roc_decoder(std::make_shared<RocDecoder>()) {};   //constructor
+    explicit DecHandle(RocdecDecoderCreateInfo& decoder_create_info) : roc_decoder(std::make_shared<RocDecoder>(decoder_create_info)) {};   //constructor
     ~DecHandle() { clear_errors(); }
     std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
     bool no_error() { return error.empty(); }

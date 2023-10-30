@@ -32,11 +32,13 @@ THE SOFTWARE.
 #include <map>
 #include "../api/rocdecode.h"
 #include <hip/hip_runtime.h>
+#include "vaapi/vaapi_videodecoder.h"
 
 class RocDecoder {
 public:
-    RocDecoder(int device_id = 0);
+    RocDecoder(RocdecDecoderCreateInfo &decoder_create_info);
     ~RocDecoder();
+    rocDecStatus InitializeDecoder();
     rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
     rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
     rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
@@ -44,11 +46,10 @@ public:
     rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
 private:
-    rocDecStatus initHIP(int device_id);
-    void initDRMnodes();
+    rocDecStatus InitHIP(int device_id);
     int num_devices_;
     int device_id_;
+    VaapiVideoDecoder va_video_decoder_;
     hipDeviceProp_t hip_dev_prop_;
     hipStream_t hip_stream_;
-    std::vector<std::string> drm_nodes_;
 };

@@ -167,6 +167,8 @@ typedef struct _RocdecDecodeCaps {
 //! This structure is used in rocDecCreateDecoder API
 /**************************************************************************************************************/
 typedef struct _RocdecDecoderCreateInfo {
+    uint8_t deviceid;                /**< IN: the device id for which a decoder should be created
+                                                 0 for the first device, 1 for the second device on the system, etc.*/
     uint32_t ulWidth;                /**< IN: Coded sequence width in pixels                                             */
     uint32_t ulHeight;               /**< IN: Coded sequence height in pixels                                            */
     uint32_t ulNumDecodeSurfaces;    /**< IN: Maximum number of internal decode surfaces                                 */

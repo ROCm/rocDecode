@@ -20,13 +20,76 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include <assert.h>
-#include <stdint.h>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <string.h>
-
-#include "../commons.h"
 #include "vaapi_videodecoder.h"
+
+VaapiVideoDecoder::VaapiVideoDecoder(RocdecDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
+    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone} {};
+
+VaapiVideoDecoder::~VaapiVideoDecoder() {
+    if (drm_fd_ != -1) {
+        close(drm_fd_);
+    }
+    if (va_display_) {
+        if (va_config_id_)
+            vaDestroyConfig(va_display_, va_config_id_);
+        vaTerminate(va_display_);
+    }
+}
+
+rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = InitVAAPI();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to initilize the VAAPI!" + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateDecoderConfig(gcn_arch_name);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create a VAAPI decoder configuration" + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    return rocdec_status;
+}
+
+rocDecStatus VaapiVideoDecoder::InitVAAPI() {
+    std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.deviceid);
+    drm_fd_ = open(drm_node.c_str(), O_RDWR);
+    if (drm_fd_ < 0) {
+        ERR("ERROR: failed to open drm node " + drm_node);
+        return ROCDEC_NOT_INITIALIZED;
+    }
+    va_display_ = vaGetDisplayDRM(drm_fd_);
+    vaSetInfoCallback(va_display_, NULL, NULL);
+    int major_version = 0, minor_version = 0;
+    CHECK_VAAPI(vaInitialize(va_display_, &major_version, &minor_version));
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::CreateDecoderConfig(std::string gcn_arch_name) {
+    //check to see if the requested codec config is supported
+    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInastance();
+    if (!vcn_codec_spec.IsCodecConfigSupported(gcn_arch_name, decoder_create_info_.CodecType, decoder_create_info_.ChromaFormat,
+        decoder_create_info_.bitDepthMinus8, decoder_create_info_.OutputFormat)) {
+        ERR("ERROR: the codec config combination is not supported!");
+        return ROCDEC_NOT_SUPPORTED;
+    }
+    switch (decoder_create_info_.CodecType) {
+        case rocDecVideoCodec_HEVC:
+            if (decoder_create_info_.bitDepthMinus8 == 0) {
+                va_profile_ = VAProfileHEVCMain;
+            } else if (decoder_create_info_.bitDepthMinus8 == 2) {
+                va_profile_ = VAProfileHEVCMain10;
+            }
+            break;
+        case rocDecVideoCodec_H264:
+            va_profile_ = VAProfileH264Main;
+            break;
+        default:
+            ERR("ERROR: the codec type is not supported!");
+            return ROCDEC_NOT_SUPPORTED;
+    }
+    va_config_attrib_.type = VAConfigAttribRTFormat;
+    CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
+    CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
+    return ROCDEC_SUCCESS;
+}
