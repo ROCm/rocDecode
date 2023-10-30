@@ -56,5 +56,5 @@ private:
     VAConfigID va_config_id_;
     VAProfile va_profile_;
     rocDecStatus InitVAAPI();
-    rocDecStatus CreateDecoderConfig(std::string gcn_arch_name);
+    rocDecStatus CreateDecoderConfig();
 };
