@@ -532,17 +532,15 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } PpsData;
 
-    /*! \brief Structure for Slice Data
+    /*! \brief Picture info for decoding process
      */
     typedef struct {
-        uint32_t prev_poc;
-        uint32_t curr_poc;
-        uint32_t prev_poc_lsb;
-        uint32_t prev_poc_msb;
-        uint32_t curr_poc_lsb;
-        uint32_t curr_poc_msb;
-        uint32_t max_poc_lsb;
-    } SliceData;
+
+        // POC info
+        int32_t pic_order_cnt;  // PicOrderCnt
+        int32_t prev_poc_lsb;  // prevPicOrderCntLsb
+        int32_t prev_poc_msb;  // prevPicOrderCntMsb
+    } HevcPicInfo;
 
     /*! \brief Structure for Slice Header Data
      */
@@ -634,6 +632,7 @@ protected:
     size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
 
     // Data members of HEVC class
+    NalUnitHeader       nal_unit_header_;
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
     int32_t             m_active_pps_id_;
@@ -642,7 +641,7 @@ protected:
     PpsData*            m_pps_;
     SliceHeaderData*    m_sh_;
     SliceHeaderData*    m_sh_copy_;
-    SliceData*          m_slice_;
+    HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
@@ -768,6 +767,10 @@ protected:
      */
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
 
+    /*! \brief Function to calculate the picture order count of the current picture
+     */
+    void CalculateCurrPOC();
+
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] frame_data_size Size of the input stream
@@ -809,11 +812,6 @@ private:
      * \return Returns pointer to the allocated memory for <tt>PpsData</tt>
      */
     PpsData*         AllocPps();
-
-    /*! \brief Function to allocate memory for Slice Structure
-     * \return Returns pointer to the allocated memory for <tt>SliceData</tt>
-     */
-    SliceData*       AllocSlice();
 
     /*! \brief Function to allocate memory for Slice Header Structure
      * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>

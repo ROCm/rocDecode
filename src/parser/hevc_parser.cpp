@@ -32,7 +32,8 @@ HEVCVideoParser::HEVCVideoParser() {
     m_pps_ = NULL;
     m_sh_ = NULL;
     m_sh_copy_ = NULL;
-    m_slice_ = NULL;
+
+    memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
 }
 
 rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
@@ -86,9 +87,6 @@ HEVCVideoParser::~HEVCVideoParser() {
     if (m_sh_copy_) {
         delete m_sh_copy_;
     }
-    if (m_slice_) {
-        delete m_slice_;
-    }
 }
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
@@ -127,18 +125,6 @@ HEVCVideoParser::PpsData* HEVCVideoParser::AllocPps() {
     return p;
 }
 
-HEVCVideoParser::SliceData* HEVCVideoParser::AllocSlice() {
-    SliceData *p = nullptr;
-    try {
-        p = new SliceData;
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc Slice Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(SliceData));
-    return p;
-}
-
 HEVCVideoParser::SliceHeaderData* HEVCVideoParser::AllocSliceHeader() {
     SliceHeaderData *p = nullptr;
     try {
@@ -156,7 +142,6 @@ ParserResult HEVCVideoParser::Init() {
     m_vps_ = AllocVps();
     m_sps_ = AllocSps();
     m_pps_ = AllocPps();
-    m_slice_ = AllocSlice();
     m_sh_ = AllocSliceHeader();
     m_sh_copy_ = AllocSliceHeader();
     return PARSER_OK;
@@ -248,7 +233,6 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
-    NalUnitHeader nal_unit_header;
 
     frame_data_buffer_ptr_ = (uint8_t*)p_stream;
     frame_data_size_ = frame_data_size;
@@ -272,8 +256,8 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
             // start code + NAL unit header = 5 bytes
             int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
-            nal_unit_header = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
-            switch (nal_unit_header.nal_unit_type) {
+            nal_unit_header_ = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
+            switch (nal_unit_header_.nal_unit_type) {
                 case NAL_UNIT_VPS: {
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
@@ -315,7 +299,10 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
                     if (slice_num_ == 0) {
-                        ParseSliceHeader(nal_unit_header.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+                        ParseSliceHeader(nal_unit_header_.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
+
+                        // Get POC
+                        CalculateCurrPOC();
                     }
                     slice_num_++;
                     break;
@@ -1192,38 +1179,10 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
         if (sps_ptr->separate_colour_plane_flag) {
             m_sh_->colour_plane_id = Parser::ReadBits(nalu, offset, 2);
         }
-        if (nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP) {
-            m_slice_->curr_poc = 0;
-            m_slice_->prev_poc = m_slice_->curr_poc;
-            m_slice_->curr_poc_lsb = 0;
-            m_slice_->curr_poc_msb = 0;
-            m_slice_->prev_poc_lsb = m_slice_->curr_poc_lsb;
-            m_slice_->prev_poc_msb = m_slice_->curr_poc_msb;
-        }
-        else {
+
+        if (nal_unit_type != NAL_UNIT_CODED_SLICE_IDR_W_RADL && nal_unit_type != NAL_UNIT_CODED_SLICE_IDR_N_LP) {
             //length of slice_pic_order_cnt_lsb is log2_max_pic_order_cnt_lsb_minus4 + 4 bits.
             m_sh_->slice_pic_order_cnt_lsb = Parser::ReadBits(nalu, offset, (sps_ptr->log2_max_pic_order_cnt_lsb_minus4 + 4));
-
-            //get POC
-            m_slice_->curr_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
-            m_slice_->max_poc_lsb = 1 << (sps_ptr->log2_max_pic_order_cnt_lsb_minus4 + 4);
-
-            if (nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_unit_type < NAL_UNIT_CODED_SLICE_CRA_NUT) {
-                m_slice_->curr_poc_msb = 0;
-            }
-            else {
-                if ((m_slice_->curr_poc_lsb < m_slice_->prev_poc_lsb) && ((m_slice_->prev_poc_lsb - m_slice_->curr_poc_lsb) >= (m_slice_->max_poc_lsb / 2)))
-                    m_slice_->curr_poc_msb = m_slice_->prev_poc_msb + m_slice_->max_poc_lsb;
-                else if ((m_slice_->curr_poc_lsb > m_slice_->prev_poc_lsb) && ((m_slice_->curr_poc_lsb - m_slice_->prev_poc_lsb) > (m_slice_->max_poc_lsb / 2)))
-                    m_slice_->curr_poc_msb = m_slice_->prev_poc_msb - m_slice_->max_poc_lsb;
-                else
-                    m_slice_->curr_poc_msb = m_slice_->prev_poc_msb;
-            }
-
-            m_slice_->curr_poc = m_slice_->curr_poc_lsb + m_slice_->curr_poc_msb;
-            m_slice_->prev_poc = m_slice_->curr_poc;
-            m_slice_->prev_poc_lsb = m_slice_->curr_poc_lsb;
-            m_slice_->prev_poc_msb = m_slice_->curr_poc_msb;
 
             m_sh_->short_term_ref_pic_set_sps_flag = Parser::GetBit(nalu, offset);
             int32_t pos = offset;
@@ -1429,6 +1388,37 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
 #endif // DBGINFO
 
     return false;
+}
+
+void HEVCVideoParser::CalculateCurrPOC() {
+    if (nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP) {
+        curr_pic_info_.pic_order_cnt = 0;
+        curr_pic_info_.prev_poc_lsb = 0;
+        curr_pic_info_.prev_poc_msb = 0;
+    }
+    else {
+        int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
+        int poc_msb;  // PicOrderCntMsb
+        // If the current picture is an IRAP picture with NoRaslOutputFlag equal to 1, PicOrderCntMsb is set equal to 0.
+        if (nal_unit_header_.nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_unit_header_.nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23) {
+            poc_msb = 0;
+        }
+        else {
+            if ((m_sh_->slice_pic_order_cnt_lsb < curr_pic_info_.prev_poc_lsb) && ((curr_pic_info_.prev_poc_lsb - m_sh_->slice_pic_order_cnt_lsb) >= (max_poc_lsb / 2))) {
+                poc_msb = curr_pic_info_.prev_poc_msb + max_poc_lsb;
+            }
+            else if ((m_sh_->slice_pic_order_cnt_lsb > curr_pic_info_.prev_poc_lsb) && ((m_sh_->slice_pic_order_cnt_lsb - curr_pic_info_.prev_poc_lsb) > (max_poc_lsb / 2))) {
+                poc_msb = curr_pic_info_.prev_poc_msb - max_poc_lsb;
+            }
+            else {
+                poc_msb = curr_pic_info_.prev_poc_msb;
+            }
+        }
+
+        curr_pic_info_.pic_order_cnt = poc_msb + m_sh_->slice_pic_order_cnt_lsb;
+        curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
+        curr_pic_info_.prev_poc_msb = poc_msb;
+    }
 }
 
 size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
