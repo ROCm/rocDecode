@@ -26,11 +26,11 @@ THE SOFTWARE.
 
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci)
+//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci)
 //! Create the decoder object based on pdci. A handle to the created decoder is returned
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci) {
+rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci) {
     rocDecDecoderHandle handle = nullptr;
     try {
         handle = new DecHandle(*pdci);

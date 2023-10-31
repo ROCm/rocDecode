@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #include "vaapi_videodecoder.h"
 
-VaapiVideoDecoder::VaapiVideoDecoder(RocdecDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
+VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone} {};
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {

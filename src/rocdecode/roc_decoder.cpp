@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include "../commons.h"
 #include "roc_decoder.h"
 
-RocDecoder::RocDecoder(RocdecDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, device_id_{decoder_create_info.deviceid} {}
+RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, device_id_{decoder_create_info.deviceid} {}
 
  RocDecoder::~RocDecoder() {
     // todo::

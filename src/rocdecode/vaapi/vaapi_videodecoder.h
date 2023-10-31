@@ -45,11 +45,11 @@ THE SOFTWARE.
 
 class VaapiVideoDecoder {
 public:
-    VaapiVideoDecoder(RocdecDecoderCreateInfo &decoder_create_info);
+    VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
     rocDecStatus InitializeDecoder(std::string gcn_arch_name);
 private:
-    RocdecDecoderCreateInfo decoder_create_info_;
+    RocDecoderCreateInfo decoder_create_info_;
     int drm_fd_;
     VADisplay va_display_;
     VAConfigAttrib va_config_attrib_;

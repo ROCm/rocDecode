@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 class RocDecoder {
 public:
-    RocDecoder(RocdecDecoderCreateInfo &decoder_create_info);
+    RocDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~RocDecoder();
     rocDecStatus InitializeDecoder();
     rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
