@@ -49,7 +49,7 @@ struct VcnCodecsSpec {
 // The RocDecVcnCodecSpec singleton class for providing access to the the vcn_spec_table
 class RocDecVcnCodecSpec {
 public:
-    static RocDecVcnCodecSpec& GetInastance() {
+    static RocDecVcnCodecSpec& GetInstance() {
         static RocDecVcnCodecSpec instance;
         return instance;
     }

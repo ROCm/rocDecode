@@ -88,7 +88,7 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
         return ROCDEC_DEVICE_INVALID;
     }
 
-    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInastance();
+    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
     return vcn_codec_spec.GetDecoderCaps(hip_dev_prop.gcnArchName, pdc);
 }
 
