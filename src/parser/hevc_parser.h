@@ -607,6 +607,13 @@ protected:
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
     } SliceHeaderData;
 
+    typedef struct {
+        uint8_t payload_type;
+        uint8_t reserved[3];
+        uint32_t payload_size;
+        uint32_t pic_idx; // maybe POC value from Slice Header
+    } SeiMessageData;
+
     /*! \brief Inline function to Parse the NAL Unit Header
      * 
      * \param [in] nal_unit A pointer of <tt>uint8_t</tt> containing the Demuxed output stream 
@@ -643,9 +650,11 @@ protected:
     SliceHeaderData*    m_sh_;
     SliceHeaderData*    m_sh_copy_;
     SliceData*          m_slice_;
+    SeiMessageData*     m_sei_message_;
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
+    int                 sei_message_count_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
@@ -768,6 +777,13 @@ protected:
      */
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
 
+    /*! \brief Function to parse Sei Message Info
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
+    void ParseSeiMessage(uint8_t *nalu, size_t size);
+
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] frame_data_size Size of the input stream
@@ -787,6 +803,7 @@ protected:
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
     void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
     void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
+    void PrintSeiMessage(HEVCVideoParser::SeiMessageData *sei_message_ptr);
 #endif // DBGINFO
 
 private:
@@ -819,6 +836,11 @@ private:
      * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
      */
     SliceHeaderData* AllocSliceHeader();
+
+    /*! \brief Function to allocate memory for Sei Message Structure
+     * \return Returns pointer to the allocated memory for <tt>SeiMessageData</tt>
+     */
+    SeiMessageData* AllocSeiMessage();
 
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);

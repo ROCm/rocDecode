@@ -89,6 +89,9 @@ HEVCVideoParser::~HEVCVideoParser() {
     if (m_slice_) {
         delete m_slice_;
     }
+    if (m_sei_message_) {
+        delete m_sei_message_;
+    }
 }
 
 HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
@@ -151,6 +154,18 @@ HEVCVideoParser::SliceHeaderData* HEVCVideoParser::AllocSliceHeader() {
     return p;
 }
 
+HEVCVideoParser::SeiMessageData* HEVCVideoParser::AllocSeiMessage() {
+    SeiMessageData *p = nullptr;
+    try {
+        p = new SeiMessageData;
+    }
+    catch(const std::exception& e) {
+        ERR(STR("Failed to alloc Sei Message Data, ") + STR(e.what()))
+    }
+    memset(p, 0, sizeof(SeiMessageData));
+    return p;
+}
+
 ParserResult HEVCVideoParser::Init() {
     b_new_picture_ = false;
     m_vps_ = AllocVps();
@@ -159,6 +174,7 @@ ParserResult HEVCVideoParser::Init() {
     m_slice_ = AllocSlice();
     m_sh_ = AllocSliceHeader();
     m_sh_copy_ = AllocSliceHeader();
+    m_sei_message_ = AllocSeiMessage();
     return PARSER_OK;
 }
 
@@ -258,6 +274,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
     next_start_code_offset_ = 0;
 
     slice_num_ = 0;
+    sei_message_count_ = 0;
 
     do {
         ret = GetNalUnit();
@@ -321,6 +338,14 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     break;
                 }
                 
+                case NAL_UNIT_PREFIX_SEI: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
+                    ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
+                    sei_message_count_++;
+                    break;
+                }
+
                 default:
                     // Do nothing for now.
                     break;
@@ -1431,6 +1456,30 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     return false;
 }
 
+void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
+    size_t offset = 0;
+    uint32_t sei_message_id = Parser::ExpGolomb::ReadUe(nalu, offset);
+    SeiMessageData *sei_message_ptr = &m_sei_message_[sei_message_id];
+    memset(sei_message_ptr, 0, sizeof(SeiMessageData));
+
+    sei_message_ptr->payload_type = 0;
+    sei_message_ptr->payload_size = 0;
+    uint8_t temp_byte;
+    temp_byte = Parser::GetBit(nalu, offset);
+    while (temp_byte == 0XFF) {
+        sei_message_ptr->payload_type += 255;
+        temp_byte = Parser::GetBit(nalu, offset);
+    }
+    sei_message_ptr->payload_type += temp_byte;
+    sei_message_ptr->payload_size = 0;
+    temp_byte = Parser::GetBit(nalu, offset);
+    while (temp_byte == 0XFF) {
+        sei_message_ptr->payload_size += 255;
+        temp_byte = Parser::GetBit(nalu, offset);
+    }
+    sei_message_ptr->payload_size += temp_byte;
+}
+
 size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
     int count = 0;
     if (end_bytepos < begin_bytepos) {
@@ -1855,4 +1904,15 @@ void HEVCVideoParser::PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_p
     }
     MSG("");
 }
+
+void HEVCVideoParser::PrintSeiMessage(HEVCVideoParser::SeiMessageDara *sei_message_ptr) {
+    MSG("=== hevc_sei_message_info ===");
+    MSG("payload_type               = " <<  sei_message_ptr->payload_type);
+    MSG("payload_size               = " <<  sei_message_ptr->payload_size);
+    MSG("pic_idx                    = " <<  sei_message_ptr->pic_idx);
+    MSG_NO_NEWLINE("reserved[3]: ");
+    for(int i = 0; i < 3; i++) {
+        MSG_NO_NEWLINE(" " << sei_message_ptr->reserved[i]);
+    }
+    MSG("");
 #endif // DBGINFO
