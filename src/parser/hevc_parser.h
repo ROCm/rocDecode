@@ -611,7 +611,6 @@ protected:
         uint8_t payload_type;
         uint8_t reserved[3];
         uint32_t payload_size;
-        uint32_t pic_idx; // maybe POC value from Slice Header
     } SeiMessageData;
 
     /*! \brief Inline function to Parse the NAL Unit Header
@@ -844,4 +843,5 @@ private:
 
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
+    void FillSeiMessageCallbackFn(SeiMessageData* sei_message_data);
 };

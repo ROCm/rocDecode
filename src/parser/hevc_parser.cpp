@@ -67,6 +67,8 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         new_sps_activated_ = false;
     }
 
+    // TODO: find condition to call Sei message info callback function
+
     return ROCDEC_SUCCESS;
 }
 
@@ -180,7 +182,6 @@ ParserResult HEVCVideoParser::Init() {
 
 void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
-    // TODO: Check the two frame_rate - setting default
     video_format_params_.frame_rate.numerator = 0;
     video_format_params_.frame_rate.denominator = 0;
     video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
@@ -235,7 +236,6 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.display_area.bottom = video_format_params_.coded_height;
     }
     
-    // TODO: Check bitrate - setting default
     video_format_params_.bitrate = 0;
     if (sps_data->vui_parameters_present_flag) {
         if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
@@ -255,11 +255,27 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.video_signal_description.matrix_coefficients = sps_data->vui_parameters.matrix_coeffs;
         video_format_params_.video_signal_description.reserved_zero_bits = 0;
     }
-    // TODO: check seqhdr_data_length
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
     pfn_sequece_cb_ = PFNVIDSEQUENCECALLBACK(&video_format_params_);
+}
+
+void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data) {
+    sei_message_info_params_.sei_message_count = sei_message_count_;
+    sei_message_info_params_.pSEIMessage->sei_message_type = sei_message_data->payload_type;
+    sei_message_info_params_.pSEIMessage->sei_message_size = sei_message_data->payload_size;
+    // TODO: check reserve[3] values
+    for (int i = 0; i < 3; i++) {
+        sei_message_info_params_.pSEIMessage->reserved[i] = 0;
+    }
+    sei_message_info_params_.pSEIData = &sei_message_data;
+
+    // TODO: check picIdx value
+    sei_message_info_params_.picIdx = 0;
+
+    // callback function with RocdecSeiMessageInfo params filled out
+    pfn_get_sei_message_cb_ = PFNVIDSEIMSGCALLBACK(&sei_message_info_params_);
 }
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
