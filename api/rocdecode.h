@@ -102,7 +102,7 @@ typedef enum rocDecVideoCodec_enum {
 /*********************************************************************************/
 //! \enum rocDecVideoSurfaceFormat
 //! Video surface format enums used for output format of decoded output
-//! These enums are used in RocdecDecoderCreateInfo structure
+//! These enums are used in RocDecoderCreateInfo structure
 /*********************************************************************************/
 typedef enum rocDecVideoSurfaceFormat_enum {
     rocDecVideoSurfaceFormat_NV12=0,          /**< Semi-Planar YUV [Y plane followed by interleaved UV plane]     */
@@ -163,10 +163,12 @@ typedef struct _RocdecDecodeCaps {
 } RocdecDecodeCaps;
 
 /**************************************************************************************************************/
-//! \struct RocdecDecoderCreateInfo
+//! \struct RocDecoderCreateInfo
 //! This structure is used in rocDecCreateDecoder API
 /**************************************************************************************************************/
-typedef struct _RocdecDecoderCreateInfo {
+typedef struct _RocDecoderCreateInfo {
+    uint8_t deviceid;                /**< IN: the device id for which a decoder should be created
+                                                 0 for the first device, 1 for the second device on the system, etc.*/
     uint32_t ulWidth;                /**< IN: Coded sequence width in pixels                                             */
     uint32_t ulHeight;               /**< IN: Coded sequence height in pixels                                            */
     uint32_t ulNumDecodeSurfaces;    /**< IN: Maximum number of internal decode surfaces                                 */
@@ -207,7 +209,7 @@ typedef struct _RocdecDecoderCreateInfo {
     } target_rect;
 
     uint32_t Reserved2[4];                /**< Reserved for future use - set to zero */
-} RocdecDecoderCreateInfo;
+} RocDecoderCreateInfo;
 
 /*********************************************************************************************************/
 //! \struct RocdecDecodeStatus
@@ -226,8 +228,8 @@ typedef struct _RocdecDecodeStatus {
 //! This structure is used in rocDecReconfigureDecoder() API
 /****************************************************/
 typedef struct _RocdecReconfigureDecoderInfo {
-    uint32_t ulWidth;             /**< IN: Coded sequence width in pixels, MUST be < = ulMaxWidth defined at RocdecDecoderCreateInfo  */
-    uint32_t ulHeight;            /**< IN: Coded sequence height in pixels, MUST be < = ulMaxHeight defined at RocdecDecoderCreateInfo  */
+    uint32_t ulWidth;             /**< IN: Coded sequence width in pixels, MUST be < = ulMaxWidth defined at RocDecoderCreateInfo  */
+    uint32_t ulHeight;            /**< IN: Coded sequence height in pixels, MUST be < = ulMaxHeight defined at RocDecoderCreateInfo  */
     uint32_t ulTargetWidth;       /**< IN: Post processed output width */
     uint32_t ulTargetHeight;      /**< IN: Post Processed output height */
     uint32_t ulNumDecodeSurfaces; /**< IN: Maximum number of internal decode surfaces */
@@ -701,10 +703,10 @@ typedef struct _RocdecProcParams
 /***********************************************************************************************************/
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci)
+//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci)
 //! Create the decoder object based on pdci. A handle to the created decoder is returned
 /*****************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci);
+extern rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci);
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle hDecoder)
