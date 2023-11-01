@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 #pragma once
 
+#include <va/va.h>
 #include "../commons.h"
 #include "roc_video_parser.h"
 
@@ -41,6 +42,8 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+#define HVC_MAX_DPB_FRAMES 16  // (A-2)
+#define HEVC_MAX_NUM_REF_PICS 16
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -248,8 +251,8 @@ protected:
      */
     typedef struct {
         int32_t num_of_pics;
-        int32_t pocs[32];
-        bool used_by_curr_pic[32];
+        int32_t pocs[32];  // PocLsbLt
+        bool used_by_curr_pic[32];  // UsedByCurrPicLt
     } H265LongTermRPS;
 
     /*! \brief Structure for Sub Layer Hypothetical Reference Decoder Parameters
@@ -532,16 +535,6 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } PpsData;
 
-    /*! \brief Picture info for decoding process
-     */
-    typedef struct {
-
-        // POC info
-        int32_t pic_order_cnt;  // PicOrderCnt
-        int32_t prev_poc_lsb;  // prevPicOrderCntLsb
-        int32_t prev_poc_msb;  // prevPicOrderCntMsb
-    } HevcPicInfo;
-
     /*! \brief Structure for Slice Header Data
      */
     typedef struct {
@@ -622,6 +615,38 @@ protected:
         return nalu_header;
     }
 
+    enum HevcRefMarking
+    {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
+
+    /*! \brief Picture info for decoding process
+     */
+    typedef struct {
+        VASurfaceID surface_id;
+
+        // POC info
+        int32_t pic_order_cnt;  // PicOrderCnt
+        int32_t prev_poc_lsb;  // prevPicOrderCntLsb
+        int32_t prev_poc_msb;  // prevPicOrderCntMsb
+        uint32_t slice_pic_order_cnt_lsb; // for long term ref pic identification
+
+        uint32_t is_reference;
+        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+    } HevcPicInfo;
+
+    /*! \brief Decoded picture buffer
+     */
+    typedef struct
+    {
+        uint32_t num_pics_not_yet_output;  /// number of pictures in DPB that have not been output yet
+        uint32_t dpb_fullness;  /// number of pictures in DPB
+
+        HevcPicInfo frame_buffer_list[HVC_MAX_DPB_FRAMES];
+    } DecodedPictureBuffer;
+
     /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
      * 
      * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
@@ -647,6 +672,26 @@ protected:
     int                 slice_num_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    // DPB
+    DecodedPictureBuffer dpb_buffer_;
+    // Reference picture set
+    uint32_t num_poc_st_curr_before_;  // NumPocStCurrBefore;
+    uint32_t num_poc_st_curr_after_;  // NumPocStCurrAfter;
+    uint32_t num_poc_st_foll_;  // NumPocStFoll;
+    uint32_t num_poc_lt_curr_;  // NumPocLtCurr;
+    uint32_t num_poc_lt_foll_;  // NumPocLtFoll;
+
+    int32_t poc_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrBefore
+    int32_t poc_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrAfter
+    int32_t poc_st_foll_[HEVC_MAX_NUM_REF_PICS];  // PocStFoll
+    int32_t poc_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // PocLtCurr
+    int32_t poc_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // PocLtFoll
+    uint8_t ref_pic_set_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrBefore
+    uint8_t ref_pic_set_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrAfter
+    uint8_t ref_pic_set_st_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStFoll
+    uint8_t ref_pic_set_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtCurr
+    uint8_t ref_pic_set_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtFoll
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
@@ -770,6 +815,10 @@ protected:
     /*! \brief Function to calculate the picture order count of the current picture
      */
     void CalculateCurrPOC();
+
+    /*! \brief Function to performa decoding process for reference picture set (8.3.2)
+     */
+    void DeocdeRps();
 
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed

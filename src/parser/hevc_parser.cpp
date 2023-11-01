@@ -34,6 +34,7 @@ HEVCVideoParser::HEVCVideoParser() {
     m_sh_copy_ = NULL;
 
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
+    memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
 }
 
 rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
@@ -1232,7 +1233,14 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
                     }
                     m_sh_->delta_poc_msb_present_flag[i] = Parser::GetBit(nalu, offset);
                     if (m_sh_->delta_poc_msb_present_flag[i]) {
-                        m_sh_->delta_poc_msb_cycle_lt[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+                        // Store DeltaPocMsbCycleLt in delta_poc_msb_cycle_lt for later use
+                        int delta_poc_msb_cycle_lt = Parser::ExpGolomb::ReadUe(nalu, offset);
+                        if ( i == 0 || i == m_sh_->num_long_term_sps) {
+                            m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt;
+                        }
+                        else {
+                            m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt + m_sh_->delta_poc_msb_cycle_lt[i - 1];
+                        }
                     }
                 }
             }
@@ -1395,6 +1403,7 @@ void HEVCVideoParser::CalculateCurrPOC() {
         curr_pic_info_.pic_order_cnt = 0;
         curr_pic_info_.prev_poc_lsb = 0;
         curr_pic_info_.prev_poc_msb = 0;
+        curr_pic_info_.slice_pic_order_cnt_lsb = 0;
     }
     else {
         int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
@@ -1418,6 +1427,165 @@ void HEVCVideoParser::CalculateCurrPOC() {
         curr_pic_info_.pic_order_cnt = poc_msb + m_sh_->slice_pic_order_cnt_lsb;
         curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
         curr_pic_info_.prev_poc_msb = poc_msb;
+        curr_pic_info_.slice_pic_order_cnt_lsb = m_sh_->slice_pic_order_cnt_lsb;
+    }
+}
+
+void HEVCVideoParser::DeocdeRps() {
+    int i, j, k;
+    int curr_delta_proc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
+    int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
+    int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
+
+    // When the current picture is an IRAP picture with NoRaslOutputFlag equal to 1, all reference pictures with
+    // nuh_layer_id equal to currPicLayerId currently in the DPB (if any) are marked as "unused for reference".
+    if (nal_unit_header_.nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_unit_header_.nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23) {
+        for (i = 0; i < HVC_MAX_DPB_FRAMES; i++) {
+            dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
+        }
+    }
+
+    if (nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP) {
+        num_poc_st_curr_before_ = 0;
+        num_poc_st_curr_after_ = 0;
+        num_poc_st_foll_ = 0;
+        num_poc_lt_curr_ = 0;
+        num_poc_lt_foll_ = 0;
+        memset(poc_st_curr_before_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
+        memset(poc_st_curr_after_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
+        memset(poc_st_foll_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
+        memset(poc_lt_curr_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
+        memset(poc_lt_foll_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
+    }
+    else {
+        H265ShortTermRPS *rps_ptr = &m_sh_->st_rps;
+        for (i = 0, j = 0, k = 0; i < rps_ptr->num_negative_pics; i++) {
+            if (rps_ptr->used_by_curr_pic[i]) { // UsedByCurrPicS0
+                poc_st_curr_before_[j++] = curr_pic_info_.pic_order_cnt + rps_ptr->delta_poc[i]; // DeltaPocS0
+            }
+            else {
+                poc_st_foll_[k++] = curr_pic_info_.pic_order_cnt + rps_ptr->delta_poc[i];
+            }
+        }
+        num_poc_st_curr_before_ = j;
+
+        // UsedByCurrPicS1 follows UsedByCurrPicS0 in used_by_curr_pic. DeltaPocS1 follows DeltaPocS0 in delta_poc.
+        for (j = 0; i < rps_ptr->num_of_delta_poc; i++ ) {
+            if (rps_ptr->used_by_curr_pic[i]) { // UsedByCurrPicS1
+                poc_st_curr_after_[j++] = curr_pic_info_.pic_order_cnt + rps_ptr->delta_poc[i]; // DeltaPocS1
+            }
+            else {
+                poc_st_foll_[k++] = curr_pic_info_.pic_order_cnt + rps_ptr->delta_poc[i]; // DeltaPocS1
+            }
+        }
+        num_poc_st_curr_after_ = j;
+        num_poc_st_foll_ = k;
+
+        H265LongTermRPS *lt_rps_ptr = &m_sh_->lt_rps;
+        for (i = 0, j = 0, k = 0; i < lt_rps_ptr->num_of_pics; i++) {
+            uint32_t poc_lt = lt_rps_ptr->pocs[i];  // oocLt
+            if (m_sh_->delta_poc_msb_present_flag[i]) {
+                poc_lt += curr_pic_info_.pic_order_cnt - m_sh_->delta_poc_msb_cycle_lt[i] * max_poc_lsb - curr_pic_info_.pic_order_cnt & (max_poc_lsb - 1);
+            }
+
+            if (lt_rps_ptr->used_by_curr_pic[i]) {
+                poc_lt_curr_[j] = poc_lt;
+                curr_delta_proc_msb_present_flag[j++] = m_sh_->delta_poc_msb_present_flag[i];
+            }
+            else {
+                poc_lt_foll_[k] = poc_lt;
+                foll_delta_poc_msb_present_flag[k++] = m_sh_->delta_poc_msb_present_flag[i];
+            }
+        }
+        num_poc_lt_curr_ = j;
+        num_poc_lt_foll_ = k;
+
+        /*
+        * RPS derivation and picture marking
+        */
+        // Init as "no reference picture"
+        for (i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
+            ref_pic_set_st_curr_before_[i] = 0xFF;
+            ref_pic_set_st_curr_after_[i] = 0xFF;
+            ref_pic_set_st_foll_[i] = 0xFF;
+            ref_pic_set_lt_curr_[i] = 0xFF;
+            ref_pic_set_lt_foll_[i] = 0xFF;
+        }
+
+        // Mark all in DPB as unused. We will mark them back while we go through the ref lists. The rest will be actually unused.
+        for (i = 0; i < HVC_MAX_DPB_FRAMES; i++) {
+            dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
+        }
+
+        /// Short term reference pictures
+        for (i = 0; i < num_poc_st_curr_before_; i++) {
+            for (j = 0; j < HVC_MAX_DPB_FRAMES; j++) {
+                if (poc_st_curr_before_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                    ref_pic_set_st_curr_before_[i] = j;  // RefPicSetStCurrBefore. Use DPB buffer index for now
+                    dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
+                    break;
+                }
+            }
+        }
+
+        for (i = 0; i < num_poc_st_curr_after_; i++) {
+            for (j = 0; j < HVC_MAX_DPB_FRAMES; j++) {
+                if (poc_st_curr_after_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                    ref_pic_set_st_curr_after_[i] = j;  // RefPicSetStCurrAfter
+                    dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
+                    break;
+                }
+            }
+        }
+
+        for ( i = 0; i < num_poc_st_foll_; i++ ) {
+            for (j = 0; j < HVC_MAX_DPB_FRAMES; j++) {
+                if (poc_st_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                    ref_pic_set_st_foll_[i] = j;  // RefPicSetStFoll
+                    dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
+                    break;
+                }
+            }
+        }
+
+        /// Long term reference pictures
+        for (i = 0; i < num_poc_lt_curr_; i++) {
+            for (j = 0; j < HVC_MAX_DPB_FRAMES; j++) {
+                if(!curr_delta_proc_msb_present_flag[i]) {
+                    if (poc_lt_curr_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1))) {
+                        ref_pic_set_lt_curr_[i] = j;  // RefPicSetLtCurr
+                        dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
+                        break;
+                    }
+                }
+                else {
+                    if (poc_lt_curr_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                        ref_pic_set_lt_curr_[i] = j;  // RefPicSetLtCurr
+                        dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (i = 0; i < num_poc_lt_foll_; i++) {
+            for (j = 0; j < HVC_MAX_DPB_FRAMES; j++) {
+                if(!foll_delta_poc_msb_present_flag[i]) {
+                    if (poc_lt_foll_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1))) {
+                        ref_pic_set_lt_foll_[i] = j;  // RefPicSetLtFoll
+                        dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
+                        break;
+                    }
+                }
+                else {
+                    if (poc_lt_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                        ref_pic_set_lt_foll_[i] = j;  // RefPicSetLtFoll
+                        dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
