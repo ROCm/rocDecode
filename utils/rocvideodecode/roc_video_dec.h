@@ -48,7 +48,7 @@ typedef enum {
     OUT_SURFACE_MEM_DEV_INTERNAL = 0,       /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
     OUT_SURFACE_MEM_DEV_COPIED  = 1,        /**<  decoded output will be copied to a separate device memory (the user doesn't need to call release) **/
     OUT_SURFACE_MEM_HOST_COPIED  = 2        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
-}OUTPUT_SURF_MEMORY_TYPE;
+} OUTPUT_SURF_MEMORY_TYPE;
 
 #define TOSTR(X) std::to_string(static_cast<int>(X))
 #define STR(X) std::string(X)
@@ -122,6 +122,7 @@ typedef struct OutputSurfaceInfoType {
     uint32_t num_chroma_planes;          /**< Output Chroma number of planes*/
     uint64_t output_surface_size_in_bytes; /**< Output Image Size in Bytes; including both luma and chroma planes*/ 
     rocDecVideoSurfaceFormat surface_format;      /**< Chroma format of the decoded image*/
+    OUTPUT_SURF_MEMORY_TYPE mem_type;             /**< Output mem_type of the surface*/    
 } OutputSurfaceInfo;
 
 class RocVideoDecoder {
@@ -147,6 +148,7 @@ class RocVideoDecoder {
                           uint32_t clk_rate = 1000,  bool force_zero_latency = false);
         ~RocVideoDecoder();
         
+        rocDecVideoCodec GetCodecId() { return codec_id_; }
         /**
          * @brief Get the output frame width
          */
@@ -204,6 +206,15 @@ class RocVideoDecoder {
          * @return std::string 
          */
         const char *GetCodecFmtName(rocDecVideoCodec codec_id);
+
+        /**
+         * @brief function to return the name from surface_format_id
+         * 
+         * @param surface_format_id - enum for surface format
+         * @return const char* 
+         */
+        const char *GetSurfaceFmtName(rocDecVideoSurfaceFormat surface_format_id);
+
         /**
          * @brief Get the pointer to the Output Image Info 
          * 
@@ -257,6 +268,15 @@ class RocVideoDecoder {
          * @param pci_device_id 
          */
         void GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id);
+        
+        /**
+         * @brief Helper function to dump decoded output surface to file
+         * 
+         * @param output_file_name  - Output file name
+         * @param dev_mem           - pointer to surface memory
+         * @param surf_info         - surface info
+         */
+        void SaveSurfToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
 
     private:
         int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
@@ -344,7 +364,7 @@ class RocVideoDecoder {
         uint32_t num_chroma_planes_;
         uint32_t num_components_;
         uint32_t surface_stride_;
-        uint32_t surface_vstride_;      // vertical stride between planes: used when using internal dev memory
+        uint32_t surface_vstride_, chroma_vstride_;      // vertical stride between planes: used when using internal dev memory
         size_t surface_size_;
         OutputSurfaceInfo output_surface_info_;
         std::mutex mtx_vp_frame_;
