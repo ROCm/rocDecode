@@ -22,38 +22,39 @@ THE SOFTWARE.
 
 #pragma once
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fcntl.h>
+#include <unistd.h>
+#include <va/va.h>
+#include <va/va_drm.h>
+#include <va/va_drmcommon.h>
+#include "../roc_decoder_caps.h"
+#include "../../commons.h"
+#include "../../../api/rocdecode.h"
 
-// class implementing highlevel vaapi decoder
-/***********************************************************************************************************/
-//! requirement is as follows
-//!
-//! In order to minimize decode latencies, there should be always at least enough pictures (min 2) in the decode
-//! queue at any time, in order to make sure that all VCN decode engines are always busy.
-//! In addition to the reqular create and destroy: the decoder needs to have a task-Q for submitting decoding jobs from the high level
-//!
-//! Overall data flow:
-//!  - GetCaps(...)
-//!  - CreateVideoDecoder(...)
-//!  - For each picture:
-//!    + submitDecodeTask(0)        /* submit first frame for decoding */
-//!    + ...                        /* submit next frame for decoding */
-//!    + submitDecodeTask(N)        /* N is determined based on available HW decode engines in the system */
-//!
-//!    + QueryStatus(N-4)           /* Query the decode status of N-4 frame */
-//!    + MapVideoFrame(N-4)
-//!    + do some processing in HIP
-//!    + UnmapVideoFrame(N-4)
-//!    + submitDecodeTask(N+1)
-//!    + MapVideoFrame(N-3)
-//!    + ...
-//!  - DestroyVideoDecoder(...)
-//!
-//! NOTE:
-//! - The decoder has to maintain a Q for decode jobs with associated picture buffers
-//! - An intenal thread has to pick up the next available job: If none wait for the Q to fill
-/***********************************************************************************************************/
 
-class vaapiVideoDecoder {
+#define CHECK_VAAPI(call) {                                               \
+    VAStatus va_status = (call);                                          \
+    if (va_status != VA_STATUS_SUCCESS) {                                 \
+        std::cout << "VAAPI failure: 'status#" << va_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;                                      \
+    }                                                                     \
+}
+
+class VaapiVideoDecoder {
 public:
-
+    VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
+    ~VaapiVideoDecoder();
+    rocDecStatus InitializeDecoder(std::string gcn_arch_name);
+private:
+    RocDecoderCreateInfo decoder_create_info_;
+    int drm_fd_;
+    VADisplay va_display_;
+    VAConfigAttrib va_config_attrib_;
+    VAConfigID va_config_id_;
+    VAProfile va_profile_;
+    rocDecStatus InitVAAPI();
+    rocDecStatus CreateDecoderConfig();
 };

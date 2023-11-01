@@ -308,7 +308,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     }
     video_format_ = *pVideoFormat;
 
-    RocdecDecoderCreateInfo videoDecodeCreateInfo = { 0 };
+    RocDecoderCreateInfo videoDecodeCreateInfo = { 0 };
     videoDecodeCreateInfo.CodecType = pVideoFormat->codec;
     videoDecodeCreateInfo.ChromaFormat = pVideoFormat->chroma_format;
     videoDecodeCreateInfo.OutputFormat = video_surface_format_;
