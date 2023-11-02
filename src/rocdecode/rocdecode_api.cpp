@@ -26,20 +26,21 @@ THE SOFTWARE.
 
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci)
+//! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci)
 //! Create the decoder object based on pdci. A handle to the created decoder is returned
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocdecDecoderCreateInfo *pdci) {
+rocDecCreateDecoder(rocDecDecoderHandle *phDecoder, RocDecoderCreateInfo *pdci) {
     rocDecDecoderHandle handle = nullptr;
     try {
-        handle = new DecHandle();
+        handle = new DecHandle(*pdci);
     } 
     catch(const std::exception& e) {
         ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        return ROCDEC_NOT_INITIALIZED;
     }
     *phDecoder = handle;
-    return ROCDEC_SUCCESS;
+    return static_cast<DecHandle *>(handle)->roc_decoder->InitializeDecoder();
 }
 
 /*****************************************************************************************************/
@@ -87,7 +88,7 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
         return ROCDEC_DEVICE_INVALID;
     }
 
-    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInastance();
+    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
     return vcn_codec_spec.GetDecoderCaps(hip_dev_prop.gcnArchName, pdc);
 }
 
