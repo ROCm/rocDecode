@@ -69,7 +69,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
     // Whenever new sei message found
     if (sei_message_count_ > 0) {
-        FillSeiMessageCallbackFn(&m_sei_message_);
+        FillSeiMessageCallbackFn(m_sei_message_);
     }
     return ROCDEC_SUCCESS;
 }
