@@ -33,13 +33,14 @@ THE SOFTWARE.
     #include <experimental/filesystem>
 #endif
 #include "video_demuxer.hpp"
-#include "rocdecode.h"
+#include "roc_video_dec.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
-    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl;
+    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
     exit(0);
 }
 
@@ -49,6 +50,9 @@ int main(int argc, char **argv) {
     int dumpOutputFrames = 0;
     int isOutputRGB = 0;
     int deviceId = 0;
+    Rect crop_rect = {};
+    Rect *p_crop_rect = nullptr;
+    OUTPUT_SURF_MEMORY_TYPE mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
     // Parse command-line arguments
     if(argc < 1) {
         ShowHelpAndExit();
@@ -79,55 +83,64 @@ int main(int argc, char **argv) {
             deviceId = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-crop")) {
+            if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
+                ShowHelpAndExit("-crop");
+            }
+            if ((crop_rect.r - crop_rect.l) % 2 == 1 || (crop_rect.b - crop_rect.t) % 2 == 1) {
+                std::cout << "output crop rectangle must have width and height of even numbers" << std::endl;
+                exit(1);
+            }
+            p_crop_rect = &crop_rect;
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
-
     VideoDemuxer demuxer(inputFilePath.c_str());
-    //VideoDecode viddec(deviceId);
+    rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+    RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, true, p_crop_rect);
 
     std::string deviceName, gcnArchName, drmNode;
     int pciBusID, pciDomainID, pciDeviceID;
 
-    /*viddec.getDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID, drmNode);
-    std::cout << "info: Using GPU device " << deviceId << ": (drm node: " << drmNode << ") " << deviceName << "[" << gcnArchName << "] on PCI bus " <<
+    viddec.GetDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID);
+    std::cout << "info: Using GPU device " << deviceId << deviceName << "[" << gcnArchName << "] on PCI bus " <<
     std::setfill('0') << std::setw(2) << std::right << std::hex << pciBusID << ":" << std::setfill('0') << std::setw(2) <<
     std::right << std::hex << pciDomainID << "." << pciDeviceID << std::dec << std::endl;
-    std::cout << "info: decoding started, please wait!" << std::endl;*/
+    std::cout << "info: decoding started, please wait!" << std::endl;
 
     int nVideoBytes = 0, nFrameReturned = 0, nFrame = 0;
     uint8_t *pVideo = nullptr;
     uint8_t *pFrame = nullptr;
     int64_t pts = 0;
-    //outputImageInfo *pImageInfo;
+    OutputSurfaceInfo *pSurfInfo;
     bool bDecodeOutSemiPlanar = false;
-
     uint32_t width, height;
-    //vcnImageFormat_t subsampling;
     double totalDecTime = 0;
 
     do {
         auto startTime = std::chrono::high_resolution_clock::now();
         demuxer.Demux(&pVideo, &nVideoBytes, &pts);
-        //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
+        nFrameReturned = viddec.DecodeFrame(pVideo, nVideoBytes, 0, pts);
         auto endTime = std::chrono::high_resolution_clock::now();
         auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
         totalDecTime += timePerFrame;
-        /*if (!nFrame && !viddec.getOutputImageInfo(&pImageInfo)){
-            std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
+        if (!nFrame && !viddec.GetOutputSurfaceInfo(&pSurfInfo)) {
+            std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
             break;
-        }*/
+        }
 
         if (dumpOutputFrames) {
             for (int i = 0; i < nFrameReturned; i++) {
-                /*pFrame = viddec.getFrame(&pts);
-                viddec.saveImage(outputFilePath, pFrame, pImageInfo, false);
+                pFrame = viddec.GetFrame(&pts);
+                viddec.SaveSurfToFile(outputFilePath, pFrame, pSurfInfo);
                 // release frame
-                viddec.releaseFrame(pts);*/
+                viddec.ReleaseFrame(pts);
             }
         }
         nFrame += nFrameReturned;
     } while (nVideoBytes);
-
+#if 0   // is flushing required?
      // Flush last frames from the decoder if any
     do {
         // send null packet to decoder to flush out
@@ -135,16 +148,16 @@ int main(int argc, char **argv) {
         int64_t pts = 0;
         //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
     } while (nFrameReturned);
-
-    /*std::cout << "info: Video codec format: " << viddec.getCodecFmtName(viddec.getVcnVideoCodecId()) << std::endl;
-    std::cout << "info: Video size: [ " << pImageInfo->nOutputWidth << ", " << pImageInfo->nOutputHeight << " ]" << std::endl;
-    std::cout << "info: Video pix format: " << viddec.getPixFmtName(pImageInfo->chromaFormat) << std::endl;
-    std::cout << "info: Video Bit depth: " << pImageInfo->nBitDepth << std::endl;
+#endif
+    std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
+    std::cout << "info: Video size: [ " << pSurfInfo->output_width << ", " << pSurfInfo->output_height << " ]" << std::endl;
+    std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(pSurfInfo->surface_format) << std::endl;
+    std::cout << "info: Video Bit depth: " << pSurfInfo->bit_depth << std::endl;
     std::cout << "info: Total frame decoded: " << nFrame << std::endl;
     if (!dumpOutputFrames) {
         std::cout << "info: avg decoding time per frame (ms): " << totalDecTime / nFrame << std::endl;
         std::cout << "info: avg FPS: " << (nFrame / totalDecTime) * 1000 << std::endl;
-    }*/
+    }
 
     return 0;
 }
