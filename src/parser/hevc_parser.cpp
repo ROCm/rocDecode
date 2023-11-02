@@ -304,6 +304,15 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
 
                         // Get POC
                         CalculateCurrPOC();
+
+                        // Decode RPS
+                        DeocdeRps();
+
+                        // Construct ref lists
+                        ConstructRefPicLists();
+
+                        // Find a free buffer in DPM and mark as used
+                        FindFreeBufAndMark();
                     }
                     slice_num_++;
                     break;
@@ -1641,6 +1650,42 @@ void HEVCVideoParser::ConstructRefPicLists() {
             ref_pic_list_1_[rIdx] = m_sh_->ref_pic_list_modification_flag_l1 ? ref_pic_list_temp[m_sh_->list_entry_l1[rIdx]] : ref_pic_list_temp[rIdx];
         }
     }
+}
+
+int HEVCVideoParser::FindFreeBufAndMark() {
+    int i;
+
+    // Clear usage flags. For now, buffers that are unused for refrence are marked as empty.
+    // Todo: implement HEVC DPU output policy
+    dpb_buffer_.dpb_fullness = 0;
+    for (i = 0; i < HVC_MAX_DPB_FRAMES; i++) {
+        if (dpb_buffer_.frame_buffer_list[i].is_reference == kUnusedForReference) {
+            dpb_buffer_.frame_buffer_list[i].use_status = 0;
+        }
+        else {
+            dpb_buffer_.frame_buffer_list[i].use_status = 3;  // frame used
+            dpb_buffer_.dpb_fullness++;
+        }
+    }
+
+    if (dpb_buffer_.dpb_fullness == HVC_MAX_DPB_FRAMES) {
+        // Buffer is full
+        return PARSER_NOT_FOUND;
+    }
+    else {
+        for (i = 0; i < HVC_MAX_DPB_FRAMES; i++) {
+            if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
+                break;
+            }
+        }
+    }
+
+    dpb_buffer_.frame_buffer_list[i] = curr_pic_info_;
+    dpb_buffer_.frame_buffer_list[i].is_reference = kUsedForShortTerm;
+    dpb_buffer_.frame_buffer_list[i].use_status = 3;
+    dpb_buffer_.dpb_fullness++;
+
+    return PARSER_OK;
 }
 
 size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {

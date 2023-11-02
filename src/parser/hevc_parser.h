@@ -830,6 +830,11 @@ protected:
      */
     void ConstructRefPicLists();
 
+    /*! \brief Function to find a free buffer in DPM for the current picture and mark it.
+     * \return Code in ParserResult form.
+     */
+    int FindFreeBufAndMark();
+
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] frame_data_size Size of the input stream
