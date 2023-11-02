@@ -1275,12 +1275,12 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
 
             // 7.3.6.2 Reference picture list modification
             // Calculate NumPicTotalCurr
-            int num_pic_total_curr = 0;
+            num_pic_total_curr_ = 0;
             H265ShortTermRPS *st_rps_ptr = &m_sh_->st_rps;
             // Check the combined list
             for (int i = 0; i < st_rps_ptr->num_of_delta_poc; i++) {
                 if (st_rps_ptr->used_by_curr_pic[i]) {
-                    num_pic_total_curr++;
+                    num_pic_total_curr_++;
                 }
             }
 
@@ -1288,14 +1288,14 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
             // Check the combined list
             for (int i = 0; i < lt_rps_ptr->num_of_pics; i++) {
                 if (lt_rps_ptr->used_by_curr_pic[i]) {
-                    num_pic_total_curr++;
+                    num_pic_total_curr_++;
                 }
             }
 
-            if (pps_ptr->lists_modification_present_flag && num_pic_total_curr > 1)
+            if (pps_ptr->lists_modification_present_flag && num_pic_total_curr_ > 1)
             {
                 int list_entry_bits = 0;
-                while ((1 << list_entry_bits) < num_pic_total_curr) {
+                while ((1 << list_entry_bits) < num_pic_total_curr_) {
                     list_entry_bits++;
                 }
 
@@ -1585,6 +1585,60 @@ void HEVCVideoParser::DeocdeRps() {
                     }
                 }
             }
+        }
+    }
+}
+
+void HEVCVideoParser::ConstructRefPicLists() {
+
+    uint32_t num_rps_curr_temp_list; // NumRpsCurrTempList0 or NumRpsCurrTempList1;
+    int i, j;
+    int rIdx;
+    uint32_t ref_pic_list_temp[HEVC_MAX_NUM_REF_PICS];  // RefPicListTemp0 or RefPicListTemp1
+
+    /// List 0
+    rIdx = 0;
+    num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l0_active_minus1 + 1, num_pic_total_curr_);
+
+    while (rIdx < num_rps_curr_temp_list) {
+        for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
+            ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
+        }
+
+        for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
+            ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_after_[i];
+        }
+
+        for (i = 0; i < num_poc_lt_curr_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
+            ref_pic_list_temp[rIdx] = ref_pic_set_lt_curr_[i];
+        }
+    }
+
+    for( rIdx = 0; rIdx <= m_sh_->num_ref_idx_l0_active_minus1; rIdx++) {
+        ref_pic_list_0_[rIdx] = m_sh_->ref_pic_list_modification_flag_l0 ? ref_pic_list_temp[m_sh_->list_entry_l0[rIdx]] : ref_pic_list_temp[rIdx];
+    }
+
+    /// List 1
+    if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+        rIdx = 0;
+        num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l1_active_minus1 + 1, num_pic_total_curr_);
+
+        while (rIdx < num_rps_curr_temp_list) {
+            for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
+                ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_after_[i];
+            }
+
+            for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++ ) {
+                ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
+            }
+
+            for (i = 0; i < num_poc_lt_curr_ && rIdx < num_rps_curr_temp_list; rIdx++, i++ ) {
+                ref_pic_list_temp[rIdx] = ref_pic_set_lt_curr_[i];
+            }
+        }
+
+        for( rIdx = 0; rIdx <= m_sh_->num_ref_idx_l1_active_minus1; rIdx++) {
+            ref_pic_list_1_[rIdx] = m_sh_->ref_pic_list_modification_flag_l1 ? ref_pic_list_temp[m_sh_->list_entry_l1[rIdx]] : ref_pic_list_temp[rIdx];
         }
     }
 }

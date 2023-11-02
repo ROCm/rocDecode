@@ -675,6 +675,9 @@ protected:
 
     // DPB
     DecodedPictureBuffer dpb_buffer_;
+
+    uint32_t num_pic_total_curr_;  // NumPicTotalCurr
+
     // Reference picture set
     uint32_t num_poc_st_curr_before_;  // NumPocStCurrBefore;
     uint32_t num_poc_st_curr_after_;  // NumPocStCurrAfter;
@@ -692,6 +695,9 @@ protected:
     uint8_t ref_pic_set_st_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStFoll
     uint8_t ref_pic_set_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtCurr
     uint8_t ref_pic_set_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtFoll
+
+    uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
+    uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
@@ -812,13 +818,17 @@ protected:
      */
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
 
-    /*! \brief Function to calculate the picture order count of the current picture
+    /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
      */
     void CalculateCurrPOC();
 
-    /*! \brief Function to performa decoding process for reference picture set (8.3.2)
+    /*! \brief Function to perform decoding process for reference picture set (8.3.2)
      */
     void DeocdeRps();
+
+    /*! \brief Function to perform decoding process for reference picture lists construction (8.3.4)
+     */
+    void ConstructRefPicLists();
 
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
