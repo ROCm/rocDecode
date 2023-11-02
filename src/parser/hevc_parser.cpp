@@ -309,7 +309,9 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         DeocdeRps();
 
                         // Construct ref lists
-                        ConstructRefPicLists();
+                        if(m_sh_->slice_type == HEVC_SLICE_TYPE_P || m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                            ConstructRefPicLists();
+                        }
 
                         // Find a free buffer in DPM and mark as used
                         FindFreeBufAndMark();
