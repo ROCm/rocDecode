@@ -33,6 +33,7 @@ extern "C" {
     #include <va/va_drmcommon.h>
 }
 
+#include "rocdecode.h"
 /*!
  * \file
  * \brief The AMD Video Demuxer for  rocDecode Library.
@@ -50,6 +51,7 @@ class VideoDemuxer {
                 virtual ~StreamProvider() {}
                 virtual int GetData(uint8_t *buf, int buf_size) = 0;
         };
+        AVCodecID GetCodecID() { return av_video_codec_id_; };
         VideoDemuxer(const char *input_file_path) : VideoDemuxer(CreateFmtContextUtil(input_file_path)) {}
         VideoDemuxer(StreamProvider *stream_provider) : VideoDemuxer(CreateFmtContextUtil(stream_provider)) {av_io_ctx_ = av_fmt_input_ctx_->pb;}
         ~VideoDemuxer();
@@ -269,4 +271,19 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(const char *input_file_path)
 
 int VideoDemuxer::ReadPacket(void *data, uint8_t *buf, int buf_size) {
     return ((StreamProvider *)data)->GetData(buf, buf_size);
+}
+
+static inline rocDecVideoCodec AVCodec2RocDecVideoCodec(AVCodecID av_codec) {
+    switch (av_codec) {
+    case AV_CODEC_ID_MPEG1VIDEO : return rocDecVideoCodec_MPEG1;
+    case AV_CODEC_ID_MPEG2VIDEO : return rocDecVideoCodec_MPEG2;
+    case AV_CODEC_ID_MPEG4      : return rocDecVideoCodec_MPEG4;
+    case AV_CODEC_ID_H264       : return rocDecVideoCodec_H264;
+    case AV_CODEC_ID_HEVC       : return rocDecVideoCodec_HEVC;
+    case AV_CODEC_ID_VP8        : return rocDecVideoCodec_VP8;
+    case AV_CODEC_ID_VP9        : return rocDecVideoCodec_VP9;
+    case AV_CODEC_ID_MJPEG      : return rocDecVideoCodec_JPEG;
+    case AV_CODEC_ID_AV1        : return rocDecVideoCodec_AV1;
+    default                     : return rocDecVideoCodec_NumCodecs;
+    }
 }
