@@ -21,7 +21,6 @@ THE SOFTWARE.
 */
 #pragma once
 
-#include <va/va.h>
 #include "../commons.h"
 #include "roc_video_parser.h"
 
@@ -615,8 +614,7 @@ protected:
         return nalu_header;
     }
 
-    enum HevcRefMarking
-    {
+    enum HevcRefMarking {
         kUnusedForReference = 0,
         kUsedForShortTerm = 1,
         kUsedForLongTerm = 2
@@ -625,8 +623,6 @@ protected:
     /*! \brief Picture info for decoding process
      */
     typedef struct {
-        VASurfaceID surface_id;
-
         // POC info
         int32_t pic_order_cnt;  // PicOrderCnt
         int32_t prev_poc_lsb;  // prevPicOrderCntLsb
