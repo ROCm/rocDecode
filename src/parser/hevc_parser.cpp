@@ -67,8 +67,10 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         new_sps_activated_ = false;
     }
 
-    // TODO: find condition to call Sei message info callback function
-
+    // Whenever new sei message found
+    if (sei_message_count_ > 0) {
+        FillSeiMessageCallbackFn(&m_sei_message_);
+    }
     return ROCDEC_SUCCESS;
 }
 
@@ -1494,6 +1496,9 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
         temp_byte = Parser::GetBit(nalu, offset);
     }
     sei_message_ptr->payload_size += temp_byte;
+
+    // copy the payload to buffer
+    memcpy(m_sei_data_, sei_message_ptr, sei_message_ptr->payload_size);
 }
 
 size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {

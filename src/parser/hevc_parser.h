@@ -41,6 +41,7 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+#define SEI_BUF_SIZE  1024
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -650,6 +651,7 @@ protected:
     SliceHeaderData*    m_sh_copy_;
     SliceData*          m_slice_;
     SeiMessageData*     m_sei_message_;
+    uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
