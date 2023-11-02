@@ -243,7 +243,7 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    pfn_sequece_cb_ = PFNVIDSEQUENCECALLBACK(&video_format_params_);
+    pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_);
 }
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
