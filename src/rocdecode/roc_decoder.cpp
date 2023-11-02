@@ -23,14 +23,7 @@ THE SOFTWARE.
 #include "../commons.h"
 #include "roc_decoder.h"
 
-RocDecoder::RocDecoder(int device_id):device_id_ {device_id}, num_devices_{0} {
-  // todo:: 
-    if (ROCDEC_SUCCESS != initHIP(device_id_)) {
-        THROW("Failed to initilize the HIP");
-    }
-    initDRMnodes();
-
-}
+RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, device_id_{decoder_create_info.deviceid} {}
 
  RocDecoder::~RocDecoder() {
     // todo::
@@ -41,6 +34,23 @@ RocDecoder::RocDecoder(int device_id):device_id_ {device_id}, num_devices_{0} {
             ERR("ERROR: hipStreamDestroy failed! (" + TOSTR(hipStatus) + ")");
         }
     }
+ }
+
+ rocDecStatus RocDecoder::InitializeDecoder() {
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = InitHIP(device_id_);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to initilize the HIP!" + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+
+    rocdec_status = va_video_decoder_.InitializeDecoder(hip_dev_prop_.gcnArchName);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to initilize the VAAPI Video decoder!" + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+
+     return rocdec_status;
  }
 
 rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
@@ -80,7 +90,7 @@ rocDecStatus RocDecoder::unMapVideoFrame(void *pMappedDevPtr) {
 }
 
 
-rocDecStatus RocDecoder::initHIP(int device_id) {
+rocDecStatus RocDecoder::InitHIP(int device_id) {
     hipError_t hipStatus = hipSuccess;
     hipStatus = hipGetDeviceCount(&num_devices_);
     rocDecStatus decStatus = ROCDEC_SUCCESS;
@@ -115,11 +125,3 @@ rocDecStatus RocDecoder::initHIP(int device_id) {
     }
     return decStatus;
 }
-
-void RocDecoder::initDRMnodes() {
-    // build the DRM render node names
-    for (int i = 0; i < num_devices_; i++) {
-        drm_nodes_.push_back("/dev/dri/renderD" + std::to_string(128 + i));
-    }
-}
-
