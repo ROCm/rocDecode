@@ -42,6 +42,8 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 #define SEI_BUF_SIZE  1024
+#define HVC_MAX_DPB_FRAMES 16  // (A-2)
+#define HEVC_MAX_NUM_REF_PICS 16
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -249,8 +251,8 @@ protected:
      */
     typedef struct {
         int32_t num_of_pics;
-        int32_t pocs[32];
-        bool used_by_curr_pic[32];
+        int32_t pocs[32];  // PocLsbLt
+        bool used_by_curr_pic[32];  // UsedByCurrPicLt
     } H265LongTermRPS;
 
     /*! \brief Structure for Sub Layer Hypothetical Reference Decoder Parameters
@@ -533,18 +535,6 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } PpsData;
 
-    /*! \brief Structure for Slice Data
-     */
-    typedef struct {
-        uint32_t prev_poc;
-        uint32_t curr_poc;
-        uint32_t prev_poc_lsb;
-        uint32_t prev_poc_msb;
-        uint32_t curr_poc_lsb;
-        uint32_t curr_poc_msb;
-        uint32_t max_poc_lsb;
-    } SliceData;
-
     /*! \brief Structure for Slice Header Data
      */
     typedef struct {
@@ -631,6 +621,35 @@ protected:
         return nalu_header;
     }
 
+    enum HevcRefMarking {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
+
+    /*! \brief Picture info for decoding process
+     */
+    typedef struct {
+        // POC info
+        int32_t pic_order_cnt;  // PicOrderCnt
+        int32_t prev_poc_lsb;  // prevPicOrderCntLsb
+        int32_t prev_poc_msb;  // prevPicOrderCntMsb
+        uint32_t slice_pic_order_cnt_lsb; // for long term ref pic identification
+
+        uint32_t is_reference;
+        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+    } HevcPicInfo;
+
+    /*! \brief Decoded picture buffer
+     */
+    typedef struct
+    {
+        uint32_t num_pics_not_yet_output;  /// number of pictures in DPB that have not been output yet
+        uint32_t dpb_fullness;  /// number of pictures in DPB
+
+        HevcPicInfo frame_buffer_list[HVC_MAX_DPB_FRAMES];
+    } DecodedPictureBuffer;
+
     /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
      * 
      * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
@@ -641,6 +660,7 @@ protected:
     size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
 
     // Data members of HEVC class
+    NalUnitHeader       nal_unit_header_;
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
     int32_t             m_active_pps_id_;
@@ -649,15 +669,41 @@ protected:
     PpsData*            m_pps_;
     SliceHeaderData*    m_sh_;
     SliceHeaderData*    m_sh_copy_;
-    SliceData*          m_slice_;
     SeiMessageData*     m_sei_message_;
     uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
+    HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
     int                 sei_message_count_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    // DPB
+    DecodedPictureBuffer dpb_buffer_;
+
+    uint32_t num_pic_total_curr_;  // NumPicTotalCurr
+
+    // Reference picture set
+    uint32_t num_poc_st_curr_before_;  // NumPocStCurrBefore;
+    uint32_t num_poc_st_curr_after_;  // NumPocStCurrAfter;
+    uint32_t num_poc_st_foll_;  // NumPocStFoll;
+    uint32_t num_poc_lt_curr_;  // NumPocLtCurr;
+    uint32_t num_poc_lt_foll_;  // NumPocLtFoll;
+
+    int32_t poc_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrBefore
+    int32_t poc_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrAfter
+    int32_t poc_st_foll_[HEVC_MAX_NUM_REF_PICS];  // PocStFoll
+    int32_t poc_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // PocLtCurr
+    int32_t poc_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // PocLtFoll
+    uint8_t ref_pic_set_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrBefore
+    uint8_t ref_pic_set_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrAfter
+    uint8_t ref_pic_set_st_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStFoll
+    uint8_t ref_pic_set_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtCurr
+    uint8_t ref_pic_set_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtFoll
+
+    uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
+    uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
@@ -784,6 +830,22 @@ protected:
      * \return No return value
      */
     void ParseSeiMessage(uint8_t *nalu, size_t size);
+    /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
+     */
+    void CalculateCurrPOC();
+
+    /*! \brief Function to perform decoding process for reference picture set (8.3.2)
+     */
+    void DeocdeRps();
+
+    /*! \brief Function to perform decoding process for reference picture lists construction (8.3.4)
+     */
+    void ConstructRefPicLists();
+
+    /*! \brief Function to find a free buffer in DPM for the current picture and mark it.
+     * \return Code in ParserResult form.
+     */
+    int FindFreeBufAndMark();
 
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -827,11 +889,6 @@ private:
      * \return Returns pointer to the allocated memory for <tt>PpsData</tt>
      */
     PpsData*         AllocPps();
-
-    /*! \brief Function to allocate memory for Slice Structure
-     * \return Returns pointer to the allocated memory for <tt>SliceData</tt>
-     */
-    SliceData*       AllocSlice();
 
     /*! \brief Function to allocate memory for Slice Header Structure
      * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>

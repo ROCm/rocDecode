@@ -33,16 +33,16 @@ THE SOFTWARE.
 class RocVideoParser {
 public:
     RocVideoParser();    // default constructor
-    RocVideoParser(RocdecParserParams *pParams) : parser_params_(pParams) {};
+    RocVideoParser(RocdecParserParams *pParams) : parser_params_(*pParams) {};
     virtual ~RocVideoParser() = default ;
-    virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = pParams; };
-    RocdecParserParams *GetParserParams() {return parser_params_;};
+    virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
+    RocdecParserParams *GetParserParams() {return &parser_params_;};
     virtual rocDecStatus Initialize(RocdecParserParams *pParams);
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
     virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
 
 protected:
-    RocdecParserParams *parser_params_ = nullptr;
+    RocdecParserParams parser_params_ = {};
     /**
      * @brief callback function pointers for the parser
      * 
