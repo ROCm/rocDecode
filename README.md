@@ -23,11 +23,6 @@ rocDecode is a high performance video decode SDK for AMD hardware
   sudo apt install libdrm-dev
   ```
 
-* [FFMPEG](https://ffmpeg.org/about.html)
-  ```
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
-  ```
-
 * **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
 
 ## Build instructions:
@@ -41,7 +36,7 @@ Please follow the instructions below to build and install the rocDecode library.
  sudo make install
 ```
 
-* run tests
+* run tests - Requires `FFMPEG` install
   ```
   make test
   ```
@@ -54,6 +49,13 @@ Please follow the instructions below to build and install the rocDecode library.
 
 ## Samples:
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
+
+### Prerequisites
+
+* [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
+  ```
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
+  ```
 
 ## Docker:
 Docker files to build rocDecode containers are available [here](docker/)
