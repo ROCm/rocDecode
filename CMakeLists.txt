@@ -131,6 +131,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode)
+  install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils)
   install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/samples)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
