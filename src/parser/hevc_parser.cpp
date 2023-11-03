@@ -251,6 +251,7 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
 
 void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data) {
     sei_message_info_params_.sei_message_count = sei_message_count_;
+    sei_message_info_params_.pSEIMessage = nullptr;
     sei_message_info_params_.pSEIMessage->sei_message_type = sei_message_data->payload_type;
     sei_message_info_params_.pSEIMessage->sei_message_size = sei_message_data->payload_size;
     // TODO: check reserve[3] values
@@ -263,7 +264,7 @@ void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data)
     sei_message_info_params_.picIdx = 0;
 
     // callback function with RocdecSeiMessageInfo params filled out
-    pfn_get_sei_message_cb_ = PFNVIDSEIMSGCALLBACK(&sei_message_info_params_);
+    pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
