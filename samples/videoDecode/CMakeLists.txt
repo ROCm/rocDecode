@@ -21,7 +21,7 @@
 #
 ################################################################################
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.5)
 project(videodecode)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -50,8 +50,6 @@ find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdec
 if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
     set(ROCDECODE_FOUND TRUE)
     message("-- ${White}Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
-else()
-    message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
 endif()
 
 if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
@@ -70,11 +68,14 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()
+    message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)
         message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
     endif()
     if (NOT FFMPEG_FOUND)
         message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
-    message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
+    if (NOT ROCDECODE_FOUND)
+        message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+    endif()
 endif()

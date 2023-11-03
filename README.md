@@ -50,6 +50,24 @@ Please follow the instructions below to build and install the rocDecode library.
   sudo make test package
   ```
 
+## Verify Installation
+
+The installer will copy
+
+* Libraries into /opt/rocm/lib
+* Header files into /opt/rocm/include/rocdecode
+* Samples folder into /opt/rocm/share/rocdecode
+* Documents folder into /opt/rocm/share/doc/rocdecode
+
+Build and run sample
+
+```
+mkdir rocdecode-sample && cd rocdecode-sample
+cmake /opt/rocm/share/rocdecode/samples/videoDecode/
+make -j8
+./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+```
+
 ## Samples:
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
 

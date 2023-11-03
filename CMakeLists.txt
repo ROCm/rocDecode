@@ -133,6 +133,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode)
   install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils)
   install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/samples)
+  install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/video)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
