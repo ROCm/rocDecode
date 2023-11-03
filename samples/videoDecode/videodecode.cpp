@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
     int pciBusID, pciDomainID, pciDeviceID;
 
     viddec.GetDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID);
-    std::cout << "info: Using GPU device " << deviceId << deviceName << "[" << gcnArchName << "] on PCI bus " <<
+    std::cout << "info: Using GPU device " << deviceId << " - " << deviceName << "[" << gcnArchName << "] on PCI bus " <<
     std::setfill('0') << std::setw(2) << std::right << std::hex << pciBusID << ":" << std::setfill('0') << std::setw(2) <<
     std::right << std::hex << pciDomainID << "." << pciDeviceID << std::dec << std::endl;
     std::cout << "info: decoding started, please wait!" << std::endl;
