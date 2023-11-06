@@ -57,6 +57,7 @@ protected:
     bool new_sps_activated_;
 
     RocdecVideoFormat video_format_params_;
+    RocdecSeiMessageInfo sei_message_info_params_;
 };
 
 enum ParserSeekOrigin {

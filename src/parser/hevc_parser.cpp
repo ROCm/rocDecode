@@ -69,6 +69,10 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         new_sps_activated_ = false;
     }
 
+    // Whenever new sei message found
+    if (sei_message_count_ > 0) {
+        FillSeiMessageCallbackFn(m_sei_message_);
+    }
     return ROCDEC_SUCCESS;
 }
 
@@ -87,6 +91,9 @@ HEVCVideoParser::~HEVCVideoParser() {
     }
     if (m_sh_copy_) {
         delete m_sh_copy_;
+    }
+    if (m_sei_message_) {
+        delete m_sei_message_;
     }
 }
 
@@ -138,6 +145,18 @@ HEVCVideoParser::SliceHeaderData* HEVCVideoParser::AllocSliceHeader() {
     return p;
 }
 
+HEVCVideoParser::SeiMessageData* HEVCVideoParser::AllocSeiMessage() {
+    SeiMessageData *p = nullptr;
+    try {
+        p = new SeiMessageData;
+    }
+    catch(const std::exception& e) {
+        ERR(STR("Failed to alloc Sei Message Data, ") + STR(e.what()))
+    }
+    memset(p, 0, sizeof(SeiMessageData));
+    return p;
+}
+
 ParserResult HEVCVideoParser::Init() {
     b_new_picture_ = false;
     m_vps_ = AllocVps();
@@ -145,12 +164,12 @@ ParserResult HEVCVideoParser::Init() {
     m_pps_ = AllocPps();
     m_sh_ = AllocSliceHeader();
     m_sh_copy_ = AllocSliceHeader();
+    m_sei_message_ = AllocSeiMessage();
     return PARSER_OK;
 }
 
 void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
-    // TODO: Check the two frame_rate - setting default
     video_format_params_.frame_rate.numerator = 0;
     video_format_params_.frame_rate.denominator = 0;
     video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
@@ -205,7 +224,6 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.display_area.bottom = video_format_params_.coded_height;
     }
     
-    // TODO: Check bitrate - setting default
     video_format_params_.bitrate = 0;
     if (sps_data->vui_parameters_present_flag) {
         if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
@@ -225,11 +243,28 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.video_signal_description.matrix_coefficients = sps_data->vui_parameters.matrix_coeffs;
         video_format_params_.video_signal_description.reserved_zero_bits = 0;
     }
-    // TODO: check seqhdr_data_length
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
     pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_);
+}
+
+void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data) {
+    sei_message_info_params_.sei_message_count = sei_message_count_;
+    sei_message_info_params_.pSEIMessage = nullptr;
+    sei_message_info_params_.pSEIMessage->sei_message_type = sei_message_data->payload_type;
+    sei_message_info_params_.pSEIMessage->sei_message_size = sei_message_data->payload_size;
+    // TODO: check reserve[3] values
+    for (int i = 0; i < 3; i++) {
+        sei_message_info_params_.pSEIMessage->reserved[i] = 0;
+    }
+    sei_message_info_params_.pSEIData = &sei_message_data;
+
+    // TODO: check picIdx value
+    sei_message_info_params_.picIdx = 0;
+
+    // callback function with RocdecSeiMessageInfo params filled out
+    pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
@@ -243,6 +278,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
     next_start_code_offset_ = 0;
 
     slice_num_ = 0;
+    sei_message_count_ = 0;
 
     do {
         ret = GetNalUnit();
@@ -320,9 +356,17 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     break;
                 }
                 
-                default:
-                    // Do nothing for now.
+                case NAL_UNIT_PREFIX_SEI: {
+                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
+                    ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
+                    sei_message_count_++;
                     break;
+                }
+
+                default:
+                    ERR(STR("Error: Invalid NAL unit type"));
+                    return false;
             }
         }
 
@@ -1414,6 +1458,33 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
     return false;
 }
 
+void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
+    size_t offset = 0;
+    uint32_t sei_message_id = Parser::ExpGolomb::ReadUe(nalu, offset);
+    SeiMessageData *sei_message_ptr = &m_sei_message_[sei_message_id];
+    memset(sei_message_ptr, 0, sizeof(SeiMessageData));
+
+    sei_message_ptr->payload_type = 0;
+    sei_message_ptr->payload_size = 0;
+    uint8_t temp_byte;
+    temp_byte = Parser::GetBit(nalu, offset);
+    while (temp_byte == 0XFF) {
+        sei_message_ptr->payload_type += 255;
+        temp_byte = Parser::GetBit(nalu, offset);
+    }
+    sei_message_ptr->payload_type += temp_byte;
+    sei_message_ptr->payload_size = 0;
+    temp_byte = Parser::GetBit(nalu, offset);
+    while (temp_byte == 0XFF) {
+        sei_message_ptr->payload_size += 255;
+        temp_byte = Parser::GetBit(nalu, offset);
+    }
+    sei_message_ptr->payload_size += temp_byte;
+
+    // copy the payload to buffer
+    memcpy(m_sei_data_, sei_message_ptr, sei_message_ptr->payload_size);
+}
+
 void HEVCVideoParser::CalculateCurrPOC() {
     if (nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP) {
         curr_pic_info_.pic_order_cnt = 0;
@@ -2128,4 +2199,15 @@ void HEVCVideoParser::PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_p
     }
     MSG("");
 }
+
+void HEVCVideoParser::PrintSeiMessage(HEVCVideoParser::SeiMessageDara *sei_message_ptr) {
+    MSG("=== hevc_sei_message_info ===");
+    MSG("payload_type               = " <<  sei_message_ptr->payload_type);
+    MSG("payload_size               = " <<  sei_message_ptr->payload_size);
+    MSG("pic_idx                    = " <<  sei_message_ptr->pic_idx);
+    MSG_NO_NEWLINE("reserved[3]: ");
+    for(int i = 0; i < 3; i++) {
+        MSG_NO_NEWLINE(" " << sei_message_ptr->reserved[i]);
+    }
+    MSG("");
 #endif // DBGINFO

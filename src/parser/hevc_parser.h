@@ -41,6 +41,7 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+#define SEI_BUF_SIZE  1024
 #define HVC_MAX_DPB_FRAMES 16  // (A-2)
 #define HEVC_MAX_NUM_REF_PICS 16
 
@@ -597,6 +598,12 @@ protected:
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
     } SliceHeaderData;
 
+    typedef struct {
+        uint8_t payload_type;
+        uint8_t reserved[3];
+        uint32_t payload_size;
+    } SeiMessageData;
+
     /*! \brief Inline function to Parse the NAL Unit Header
      * 
      * \param [in] nal_unit A pointer of <tt>uint8_t</tt> containing the Demuxed output stream 
@@ -662,10 +669,13 @@ protected:
     PpsData*            m_pps_;
     SliceHeaderData*    m_sh_;
     SliceHeaderData*    m_sh_copy_;
+    SeiMessageData*     m_sei_message_;
+    uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
     HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
     int                 slice_num_;
+    int                 sei_message_count_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
@@ -814,6 +824,12 @@ protected:
      */
     bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
 
+    /*! \brief Function to parse Sei Message Info
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
+    void ParseSeiMessage(uint8_t *nalu, size_t size);
     /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
      */
     void CalculateCurrPOC();
@@ -850,6 +866,7 @@ protected:
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
     void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
     void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
+    void PrintSeiMessage(HEVCVideoParser::SeiMessageData *sei_message_ptr);
 #endif // DBGINFO
 
 private:
@@ -878,6 +895,12 @@ private:
      */
     SliceHeaderData* AllocSliceHeader();
 
+    /*! \brief Function to allocate memory for Sei Message Structure
+     * \return Returns pointer to the allocated memory for <tt>SeiMessageData</tt>
+     */
+    SeiMessageData* AllocSeiMessage();
+
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
+    void FillSeiMessageCallbackFn(SeiMessageData* sei_message_data);
 };
