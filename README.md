@@ -1,6 +1,9 @@
 # rocDecode
-rocDecode is a high performance video decode SDK for AMD hardware
+rocDecode is a high performance video decode SDK for AMD hardware. rocDecode API lets developers access the video decoding features available on the GPU.
 
+## Supported Codecs
+* H.264 - 8 bit
+* H.265 (HEVC) - 8 bit, 10 bit, and 12 bit
 
 ## Prerequisites:
 
@@ -23,11 +26,6 @@ rocDecode is a high performance video decode SDK for AMD hardware
   sudo apt install libdrm-dev
   ```
 
-* [FFMPEG](https://ffmpeg.org/about.html)
-  ```
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
-  ```
-
 * **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
 
 ## Build instructions:
@@ -41,7 +39,7 @@ Please follow the instructions below to build and install the rocDecode library.
  sudo make install
 ```
 
-* run tests
+* run tests - Requires `FFMPEG` install
   ```
   make test
   ```
@@ -52,8 +50,33 @@ Please follow the instructions below to build and install the rocDecode library.
   sudo make test package
   ```
 
+## Verify Installation
+
+The installer will copy
+
+* Libraries into /opt/rocm/lib
+* Header files into /opt/rocm/include/rocdecode
+* Samples folder into /opt/rocm/share/rocdecode
+* Documents folder into /opt/rocm/share/doc/rocdecode
+
+Build and run sample
+
+```
+mkdir rocdecode-sample && cd rocdecode-sample
+cmake /opt/rocm/share/rocdecode/samples/videoDecode/
+make -j8
+./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+```
+
 ## Samples:
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
+
+### Prerequisites
+
+* [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
+  ```
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
+  ```
 
 ## Docker:
 Docker files to build rocDecode containers are available [here](docker/)
