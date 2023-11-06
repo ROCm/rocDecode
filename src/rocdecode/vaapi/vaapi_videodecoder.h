@@ -55,6 +55,6 @@ private:
     VAConfigAttrib va_config_attrib_;
     VAConfigID va_config_id_;
     VAProfile va_profile_;
-    rocDecStatus InitVAAPI();
+    rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();
 };
