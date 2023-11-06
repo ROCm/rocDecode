@@ -58,6 +58,7 @@ protected:
 
     RocdecVideoFormat video_format_params_;
     RocdecSeiMessageInfo sei_message_info_params_;
+    RocdecPicParams dec_pic_params_;
 };
 
 enum ParserSeekOrigin {

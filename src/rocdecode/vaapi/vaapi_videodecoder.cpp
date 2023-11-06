@@ -94,3 +94,8 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
     CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
     return ROCDEC_SUCCESS;
 }
+
+rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
+    // Todo copy pic param, slice param, IQ matrix and slice data from RocdecPicParams to VAAPI struct buffers, then submit to VAAPI driver.
+    return ROCDEC_SUCCESS;
+}

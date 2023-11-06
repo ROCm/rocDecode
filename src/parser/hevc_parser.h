@@ -674,10 +674,13 @@ protected:
     HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
-    int                 slice_num_;
     int                 sei_message_count_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    int                 slice_num_;
+    uint8_t*            pic_stream_data_ptr_;
+    int                 pic_stream_data_size_;
 
     // DPB
     DecodedPictureBuffer dpb_buffer_;
@@ -903,4 +906,9 @@ private:
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
     void FillSeiMessageCallbackFn(SeiMessageData* sei_message_data);
+
+    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+     * \return Return code in ParserResult form
+     */
+    int SendPicForDecode();
 };

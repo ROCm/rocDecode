@@ -48,6 +48,7 @@ public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
     rocDecStatus InitializeDecoder(std::string gcn_arch_name);
+    rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
 private:
     RocDecoderCreateInfo decoder_create_info_;
     int drm_fd_;
