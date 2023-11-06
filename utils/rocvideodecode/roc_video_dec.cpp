@@ -91,11 +91,11 @@ static const char * GetVideoCodecString(rocDecVideoCodec eCodec) {
         { rocDecVideoCodec_MPEG2,     "MPEG-2"       },
         { rocDecVideoCodec_MPEG4,     "MPEG-4 (ASP)" },
         { rocDecVideoCodec_H264,      "AVC/H.264"    },
-        { rocDecVideoCodec_JPEG,      "M-JPEG"       },
         { rocDecVideoCodec_HEVC,      "H.265/HEVC"   },
+        { rocDecVideoCodec_AV1,       "AV1"          },
         { rocDecVideoCodec_VP8,       "VP8"          },
         { rocDecVideoCodec_VP9,       "VP9"          },
-        { rocDecVideoCodec_AV1,       "AV1"          },
+        { rocDecVideoCodec_JPEG,      "M-JPEG"       },
         { rocDecVideoCodec_NumCodecs, "Invalid"      },
     };
 
