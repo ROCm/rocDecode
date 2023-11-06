@@ -1201,13 +1201,18 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
             if (!m_sh_->short_term_ref_pic_set_sps_flag) {
                 ParseShortTermRefPicSet(&m_sh_->st_rps, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset);
             }
-            else if (sps_ptr->num_short_term_ref_pic_sets > 1) {
-                int num_bits = 0;
-                while ((1 << num_bits) < sps_ptr->num_short_term_ref_pic_sets) {
-                    num_bits++;
+            else {
+                if (sps_ptr->num_short_term_ref_pic_sets > 1) {
+                    int num_bits = 0;
+                    while ((1 << num_bits) < sps_ptr->num_short_term_ref_pic_sets) {
+                        num_bits++;
+                    }
+                    if (num_bits > 0) {
+                        m_sh_->short_term_ref_pic_set_idx = Parser::ReadBits(nalu, offset, num_bits);
+                    }
                 }
-                if (num_bits > 0) {
-                    m_sh_->short_term_ref_pic_set_idx = Parser::ReadBits(nalu, offset, num_bits);
+                else {
+                    m_sh_->short_term_ref_pic_set_idx = 0;
                 }
 
                 // Copy the SPS RPS to slice RPS
@@ -1611,6 +1616,10 @@ void HEVCVideoParser::ConstructRefPicLists() {
     rIdx = 0;
     num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l0_active_minus1 + 1, num_pic_total_curr_);
 
+    // Error handling to prevent infinite loop
+    if ((num_poc_st_curr_before_ + num_poc_st_curr_after_ + num_poc_lt_curr_) < num_rps_curr_temp_list) {
+        return;
+    }
     while (rIdx < num_rps_curr_temp_list) {
         for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
             ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
@@ -1633,6 +1642,11 @@ void HEVCVideoParser::ConstructRefPicLists() {
     if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
         rIdx = 0;
         num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l1_active_minus1 + 1, num_pic_total_curr_);
+
+        // Error handling to prevent infinite loop
+        if ((num_poc_st_curr_before_ + num_poc_st_curr_after_ + num_poc_lt_curr_) < num_rps_curr_temp_list) {
+            return;
+        }
 
         while (rIdx < num_rps_curr_temp_list) {
             for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
