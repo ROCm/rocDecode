@@ -104,9 +104,8 @@ set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific ma
 find_package(HIP QUIET)
 find_package(Libdrm QUIET)
 find_package(Libva QUIET)
-find_package(FFmpeg QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
+if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
@@ -117,10 +116,6 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
-  # FFMPEG
-  include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
-                      ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
 
   # local include files
   include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
@@ -129,22 +124,16 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-  if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.134.100)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_58_134=1)
-  endif()
-
-  if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.54.100)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_58_54=0)
-  else()
-    target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_58_54=1)
-  endif()
-
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
   install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
   install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+  install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode)
+  install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils)
+  install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/samples)
+  install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/video)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
@@ -205,9 +194,9 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST
-      "vainfo, libva-dev, libdrm-dev, ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+      "vainfo, libva-dev, libdrm-dev")
   set(rocDecode_RPM_PACKAGE_LIST
-      "libva-devel, libdrm-devel, ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
+      "libva-devel, libdrm-devel")
   # set dependency to ROCm if set to TRUE, default to OFF
   set(ROCM_DEP_ROCMCORE OFF CACHE BOOL "Set rocm-core dependency")
   if(ROCM_DEP_ROCMCORE)
@@ -258,9 +247,6 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 else()
   if(NOT HIP_FOUND)
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
-  endif()
-  if(NOT FFMPEG_FOUND)
-    message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
   endif()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva-dev Not Found - please install libva-dev!")
