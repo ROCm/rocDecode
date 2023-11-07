@@ -54,10 +54,13 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
  }
 
 rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
-    // todo:: return appropriate decStatus if fails
-    // call funsction to do va-api decoding using the picture parameters structure
-    // return status
-    return ROCDEC_NOT_IMPLEMENTED;
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = va_video_decoder_.SubmitDecode(pPicParams);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Decode submission is not successful!" + TOSTR(rocdec_status));
+    }
+
+     return rocdec_status;
 }
 
 rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {

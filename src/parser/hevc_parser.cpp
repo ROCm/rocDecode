@@ -73,6 +73,13 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (sei_message_count_ > 0) {
         FillSeiMessageCallbackFn(m_sei_message_);
     }
+
+    // Decode the picture
+    if (SendPicForDecode() != PARSER_OK) {
+        ERR(STR("Failed to decode!"));
+        return ROCDEC_RUNTIME_ERROR;
+    }
+
     return ROCDEC_SUCCESS;
 }
 
@@ -267,6 +274,41 @@ void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data)
     pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
+int HEVCVideoParser::SendPicForDecode() {
+    SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
+    dec_pic_params_ = {0};
+
+    dec_pic_params_.PicWidth = sps_ptr->pic_width_in_luma_samples;
+    dec_pic_params_.PicHeight = sps_ptr->pic_height_in_luma_samples;
+    // Todo: assign POC to CurrPicIdx for now. May need to change with decoded buffer resource management
+    // implementation. POC is the only picture ID shared by parser loyer and VAAPI layer for now.
+    dec_pic_params_.CurrPicIdx = curr_pic_info_.pic_order_cnt;
+    dec_pic_params_.field_pic_flag = sps_ptr->profile_tier_level.general_interlaced_source_flag;
+    dec_pic_params_.bottom_field_flag = 0; // For now. Need to parse VUI/SEI pic_timing()
+    dec_pic_params_.second_field = 0; // For now. Need to parse VUI/SEI pic_timing()
+
+    dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
+    dec_pic_params_.pBitstreamData = pic_stream_data_ptr_;
+    dec_pic_params_.nNumSlices = slice_num_;
+    dec_pic_params_.pSliceDataOffsets = NULL; // Todo: do we need this? Remove if not.
+
+    dec_pic_params_.ref_pic_flag = 1;  // HEVC decoded picture is always marked as short term at first.
+    dec_pic_params_.intra_pic_flag = m_sh_->slice_type == HEVC_SLICE_TYPE_I ? 1 : 0;
+
+    // Todo: field_pic_flag, bottom_field_flag, second_field, ref_pic_flag, and intra_pic_flag seems to be associated with AVC/H.264.
+    // Do we need them for general purpose? Reomve if not.
+
+    // Todo next: Fill pic param, slice param, IQ matrix and slice data.
+
+    if (pfn_decode_picture_cb_(parser_params_.pUserData, &dec_pic_params_) == 0) {
+        ERR("Decode error occurred.");
+        return PARSER_FAIL;
+    }
+    else {
+        return PARSER_OK;
+    }
+}
+
 bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
 
@@ -336,6 +378,12 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
                     if (slice_num_ == 0) {
+                        // Use the data directly from demuxer without copying
+                        pic_stream_data_ptr_ = frame_data_buffer_ptr_ + curr_start_code_offset_;
+                        // Picture stream data size is calculated as the diff between the frame end and the first slice offset.
+                        // This is to consider the possibility of non-slice NAL units between slices.
+                        pic_stream_data_size_ = frame_data_size - curr_start_code_offset_;
+
                         ParseSliceHeader(nal_unit_header_.nal_unit_type, m_rbsp_buf_, m_rbsp_size_);
 
                         // Get POC
