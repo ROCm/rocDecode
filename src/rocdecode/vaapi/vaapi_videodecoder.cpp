@@ -23,13 +23,16 @@ THE SOFTWARE.
 #include "vaapi_videodecoder.h"
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
-    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone} {};
+    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}} {};
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
     if (drm_fd_ != -1) {
         close(drm_fd_);
     }
     if (va_display_) {
+        vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size());
+        if (va_context_id_)
+            vaDestroyContext(va_display_, va_context_id_);
         if (va_config_id_)
             vaDestroyConfig(va_display_, va_config_id_);
         vaTerminate(va_display_);
@@ -58,6 +61,16 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     rocdec_status = CreateDecoderConfig();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to create a VAAPI decoder configuration" + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateSurfaces();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create VAAPI surfaces " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateContext();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create a VAAPI context " + TOSTR(rocdec_status));
         return rocdec_status;
     }
     return rocdec_status;
@@ -95,6 +108,43 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
     va_config_attrib_.type = VAConfigAttribRTFormat;
     CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
     CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
+    if (decoder_create_info_.ulNumDecodeSurfaces < 1) {
+        ERR("ERROR: invalid number of decode surfaces ");
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    va_surface_ids_.resize(decoder_create_info_.ulNumDecodeSurfaces);
+    uint8_t surface_format;
+    switch (decoder_create_info_.ChromaFormat) {
+        case rocDecVideoChromaFormat_Monochrome:
+            surface_format = VA_RT_FORMAT_YUV400;
+            break;
+        case rocDecVideoChromaFormat_420:
+            surface_format = VA_RT_FORMAT_YUV420;
+            break;
+        case rocDecVideoChromaFormat_422:
+            surface_format = VA_RT_FORMAT_YUV422;
+            break;
+        case rocDecVideoChromaFormat_444:
+            surface_format = VA_RT_FORMAT_YUV444;
+            break;
+        default:
+            ERR("ERROR: the surface type is not supported!");
+            return ROCDEC_NOT_SUPPORTED;
+    }
+
+    CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.ulWidth,
+        decoder_create_info_.ulHeight, va_surface_ids_.data(), va_surface_ids_.size(), nullptr, 0));
+
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::CreateContext() {
+    CHECK_VAAPI(vaCreateContext(va_display_, va_config_id_, decoder_create_info_.ulWidth, decoder_create_info_.ulHeight,
+        VA_PROGRESSIVE, va_surface_ids_.data(), va_surface_ids_.size(), &va_context_id_));
     return ROCDEC_SUCCESS;
 }
 

@@ -56,6 +56,10 @@ private:
     VAConfigAttrib va_config_attrib_;
     VAConfigID va_config_id_;
     VAProfile va_profile_;
+    VAContextID va_context_id_;
+    std::vector<VASurfaceID> va_surface_ids_;
     rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();
+    rocDecStatus CreateSurfaces();
+    rocDecStatus CreateContext();
 };
