@@ -75,7 +75,10 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     // Decode the picture
-    SendPicForDecode();
+    if (SendPicForDecode() != PARSER_OK) {
+        ERR(STR("Failed to decode!"));
+        return ROCDEC_RUNTIME_ERROR;
+    }
 
     return ROCDEC_SUCCESS;
 }
