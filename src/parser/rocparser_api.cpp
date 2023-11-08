@@ -36,6 +36,7 @@ rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
     } 
     catch(const std::exception& e) {
         ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        return ROCDEC_RUNTIME_ERROR;
     }
     *pHandle = handle;
     return rocDecStatus::ROCDEC_SUCCESS;
