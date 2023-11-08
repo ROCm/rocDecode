@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <string>
 #include <unordered_map>
 #include <mutex>
+#include <algorithm>
 #include "../commons.h"
 #include "../../api/rocdecode.h"
 
@@ -55,7 +56,9 @@ public:
     }
     rocDecStatus GetDecoderCaps(std::string gcn_arch_name, RocdecDecodeCaps *pdc) {
         std::lock_guard<std::mutex> lock(mutex);
-        auto it = vcn_spec_table.find(gcn_arch_name);
+        std::size_t pos = gcn_arch_name.find_first_of(":");
+        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
+        auto it = vcn_spec_table.find(gcn_arch_name_base);
         if (it != vcn_spec_table.end()) {
             const VcnCodecsSpec& vcn_spec = it->second;
             auto it1 = vcn_spec.codecs_spec.find(pdc->eCodecType);
@@ -84,7 +87,9 @@ public:
     }
     bool IsCodecConfigSupported(std::string gcn_arch_name, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
         std::lock_guard<std::mutex> lock(mutex);
-        auto it = vcn_spec_table.find(gcn_arch_name);
+        std::size_t pos = gcn_arch_name.find_first_of(":");
+        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
+        auto it = vcn_spec_table.find(gcn_arch_name_base);
         if (it != vcn_spec_table.end()) {
             const VcnCodecsSpec& vcn_spec = it->second;
             auto it1 = vcn_spec.codecs_spec.find(codec_type);
