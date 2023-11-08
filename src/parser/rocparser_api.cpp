@@ -53,6 +53,9 @@ rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
 rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) {
+    if (handle == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
     auto parser_hdl = static_cast<RocParserHandle *> (handle);
     rocDecStatus ret;
     try {
@@ -73,6 +76,9 @@ rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) 
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI
 rocDecDestroyVideoParser(RocdecVideoParser handle) {
+    if (handle == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
     auto parser_hdl = static_cast<RocParserHandle *> (handle);
     rocDecStatus ret;
     try {
