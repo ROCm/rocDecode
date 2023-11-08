@@ -64,10 +64,12 @@ rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
 }
 
 rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
-    // todo:: return appropriate decStatus
-    // init vaapi decoder to get the decoding status of the picture specified by nPicIndex 
-    // return status
-    return ROCDEC_NOT_IMPLEMENTED;
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = va_video_decoder_.GetDecodeStatus(nPicIdx, pDecodeStatus);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to query the decode status!" + TOSTR(rocdec_status));
+    }
+    return rocdec_status;
 }
 
 rocDecStatus RocDecoder::reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams) {

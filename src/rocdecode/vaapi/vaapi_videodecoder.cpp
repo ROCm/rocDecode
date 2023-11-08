@@ -152,3 +152,25 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     // Todo copy pic param, slice param, IQ matrix and slice data from RocdecPicParams to VAAPI struct buffers, then submit to VAAPI driver.
     return ROCDEC_SUCCESS;
 }
+
+rocDecStatus VaapiVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus *decode_status) {
+    VASurfaceStatus va_surface_status;
+    if (pic_idx >= va_surface_ids_.size() || decode_status == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &va_surface_status));
+    switch (va_surface_status) {
+        case VASurfaceRendering:
+            decode_status->decodeStatus = rocDecodeStatus_InProgress;
+            break;
+        case VASurfaceReady:
+            decode_status->decodeStatus = rocDecodeStatus_Success;
+            break;
+        case VASurfaceDisplaying:
+            decode_status->decodeStatus = rocDecodeStatus_Displaying;
+            break;
+        default:
+           decode_status->decodeStatus = rocDecodeStatus_Invalid;
+    }
+    return ROCDEC_SUCCESS;
+}
