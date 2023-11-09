@@ -285,9 +285,7 @@ int HEVCVideoParser::SendPicForDecode() {
 
     dec_pic_params_.PicWidth = sps_ptr->pic_width_in_luma_samples;
     dec_pic_params_.PicHeight = sps_ptr->pic_height_in_luma_samples;
-    // Todo: assign POC to CurrPicIdx for now. May need to change with decoded buffer resource management
-    // implementation. POC is the only picture ID shared by parser loyer and VAAPI layer for now.
-    dec_pic_params_.CurrPicIdx = curr_pic_info_.pic_order_cnt;
+    dec_pic_params_.CurrPicIdx = curr_pic_info_.pic_idx;
     dec_pic_params_.field_pic_flag = sps_ptr->profile_tier_level.general_interlaced_source_flag;
     dec_pic_params_.bottom_field_flag = 0; // For now. Need to parse VUI/SEI pic_timing()
     dec_pic_params_.second_field = 0; // For now. Need to parse VUI/SEI pic_timing()
