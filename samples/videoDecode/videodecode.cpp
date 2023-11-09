@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
     RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, true, p_crop_rect);
 
-    std::string deviceName, gcnArchName, drmNode;
+    std::string deviceName, gcnArchName;
     int pciBusID, pciDomainID, pciDeviceID;
 
     viddec.GetDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID);
