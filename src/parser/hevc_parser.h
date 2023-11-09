@@ -348,12 +348,16 @@ protected:
         int32_t     luma_offset_l0[16];                         //se(v)
         int32_t     delta_chroma_weight_l0[16][2];              //se(v)
         int32_t     delta_chroma_offset_l0[16][2];              //se(v)
+        int32_t     chroma_weight_l0[16][2];                    //ChromaWeightL0[]
+        int32_t     chroma_offset_l0[16][2];                    //ChromaOffsetL0[]
         uint8_t     luma_weight_l1_flag[16];                    //u(1)
         uint8_t     chroma_weight_l1_flag[16];                  //u(1)
         int32_t     delta_luma_weight_l1[16];                   //se(v)
         int32_t     luma_offset_l1[16];                         //se(v)
         int32_t     delta_chroma_weight_l1[16][2];              //se(v)
         int32_t     delta_chroma_offset_l1[16][2];              //se(v)
+        int32_t     chroma_weight_l1[16][2];                    //ChromaWeightL1[]
+        int32_t     chroma_offset_l1[16][2];                    //ChromaOffsetL1[]
     } HevcPredWeightTable;
 
     /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
@@ -630,6 +634,7 @@ protected:
     /*! \brief Picture info for decoding process
      */
     typedef struct {
+        int     pic_idx;  // picture index or id
         // POC info
         int32_t pic_order_cnt;  // PicOrderCnt
         int32_t prev_poc_lsb;  // prevPicOrderCntLsb
@@ -667,8 +672,11 @@ protected:
     VpsData*            m_vps_;
     SpsData*            m_sps_;
     PpsData*            m_pps_;
+
     SliceHeaderData*    m_sh_;
     SliceHeaderData*    m_sh_copy_;
+    NalUnitHeader       slice_nal_unit_header_;
+
     SeiMessageData*     m_sei_message_;
     uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
     HevcPicInfo         curr_pic_info_;
@@ -681,6 +689,10 @@ protected:
     int                 slice_num_;
     uint8_t*            pic_stream_data_ptr_;
     int                 pic_stream_data_size_;
+
+    int pic_width_in_ctbs_y_;  // PicWidthInCtbsY
+    int pic_height_in_ctbs_y_;  // PicHeightInCtbsY
+    int pic_size_in_ctbs_y_;  // PicSizeInCtbsY
 
     // DPB
     DecodedPictureBuffer dpb_buffer_;

@@ -612,7 +612,7 @@ typedef struct _RocdecHevcPicParams {
 
     /** following parameters have same syntax with those in HEVC spec */
     uint8_t                 log2_max_pic_order_cnt_lsb_minus4;
-    uint8_t                 num_int16_t_term_ref_pic_sets;
+    uint8_t                 num_short_term_ref_pic_sets;
     uint8_t                 num_long_term_ref_pic_sps;
     uint8_t                 num_ref_idx_l0_default_active_minus1;
     uint8_t                 num_ref_idx_l1_default_active_minus1;
@@ -621,13 +621,13 @@ typedef struct _RocdecHevcPicParams {
     uint8_t                 num_extra_slice_header_bits;
     /**
      * \brief number of bits that structure
-     * int16_t_term_ref_pic_set( num_int16_t_term_ref_pic_sets ) takes in slice
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) takes in slice
      * segment header when int16_t_term_ref_pic_set_sps_flag equals 0.
      * if int16_t_term_ref_pic_set_sps_flag equals 1, the value should be 0.
      * the bit count is calculated after emulation prevention bytes are removed
      * from bit streams.
      * This variable is used for accelorater to skip parsing the
-     * int16_t_term_ref_pic_set( num_int16_t_term_ref_pic_sets ) structure.
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) structure.
      */
     uint32_t                st_rps_bits;
 } RocdecHevcPicParams;
@@ -756,17 +756,17 @@ typedef struct _RocdecPicParams {
         RocdecVc1PicParams   vc1;
         RocdecJPEGPicParams  jpeg;
         uint32_t CodecReserved[256];
-    } PictureParameters;
+    } pic_params;
 
     union {
         // Todo: Add slice params defines for other codecs.
         RocdecHevcSliceParams hevc;
-    } SliceParameters;
+    } slice_params;
 
     union {
         // Todo: Added IQ matrix defines for other codecs.
         RocdecHevcIQMatrix hevc;
-    } IQMatrix;
+    } iq_matrix;
 } RocdecPicParams;
 
 /******************************************************/
