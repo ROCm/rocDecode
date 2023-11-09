@@ -655,8 +655,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 }
 
                 default:
-                    ERR(STR("Error: Invalid NAL unit type"));
-                    return false;
+                    break;
             }
         }
 
