@@ -190,7 +190,6 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         video_format_params_.progressive_sequence = 0;
     else // default value
         video_format_params_.progressive_sequence = 1;
-    // TODO: Change for different layers, using 0th layer currently
     video_format_params_.min_num_decode_surfaces = sps_data->sps_max_dec_pic_buffering_minus1[sps_data->sps_max_sub_layers_minus1] + 1;
     video_format_params_.coded_width = sps_data->pic_width_in_luma_samples;
     video_format_params_.coded_height = sps_data->pic_height_in_luma_samples;
