@@ -138,6 +138,7 @@ typedef enum rocDecodeStatus_enum {
     // 3 to 7 enums are reserved for future use
     rocDecodeStatus_Error           = 8,   // Decode is completed with an error (error is not concealed)
     rocDecodeStatus_Error_Concealed = 9,   // Decode is completed with an error and error is concealed 
+    rocDecodeStatus_Displaying      = 10,  // Decode is completed, displaying in progress
 } rocDecDecodeStatus;
 
 /**************************************************************************************************************/

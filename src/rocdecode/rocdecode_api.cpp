@@ -120,6 +120,9 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams) {
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
+    if (hDecoder == nullptr || pDecodeStatus == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
