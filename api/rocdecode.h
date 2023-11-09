@@ -622,8 +622,8 @@ typedef struct _RocdecHevcPicParams {
     /**
      * \brief number of bits that structure
      * short_term_ref_pic_set( num_short_term_ref_pic_sets ) takes in slice
-     * segment header when int16_t_term_ref_pic_set_sps_flag equals 0.
-     * if int16_t_term_ref_pic_set_sps_flag equals 1, the value should be 0.
+     * segment header when short_term_ref_pic_set_sps_flag equals 0.
+     * if short_term_ref_pic_set_sps_flag equals 1, the value should be 0.
      * the bit count is calculated after emulation prevention bytes are removed
      * from bit streams.
      * This variable is used for accelorater to skip parsing the
