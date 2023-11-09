@@ -516,24 +516,26 @@ int HEVCVideoParser::SendPicForDecode() {
     slice_params_ptr->slice_data_num_emu_prevn_bytes = 0; // don't care
 
     /// Fill scaling lists
-    RocdecHevcIQMatrix *iq_matrix_ptr = &dec_pic_params_.iq_matrix.hevc;
-    H265ScalingListData *scaling_list_data_ptr = &pps_ptr->scaling_list_data;
-    for (i = 0; i < 6; i++) {
-        for (j = 0; j < 16; j++) {
-                iq_matrix_ptr->ScalingList4x4[i][j] = scaling_list_data_ptr->scaling_list[0][i][j];
-        }
-
-        for (j = 0; j < 64; j++) {
-            iq_matrix_ptr->ScalingList8x8[i][j] = scaling_list_data_ptr->scaling_list[1][i][j];
-            iq_matrix_ptr->ScalingList16x16[i][j] = scaling_list_data_ptr->scaling_list[2][i][j];
-            if (i < 2) {
-                iq_matrix_ptr->ScalingList32x32[i][j] = scaling_list_data_ptr->scaling_list[3][i * 3][j];
+    if (sps_ptr->scaling_list_enabled_flag) {
+        RocdecHevcIQMatrix *iq_matrix_ptr = &dec_pic_params_.iq_matrix.hevc;
+        H265ScalingListData *scaling_list_data_ptr = &pps_ptr->scaling_list_data;
+        for (i = 0; i < 6; i++) {
+            for (j = 0; j < 16; j++) {
+                    iq_matrix_ptr->ScalingList4x4[i][j] = scaling_list_data_ptr->scaling_list[0][i][j];
             }
-        }
 
-        iq_matrix_ptr->ScalingListDC16x16[i] = scaling_list_data_ptr->scaling_list_dc_coef[0][i];
-        if (i < 2) {
-            iq_matrix_ptr->ScalingListDC32x32[i] = scaling_list_data_ptr->scaling_list_dc_coef[1][i * 3];
+            for (j = 0; j < 64; j++) {
+                iq_matrix_ptr->ScalingList8x8[i][j] = scaling_list_data_ptr->scaling_list[1][i][j];
+                iq_matrix_ptr->ScalingList16x16[i][j] = scaling_list_data_ptr->scaling_list[2][i][j];
+                if (i < 2) {
+                    iq_matrix_ptr->ScalingList32x32[i][j] = scaling_list_data_ptr->scaling_list[3][i * 3][j];
+                }
+            }
+
+            iq_matrix_ptr->ScalingListDC16x16[i] = scaling_list_data_ptr->scaling_list_dc_coef[0][i];
+            if (i < 2) {
+                iq_matrix_ptr->ScalingListDC32x32[i] = scaling_list_data_ptr->scaling_list_dc_coef[1][i * 3];
+            }
         }
     }
 
