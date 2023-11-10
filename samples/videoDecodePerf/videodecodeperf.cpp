@@ -143,6 +143,7 @@ int main(int argc, char **argv) {
         std::size_t pos = gcn_arch_name.find_first_of(":");
         std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
 
+        // gfx90a has two GCDs as two separate devices 
         if (!gcn_arch_name_base.compare("gfx90a")) {
             sd = 1;
         }
