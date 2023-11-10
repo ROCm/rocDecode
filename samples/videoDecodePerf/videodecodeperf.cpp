@@ -62,7 +62,8 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
-    << "-t Number of threads (>= 1) - optional; default: 4" << std::endl;
+    << "-t Number of threads (>= 1) - optional; default: 4" << std::endl
+    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl;
     exit(0);
 }
 
@@ -98,20 +99,53 @@ int main(int argc, char **argv) {
             }
             continue;
         }
+        if (!strcmp(argv[i], "-d")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            device_id = atoi(argv[i]);
+            if (device_id < 0) {
+                ShowHelpAndExit(argv[i]);
+            }
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
     
     try {
         // TODO: Change this block to use VCN query API 
-        int num_devices = 0;
+        int num_devices = 0, sd = 0;
         hipError_t hip_status = hipSuccess;
+        hipDeviceProp_t hip_dev_prop;
+        std::string gcn_arch_name;
         hip_status = hipGetDeviceCount(&num_devices);
         if (hip_status != hipSuccess) {
             std::cout << "ERROR: hipGetDeviceCount failed! (" << hip_status << ")" << std::endl;
-            return 1;
+            return -1;
         }
 
-        int sd = (num_devices >= 2) ? 1 : 0;
+        if (num_devices < 1) {
+            ERR("ERROR: didn't find any GPU!");
+            return -1;
+        }
+        if (device_id >= num_devices) {
+            ERR("ERROR: the requested device_id is not found! ");
+            return -1;
+        }
+
+        hip_status = hipGetDeviceProperties(&hip_dev_prop, device_id);
+        if (hip_status != hipSuccess) {
+            ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + TOSTR(hip_status) + ")" );
+            return -1;
+        }
+
+        gcn_arch_name = hip_dev_prop.gcnArchName;
+        std::size_t pos = gcn_arch_name.find_first_of(":");
+        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
+
+        if (!gcn_arch_name_base.compare("gfx90a")) {
+            sd = 1;
+        }
 
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
@@ -135,7 +169,7 @@ int main(int argc, char **argv) {
         int n_total = 0;
         OutputSurfaceInfo *p_surf_info;
 
-        std::string device_name, gcn_arch_name;
+        std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
         for (int i = 0; i < n_thread; i++) {
