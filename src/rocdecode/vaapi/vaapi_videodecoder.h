@@ -61,10 +61,10 @@ private:
     VAContextID va_context_id_;
     std::vector<VASurfaceID> va_surface_ids_;
 
-    VASurfaceID pic_params_buf_id_;
-    VASurfaceID iq_matrix_buf_id_;
-    VASurfaceID slice_params_buf_id_;
-    VASurfaceID slice_data_buf_id_;
+    VABufferID pic_params_buf_id_;
+    VABufferID iq_matrix_buf_id_;
+    VABufferID slice_params_buf_id_;
+    VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;
 
     rocDecStatus InitVAAPI(std::string drm_node);
