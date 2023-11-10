@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "../../commons.h"
 #include "../../../api/rocdecode.h"
 
+#define DEFAULT_SLICE_DATA_BUF_SIZE 2 * 1024 * 1024  // 2 MB
 
 #define CHECK_VAAPI(call) {                                               \
     VAStatus va_status = (call);                                          \
@@ -59,8 +60,17 @@ private:
     VAProfile va_profile_;
     VAContextID va_context_id_;
     std::vector<VASurfaceID> va_surface_ids_;
+
+    VASurfaceID pic_params_buf_id_;
+    VASurfaceID iq_matrix_buf_id_;
+    VASurfaceID slice_params_buf_id_;
+    VASurfaceID slice_data_buf_id_;
+    uint32_t slice_data_buf_size_;
+
     rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
+    rocDecStatus CreateDataBuffers();
+    rocDecStatus DestroyDataBuffers();
 };
