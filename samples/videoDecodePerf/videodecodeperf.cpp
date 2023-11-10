@@ -100,72 +100,78 @@ int main(int argc, char **argv) {
         }
         ShowHelpAndExit(argv[i]);
     }
-    std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
-    std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
-    std::vector<int> v_device_id(n_thread);
-
-    // TODO: Change this block to use VCN query API 
-    int num_devices = 0;
-    hipError_t hip_status = hipSuccess;
-    hip_status = hipGetDeviceCount(&num_devices);
-    if (hip_status != hipSuccess) {
-        std::cout << "ERROR: hipGetDeviceCount failed! (" << hip_status << ")" << std::endl;
-        return 1;
-    }
-
-    int sd = (num_devices >= 2) ? 1 : 0;
-
-    for (int i = 0; i < n_thread; i++) {
-        std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
-        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
-        v_device_id[i] = (i % 2 == 0) ? 0 : sd;
-        std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, false, true, p_crop_rect));
-        v_demuxer.push_back(std::move(demuxer));
-        v_viddec.push_back(std::move(dec));
-    }
-
-    float total_fps = 0;
-    std::vector<std::thread> v_thread;
-    std::vector<double> v_fps;
-    std::vector<int> v_frame;
-    v_fps.resize(n_thread, 0);
-    v_frame.resize(n_thread, 0);
-    int n_total = 0;
-    OutputSurfaceInfo *p_surf_info;
-
-    std::string device_name, gcn_arch_name;
-    int pci_bus_id, pci_domain_id, pci_device_id;
-
-    for (int i = 0; i < n_thread; i++) {
-        v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-        std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
-        std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
-        std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
-        std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
-    }
     
-    for (int i = 0; i < n_thread; i++) {
-        v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i]));
+    try {
+        // TODO: Change this block to use VCN query API 
+        int num_devices = 0;
+        hipError_t hip_status = hipSuccess;
+        hip_status = hipGetDeviceCount(&num_devices);
+        if (hip_status != hipSuccess) {
+            std::cout << "ERROR: hipGetDeviceCount failed! (" << hip_status << ")" << std::endl;
+            return 1;
+        }
+
+        int sd = (num_devices >= 2) ? 0 : 0;
+
+        std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
+        std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
+        std::vector<int> v_device_id(n_thread);
+
+        for (int i = 0; i < n_thread; i++) {
+            std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
+            rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
+            v_device_id[i] = (i % 2 == 0) ? 0 : sd;
+            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, false, true, p_crop_rect));
+            v_demuxer.push_back(std::move(demuxer));
+            v_viddec.push_back(std::move(dec));
+        }
+
+        float total_fps = 0;
+        std::vector<std::thread> v_thread;
+        std::vector<double> v_fps;
+        std::vector<int> v_frame;
+        v_fps.resize(n_thread, 0);
+        v_frame.resize(n_thread, 0);
+        int n_total = 0;
+        OutputSurfaceInfo *p_surf_info;
+
+        std::string device_name, gcn_arch_name;
+        int pci_bus_id, pci_domain_id, pci_device_id;
+
+        for (int i = 0; i < n_thread; i++) {
+            v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+            std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+            std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
+            std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
+            std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
+        }
+
+        for (int i = 0; i < n_thread; i++) {
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i]));
+        }
+
+        for (int i = 0; i < n_thread; i++) {
+            v_thread[i].join();
+            total_fps += v_fps[i];
+            n_total += v_frame[i];
+        }
+
+        if (!v_viddec[0]->GetOutputSurfaceInfo(&p_surf_info)) {
+            std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+        return -1;
+        }
+
+        std::cout << "info: Video codec format: " << v_viddec[0]->GetCodecFmtName(v_viddec[0]->GetCodecId()) << std::endl;
+        std::cout << "info: Video size: [ " << p_surf_info->output_width << ", " << p_surf_info->output_height << " ]" << std::endl;
+        std::cout << "info: Video surface format: " << v_viddec[0]->GetSurfaceFmtName(p_surf_info->surface_format) << std::endl;
+        std::cout << "info: Video Bit depth: " << p_surf_info->bit_depth << std::endl;
+        std::cout << "info: Total frame decoded: " << n_total  << std::endl;
+        std::cout << "info: avg decoding time per frame (ms): " << 1000 / total_fps << std::endl;
+        std::cout << "info: avg FPS: " << total_fps  << std::endl;
+    } catch (const std::exception &ex) {
+      std::cout << ex.what();
+      exit(1);
     }
 
-    for (int i = 0; i < n_thread; i++) {
-        v_thread[i].join();
-        total_fps += v_fps[i];
-        n_total += v_frame[i];
-    }
-
-    if (!v_viddec[0]->GetOutputSurfaceInfo(&p_surf_info)) {
-        std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
-       return -1;
-    }
-
-    std::cout << "info: Video codec format: " << v_viddec[0]->GetCodecFmtName(v_viddec[0]->GetCodecId()) << std::endl;
-    std::cout << "info: Video size: [ " << p_surf_info->output_width << ", " << p_surf_info->output_height << " ]" << std::endl;
-    std::cout << "info: Video surface format: " << v_viddec[0]->GetSurfaceFmtName(p_surf_info->surface_format) << std::endl;
-    std::cout << "info: Video Bit depth: " << p_surf_info->bit_depth << std::endl;
-    std::cout << "info: Total frame decoded: " << n_total  << std::endl;
-    std::cout << "info: avg decoding time per frame (ms): " << 1000 / total_fps << std::endl;
-    std::cout << "info: avg FPS: " << total_fps  << std::endl;
-    
     return 0;
 }
