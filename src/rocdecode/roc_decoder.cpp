@@ -116,6 +116,10 @@ rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
         horizontal_pitch[2] = va_drm_prime_surface_desc.layers[2].pitch[0];
     }
 
+    for (auto i = 0; i < va_drm_prime_surface_desc.num_objects; ++i) {
+        close(va_drm_prime_surface_desc.objects[i].fd);
+    }
+
     return rocdec_status;
 }
 
