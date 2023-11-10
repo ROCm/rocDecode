@@ -513,6 +513,7 @@ typedef struct _RocdecHevcIQMatrix {
      */
     uint8_t                 ScalingListDC32x32[2];
 
+    uint32_t                reserved[4];
 } RocdecHevcIQMatrix;
 
 /***********************************************************/
@@ -631,6 +632,8 @@ typedef struct _RocdecHevcPicParams {
      * short_term_ref_pic_set( num_short_term_ref_pic_sets ) structure.
      */
     uint32_t                st_rps_bits;
+
+    uint32_t                reserved[8];
 } RocdecHevcPicParams;
 
 /***********************************************************/
@@ -724,6 +727,8 @@ typedef struct _RocdecHevcSliceParams {
     uint16_t                 entry_offset_to_subset_array;
     /** \brief Number of emulation prevention bytes in slice header. */
     uint16_t                slice_data_num_emu_prevn_bytes;
+
+    uint32_t                reserved[2];
 } RocdecHevcSliceParams;
 
 /******************************************************************************************/
