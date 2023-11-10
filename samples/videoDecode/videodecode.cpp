@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
             std::cout << "info: avg FPS: " << (nFrame / totalDecTime) * 1000 << std::endl;
         }
     }catch (const std::exception &ex) {
-      std::cout << ex.what();
+      std::cout << ex.what() << std::endl;
       exit(1);
     }
 

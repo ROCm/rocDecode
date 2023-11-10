@@ -83,7 +83,7 @@ private:
         rocDecStatus errorCode = rocDecAPI;                                                                             \
         if( errorCode != ROCDEC_SUCCESS) {                                                                          \
             std::ostringstream errorLog;                                                                           \
-            errorLog << #rocDecAPI << " returned err " << errorCode << " at" <<__FILE__ <<":" << __LINE__;                                              \
+            errorLog << #rocDecAPI << " returned err " << errorCode << " at " <<__FILE__ <<":" << __LINE__;                                              \
             ROCDEC_THROW(errorLog.str(), errorCode); \
         }                                                                                                          \
     } while (0)
