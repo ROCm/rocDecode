@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        int sd = (num_devices >= 2) ? 0 : 0;
+        int sd = (num_devices >= 2) ? 1 : 0;
 
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
         std::cout << "info: avg decoding time per frame (ms): " << 1000 / total_fps << std::endl;
         std::cout << "info: avg FPS: " << total_fps  << std::endl;
     } catch (const std::exception &ex) {
-      std::cout << ex.what();
+      std::cout << ex.what() << std::endl;
       exit(1);
     }
 
