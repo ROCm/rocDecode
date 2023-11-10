@@ -34,6 +34,14 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "vaapi/vaapi_videodecoder.h"
 
+#define CHECK_HIP(call) {                                             \
+    hipError_t hip_status = call;                                   \
+    if (hip_status != hipSuccess) {                                   \
+        std::cout << "HIP failure: 'status#" << hip_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;                                                      \
+    }                                                                 \
+}
+
 class RocDecoder {
 public:
     RocDecoder(RocDecoderCreateInfo &decoder_create_info);
@@ -42,14 +50,15 @@ public:
     rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
     rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
     rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int nPicIdx, void *pDevMemPtr[3], unsigned int pHorizontalPitch[3], RocdecProcParams *pVidPostprocParams);
+    rocDecStatus mapVideoFrame(int pic_idx, void *dev_mem_ptr[3], unsigned int horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
     rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
 
 private:
     rocDecStatus InitHIP(int device_id);
     int num_devices_;
-    int device_id_;
+    RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
     hipDeviceProp_t hip_dev_prop_;
     hipStream_t hip_stream_;
+    std::vector<hipExternalMemory_t> hip_ext_mem_;
 };

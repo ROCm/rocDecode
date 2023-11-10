@@ -50,6 +50,8 @@ public:
     rocDecStatus InitializeDecoder(std::string gcn_arch_name);
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
+    rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
+
 private:
     RocDecoderCreateInfo decoder_create_info_;
     int drm_fd_;
