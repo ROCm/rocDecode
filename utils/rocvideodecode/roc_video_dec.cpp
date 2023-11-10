@@ -254,7 +254,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     ROCDEC_API_CALL(rocDecGetDecoderCaps(&decode_caps));
 
     if(!decode_caps.bIsSupported){
-        THROW("Rocdec:: Codec not supported on this GPU: " + TOSTR(ROCDEC_NOT_SUPPORTED));
+        ROCDEC_THROW("Rocdec:: Codec not supported on this GPU: ", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
 
@@ -268,8 +268,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
                     << "Resolution not supported on this GPU ";
 
         const std::string cErr = errorString.str();
-        THROW(cErr+ TOSTR(ROCDEC_NOT_SUPPORTED));
-        return nDecodeSurface;
+        ROCDEC_THROW(cErr, ROCDEC_NOT_SUPPORTED);
+        return 0;
     }
 
     if (width_ && height_ && chroma_height_) {
@@ -304,7 +304,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
         else if (decode_caps.nOutputFormatMask & (1 << rocDecVideoSurfaceFormat_YUV444_16Bit))
             video_surface_format_ = rocDecVideoSurfaceFormat_YUV444_16Bit;
         else 
-            THROW("No supported output format found" + TOSTR(ROCDEC_NOT_SUPPORTED));
+            ROCDEC_THROW("No supported output format found", ROCDEC_NOT_SUPPORTED);
     }
     video_format_ = *pVideoFormat;
 
@@ -394,7 +394,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
 
 
 int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat) {
-    THROW("ReconfigureDecoder is not supported in this version: " + TOSTR(ROCDEC_NOT_SUPPORTED));
+    ROCDEC_THROW("ReconfigureDecoder is not supported in this version: ", ROCDEC_NOT_SUPPORTED);
     return ROCDEC_NOT_SUPPORTED;
 }
 
@@ -407,8 +407,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *pVideoFormat) {
 int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     if (!roc_decoder_)
     {
-        THROW("Decoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
-        return false;
+        THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
     }
     pic_num_in_dec_order_[pPicParams->CurrPicIdx] = decode_poc_++;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));

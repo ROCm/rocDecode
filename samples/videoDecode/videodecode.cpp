@@ -97,67 +97,72 @@ int main(int argc, char **argv) {
         }
         ShowHelpAndExit(argv[i]);
     }
-    VideoDemuxer demuxer(inputFilePath.c_str());
-    rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-    RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, true, p_crop_rect);
+    try {
+        VideoDemuxer demuxer(inputFilePath.c_str());
+        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+        RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, true, p_crop_rect);
 
-    std::string deviceName, gcnArchName, drmNode;
-    int pciBusID, pciDomainID, pciDeviceID;
+        std::string deviceName, gcnArchName, drmNode;
+        int pciBusID, pciDomainID, pciDeviceID;
 
-    viddec.GetDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID);
-    std::cout << "info: Using GPU device " << deviceId << " - " << deviceName << "[" << gcnArchName << "] on PCI bus " <<
-    std::setfill('0') << std::setw(2) << std::right << std::hex << pciBusID << ":" << std::setfill('0') << std::setw(2) <<
-    std::right << std::hex << pciDomainID << "." << pciDeviceID << std::dec << std::endl;
-    std::cout << "info: decoding started, please wait!" << std::endl;
+        viddec.GetDeviceinfo(deviceName, gcnArchName, pciBusID, pciDomainID, pciDeviceID);
+        std::cout << "info: Using GPU device " << deviceId << " - " << deviceName << "[" << gcnArchName << "] on PCI bus " <<
+        std::setfill('0') << std::setw(2) << std::right << std::hex << pciBusID << ":" << std::setfill('0') << std::setw(2) <<
+        std::right << std::hex << pciDomainID << "." << pciDeviceID << std::dec << std::endl;
+        std::cout << "info: decoding started, please wait!" << std::endl;
 
-    int nVideoBytes = 0, nFrameReturned = 0, nFrame = 0;
-    uint8_t *pVideo = nullptr;
-    uint8_t *pFrame = nullptr;
-    int64_t pts = 0;
-    OutputSurfaceInfo *pSurfInfo;
-    bool bDecodeOutSemiPlanar = false;
-    uint32_t width, height;
-    double totalDecTime = 0;
-
-    do {
-        auto startTime = std::chrono::high_resolution_clock::now();
-        demuxer.Demux(&pVideo, &nVideoBytes, &pts);
-        nFrameReturned = viddec.DecodeFrame(pVideo, nVideoBytes, 0, pts);
-        auto endTime = std::chrono::high_resolution_clock::now();
-        auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
-        totalDecTime += timePerFrame;
-        if (!nFrame && !viddec.GetOutputSurfaceInfo(&pSurfInfo)) {
-            std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
-            break;
-        }
-
-        if (dumpOutputFrames) {
-            for (int i = 0; i < nFrameReturned; i++) {
-                pFrame = viddec.GetFrame(&pts);
-                viddec.SaveSurfToFile(outputFilePath, pFrame, pSurfInfo);
-                // release frame
-                viddec.ReleaseFrame(pts);
-            }
-        }
-        nFrame += nFrameReturned;
-    } while (nVideoBytes);
-#if 0   // is flushing required?
-     // Flush last frames from the decoder if any
-    do {
-        // send null packet to decoder to flush out
-        pVideo = nullptr; nVideoBytes = 0;
+        int nVideoBytes = 0, nFrameReturned = 0, nFrame = 0;
+        uint8_t *pVideo = nullptr;
+        uint8_t *pFrame = nullptr;
         int64_t pts = 0;
-        //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
-    } while (nFrameReturned);
-#endif
-    std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
-    std::cout << "info: Video size: [ " << pSurfInfo->output_width << ", " << pSurfInfo->output_height << " ]" << std::endl;
-    std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(pSurfInfo->surface_format) << std::endl;
-    std::cout << "info: Video Bit depth: " << pSurfInfo->bit_depth << std::endl;
-    std::cout << "info: Total frame decoded: " << nFrame << std::endl;
-    if (!dumpOutputFrames) {
-        std::cout << "info: avg decoding time per frame (ms): " << totalDecTime / nFrame << std::endl;
-        std::cout << "info: avg FPS: " << (nFrame / totalDecTime) * 1000 << std::endl;
+        OutputSurfaceInfo *pSurfInfo;
+        bool bDecodeOutSemiPlanar = false;
+        uint32_t width, height;
+        double totalDecTime = 0;
+
+        do {
+            auto startTime = std::chrono::high_resolution_clock::now();
+            demuxer.Demux(&pVideo, &nVideoBytes, &pts);
+            nFrameReturned = viddec.DecodeFrame(pVideo, nVideoBytes, 0, pts);
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto timePerFrame = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+            totalDecTime += timePerFrame;
+            if (!nFrame && !viddec.GetOutputSurfaceInfo(&pSurfInfo)) {
+                std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+                break;
+            }
+
+            if (dumpOutputFrames) {
+                for (int i = 0; i < nFrameReturned; i++) {
+                    pFrame = viddec.GetFrame(&pts);
+                    viddec.SaveSurfToFile(outputFilePath, pFrame, pSurfInfo);
+                    // release frame
+                    viddec.ReleaseFrame(pts);
+                }
+            }
+            nFrame += nFrameReturned;
+        } while (nVideoBytes);
+    #if 0   // is flushing required?
+        // Flush last frames from the decoder if any
+        do {
+            // send null packet to decoder to flush out
+            pVideo = nullptr; nVideoBytes = 0;
+            int64_t pts = 0;
+            //nFrameReturned = viddec.decode(pVideo, nVideoBytes, pts);
+        } while (nFrameReturned);
+    #endif
+        std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
+        std::cout << "info: Video size: [ " << pSurfInfo->output_width << ", " << pSurfInfo->output_height << " ]" << std::endl;
+        std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(pSurfInfo->surface_format) << std::endl;
+        std::cout << "info: Video Bit depth: " << pSurfInfo->bit_depth << std::endl;
+        std::cout << "info: Total frame decoded: " << nFrame << std::endl;
+        if (!dumpOutputFrames) {
+            std::cout << "info: avg decoding time per frame (ms): " << totalDecTime / nFrame << std::endl;
+            std::cout << "info: avg FPS: " << (nFrame / totalDecTime) * 1000 << std::endl;
+        }
+    }catch (const std::exception &ex) {
+      std::cout << ex.what();
+      exit(1);
     }
 
     return 0;

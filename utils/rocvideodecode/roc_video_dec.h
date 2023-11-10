@@ -64,23 +64,27 @@ typedef enum {
 class rocVideoDecodeException : public std::exception {
 public:
 
-    explicit rocVideoDecodeException(const std::string& message):_message(message){}
+    explicit rocVideoDecodeException(const std::string& message, const int errCode):_message(message), _err_code(errCode) {}
+    explicit rocVideoDecodeException(const std::string& message):_message(message), _err_code(-1) {}
     virtual const char* what() const throw() override {
         return _message.c_str();
     }
+    int getErrorCode() const { return _err_code; }
 private:
     std::string _message;
+    int _err_code;
 };
 
-#define THROW(X) throw rocVideoDecodeException(" { "+std::string(__func__)+" } " + X);
+#define ROCDEC_THROW(X, CODE) throw rocVideoDecodeException(" { " + std::string(__func__) + " } " + X , CODE);
+#define THROW(X) throw rocVideoDecodeException(" { " + std::string(__func__) + " } " + X);
 
 #define ROCDEC_API_CALL( rocDecAPI )                                                                                 \
     do {                                                                                                            \
         rocDecStatus errorCode = rocDecAPI;                                                                             \
         if( errorCode != ROCDEC_SUCCESS) {                                                                          \
             std::ostringstream errorLog;                                                                           \
-            errorLog << #rocDecAPI << " returned error " << errorCode;                                              \
-            THROW(errorLog.str() + TOSTR(errorCode)); \
+            errorLog << #rocDecAPI << " returned err " << errorCode << " at" <<__FILE__ <<":" << __LINE__;                                              \
+            ROCDEC_THROW(errorLog.str(), errorCode); \
         }                                                                                                          \
     } while (0)
 
@@ -92,7 +96,7 @@ private:
             szErrName = hipGetErrorName(hip_status);                                                                             \
             std::ostringstream errorLog;                                                                                         \
             errorLog << "hip API error " << szErrName ;                                                                  \
-            THROW(errorLog.str());                   \
+            ROCDEC_THROW(errorLog.str(), hip_status);                   \
         }                                                                                                                        \
     }                                                                                                                            \
     while (0)
