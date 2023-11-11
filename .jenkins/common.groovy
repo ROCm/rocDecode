@@ -73,7 +73,8 @@ def runPackageCommand(platform, project) {
                 cd ${project.paths.project_build_prefix}/build/release
                 sudo make package
                 mkdir -p package
-                mv *.${packageType} package/
+                mv rocdecode-dev*.${packageType} package/
+                mv rocdecode_*.${packageType} package/
                 mv Testing/Temporary/*.log package/
                 ${packageInfo} package/rocdecode-dev*.${packageType}
                 ${packageInfo} package/rocdecode_*.${packageType}
