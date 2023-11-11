@@ -75,7 +75,8 @@ def runPackageCommand(platform, project) {
                 mkdir -p package
                 mv *.${packageType} package/
                 mv Testing/Temporary/*.log package/
-                ${packageInfo} package/*.${packageType}
+                ${packageInfo} package/rocdecode-dev*.${packageType}
+                ${packageInfo} package/rocdecode_*.${packageType}
                 """
 
     platform.runCommand(this, command)
