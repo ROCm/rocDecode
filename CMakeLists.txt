@@ -256,8 +256,6 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
     set(CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE})
   endif()
 
-  include(CPack)
-
   set(CPACK_GENERATOR "TGZ;ZIP")
   if(EXISTS ${MAKE_NSIS_EXE})
     list(APPEND CPACK_GENERATOR "NSIS")
@@ -271,6 +269,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
     message("-- ${White}AMD ROCm rocDecode -- CPACK_DEBIAN_PACKAGE_DEPENDS: ${CPACK_DEBIAN_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
+  include(CPack)
+
   cpack_add_component(runtime
                     DISPLAY_NAME "Runtime"
                     DESCRIPTION "Library, Header files and documentation for rocDecode")
@@ -283,6 +283,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
                     DISPLAY_NAME "ASAN"
                     DESCRIPTION "ASAN libraries for the rocDecode")
 else()
+  message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
   endif()
