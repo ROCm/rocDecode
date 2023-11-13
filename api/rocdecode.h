@@ -878,10 +878,10 @@ extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, 
                                            RocdecProcParams *pVidPostprocParams);
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr)
-//! Unmap a previously mapped video frame with the associated mapped raw pointer (pMappedDevPtr) 
+//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx)
+//! Unmap a previously mapped video frame with the associated nPicIdx
 /*****************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr);
+extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx);
 
 #ifdef  __cplusplus
 }
