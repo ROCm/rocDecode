@@ -51,7 +51,7 @@ public:
     rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
     rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
     rocDecStatus mapVideoFrame(int pic_idx, void *dev_mem_ptr[3], unsigned int horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
-    rocDecStatus unMapVideoFrame(void *pMappedDevPtr);
+    rocDecStatus unMapVideoFrame(int pic_idx);
 
 private:
     rocDecStatus InitHIP(int device_id);

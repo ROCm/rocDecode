@@ -471,7 +471,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     void * src_dev_ptr[3] = { 0 };
     uint32_t src_pitch[3] = { 0 };
     ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
-
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
     rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
@@ -552,7 +551,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         }
 
         HIP_API_CALL(hipStreamSynchronize(hip_stream_));
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, src_dev_ptr[0]));
+        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, pDispInfo->picture_index));
     }
 
     return 1;
@@ -647,7 +646,7 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
         }
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, mapped_frame_ptr));
+        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
     }
