@@ -123,10 +123,14 @@ rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::unMapVideoFrame(void *pMappedDevPtr) {
-    // todo:: return appropriate decStatus
-    // Unmap a previously mapped video frame with the associated mapped raw pointer (pMappedDevPtr)
-    return ROCDEC_NOT_IMPLEMENTED;
+rocDecStatus RocDecoder::unMapVideoFrame(int pic_idx) {
+    if (pic_idx >= hip_ext_mem_.size()) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+
+    CHECK_HIP(hipDestroyExternalMemory(hip_ext_mem_[pic_idx]));
+
+    return ROCDEC_SUCCESS;
 }
 
 

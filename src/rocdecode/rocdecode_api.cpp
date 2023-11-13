@@ -180,15 +180,15 @@ rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
 }
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr)
-//! Unmap a previously mapped video frame with the associated mapped raw pointer (pMappedDevPtr) 
+//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx)
+//! Unmap a previously mapped video frame with the associated nPicIdx
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr) {
+rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int pic_idx) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->unMapVideoFrame(pMappedDevPtr);
+        ret = handle->roc_decoder->unMapVideoFrame(pic_idx);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
