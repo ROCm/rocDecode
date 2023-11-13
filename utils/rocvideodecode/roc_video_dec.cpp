@@ -370,10 +370,14 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     output_surface_info_.num_chroma_planes = num_chroma_planes_;
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
         output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
-    } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED)
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
+    } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
-    else
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
+    } else {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
+    }
 
     disp_rect_.b = videoDecodeCreateInfo.display_area.bottom;
     disp_rect_.t = videoDecodeCreateInfo.display_area.top;
