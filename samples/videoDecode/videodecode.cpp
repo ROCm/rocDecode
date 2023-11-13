@@ -41,6 +41,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
     exit(0);
 }
@@ -51,6 +52,7 @@ int main(int argc, char **argv) {
     int dumpOutputFrames = 0;
     int isOutputRGB = 0;
     int deviceId = 0;
+    bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     OUTPUT_SURF_MEMORY_TYPE mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
@@ -84,6 +86,13 @@ int main(int argc, char **argv) {
             deviceId = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-z")) {
+            if (i == argc) {
+                ShowHelpAndExit("-z");
+            }
+            b_force_zero_latency = true;
+            continue;
+        }
         if (!strcmp(argv[i], "-crop")) {
             if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
                 ShowHelpAndExit("-crop");
@@ -100,7 +109,7 @@ int main(int argc, char **argv) {
     try {
         VideoDemuxer demuxer(inputFilePath.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, true, p_crop_rect);
+        RocVideoDecoder viddec(deviceId, mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect);
 
         std::string deviceName, gcnArchName, drmNode;
         int pciBusID, pciDomainID, pciDeviceID;
