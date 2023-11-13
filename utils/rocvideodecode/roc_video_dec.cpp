@@ -482,6 +482,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         DecFrameBuffer dec_frame = { 0 };
         dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
         dec_frame.pts = pDispInfo->pts;
+        dec_frame.picture_index = pDispInfo->picture_index;
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         vp_frames_q_.push(dec_frame);
         decoded_frame_cnt_++;
@@ -504,6 +505,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                     dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
                 }
                 dec_frame.pts = pDispInfo->pts;
+                dec_frame.picture_index = pDispInfo->picture_index;
                 vp_frames_.push_back(dec_frame);
             }
             p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
@@ -592,7 +594,7 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
 
 int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
     if (data && size) {
-        int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+        decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
         RocdecSourceDataPacket packet = { 0 };
         packet.payload = data;
         packet.payload_size = size;

@@ -111,8 +111,9 @@ static inline int align(int value, int alignment) {
 }
 
 typedef struct DecFrameBuffer_ {
-    uint8_t *frame_ptr;      /**< device memory pointer for the decoded frame */
-    int64_t  pts;          // timestamp
+    uint8_t *frame_ptr;       /**< device memory pointer for the decoded frame */
+    int64_t  pts;             /**<  timestamp for the decoded frame */
+    int picture_index;         /**<  surface index for the decoded frame */
 } DecFrameBuffer;
 
 
