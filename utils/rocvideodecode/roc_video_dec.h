@@ -148,9 +148,9 @@ class RocVideoDecoder {
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(int device_id,  OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool device_frame_pitched,
-                          const Rect *p_crop_rect, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
-                          uint32_t clk_rate = 1000,  bool force_zero_latency = false);
+        RocVideoDecoder(int device_id,  OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
+                          bool device_frame_pitched = true, const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
+                          uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
         
         rocDecVideoCodec GetCodecId() { return codec_id_; }

@@ -22,11 +22,11 @@ THE SOFTWARE.
 
 #include "roc_video_dec.h"
 
-RocVideoDecoder::RocVideoDecoder(int device_id, OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec,  bool b_low_latency, bool device_frame_pitched,
-              const Rect *p_crop_rect, bool extract_user_SEI_Message, int max_width, int max_height,
-              uint32_t clk_rate,  bool force_zero_latency) : device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec),
-              b_low_latency_(b_low_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message),
-              max_width_ (max_width), max_height_(max_height), b_force_zero_latency_(force_zero_latency) {
+RocVideoDecoder::RocVideoDecoder(int device_id, OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec,  bool b_low_latency, bool force_zero_latency,
+              bool device_frame_pitched, const Rect *p_crop_rect, bool extract_user_SEI_Message, int max_width, int max_height,
+              uint32_t clk_rate) : device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_low_latency_(b_low_latency), 
+              b_force_zero_latency_(force_zero_latency), b_device_frame_pitched_(device_frame_pitched), b_extract_sei_message_(extract_user_SEI_Message),
+              max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
