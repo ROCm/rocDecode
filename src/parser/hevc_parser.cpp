@@ -337,7 +337,7 @@ int HEVCVideoParser::SendPicForDecode() {
     }
 
     for (i = ref_idx; i < 15; i++) {
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = 0xFF;
+        pic_param_ptr->ref_frames[i].PicIdx = 0xFF;
     }
 
     pic_param_ptr->picture_width_in_luma_samples = sps_ptr->pic_width_in_luma_samples;
@@ -432,34 +432,34 @@ int HEVCVideoParser::SendPicForDecode() {
 
     // Ref lists
     memset(slice_params_ptr->RefPicList, 0xFF, sizeof(slice_params_ptr->RefPicList));
-    for (i = 0; i < m_sh_->num_ref_idx_l0_active_minus1; i++) {
+    for (i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
         int idx = ref_pic_list_0_[i]; // pic_idx of the ref pic
         for (j = 0; j < 15; j++) {
-            if (pic_param_ptr->ref_frames[ref_idx].PicIdx == idx) {
+            if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
                 break;
+            }
+        }
+        if (j == 15) {
+            ERR("Could not find matching pic in ref_frames list.");
+        }
+        else {
+            slice_params_ptr->RefPicList[0][i] = j;
+        }
+    }
+
+    if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+        for (i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
+            int idx = ref_pic_list_1_[i]; // pic_idx of the ref pic
+            for (j = 0; j < 15; j++) {
+                if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
+                    break;
+                }
             }
             if (j == 15) {
                 ERR("Could not find matching pic in ref_frames list.");
             }
             else {
-                slice_params_ptr->RefPicList[0][i] = j;
-            }
-        }
-    }
-
-    if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
-        for (i = 0; i < m_sh_->num_ref_idx_l1_active_minus1; i++) {
-            int idx = ref_pic_list_1_[i]; // pic_idx of the ref pic
-            for (j = 0; j < 15; j++) {
-                if (pic_param_ptr->ref_frames[ref_idx].PicIdx == idx) {
-                    break;
-                }
-                if (j == 15) {
-                    ERR("Could not find matching pic in ref_frames list.");
-                }
-                else {
-                    slice_params_ptr->RefPicList[1][i] = j;
-                }
+                slice_params_ptr->RefPicList[1][i] = j;
             }
         }
     }

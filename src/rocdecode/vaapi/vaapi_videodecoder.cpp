@@ -204,6 +204,11 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     switch (decoder_create_info_.CodecType) {
         case rocDecVideoCodec_HEVC: {
             pPicParams->pic_params.hevc.cur_pic.PicIdx = curr_surface_id;
+            for (int i = 0; i < 15; i++) {
+                if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx != 0xFF) {
+                    pPicParams->pic_params.hevc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.hevc.ref_frames[i].PicIdx];
+                }
+            }
             pic_params_ptr = (uint8_t*)&pPicParams->pic_params.hevc;
             pic_params_size = sizeof(RocdecHevcPicParams);
 
