@@ -330,6 +330,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *pVideoFormat) {
     if (max_width_ < (int)pVideoFormat->coded_width)
         max_width_ = pVideoFormat->coded_width;
     if (max_height_ < (int)pVideoFormat->coded_height)
+        max_height_ = pVideoFormat->coded_height;
+
     videoDecodeCreateInfo.ulMaxWidth = max_width_;
     videoDecodeCreateInfo.ulMaxHeight = max_height_;
 
