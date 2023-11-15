@@ -30,6 +30,7 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
         close(drm_fd_);
     }
     if (va_display_) {
+        DestroyDataBuffers();
         vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size());
         if (va_context_id_)
             vaDestroyContext(va_display_, va_context_id_);
@@ -71,6 +72,11 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     rocdec_status = CreateContext();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to create a VAAPI context " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateDataBuffers();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create VAAPI data buffers " + TOSTR(rocdec_status));
         return rocdec_status;
     }
     return rocdec_status;
@@ -148,8 +154,121 @@ rocDecStatus VaapiVideoDecoder::CreateContext() {
     return ROCDEC_SUCCESS;
 }
 
+rocDecStatus VaapiVideoDecoder::CreateDataBuffers() {
+    switch (decoder_create_info_.CodecType) {
+        case rocDecVideoCodec_HEVC: {
+            // Create picture parameter buffer
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAPictureParameterBufferType, sizeof(VAPictureParameterBufferHEVC), 1, NULL, &pic_params_buf_id_));
+            // Create inverse quantization matrix buffer
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAIQMatrixBufferType, sizeof(VAIQMatrixBufferHEVC), 1, NULL, &iq_matrix_buf_id_));
+            // Create slice parameter buffer
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, sizeof(VASliceParameterBufferHEVC), 1, NULL, &slice_params_buf_id_));
+            // Creat slice data buffer with the default size (2MB)
+            slice_data_buf_size_ = DEFAULT_SLICE_DATA_BUF_SIZE;
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, slice_data_buf_size_, 1, NULL, &slice_data_buf_id_));
+            break;
+        }
+
+        default: {
+            ERR("ERROR: the codec type is not supported!");
+            return ROCDEC_NOT_SUPPORTED;
+        }
+    }
+
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
+    CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
+    CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
+    CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_));
+    CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+    return ROCDEC_SUCCESS;
+}
+
 rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
-    // Todo copy pic param, slice param, IQ matrix and slice data from RocdecPicParams to VAAPI struct buffers, then submit to VAAPI driver.
+    uint8_t *pic_params_ptr, *iq_matrix_ptr, *slice_params_ptr;
+    uint32_t pic_params_size, iq_matrix_size, slice_params_size;
+    bool scaling_list_enabled = true;
+    uint8_t *data_buf_ptr;
+    VASurfaceID curr_surface_id;
+
+    // Get the surface id for the current picture, assuming 1:1 mapping between DPB and VAAPI decoded surfaces.
+    if (pPicParams->CurrPicIdx >= va_surface_ids_.size()) {
+        ERR("CurrPicIdx exceeded the VAAPI surface pool limit.");
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    curr_surface_id = va_surface_ids_[pPicParams->CurrPicIdx];
+
+    // Upload data buffers
+    switch (decoder_create_info_.CodecType) {
+        case rocDecVideoCodec_HEVC: {
+            pPicParams->pic_params.hevc.cur_pic.PicIdx = curr_surface_id;
+            for (int i = 0; i < 15; i++) {
+                if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx != 0xFF) {
+                    pPicParams->pic_params.hevc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.hevc.ref_frames[i].PicIdx];
+                }
+            }
+            pic_params_ptr = (uint8_t*)&pPicParams->pic_params.hevc;
+            pic_params_size = sizeof(RocdecHevcPicParams);
+
+            if (pPicParams->pic_params.hevc.pic_fields.bits.scaling_list_enabled_flag) {
+                scaling_list_enabled = true;
+                iq_matrix_ptr = (uint8_t*)&pPicParams->iq_matrix.hevc;
+                iq_matrix_size = sizeof(RocdecHevcIQMatrix);
+            }
+            else {
+                scaling_list_enabled = false;
+            }
+
+            slice_params_ptr = (uint8_t*)&pPicParams->slice_params.hevc;
+            slice_params_size = sizeof(RocdecHevcSliceParams);
+            break;
+        }
+
+        default: {
+            ERR("ERROR: the codec type is not supported!");
+            return ROCDEC_NOT_SUPPORTED;
+        }
+    }
+
+    /******************************************************************************
+     * Note: make sure the structs in RocdecPicParams match VA-API structs, or we
+     * have to assign fields one by one.
+     ******************************************************************************/
+    CHECK_VAAPI(vaMapBuffer(va_display_, pic_params_buf_id_, (void**)&data_buf_ptr));
+    memcpy(data_buf_ptr, pic_params_ptr, pic_params_size);
+    CHECK_VAAPI(vaUnmapBuffer(va_display_, pic_params_buf_id_));
+
+    if (scaling_list_enabled) {
+        CHECK_VAAPI(vaMapBuffer(va_display_, iq_matrix_buf_id_, (void**)&data_buf_ptr));
+        memcpy(data_buf_ptr, iq_matrix_ptr, iq_matrix_size);
+        CHECK_VAAPI(vaUnmapBuffer(va_display_, iq_matrix_buf_id_));
+    }
+
+    CHECK_VAAPI(vaMapBuffer(va_display_, slice_params_buf_id_, (void**)&data_buf_ptr));
+    memcpy(data_buf_ptr, slice_params_ptr, slice_params_size);
+    CHECK_VAAPI(vaUnmapBuffer(va_display_, slice_params_buf_id_));
+
+    if ( pPicParams->nBitstreamDataLen > slice_data_buf_size_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+        slice_data_buf_size_ = pPicParams->nBitstreamDataLen * 3 / 2;  // to reduce the chance to re-allocate again.
+        CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, slice_data_buf_size_, 1, NULL, &slice_data_buf_id_));
+    }
+    CHECK_VAAPI(vaMapBuffer(va_display_, slice_data_buf_id_, (void**)&data_buf_ptr));
+    memcpy(data_buf_ptr, pPicParams->pBitstreamData, pPicParams->nBitstreamDataLen);
+    CHECK_VAAPI(vaUnmapBuffer(va_display_, slice_data_buf_id_));
+
+    // Sumbmit buffers to VAAPI driver
+    CHECK_VAAPI(vaBeginPicture(va_display_, va_context_id_, curr_surface_id));
+    CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &pic_params_buf_id_, 1));
+    if (scaling_list_enabled) {
+        CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &iq_matrix_buf_id_, 1));
+    }
+    CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_params_buf_id_, 1));
+    CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_data_buf_id_, 1));
+    CHECK_VAAPI(vaEndPicture(va_display_, va_context_id_));
+
     return ROCDEC_SUCCESS;
 }
 
@@ -173,4 +292,18 @@ rocDecStatus VaapiVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus 
            decode_status->decodeStatus = rocDecodeStatus_Invalid;
     }
     return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc) {
+    if (pic_idx >= va_surface_ids_.size()) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
+    CHECK_VAAPI(vaExportSurfaceHandle(va_display_, va_surface_ids_[pic_idx],
+                VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+                VA_EXPORT_SURFACE_READ_ONLY |
+                VA_EXPORT_SURFACE_SEPARATE_LAYERS,
+                &va_drm_prime_surface_desc));
+
+   return ROCDEC_SUCCESS;
 }
