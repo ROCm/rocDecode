@@ -54,10 +54,12 @@ def runPackageCommand(platform, project) {
     String packageType = ""
     String packageInfo = ""
     String osType = ''
+    String packageRunTime = ''
 
     if (platform.jenkinsLabel.contains('centos') || platform.jenkinsLabel.contains('rhel') || platform.jenkinsLabel.contains('sles')) {
         packageType = 'rpm'
         packageInfo = 'rpm -qlp'
+        packageRunTime = 'rocdecode-*'
 
         if (platform.jenkinsLabel.contains('sles')) {
             osType = 'sles'
@@ -73,6 +75,7 @@ def runPackageCommand(platform, project) {
     {
         packageType = 'deb'
         packageInfo = 'dpkg -c'
+        packageRunTime = 'rocdecode_*'
 
         if (platform.jenkinsLabel.contains('ubuntu20')) {
             osType = 'ubuntu20'
@@ -89,12 +92,11 @@ def runPackageCommand(platform, project) {
                 cd ${project.paths.project_build_prefix}/build/release
                 sudo make package
                 mkdir -p package
-                mkdir -p package/${osType}
-                mv rocdecode-dev*.${packageType} package/${osType}-rocdecode-dev*.${packageType}
-                mv rocdecode_*.${packageType} package/${osType}-rocdecode_*.${packageType}
-                mv Testing/Temporary/*.log package/${osType}-*.log
-                ${packageInfo} package/${osType}-rocdecode-dev*.${packageType}
-                ${packageInfo} package/${osType}-rocdecode_*.${packageType}
+                mv rocdecode-dev*.${packageType} package/${osType}-rocdecode-dev.${packageType}
+                mv ${packageRunTime}.${packageType} package/${osType}-rocdecode.${packageType}
+                mv Testing/Temporary/*.log package/${osType}-.log
+                ${packageInfo} package/${osType}-rocdecode-dev.${packageType}
+                ${packageInfo} package/${osType}-rocdecode.${packageType}
                 """
 
     platform.runCommand(this, command)
