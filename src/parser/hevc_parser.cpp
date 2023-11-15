@@ -1844,28 +1844,23 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
     memcpy(m_sei_data_, sei_message_ptr, sei_message_ptr->payload_size);
 }
 
-bool HEVCVideoParser::IsIdrPic(NalUnitHeader *nal_header_ptr)
-{
+bool HEVCVideoParser::IsIdrPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP);
 }
 
-bool HEVCVideoParser::IsBlaPic(NalUnitHeader *nal_header_ptr)
-{
+bool HEVCVideoParser::IsBlaPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_W_LP || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_W_RADL || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_N_LP);
 }
 
-bool HEVCVideoParser::IsCraPic(NalUnitHeader *nal_header_ptr)
-{
+bool HEVCVideoParser::IsCraPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_CRA_NUT);
 }
 
-bool HEVCVideoParser::IsRaslPic(NalUnitHeader *nal_header_ptr)
-{
+bool HEVCVideoParser::IsRaslPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_R);
 }
 
-bool HEVCVideoParser::IsIrapPic(NalUnitHeader *nal_header_ptr)
-{
+bool HEVCVideoParser::IsIrapPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23);
 }
 
