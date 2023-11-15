@@ -35,7 +35,7 @@ THE SOFTWARE.
 #else
     #include <experimental/filesystem>
 #endif
-#include "video_demuxer.hpp"
+#include "video_demuxer.h"
 #include "roc_video_dec.h"
 
 static int *n_total;
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     int n_fork = 4;
     int device_id = 0;
     Rect *p_crop_rect = nullptr;
-    OUTPUT_SURF_MEMORY_TYPE mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
 
     // Parse command-line arguments
     if(argc < 1) {

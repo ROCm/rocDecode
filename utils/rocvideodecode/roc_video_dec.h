@@ -39,16 +39,16 @@ THE SOFTWARE.
 
 #define MAX_FRAME_NUM     16
 
-typedef enum{
+typedef enum SeiH264HevcPayloadType_enum {
     SEI_TYPE_TIME_CODE = 136,
     SEI_TYPE_USER_DATA_UNREGISTERED = 5
-}SEI_H264_HEVC_PAYLOAD_TYPE;
+} SeiH264HevcPayloadType;
 
-typedef enum {
-    OUT_SURFACE_MEM_DEV_INTERNAL = 0,       /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
-    OUT_SURFACE_MEM_DEV_COPIED  = 1,        /**<  decoded output will be copied to a separate device memory (the user doesn't need to call release) **/
-    OUT_SURFACE_MEM_HOST_COPIED  = 2        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
-} OUTPUT_SURF_MEMORY_TYPE;
+typedef enum OutputSurfaceMemoryType_enum {
+    OUT_SURFACE_MEM_DEV_INTERNAL = 0,      /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
+    OUT_SURFACE_MEM_DEV_COPIED = 1,        /**<  decoded output will be copied to a separate device memory (the user doesn't need to call release) **/
+    OUT_SURFACE_MEM_HOST_COPIED = 2        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
+} OutputSurfaceMemoryType;
 
 #define TOSTR(X) std::to_string(static_cast<int>(X))
 #define STR(X) std::string(X)
@@ -61,44 +61,44 @@ typedef enum {
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
 
-class rocVideoDecodeException : public std::exception {
+class RocVideoDecodeException : public std::exception {
 public:
 
-    explicit rocVideoDecodeException(const std::string& message, const int errCode):_message(message), _err_code(errCode) {}
-    explicit rocVideoDecodeException(const std::string& message):_message(message), _err_code(-1) {}
+    explicit RocVideoDecodeException(const std::string& message, const int err_code):_message(message), _err_code(err_code) {}
+    explicit RocVideoDecodeException(const std::string& message):_message(message), _err_code(-1) {}
     virtual const char* what() const throw() override {
         return _message.c_str();
     }
-    int getErrorCode() const { return _err_code; }
+    int Geterror_code() const { return _err_code; }
 private:
     std::string _message;
     int _err_code;
 };
 
-#define ROCDEC_THROW(X, CODE) throw rocVideoDecodeException(" { " + std::string(__func__) + " } " + X , CODE);
-#define THROW(X) throw rocVideoDecodeException(" { " + std::string(__func__) + " } " + X);
+#define ROCDEC_THROW(X, CODE) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X , CODE);
+#define THROW(X) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X);
 
-#define ROCDEC_API_CALL( rocDecAPI )                                                                                 \
-    do {                                                                                                            \
-        rocDecStatus errorCode = rocDecAPI;                                                                             \
-        if( errorCode != ROCDEC_SUCCESS) {                                                                          \
-            std::ostringstream errorLog;                                                                           \
-            errorLog << #rocDecAPI << " returned err " << errorCode << " at " <<__FILE__ <<":" << __LINE__;                                              \
-            ROCDEC_THROW(errorLog.str(), errorCode); \
-        }                                                                                                          \
+#define ROCDEC_API_CALL( rocDecAPI )                                                                         \
+    do {                                                                                                     \
+        rocDecStatus error_code = rocDecAPI;                                                                 \
+        if( error_code != ROCDEC_SUCCESS) {                                                                  \
+            std::ostringstream error_log;                                                                    \
+            error_log << #rocDecAPI << " returned err " << error_code << " at " <<__FILE__ <<":" << __LINE__;\
+            ROCDEC_THROW(error_log.str(), error_code); \
+        }                                                                                                     \
     } while (0)
 
-#define HIP_API_CALL( call )                                                                                                 \
-    do {                                                                                                                          \
-        hipError_t hip_status = call;                                                                                            \
-        if (hip_status != hipSuccess) {                                                                                          \
-            const char *szErrName = NULL;                                                                                        \
-            szErrName = hipGetErrorName(hip_status);                                                                             \
-            std::ostringstream errorLog;                                                                                         \
-            errorLog << "hip API error " << szErrName ;                                                                  \
-            ROCDEC_THROW(errorLog.str(), hip_status);                   \
-        }                                                                                                                        \
-    }                                                                                                                            \
+#define HIP_API_CALL( call )                                                                                  \
+    do {                                                                                                      \
+        hipError_t hip_status = call;                                                                         \
+        if (hip_status != hipSuccess) {                                                                       \
+            const char *sz_err_name = NULL;                                                                     \
+            sz_err_name = hipGetErrorName(hip_status);                                                          \
+            std::ostringstream error_log;                                                                     \
+            error_log << "hip API error " << sz_err_name ;                                                      \
+            ROCDEC_THROW(error_log.str(), hip_status);                   \
+        }                                                                                                     \
+    }                                                                                                         \
     while (0)
 
 
@@ -127,7 +127,7 @@ typedef struct OutputSurfaceInfoType {
     uint32_t num_chroma_planes;          /**< Output Chroma number of planes*/
     uint64_t output_surface_size_in_bytes; /**< Output Image Size in Bytes; including both luma and chroma planes*/ 
     rocDecVideoSurfaceFormat surface_format;      /**< Chroma format of the decoded image*/
-    OUTPUT_SURF_MEMORY_TYPE mem_type;             /**< Output mem_type of the surface*/    
+    OutputSurfaceMemoryType mem_type;             /**< Output mem_type of the surface*/    
 } OutputSurfaceInfo;
 
 class RocVideoDecoder {
@@ -148,7 +148,7 @@ class RocVideoDecoder {
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(int device_id,  OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
+        RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
@@ -264,11 +264,11 @@ class RocVideoDecoder {
         /**
          * @brief Get the Device info for the current device
          * 
-         * @param device_name 
-         * @param gcn_arch_name 
-         * @param pci_bus_id 
-         * @param pci_domain_id 
-         * @param pci_device_id 
+         * @param device_name
+         * @param gcn_arch_name
+         * @param pci_bus_id
+         * @param pci_domain_id
+         * @param pci_device_id
          */
         void GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id);
         
@@ -286,49 +286,49 @@ class RocVideoDecoder {
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
          */
-        static int ROCDECAPI HandleVideoSequenceProc(void *pUserData, RocdecVideoFormat *pVideoFormat) { return ((RocVideoDecoder *)pUserData)->HandleVideoSequence(pVideoFormat); }
+        static int ROCDECAPI HandleVideoSequenceProc(void *p_user_data, RocdecVideoFormat *p_video_format) { return ((RocVideoDecoder *)p_user_data)->HandleVideoSequence(p_video_format); }
 
         /**
          *   @brief  Callback function to be registered for getting a callback when a decoded frame is ready to be decoded
          */
-        static int ROCDECAPI HandlePictureDecodeProc(void *pUserData, RocdecPicParams *pPicParams) { return ((RocVideoDecoder *)pUserData)->HandlePictureDecode(pPicParams); }
+        static int ROCDECAPI HandlePictureDecodeProc(void *p_user_data, RocdecPicParams *p_pic_params) { return ((RocVideoDecoder *)p_user_data)->HandlePictureDecode(p_pic_params); }
 
         /**
          *   @brief  Callback function to be registered for getting a callback when a decoded frame is available for display
          */
-        static int ROCDECAPI HandlePictureDisplayProc(void *pUserData, RocdecParserDispInfo *pDispInfo) { return ((RocVideoDecoder *)pUserData)->HandlePictureDisplay(pDispInfo); }
+        static int ROCDECAPI HandlePictureDisplayProc(void *p_user_data, RocdecParserDispInfo *p_disp_info) { return ((RocVideoDecoder *)p_user_data)->HandlePictureDisplay(p_disp_info); }
 
         /**
          *   @brief  Callback function to be registered for getting a callback when all the unregistered user SEI Messages are parsed for a frame.
          */
-        static int ROCDECAPI HandleSEIMessagesProc(void *pUserData, RocdecSeiMessageInfo *pSEIMessageInfo) { return ((RocVideoDecoder *)pUserData)->GetSEIMessage(pSEIMessageInfo); } 
+        static int ROCDECAPI HandleSEIMessagesProc(void *p_user_data, RocdecSeiMessageInfo *p_sei_message_info) { return ((RocVideoDecoder *)p_user_data)->GetSEIMessage(p_sei_message_info); } 
 
         /**
          *   @brief  This function gets called when a sequence is ready to be decoded. The function also gets called
              when there is format change
         */
-        int HandleVideoSequence(RocdecVideoFormat *pVideoFormat);
+        int HandleVideoSequence(RocdecVideoFormat *p_video_format);
 
         /**
          *   @brief  This function gets called when a picture is ready to be decoded. cuvidDecodePicture is called from this function
          *   to decode the picture
          */
-        int HandlePictureDecode(RocdecPicParams *pPicParams);
+        int HandlePictureDecode(RocdecPicParams *p_pic_params);
 
         /**
          *   @brief  This function gets called after a picture is decoded and available for display. Frames are fetched and stored in 
              internal buffer
         */
-        int HandlePictureDisplay(RocdecParserDispInfo *pDispInfo);
+        int HandlePictureDisplay(RocdecParserDispInfo *p_disp_info);
         /**
          *   @brief  This function gets called when all unregistered user SEI messages are parsed for a frame
          */
-        int GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo);
+        int GetSEIMessage(RocdecSeiMessageInfo *p_sei_message_info);
 
         /**
          *   @brief  This function reconfigure decoder if there is a change in sequence params.
          */
-        int ReconfigureDecoder(RocdecVideoFormat *pVideoFormat);
+        int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
 
         /**
          * @brief Function to Initialize GPU-HIP
@@ -339,7 +339,7 @@ class RocVideoDecoder {
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
         rocDecDecoderHandle roc_decoder_ = nullptr;
-        OUTPUT_SURF_MEMORY_TYPE out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
+        OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
         bool b_low_latency_ = true;
         bool b_force_zero_latency_ = true;
