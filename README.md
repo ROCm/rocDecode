@@ -2,7 +2,6 @@
 rocDecode is a high performance video decode SDK for AMD hardware. rocDecode API lets developers access the video decoding features available on the GPU.
 
 ## Supported Codecs
-* H.264 - 8 bit
 * H.265 (HEVC) - 8 bit, and 10 bit
 
 ## Prerequisites:
