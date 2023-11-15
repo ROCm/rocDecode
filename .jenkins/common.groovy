@@ -90,10 +90,11 @@ def runPackageCommand(platform, project) {
                 sudo make package
                 mkdir -p package
                 mkdir -p package/${osType}
-                mv *.${packageType} package/${osType}/
-                mv Testing/Temporary/*.log package/${osType}/
-                ${packageInfo} package/${osType}/rocdecode-dev*.${packageType}
-                ${packageInfo} package/${osType}/rocdecode_0*.${packageType}
+                mv rocdecode-dev*.${packageType} package/${osType}-rocdecode-dev*.${packageType}
+                mv rocdecode_*.${packageType} package/${osType}-rocdecode_*.${packageType}
+                mv Testing/Temporary/*.log package/${osType}-*.log
+                ${packageInfo} package/${osType}-rocdecode-dev*.${packageType}
+                ${packageInfo} package/${osType}-rocdecode_*.${packageType}
                 """
 
     platform.runCommand(this, command)
