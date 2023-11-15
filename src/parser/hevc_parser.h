@@ -665,6 +665,8 @@ protected:
     size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
 
     // Data members of HEVC class
+    uint32_t            pic_count_;  // decoded picture count for the current bitstream
+
     NalUnitHeader       nal_unit_header_;
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
@@ -689,6 +691,9 @@ protected:
     int                 slice_num_;
     uint8_t*            pic_stream_data_ptr_;
     int                 pic_stream_data_size_;
+
+    int first_pic_after_eos_nal_unit_; // to flag the first picture after EOS
+    int no_rasl_output_flag_; // NoRaslOutputFlag
 
     int pic_width_in_ctbs_y_;  // PicWidthInCtbsY
     int pic_height_in_ctbs_y_;  // PicHeightInCtbsY
@@ -837,7 +842,7 @@ protected:
      * \param [in] size Size of the input stream
      * \return True is successful, else false
      */
-    bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
+    bool ParseSliceHeader(uint8_t *nalu, size_t size);
 
     /*! \brief Function to parse Sei Message Info
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -923,4 +928,10 @@ private:
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
+
+    bool IsIdrPic(NalUnitHeader *nal_header_ptr);
+    bool IsCraPic(NalUnitHeader *nal_header_ptr);
+    bool IsBlaPic(NalUnitHeader *nal_header_ptr);
+    bool IsIrapPic(NalUnitHeader *nal_header_ptr);
+    bool IsRaslPic(NalUnitHeader *nal_header_ptr);
 };
