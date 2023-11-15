@@ -128,7 +128,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
   install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h
+  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.h utils/rocvideodecode/roc_video_dec.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode)
   install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils)
