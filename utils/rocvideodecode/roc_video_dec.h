@@ -279,7 +279,7 @@ class RocVideoDecoder {
          * @param dev_mem           - pointer to surface memory
          * @param surf_info         - surface info
          */
-        void SaveSurfToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
+        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
 
     private:
         int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.

@@ -652,7 +652,7 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp) {
 }
 
 
-void RocVideoDecoder::SaveSurfToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info) {
+void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info) {
     uint8_t *hst_ptr = nullptr;
     uint64_t output_image_size = surf_info->output_surface_size_in_bytes;
     if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL || surf_info->mem_type == OUT_SURFACE_MEM_DEV_COPIED) {

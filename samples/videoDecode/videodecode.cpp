@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
             if (dump_output_frames) {
                 for (int i = 0; i < n_frame_returned; i++) {
                     pframe = viddec.GetFrame(&pts);
-                    viddec.SaveSurfToFile(output_file_path, pframe, surf_info);
+                    viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                     // release frame
                     viddec.ReleaseFrame(pts);
                 }
