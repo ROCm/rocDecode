@@ -138,7 +138,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
   # install rocDecode include files -- {ROCM_PATH}/include/rocdecode
-  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.hpp utils/rocvideodecode/roc_video_dec.h 
+  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.h utils/rocvideodecode/roc_video_dec.h 
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
   # install rocDecode samples -- {ROCM_PATH}/share/rocdecode
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} COMPONENT dev)
