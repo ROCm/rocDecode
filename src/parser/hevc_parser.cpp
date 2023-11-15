@@ -432,24 +432,9 @@ int HEVCVideoParser::SendPicForDecode() {
 
     // Ref lists
     memset(slice_params_ptr->RefPicList, 0xFF, sizeof(slice_params_ptr->RefPicList));
-    for (i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
-        int idx = ref_pic_list_0_[i]; // pic_idx of the ref pic
-        for (j = 0; j < 15; j++) {
-            if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
-                break;
-            }
-        }
-        if (j == 15) {
-            ERR("Could not find matching pic in ref_frames list.");
-        }
-        else {
-            slice_params_ptr->RefPicList[0][i] = j;
-        }
-    }
-
-    if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
-        for (i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
-            int idx = ref_pic_list_1_[i]; // pic_idx of the ref pic
+    if (m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
+        for (i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
+            int idx = ref_pic_list_0_[i]; // pic_idx of the ref pic
             for (j = 0; j < 15; j++) {
                 if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
                     break;
@@ -459,7 +444,24 @@ int HEVCVideoParser::SendPicForDecode() {
                 ERR("Could not find matching pic in ref_frames list.");
             }
             else {
-                slice_params_ptr->RefPicList[1][i] = j;
+                slice_params_ptr->RefPicList[0][i] = j;
+            }
+        }
+
+        if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+            for (i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
+                int idx = ref_pic_list_1_[i]; // pic_idx of the ref pic
+                for (j = 0; j < 15; j++) {
+                    if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
+                        break;
+                    }
+                }
+                if (j == 15) {
+                    ERR("Could not find matching pic in ref_frames list.");
+                }
+                else {
+                    slice_params_ptr->RefPicList[1][i] = j;
+                }
             }
         }
     }
@@ -635,7 +637,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         DeocdeRps();
 
                         // Construct ref lists
-                        if(m_sh_->slice_type == HEVC_SLICE_TYPE_P || m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+                        if(m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
                             ConstructRefPicLists();
                         }
 
@@ -1646,7 +1648,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, si
             }
         }
 
-        if (m_sh_->slice_type == HEVC_SLICE_TYPE_P || m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
+        if (m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
             m_sh_->num_ref_idx_active_override_flag = Parser::GetBit(nalu, offset);
             if (m_sh_->num_ref_idx_active_override_flag) {
                 m_sh_->num_ref_idx_l0_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
