@@ -94,7 +94,8 @@ def runPackageCommand(platform, project) {
                 mkdir -p package
                 mv rocdecode-dev*.${packageType} package/${osType}-rocdecode-dev.${packageType}
                 mv ${packageRunTime}.${packageType} package/${osType}-rocdecode.${packageType}
-                mv Testing/Temporary/*.log package/${osType}-.log
+                mv Testing/Temporary/LastTest.log package/${osType}-LastTest.log
+                mv Testing/Temporary/LastTestsFailed.log package/${osType}-LastTestsFailed.log
                 ${packageInfo} package/${osType}-rocdecode-dev.${packageType}
                 ${packageInfo} package/${osType}-rocdecode.${packageType}
                 """
