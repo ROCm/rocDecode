@@ -149,7 +149,7 @@ class RocVideoDecoder {
        * @param force_zero_latency 
        */
         RocVideoDecoder(int device_id,  OUTPUT_SURF_MEMORY_TYPE out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
-                          bool device_frame_pitched = true, const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
+                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
         
@@ -202,8 +202,6 @@ class RocVideoDecoder {
         size_t GetSurfaceSize() { assert(surface_size_); return surface_size_; }
         uint32_t GetSurfaceStride() { assert(surface_stride_); return surface_stride_; }
         //RocDecImageFormat GetSubsampling() { return subsampling_; }
-        int GetSurfaceWidth() { assert(surface_width_); return surface_width_;}
-        int GetSurfaceHeight() { assert(surface_height_); return surface_height_;}
         /**
          * @brief Get the name of the output format
          * 
@@ -345,7 +343,7 @@ class RocVideoDecoder {
         bool b_extract_sei_message_ = false;
         bool b_low_latency_ = true;
         bool b_force_zero_latency_ = true;
-        bool b_device_frame_pitched_ = true;
+        //bool b_device_frame_pitched_ = true;
         hipDeviceProp_t hip_dev_prop_;
         hipStream_t hip_stream_;
         rocDecVideoCodec codec_id_ = rocDecVideoCodec_NumCodecs;
@@ -364,8 +362,6 @@ class RocVideoDecoder {
         uint32_t height_;
         int max_width_, max_height_;
         uint32_t chroma_height_;
-        uint32_t surface_height_;
-        uint32_t surface_width_;
         uint32_t num_chroma_planes_;
         uint32_t num_components_;
         uint32_t surface_stride_;
