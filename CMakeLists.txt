@@ -187,6 +187,10 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
   set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
+  # Set the dev dependent packages
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+  # TBD - RPM packages need Fusion Packages
+  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -209,7 +213,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
   set(CPACK_DEBIAN_DEV_PACKAGE_NAME "${PROJECT_NAME}-dev")
-  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS 
+  "${PROJECT_NAME}, rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}, ${rocDecode_DEBIAN_DEV_PACKAGE_LIST}")
   # Debian package - specific variable for ASAN
   set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
   set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core-asan, ${rocDecode_DEBIAN_PACKAGE_LIST}" )
