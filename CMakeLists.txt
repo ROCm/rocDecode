@@ -187,6 +187,10 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
   set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
+  # Set the dev dependent packages
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+  # TBD - RPM packages need Fusion Packages
+  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -209,7 +213,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
   set(CPACK_DEBIAN_DEV_PACKAGE_NAME "${PROJECT_NAME}-dev")
-  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS 
+  "rocm-core, ${PROJECT_NAME}, ${rocDecode_DEBIAN_PACKAGE_LIST}, ${rocDecode_DEBIAN_DEV_PACKAGE_LIST}")
   # Debian package - specific variable for ASAN
   set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
   set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core-asan, ${rocDecode_DEBIAN_PACKAGE_LIST}" )
@@ -218,7 +223,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_RPM_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
   set(CPACK_RPM_RUNTIME_PACKAGE_REQUIRES "rocm-core, ${rocDecode_RPM_PACKAGE_LIST}")
   set(CPACK_RPM_DEV_PACKAGE_NAME "${PROJECT_NAME}-devel")
-  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "${PROJECT_NAME}, rocm-core, ${rocDecode_RPM_PACKAGE_LIST}")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}, ${rocDecode_RPM_PACKAGE_LIST}")
   set(CPACK_RPM_RUNTIME_PACKAGE_PROVIDES "${PROJECT_NAME}")
   set(CPACK_RPM_RUNTIME_PACKAGE_OBSOLETES "${PROJECT_NAME}")
   set(CPACK_RPM_DEV_PACKAGE_PROVIDES "${PROJECT_NAME}-dev")
@@ -262,11 +267,13 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   endif()
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
-    message("-- ${White}AMD ROCm rocDecode -- CPACK_RPM_RUNTIME_PACKAGE_REQUIRES: ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode RunTime Package -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
-    message("-- ${White}AMD ROCm rocDecode -- CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS: ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode RunTime Package -- ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
   include(CPack)
