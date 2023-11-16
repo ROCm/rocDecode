@@ -446,7 +446,7 @@ int HEVCVideoParser::SendPicForDecode() {
                 }
             }
             if (j == 15) {
-                ERR("Could not find matching pic in ref_frames list. The slice type is I, and the idx from the ref_pic_list_0_ is: " + TOSTR(idx));
+                ERR("Could not find matching pic in ref_frames list. The slice type is P/B, and the idx from the ref_pic_list_0_ is: " + TOSTR(idx));
                 return PARSER_FAIL;
             }
             else {
