@@ -23,9 +23,11 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project(rocdecode)
 set(VERSION "0.4.0")
 set(CMAKE_CXX_STANDARD 17)
+
+# Set Project Version and Language
+project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
 
 set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
 set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE STRING "Include install directory")
@@ -71,7 +73,7 @@ message("-- ${BoldBlue}rocDecode Version -- ${VERSION}${ColourReset}")
 message("-- ${BoldBlue}rocDecode Install Path -- ${CMAKE_INSTALL_PREFIX}${ColourReset}")
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
 set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
 
 # rocDecode Default Options
@@ -127,57 +129,119 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.h utils/rocvideodecode/roc_video_dec.h
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
-  install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode)
-  install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils)
-  install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/samples)
-  install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/video)
+  set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+  set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+
+  # install rocDecode libs -- {ROCM_PATH}/lib
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
+  # install rocDecode include files -- {ROCM_PATH}/include/rocdecode
+  install(FILES api/rocdecode.h api/rocparser.h utils/video_demuxer.h utils/rocvideodecode/roc_video_dec.h 
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
+  # install rocDecode samples -- {ROCM_PATH}/share/rocdecode
+  install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} COMPONENT dev)
+  install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
+  install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples COMPONENT dev)
+  install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/video COMPONENT dev)
+  # set license information - {ROCM_PATH}/share/doc/rocdecode
+  set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT runtime)
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT dev)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
+  # make test with CTest
   enable_testing()
   include(CTest)
   add_subdirectory(samples)
 
   # set package information
-  set(CPACK_PACKAGE_VERSION ${VERSION})
-  set(CPACK_PACKAGE_LICENSE "AMD")
+  set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+  set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+  set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+  set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+  set(CPACK_PACKAGE_LICENSE "MIT")
   set(CPACK_PACKAGE_CONTACT "rocDecode Support <mivisionx.support@amd.com>")
   set(CPACK_PACKAGE_VENDOR "AMD ROCm")
   set(CPACK_PACKAGE_GROUP "Development/Tools")
   set(CPACK_PACKAGE_HOMEPAGE "https://github.com/ROCmSoftwarePlatform/rocDecode")
 
   if(ENABLE_ASAN_PACKAGING)
-    set(CPACK_PACKAGE_NAME "rocDecode-asan")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode address sanitizer libraries")
     set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode address sanitizer libraries")
   else()
-    set(CPACK_PACKAGE_NAME "rocDecode")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.
-                 rocDecode is a toolkit to decode videos and images using a hardware-accelerated video \
-                decoder on AMD’s GPUs.")
+                  rocDecode is a toolkit to decode videos using a hardware-accelerated video \
+                  decoder on AMD’s GPUs.")
     set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.")
   endif()
 
-  # set license information
-  set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-
-  # NOTE: ASAN package requires address sanitized libraries and license file
-  # BUILD_DEV will be set to OFF for ASAN biulds.
-  if(ENABLE_ASAN_PACKAGING)
-    install(FILES ${CPACK_RESOURCE_FILE_LICENSE}
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/rocdecode-asan)
-  else()
-    install(FILES ${CPACK_RESOURCE_FILE_LICENSE}
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/rocdecode)
-  endif()
   if(DEFINED ENV{ROCM_LIBPATCH_VERSION})
-    set(CPACK_PACKAGE_VERSION
-        "${CPACK_PACKAGE_VERSION}.$ENV{ROCM_LIBPATCH_VERSION}")
+    set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}.$ENV{ROCM_LIBPATCH_VERSION}")
+  endif()
+
+  # Set the dependent packages
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
+  set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
+  
+  # '%{?dist}' breaks manual builds on debian systems due to empty Provides
+  execute_process(
+    COMMAND rpm --eval %{?dist}
+    RESULT_VARIABLE PROC_RESULT
+    OUTPUT_VARIABLE EVAL_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "")
+    string(APPEND CPACK_RPM_PACKAGE_RELEASE "%{?dist}")
+  endif()
+
+  # set package 
+  set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${CPACK_PACKAGE_HOMEPAGE})
+  set(CPACK_RPM_PACKAGE_URL ${CPACK_PACKAGE_HOMEPAGE})
+  set(CPACK_RPM_PACKAGE_AUTOREQPROV "no")
+  # Debian package
+  set(CPACK_DEB_COMPONENT_INSTALL ON)
+  set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
+  set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
+  set(CPACK_DEBIAN_DEV_PACKAGE_NAME "${PROJECT_NAME}-dev")
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
+  # Debian package - specific variable for ASAN
+  set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
+  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "${PROJECT_NAME}, rocm-core-asan, ${rocDecode_DEBIAN_PACKAGE_LIST}" )
+  # RPM package
+  set(CPACK_RPM_COMPONENT_INSTALL ON)
+  set(CPACK_RPM_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
+  set(CPACK_RPM_RUNTIME_PACKAGE_REQUIRES "rocm-core, ${rocDecode_RPM_PACKAGE_LIST}")
+  set(CPACK_RPM_DEV_PACKAGE_NAME "${PROJECT_NAME}-devel")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "${PROJECT_NAME}, rocm-core, ${rocDecode_RPM_PACKAGE_LIST}")
+  set(CPACK_RPM_RUNTIME_PACKAGE_PROVIDES "${PROJECT_NAME}")
+  set(CPACK_RPM_RUNTIME_PACKAGE_OBSOLETES "${PROJECT_NAME}")
+  set(CPACK_RPM_DEV_PACKAGE_PROVIDES "${PROJECT_NAME}-dev")
+  set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "${PROJECT_NAME}-dev")
+  set(CPACK_RPM_PACKAGE_LICENSE "MIT" )
+  # RPM package specific variable for ASAN
+  set(CPACK_RPM_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
+  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, ${rocDecode_RPM_PACKAGE_LIST}" )
+
+  if(NOT ROCM_DEP_ROCMCORE)
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_RUNTIME_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_DEV_PACKAGE_REQUIRES ${CPACK_RPM_DEV_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS})
+   string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
+  endif()
+
+  if(ENABLE_ASAN_PACKAGING)
+   # ASAN Package requires asan component with only libraries and license file
+   set(CPACK_COMPONENTS_ALL asan)
+  else()
+   set(CPACK_COMPONENTS_ALL runtime dev)
   endif()
 
   set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
@@ -192,59 +256,34 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
     set(CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE})
   endif()
 
-  # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST
-      "vainfo, libva-dev, libdrm-dev")
-  set(rocDecode_RPM_PACKAGE_LIST
-      "libva-devel, libdrm-devel")
-  # set dependency to ROCm if set to TRUE, default to OFF
-  set(ROCM_DEP_ROCMCORE OFF CACHE BOOL "Set rocm-core dependency")
-  if(ROCM_DEP_ROCMCORE)
-    if(ENABLE_ASAN_PACKAGING)
-      set(_rocm_core_pkg "rocm-core-asan")
-    else()
-      set(_rocm_core_pkg "rocm-core")
-    endif()
-    set(rocDecode_PACKAGE_REQS "${rocDecode_PACKAGE_REQS}, ${_rocm_core_pkg}")
-
-    set(rocDecode_DEBIAN_PACKAGE_LIST "${rocDecode_PACKAGE_REQS}, ${rocDecode_DEBIAN_PACKAGE_LIST}")
-    set(rocDecode_RPM_PACKAGE_LIST "${rocDecode_PACKAGE_REQS}, ${rocDecode_RPM_PACKAGE_LIST}")
-  endif()
-
-  set(CPACK_DEBIAN_PACKAGE_DEPENDS "${rocDecode_DEBIAN_PACKAGE_LIST}")
-  set(CPACK_RPM_PACKAGE_REQUIRES "${rocDecode_RPM_PACKAGE_LIST}")
-
-  # '%{?dist}' breaks manual builds on debian systems due to empty Provides
-  execute_process(
-    COMMAND rpm --eval %{?dist}
-    RESULT_VARIABLE PROC_RESULT
-    OUTPUT_VARIABLE EVAL_RESULT
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "")
-    string(APPEND CPACK_RPM_PACKAGE_RELEASE "%{?dist}")
-  endif()
-
-  set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-
-  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${CPACK_PACKAGE_HOMEPAGE})
-  set(CPACK_RPM_PACKAGE_URL ${CPACK_PACKAGE_HOMEPAGE})
-  set(CPACK_RPM_PACKAGE_AUTOREQPROV "no")
-
   set(CPACK_GENERATOR "TGZ;ZIP")
   if(EXISTS ${MAKE_NSIS_EXE})
     list(APPEND CPACK_GENERATOR "NSIS")
   endif()
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
-    message("-- ${White}AMD ROCm rocDecode -- CPACK_RPM_PACKAGE_REQUIRES: ${CPACK_RPM_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode -- CPACK_RPM_RUNTIME_PACKAGE_REQUIRES: ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
-    message("-- ${White}AMD ROCm rocDecode -- CPACK_DEBIAN_PACKAGE_DEPENDS: ${CPACK_DEBIAN_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode -- CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS: ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
   include(CPack)
+
+  cpack_add_component(runtime
+                    DISPLAY_NAME "Runtime"
+                    DESCRIPTION "Library, Header files and documentation for rocDecode")
+
+  cpack_add_component(dev
+                    DISPLAY_NAME "Devel"
+                    DESCRIPTION "Header files and documentation for rocDecode")
+
+  cpack_add_component(asan
+                    DISPLAY_NAME "ASAN"
+                    DESCRIPTION "ASAN libraries for the rocDecode")
 else()
+  message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
   endif()
