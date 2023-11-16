@@ -138,14 +138,13 @@ int main(int argc, char **argv) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
-
-            if (dump_output_frames) {
-                for (int i = 0; i < n_frame_returned; i++) {
-                    pframe = viddec.GetFrame(&pts);
+            for (int i = 0; i < n_frame_returned; i++) {
+                pframe = viddec.GetFrame(&pts);
+                if (dump_output_frames) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
-                    // release frame
-                    viddec.ReleaseFrame(pts);
                 }
+                // release frame
+                viddec.ReleaseFrame(pts);
             }
             n_frame += n_frame_returned;
         } while (n_video_bytes);
