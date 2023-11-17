@@ -22,19 +22,33 @@ THE SOFTWARE.
 
 #include "hevc_parser.h"
 
+template <typename T>
+inline T *AllocStruct(const int max_cnt) {
+    T *p = nullptr;
+    try {
+        p = (max_cnt == 1) ? new T : new T [max_cnt];
+    }
+    catch(const std::exception& e) {
+        ERR(STR("Failed to alloc VPS Data, ") + STR(e.what()))
+    }
+    memset(p, 0, sizeof(T) * max_cnt);
+    return p;
+}
+
 HEVCVideoParser::HEVCVideoParser() {
     pic_count_ = 0;
     first_pic_after_eos_nal_unit_ = 0;
-
     m_active_vps_id_ = -1; 
     m_active_sps_id_ = -1;
     m_active_pps_id_ = -1;
     b_new_picture_ = false;
-    m_vps_ = NULL;
-    m_sps_ = NULL;
-    m_pps_ = NULL;
-    m_sh_ = NULL;
-    m_sh_copy_ = NULL;
+    // allocate all fixed size structors here
+    m_vps_ = AllocStruct<VpsData>(MAX_VPS_COUNT);
+    m_sps_ = AllocStruct<SpsData>(MAX_SPS_COUNT);
+    m_pps_ = AllocStruct<PpsData>(MAX_PPS_COUNT);
+    m_sh_ = AllocStruct<SliceHeaderData>(1);
+    m_sh_copy_ = AllocStruct<SliceHeaderData>(1);
+    m_sei_message_ = AllocStruct<SeiMessageData>(1);
 
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
@@ -112,74 +126,8 @@ HEVCVideoParser::~HEVCVideoParser() {
     }
 }
 
-HEVCVideoParser::VpsData* HEVCVideoParser::AllocVps() {
-    VpsData *p = nullptr;
-    try {
-        p = new VpsData [MAX_VPS_COUNT];
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc VPS Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(VpsData) * MAX_VPS_COUNT);
-    return p;
-}
-
-HEVCVideoParser::SpsData* HEVCVideoParser::AllocSps() {
-    SpsData *p = nullptr;
-    try {
-        p = new SpsData [MAX_SPS_COUNT];
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc SPS Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(SpsData) * MAX_SPS_COUNT);
-    return p;
-}
-
-HEVCVideoParser::PpsData* HEVCVideoParser::AllocPps() {
-    PpsData *p = nullptr;
-    try {
-        p = new PpsData [MAX_PPS_COUNT];
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc PPS Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(PpsData) * MAX_PPS_COUNT);
-    return p;
-}
-
-HEVCVideoParser::SliceHeaderData* HEVCVideoParser::AllocSliceHeader() {
-    SliceHeaderData *p = nullptr;
-    try {
-        p = new SliceHeaderData;
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc Slice Header Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(SliceHeaderData));
-    return p;
-}
-
-HEVCVideoParser::SeiMessageData* HEVCVideoParser::AllocSeiMessage() {
-    SeiMessageData *p = nullptr;
-    try {
-        p = new SeiMessageData;
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc Sei Message Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(SeiMessageData));
-    return p;
-}
-
 ParserResult HEVCVideoParser::Init() {
     b_new_picture_ = false;
-    m_vps_ = AllocVps();
-    m_sps_ = AllocSps();
-    m_pps_ = AllocPps();
-    m_sh_ = AllocSliceHeader();
-    m_sh_copy_ = AllocSliceHeader();
-    m_sei_message_ = AllocSeiMessage();
     return PARSER_OK;
 }
 
@@ -297,7 +245,7 @@ int HEVCVideoParser::SendPicForDecode() {
     dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
     dec_pic_params_.pBitstreamData = pic_stream_data_ptr_;
     dec_pic_params_.nNumSlices = slice_num_;
-    dec_pic_params_.pSliceDataOffsets = NULL; // Todo: do we need this? Remove if not.
+    dec_pic_params_.pSliceDataOffsets = nullptr; // Todo: do we need this? Remove if not.
 
     dec_pic_params_.ref_pic_flag = 1;  // HEVC decoded picture is always marked as short term at first.
     dec_pic_params_.intra_pic_flag = m_sh_->slice_type == HEVC_SLICE_TYPE_I ? 1 : 0;
@@ -1295,7 +1243,7 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 }
 
 void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
-    SpsData *sps_ptr = NULL;
+    SpsData *sps_ptr = nullptr;
     size_t offset = 0;
 
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
@@ -1543,8 +1491,8 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 }
 
 bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
-    PpsData *pps_ptr = NULL;
-    SpsData *sps_ptr = NULL;
+    PpsData *pps_ptr = nullptr;
+    SpsData *sps_ptr = nullptr;
     size_t offset = 0;
     SliceHeaderData temp_sh;
     memset(m_sh_, 0, sizeof(SliceHeaderData));
@@ -1794,41 +1742,22 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         m_sh_->dependent_slice_segment_flag = temp_sh.dependent_slice_segment_flag;
         m_sh_->slice_segment_address = temp_sh.slice_segment_address;
     }
-
     if (pps_ptr->tiles_enabled_flag || pps_ptr->entropy_coding_sync_enabled_flag) {
-        int max_num_entry_point_offsets;  // 7.4.7.1
-        if (!pps_ptr->tiles_enabled_flag && pps_ptr->entropy_coding_sync_enabled_flag) {
-            max_num_entry_point_offsets = pic_height_in_ctbs_y_ - 1;
-        }
-        else if (pps_ptr->tiles_enabled_flag && !pps_ptr->entropy_coding_sync_enabled_flag) {
-            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * (pps_ptr->num_tile_rows_minus1 + 1) - 1;
-        }
-        else {
-            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * pic_height_in_ctbs_y_ - 1;
-        }
         m_sh_->num_entry_point_offsets = Parser::ExpGolomb::ReadUe(nalu, offset);
-        if (m_sh_->num_entry_point_offsets > max_num_entry_point_offsets) {
-            m_sh_->num_entry_point_offsets = max_num_entry_point_offsets;
-        }
-
- #if 0 // do not parse syntax parameters that are not used by HW decode
-       if (m_sh_->num_entry_point_offsets) {
+        if (m_sh_->num_entry_point_offsets) {
             m_sh_->offset_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             for (int i = 0; i < m_sh_->num_entry_point_offsets; i++) {
                 m_sh_->entry_point_offset_minus1[i] = Parser::ReadBits(nalu, offset, m_sh_->offset_len_minus1 + 1);
             }
         }
-#endif
     }
 
-#if 0 // do not parse syntax parameters that are not used by HW decode
     if (pps_ptr->slice_segment_header_extension_present_flag) {
         m_sh_->slice_segment_header_extension_length = Parser::ExpGolomb::ReadUe(nalu, offset);
         for (int i = 0; i < m_sh_->slice_segment_header_extension_length; i++) {
             m_sh_->slice_segment_header_extension_data_byte[i] = Parser::ReadBits(nalu, offset, 8);
         }
     }
-#endif
 
 #if DBGINFO
     PrintSliceSegHeader(m_sh_);
