@@ -20,7 +20,7 @@ This sample uses multiple threads to decode the same input video parallely.
 
 * [FFMPEG](https://ffmpeg.org/about.html)
   ```
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
+  sudo apt install ffmpeg
   ```
 
 ## Build

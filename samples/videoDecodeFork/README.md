@@ -20,7 +20,7 @@ This sample uses fork() to create multiple processes to decode the same input vi
 
 * [FFMPEG](https://ffmpeg.org/about.html)
   ```
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libswscale-dev
+  sudo apt install ffmpeg
   ```
 
 ## Build

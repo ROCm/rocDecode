@@ -57,7 +57,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
     # FFMPEG
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
-                      ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
+                        ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocDecode
     include_directories (${ROCDECODE_INCLUDE_DIR})
