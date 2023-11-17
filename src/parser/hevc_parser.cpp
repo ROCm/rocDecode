@@ -1731,11 +1731,11 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
             m_sh_->slice_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
         }
 
-        memcpy(m_sh_copy_, m_sh_, sizeof(*m_sh_));
+        memcpy(m_sh_copy_, m_sh_, sizeof(SliceHeaderData));
     }
     else {
         //dependant slice
-        memcpy(m_sh_, m_sh_copy_, sizeof(*m_sh_copy_));
+        memcpy(m_sh_, m_sh_copy_, sizeof(SliceHeaderData));
         m_sh_->first_slice_segment_in_pic_flag = temp_sh.first_slice_segment_in_pic_flag;
         m_sh_->no_output_of_prior_pics_flag = temp_sh.no_output_of_prior_pics_flag;
         m_sh_->slice_pic_parameter_set_id = temp_sh.slice_pic_parameter_set_id;
