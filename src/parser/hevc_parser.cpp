@@ -1811,20 +1811,24 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
             m_sh_->num_entry_point_offsets = max_num_entry_point_offsets;
         }
 
-        if (m_sh_->num_entry_point_offsets) {
+ #if 0 // do not parse syntax parameters that are not used by HW decode
+       if (m_sh_->num_entry_point_offsets) {
             m_sh_->offset_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             for (int i = 0; i < m_sh_->num_entry_point_offsets; i++) {
                 m_sh_->entry_point_offset_minus1[i] = Parser::ReadBits(nalu, offset, m_sh_->offset_len_minus1 + 1);
             }
         }
+#endif
     }
 
+#if 0 // do not parse syntax parameters that are not used by HW decode
     if (pps_ptr->slice_segment_header_extension_present_flag) {
         m_sh_->slice_segment_header_extension_length = Parser::ExpGolomb::ReadUe(nalu, offset);
         for (int i = 0; i < m_sh_->slice_segment_header_extension_length; i++) {
             m_sh_->slice_segment_header_extension_data_byte[i] = Parser::ReadBits(nalu, offset, 8);
         }
     }
+#endif
 
 #if DBGINFO
     PrintSliceSegHeader(m_sh_);
