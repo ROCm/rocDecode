@@ -1796,7 +1796,21 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
     }
 
     if (pps_ptr->tiles_enabled_flag || pps_ptr->entropy_coding_sync_enabled_flag) {
+        int max_num_entry_point_offsets;  // 7.4.7.1
+        if (!pps_ptr->tiles_enabled_flag && pps_ptr->entropy_coding_sync_enabled_flag) {
+            max_num_entry_point_offsets = pic_height_in_ctbs_y_ - 1;
+        }
+        else if (pps_ptr->tiles_enabled_flag && !pps_ptr->entropy_coding_sync_enabled_flag) {
+            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * (pps_ptr->num_tile_rows_minus1 + 1) - 1;
+        }
+        else {
+            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * pic_height_in_ctbs_y_ - 1;
+        }
         m_sh_->num_entry_point_offsets = Parser::ExpGolomb::ReadUe(nalu, offset);
+        if (m_sh_->num_entry_point_offsets > max_num_entry_point_offsets) {
+            m_sh_->num_entry_point_offsets = max_num_entry_point_offsets;
+        }
+
         if (m_sh_->num_entry_point_offsets) {
             m_sh_->offset_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             for (int i = 0; i < m_sh_->num_entry_point_offsets; i++) {
