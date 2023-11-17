@@ -223,6 +223,11 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
 
             slice_params_ptr = (uint8_t*)&pPicParams->slice_params.hevc;
             slice_params_size = sizeof(RocdecHevcSliceParams);
+            if ((pic_params_size != sizeof(VAPictureParameterBufferHEVC)) || (scaling_list_enabled && (iq_matrix_size != sizeof(VAIQMatrixBufferHEVC))) || 
+                (slice_params_size != sizeof(VASliceParameterBufferHEVC))) {
+                    ERR("HEVC data_buffer parameter_size not matching vaapi parameter buffer size!");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
             break;
         }
 
@@ -255,6 +260,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         slice_data_buf_size_ = pPicParams->nBitstreamDataLen * 3 / 2;  // to reduce the chance to re-allocate again.
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, slice_data_buf_size_, 1, NULL, &slice_data_buf_id_));
     }
+
     CHECK_VAAPI(vaMapBuffer(va_display_, slice_data_buf_id_, (void**)&data_buf_ptr));
     memcpy(data_buf_ptr, pPicParams->pBitstreamData, pPicParams->nBitstreamDataLen);
     CHECK_VAAPI(vaUnmapBuffer(va_display_, slice_data_buf_id_));
