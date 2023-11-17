@@ -44,6 +44,8 @@ extern int scaling_list_default_3[1][2][64];
 #define SEI_BUF_SIZE  1024
 #define HVC_MAX_DPB_FRAMES 16  // (A-2)
 #define HEVC_MAX_NUM_REF_PICS 16
+// 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
+#define MAX_ENTRY_POINT_OFFSETS 20 * 270
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -595,8 +597,7 @@ protected:
         bool slice_loop_filter_across_slices_enabled_flag;   //u(1)
         uint32_t num_entry_point_offsets;                    //ue(v)
         uint32_t offset_len_minus1;                          //ue(v)
-        //num_entry_point_offsets max is 440
-        uint32_t entry_point_offset_minus1[440];             //u(v)
+        uint32_t entry_point_offset_minus1[MAX_ENTRY_POINT_OFFSETS]; //u(v)
         uint32_t slice_segment_header_extension_length;      //ue(v)
         //slice_segment_header_extension_length max is 256
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
