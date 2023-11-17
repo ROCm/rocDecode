@@ -26,17 +26,12 @@ THE SOFTWARE.
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
-    #include <libavutil/pixdesc.h>
-    #include <libavutil/hwcontext.h>
-    #include <libavutil/hwcontext_vaapi.h>
-    #include <va/va.h>
-    #include <va/va_drmcommon.h>
 }
 
 #include "rocdecode.h"
 /*!
  * \file
- * \brief The AMD Video Demuxer for  rocDecode Library.
+ * \brief The AMD Video Demuxer for rocDecode Library.
  *
  * \defgroup group_amd_rocdecode_videodemuxer videoDemuxer: AMD rocDecode Video Demuxer API
  * \brief AMD The rocDecode Video Demuxer API.

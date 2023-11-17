@@ -115,7 +115,7 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libva-dev libdrm-dev ffmpeg libavcodec-dev libavformat-dev libswscale-dev')
+              ' install vainfo libva-dev libdrm-dev ffmpeg')
 else:
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install autoconf automake bzip2 bzip2-devel freetype-devel')
@@ -145,7 +145,7 @@ else:
                   ' install libass-devel')
         os.system('sudo -v')
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install ffmpeg libavcodec-devel libavformat-devel libswscale-devel')
+                  ' install ffmpeg')
     elif "centos-8" in platfromInfo or "redhat-8" in platfromInfo:
         # el8 x86_64 packages
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +

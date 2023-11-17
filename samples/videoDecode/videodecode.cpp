@@ -149,10 +149,6 @@ int main(int argc, char **argv) {
             n_frame += n_frame_returned;
         } while (n_video_bytes);
 
-        std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
-        std::cout << "info: Video size: [ " << surf_info->output_width << ", " << surf_info->output_height << " ]" << std::endl;
-        std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(surf_info->surface_format) << std::endl;
-        std::cout << "info: Video Bit depth: " << surf_info->bit_depth << std::endl;
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
