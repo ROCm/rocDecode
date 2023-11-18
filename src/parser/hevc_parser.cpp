@@ -620,8 +620,9 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 case NAL_UNIT_PREFIX_SEI: {
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
-                    sei_message_count_++;
+                    // todo:: ParseSeiMessage is causing Segfault: disabling until we fix it
+                    //ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
+                    //sei_message_count_++;
                     break;
                 }
 
