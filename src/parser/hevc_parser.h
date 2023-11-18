@@ -69,7 +69,7 @@ public:
      * 
      * @return rocDecStatus 
      */
-    virtual rocDecStatus UnInitialize();     // derived method
+    virtual rocDecStatus UnInitialize();     // derived method :: nothing to do for this
 
     /**
      * @brief HEVCParser object destructor
@@ -672,15 +672,14 @@ protected:
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
     int32_t             m_active_pps_id_;
-    VpsData*            m_vps_;
-    SpsData*            m_sps_;
-    PpsData*            m_pps_;
+    VpsData*            m_vps_ = nullptr;
+    SpsData*            m_sps_ = nullptr;
+    PpsData*            m_pps_ = nullptr;
+    SliceHeaderData*    m_sh_ = nullptr;
+    SliceHeaderData*    m_sh_copy_ = nullptr;
+    SeiMessageData*     m_sei_message_ = nullptr;
 
-    SliceHeaderData*    m_sh_;
-    SliceHeaderData*    m_sh_copy_;
     NalUnitHeader       slice_nal_unit_header_;
-
-    SeiMessageData*     m_sei_message_;
     uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
     HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
@@ -895,31 +894,6 @@ private:
      * \return Returns OK in <tt>ParserResult</tt> if successful, else error code
      */
     ParserResult     Init();
-
-    /*! \brief Function to allocate memory for VPS Structure
-     * \return Returns pointer to the allocated memory for <tt>VpsData</tt>
-     */
-    VpsData*         AllocVps();
-
-    /*! \brief Function to allocate memory for SPS Structure
-     * \return Returns pointer to the allocated memory for <tt>SpsData</tt>
-     */
-    SpsData*         AllocSps();
-
-    /*! \brief Function to allocate memory for PPS Structure
-     * \return Returns pointer to the allocated memory for <tt>PpsData</tt>
-     */
-    PpsData*         AllocPps();
-
-    /*! \brief Function to allocate memory for Slice Header Structure
-     * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
-     */
-    SliceHeaderData* AllocSliceHeader();
-
-    /*! \brief Function to allocate memory for Sei Message Structure
-     * \return Returns pointer to the allocated memory for <tt>SeiMessageData</tt>
-     */
-    SeiMessageData* AllocSeiMessage();
 
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
