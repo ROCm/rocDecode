@@ -29,7 +29,7 @@ inline T *AllocStruct(const int max_cnt) {
         p = (max_cnt == 1) ? new T : new T [max_cnt];
     }
     catch(const std::exception& e) {
-        ERR(STR("Failed to alloc VPS Data, ") + STR(e.what()))
+        ERR(STR("Failed to alloc HEVC header struct Data, ") + STR(e.what()))
     }
     memset(p, 0, sizeof(T) * max_cnt);
     return p;
@@ -1743,21 +1743,39 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         m_sh_->slice_segment_address = temp_sh.slice_segment_address;
     }
     if (pps_ptr->tiles_enabled_flag || pps_ptr->entropy_coding_sync_enabled_flag) {
+        int max_num_entry_point_offsets;  // 7.4.7.1
+        if (!pps_ptr->tiles_enabled_flag && pps_ptr->entropy_coding_sync_enabled_flag) {
+            max_num_entry_point_offsets = pic_height_in_ctbs_y_ - 1;
+        }
+        else if (pps_ptr->tiles_enabled_flag && !pps_ptr->entropy_coding_sync_enabled_flag) {
+            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * (pps_ptr->num_tile_rows_minus1 + 1) - 1;
+        }
+        else {
+            max_num_entry_point_offsets = (pps_ptr->num_tile_columns_minus1 + 1) * pic_height_in_ctbs_y_ - 1;
+        }
         m_sh_->num_entry_point_offsets = Parser::ExpGolomb::ReadUe(nalu, offset);
-        if (m_sh_->num_entry_point_offsets) {
+        if (m_sh_->num_entry_point_offsets > max_num_entry_point_offsets) {
+            m_sh_->num_entry_point_offsets = max_num_entry_point_offsets;
+        }
+
+ #if 0 // do not parse syntax parameters that are not used by HW decode
+       if (m_sh_->num_entry_point_offsets) {
             m_sh_->offset_len_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
             for (int i = 0; i < m_sh_->num_entry_point_offsets; i++) {
                 m_sh_->entry_point_offset_minus1[i] = Parser::ReadBits(nalu, offset, m_sh_->offset_len_minus1 + 1);
             }
         }
+#endif
     }
 
+#if 0 // do not parse syntax parameters that are not used by HW decode
     if (pps_ptr->slice_segment_header_extension_present_flag) {
         m_sh_->slice_segment_header_extension_length = Parser::ExpGolomb::ReadUe(nalu, offset);
         for (int i = 0; i < m_sh_->slice_segment_header_extension_length; i++) {
             m_sh_->slice_segment_header_extension_data_byte[i] = Parser::ReadBits(nalu, offset, 8);
         }
     }
+#endif
 
 #if DBGINFO
     PrintSliceSegHeader(m_sh_);
@@ -1790,6 +1808,9 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
     sei_message_ptr->payload_size += temp_byte;
 
     // copy the payload to buffer
+    if (sei_message_ptr->payload_size > sizeof(m_sei_data_)) {
+        THROW("sei payload size is too big for sei buffer!");
+    }
     memcpy(m_sei_data_, sei_message_ptr, sei_message_ptr->payload_size);
 }
 
