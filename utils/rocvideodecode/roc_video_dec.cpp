@@ -582,9 +582,11 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
         curr_sei_message_ptr_->pSEIData = NULL;
         return 0;
     }
-    memcpy(curr_sei_message_ptr_->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(RocdecSeiMessage) * sei_num_mesages);
-    curr_sei_message_ptr_->sei_message_count = pSEIMessageInfo->sei_message_count;
-    sei_message_display_q_[pSEIMessageInfo->picIdx] = *curr_sei_message_ptr_;
+    if (sei_num_mesages) {
+        memcpy(curr_sei_message_ptr_->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(RocdecSeiMessage) * sei_num_mesages);
+        curr_sei_message_ptr_->sei_message_count = pSEIMessageInfo->sei_message_count;
+        sei_message_display_q_[pSEIMessageInfo->picIdx] = *curr_sei_message_ptr_;
+    }
     return 1;
 }
 
