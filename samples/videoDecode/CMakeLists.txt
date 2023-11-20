@@ -38,6 +38,18 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
 
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  # -O0 -- Don't Optimize output file 
+  # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
+  # -Og -- Optimize for debugging experience rather than speed or size
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4 -Og")
+else()
+  # -O3       -- Optimize output file 
+  # -DNDEBUG  -- turn off asserts 
+  # -fPIC     -- Generate position-independent code if possible
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
+endif()
+
 set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1031;gfx1032;gfx1100")
 set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
 
