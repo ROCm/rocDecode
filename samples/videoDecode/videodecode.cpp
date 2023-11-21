@@ -42,6 +42,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
+    << "-sei extract SEI messages; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
     exit(0);
 }
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
     int dump_output_frames = 0;
     int device_id = 0;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
+    bool b_extract_sei_messages = false;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
@@ -92,6 +94,13 @@ int main(int argc, char **argv) {
             b_force_zero_latency = true;
             continue;
         }
+        if (!strcmp(argv[i], "-sei")) {
+            if (i == argc) {
+                ShowHelpAndExit("-sei");
+            }
+            b_extract_sei_messages = true;
+            continue;
+        }
         if (!strcmp(argv[i], "-crop")) {
             if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
                 ShowHelpAndExit("-crop");
@@ -108,7 +117,7 @@ int main(int argc, char **argv) {
     try {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect);
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
