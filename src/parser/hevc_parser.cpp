@@ -90,7 +90,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     // Whenever new sei message found
-    if (sei_message_count_ > 0) {
+    if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
         FillSeiMessageCallbackFn(m_sei_message_);
     }
 
@@ -226,7 +226,7 @@ void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data)
     sei_message_info_params_.picIdx = 0;
 
     // callback function with RocdecSeiMessageInfo params filled out
-    pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
+    if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
 int HEVCVideoParser::SendPicForDecode() {
@@ -621,8 +621,10 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
                     // todo:: ParseSeiMessage is causing Segfault: disabling until we fix it
-                    //ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
-                    //sei_message_count_++;
+                    if (pfn_get_sei_message_cb_) {
+                        //ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
+                        //sei_message_count_++;
+                    }
                     break;
                 }
 
