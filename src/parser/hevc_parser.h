@@ -41,11 +41,12 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
-#define SEI_BUF_SIZE  1024
 #define HVC_MAX_DPB_FRAMES 16  // (A-2)
 #define HEVC_MAX_NUM_REF_PICS 16
 // 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
 #define MAX_ENTRY_POINT_OFFSETS 20 * 270
+#define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
+#define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -603,12 +604,6 @@ protected:
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
     } SliceHeaderData;
 
-    typedef struct {
-        uint8_t payload_type;
-        uint8_t reserved[3];
-        uint32_t payload_size;
-    } SeiMessageData;
-
     /*! \brief Inline function to Parse the NAL Unit Header
      * 
      * \param [in] nal_unit A pointer of <tt>uint8_t</tt> containing the Demuxed output stream 
@@ -677,16 +672,21 @@ protected:
     PpsData*            m_pps_ = nullptr;
     SliceHeaderData*    m_sh_ = nullptr;
     SliceHeaderData*    m_sh_copy_ = nullptr;
-    SeiMessageData*     m_sei_message_ = nullptr;
 
     NalUnitHeader       slice_nal_unit_header_;
-    uint8_t             m_sei_data_[SEI_BUF_SIZE]; // to store SEI payload
     HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
-    int                 sei_message_count_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
+    uint32_t            sei_rbsp_buf_size_;
+    std::vector<RocdecSeiMessage> sei_message_list_;
+    int                 sei_message_count_;  // total SEI playload message count of the current frame.
+    uint8_t             *sei_payload_buf_;  // buffer to store SEI playload. Allocated at run time.
+    uint32_t            sei_payload_buf_size_;
+    uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
 
     int                 slice_num_;
     uint8_t*            pic_stream_data_ptr_;
@@ -897,7 +897,7 @@ private:
 
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
-    void FillSeiMessageCallbackFn(SeiMessageData* sei_message_data);
+    void FillSeiMessageCallbackFn();
 
     /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
      * \return Return code in ParserResult form

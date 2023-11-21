@@ -465,7 +465,9 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                 }
             }
             free(sei_message_display_q_[pDispInfo->picture_index].pSEIData);
+            sei_message_display_q_[pDispInfo->picture_index].pSEIData = NULL; // to avoid double free
             free(sei_message_display_q_[pDispInfo->picture_index].pSEIMessage);
+            sei_message_display_q_[pDispInfo->picture_index].pSEIMessage = NULL; // to avoid double free
         }
     }
 

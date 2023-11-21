@@ -48,7 +48,12 @@ HEVCVideoParser::HEVCVideoParser() {
     m_pps_ = AllocStruct<PpsData>(MAX_PPS_COUNT);
     m_sh_ = AllocStruct<SliceHeaderData>(1);
     m_sh_copy_ = AllocStruct<SliceHeaderData>(1);
-    m_sei_message_ = AllocStruct<SeiMessageData>(1);
+
+    sei_rbsp_buf_ = nullptr;
+    sei_rbsp_buf_size_ = 0;
+    sei_payload_buf_ = nullptr;
+    sei_payload_buf_size_ = 0;
+    sei_message_list_.assign(INIT_SEI_MESSAGE_COUNT, {0});
 
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
@@ -91,7 +96,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
     // Whenever new sei message found
     if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
-        FillSeiMessageCallbackFn(m_sei_message_);
+        FillSeiMessageCallbackFn();
     }
 
     // Decode the picture
@@ -121,8 +126,11 @@ HEVCVideoParser::~HEVCVideoParser() {
     if (m_sh_copy_) {
         delete m_sh_copy_;
     }
-    if (m_sei_message_) {
-        delete m_sei_message_;
+    if (sei_rbsp_buf_) {
+        delete [] sei_rbsp_buf_;
+    }
+    if (sei_payload_buf_) {
+        delete [] sei_payload_buf_;
     }
 }
 
@@ -211,19 +219,11 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_);
 }
 
-void HEVCVideoParser::FillSeiMessageCallbackFn(SeiMessageData* sei_message_data) {
+void HEVCVideoParser::FillSeiMessageCallbackFn() {
     sei_message_info_params_.sei_message_count = sei_message_count_;
-    sei_message_info_params_.pSEIMessage = nullptr;
-    sei_message_info_params_.pSEIMessage->sei_message_type = sei_message_data->payload_type;
-    sei_message_info_params_.pSEIMessage->sei_message_size = sei_message_data->payload_size;
-    // TODO: check reserve[3] values
-    for (int i = 0; i < 3; i++) {
-        sei_message_info_params_.pSEIMessage->reserved[i] = 0;
-    }
-    sei_message_info_params_.pSEIData = &sei_message_data;
-
-    // TODO: check picIdx value
-    sei_message_info_params_.picIdx = 0;
+    sei_message_info_params_.pSEIMessage = sei_message_list_.data();
+    sei_message_info_params_.pSEIData = (void*)sei_payload_buf_;
+    sei_message_info_params_.picIdx = curr_pic_info_.pic_idx;
 
     // callback function with RocdecSeiMessageInfo params filled out
     if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
@@ -517,6 +517,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
 
     slice_num_ = 0;
     sei_message_count_ = 0;
+    sei_payload_size_ = 0;
 
     do {
         ret = GetNalUnit();
@@ -617,13 +618,24 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                     break;
                 }
                 
-                case NAL_UNIT_PREFIX_SEI: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    // todo:: ParseSeiMessage is causing Segfault: disabling until we fix it
+                case NAL_UNIT_PREFIX_SEI:
+                case NAL_UNIT_SUFFIX_SEI: {
                     if (pfn_get_sei_message_cb_) {
-                        //ParseSeiMessage(m_rbsp_buf_, m_rbsp_size_);
-                        //sei_message_count_++;
+                        int sei_ebsp_size = nal_unit_size_ - 5; // copy the entire NAL unit
+                        if (sei_rbsp_buf_) {
+                            if (sei_ebsp_size > sei_rbsp_buf_size_) {
+                                delete [] sei_rbsp_buf_;
+                                sei_rbsp_buf_ = new uint8_t [sei_ebsp_size];
+                                sei_rbsp_buf_size_ = sei_ebsp_size;
+                            }
+                        }
+                        else {
+                            sei_rbsp_buf_size_ = sei_ebsp_size > INIT_SEI_PAYLOAD_BUF_SIZE ? sei_ebsp_size : INIT_SEI_PAYLOAD_BUF_SIZE;
+                            sei_rbsp_buf_ = new uint8_t [sei_rbsp_buf_size_];
+                        }
+                        memcpy(sei_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
+                        m_rbsp_size_ = EBSPtoRBSP(sei_rbsp_buf_, 0, sei_ebsp_size);
+                        ParseSeiMessage(sei_rbsp_buf_, m_rbsp_size_);
                     }
                     break;
                 }
@@ -1788,33 +1800,55 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
 }
 
 void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
-    size_t offset = 0;
-    uint32_t sei_message_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    SeiMessageData *sei_message_ptr = &m_sei_message_[sei_message_id];
-    memset(sei_message_ptr, 0, sizeof(SeiMessageData));
+    int offset = 0; // byte offset
+    int payload_type;
+    int payload_size;
 
-    sei_message_ptr->payload_type = 0;
-    sei_message_ptr->payload_size = 0;
-    uint8_t temp_byte;
-    temp_byte = Parser::GetBit(nalu, offset);
-    while (temp_byte == 0XFF) {
-        sei_message_ptr->payload_type += 255;
-        temp_byte = Parser::GetBit(nalu, offset);
-    }
-    sei_message_ptr->payload_type += temp_byte;
-    sei_message_ptr->payload_size = 0;
-    temp_byte = Parser::GetBit(nalu, offset);
-    while (temp_byte == 0XFF) {
-        sei_message_ptr->payload_size += 255;
-        temp_byte = Parser::GetBit(nalu, offset);
-    }
-    sei_message_ptr->payload_size += temp_byte;
+    do {
+        payload_type = 0;
+        while (nalu[offset] == 0xFF) {
+            payload_type += 255;  // ff_byte
+            offset++;
+        }
+        payload_type += nalu[offset];  // last_payload_type_byte
+        offset++;
 
-    // copy the payload to buffer
-    if (sei_message_ptr->payload_size > sizeof(m_sei_data_)) {
-        THROW("sei payload size is too big for sei buffer!");
-    }
-    memcpy(m_sei_data_, sei_message_ptr, sei_message_ptr->payload_size);
+        payload_size = 0;
+        while (nalu[offset] == 0xFF) {
+            payload_size += 255;  // ff_byte
+            offset++;
+        }
+        payload_size += nalu[offset];  // last_payload_size_byte
+        offset++;
+
+        // We start with INIT_SEI_MESSAGE_COUNT. Should be enough for normal use cases. If not, resize.
+        if((sei_message_count_ + 1) > sei_message_list_.size()) {
+            sei_message_list_.resize((sei_message_count_ + 1));
+        }
+        sei_message_list_[sei_message_count_].sei_message_type = payload_type;
+        sei_message_list_[sei_message_count_].sei_message_size = payload_size;
+
+        if (sei_payload_buf_) {
+            if ((payload_size + sei_payload_size_) > sei_payload_buf_size_) {
+                uint8_t *tmp_ptr = new uint8_t [payload_size + sei_payload_size_];
+                memcpy(tmp_ptr, sei_payload_buf_, sei_payload_size_); // save the existing payload
+                delete [] sei_payload_buf_;
+                sei_payload_buf_ = tmp_ptr;
+            }
+        }
+        else {
+            // First payload, sei_payload_size_ is 0.
+            sei_payload_buf_size_ = payload_size > INIT_SEI_PAYLOAD_BUF_SIZE ? payload_size : INIT_SEI_PAYLOAD_BUF_SIZE;
+            sei_payload_buf_ = new uint8_t [sei_payload_buf_size_];
+        }
+        // Append the current payload to sei_payload_buf_
+        memcpy(sei_payload_buf_ + sei_payload_size_, nalu + offset, payload_size);
+
+        sei_payload_size_ += payload_size;
+        sei_message_count_++;
+
+        offset += payload_size;
+    } while (offset < size && nalu[offset] != 0x80);
 }
 
 bool HEVCVideoParser::IsIdrPic(NalUnitHeader *nal_header_ptr) {
