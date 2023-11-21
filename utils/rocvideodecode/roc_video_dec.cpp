@@ -557,35 +557,35 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 
 int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
     uint32_t sei_num_mesages = pSEIMessageInfo->sei_message_count;
-    RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->pSEIMessage;
-    size_t total_SEI_buff_size = 0;
-    if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
-        ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
-        return 0;
-    }
-    for (uint32_t i = 0; i < sei_num_mesages; i++) {
-        total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
-    }
-    if (!curr_sei_message_ptr_) {
-        ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
-        return 0;
-    }
-    curr_sei_message_ptr_->pSEIData = malloc(total_SEI_buff_size);
-    if (!curr_sei_message_ptr_->pSEIData) {
-        ERR("Out of Memory, Allocation failed for SEI Buffer");
-        return 0;
-    }
-    memcpy(curr_sei_message_ptr_->pSEIData, pSEIMessageInfo->pSEIData, total_SEI_buff_size);
-    curr_sei_message_ptr_->pSEIMessage = (RocdecSeiMessage *)malloc(sizeof(RocdecSeiMessage) * sei_num_mesages);
-    if (!curr_sei_message_ptr_->pSEIMessage) {
-        free(curr_sei_message_ptr_->pSEIData);
-        curr_sei_message_ptr_->pSEIData = NULL;
-        return 0;
-    }
     if (sei_num_mesages) {
-        memcpy(curr_sei_message_ptr_->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(RocdecSeiMessage) * sei_num_mesages);
-        curr_sei_message_ptr_->sei_message_count = pSEIMessageInfo->sei_message_count;
-        sei_message_display_q_[pSEIMessageInfo->picIdx] = *curr_sei_message_ptr_;
+      RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->pSEIMessage;
+      size_t total_SEI_buff_size = 0;
+      if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
+          ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
+          return 0;
+      }
+      for (uint32_t i = 0; i < sei_num_mesages; i++) {
+          total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
+      }
+      if (!curr_sei_message_ptr_) {
+          ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
+          return 0;
+      }
+      curr_sei_message_ptr_->pSEIData = malloc(total_SEI_buff_size);
+      if (!curr_sei_message_ptr_->pSEIData) {
+          ERR("Out of Memory, Allocation failed for SEI Buffer");
+          return 0;
+      }
+      memcpy(curr_sei_message_ptr_->pSEIData, pSEIMessageInfo->pSEIData, total_SEI_buff_size);
+      curr_sei_message_ptr_->pSEIMessage = (RocdecSeiMessage *)malloc(sizeof(RocdecSeiMessage) * sei_num_mesages);
+      if (!curr_sei_message_ptr_->pSEIMessage) {
+          free(curr_sei_message_ptr_->pSEIData);
+          curr_sei_message_ptr_->pSEIData = NULL;
+          return 0;
+      }
+      memcpy(curr_sei_message_ptr_->pSEIMessage, pSEIMessageInfo->pSEIMessage, sizeof(RocdecSeiMessage) * sei_num_mesages);
+      curr_sei_message_ptr_->sei_message_count = pSEIMessageInfo->sei_message_count;
+      sei_message_display_q_[pSEIMessageInfo->picIdx] = *curr_sei_message_ptr_;
     }
     return 1;
 }
