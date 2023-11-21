@@ -127,10 +127,10 @@ HEVCVideoParser::~HEVCVideoParser() {
         delete m_sh_copy_;
     }
     if (sei_rbsp_buf_) {
-        delete[] sei_rbsp_buf_;
+        delete [] sei_rbsp_buf_;
     }
     if (sei_payload_buf_) {
-        delete[] sei_payload_buf_;
+        delete [] sei_payload_buf_;
     }
 }
 
@@ -624,7 +624,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         int sei_ebsp_size = nal_unit_size_ - 5; // copy the entire NAL unit
                         if (sei_rbsp_buf_) {
                             if (sei_ebsp_size > sei_rbsp_buf_size_) {
-                                delete[] sei_rbsp_buf_;
+                                delete [] sei_rbsp_buf_;
                                 sei_rbsp_buf_ = new uint8_t [sei_ebsp_size];
                                 sei_rbsp_buf_size_ = sei_ebsp_size;
                             }
@@ -1832,7 +1832,7 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
             if ((payload_size + sei_payload_size_) > sei_payload_buf_size_) {
                 uint8_t *tmp_ptr = new uint8_t [payload_size + sei_payload_size_];
                 memcpy(tmp_ptr, sei_payload_buf_, sei_payload_size_); // save the existing payload
-                delete[] sei_payload_buf_;
+                delete [] sei_payload_buf_;
                 sei_payload_buf_ = tmp_ptr;
             }
         }
