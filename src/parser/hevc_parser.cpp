@@ -95,7 +95,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     // Whenever new sei message found
-    if (sei_message_count_ > 0) {
+    if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
         FillSeiMessageCallbackFn();
     }
 
@@ -226,7 +226,7 @@ void HEVCVideoParser::FillSeiMessageCallbackFn() {
     sei_message_info_params_.picIdx = curr_pic_info_.pic_idx;
 
     // callback function with RocdecSeiMessageInfo params filled out
-    pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
+    if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
 int HEVCVideoParser::SendPicForDecode() {
