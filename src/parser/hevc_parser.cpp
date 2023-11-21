@@ -49,9 +49,9 @@ HEVCVideoParser::HEVCVideoParser() {
     m_sh_ = AllocStruct<SliceHeaderData>(1);
     m_sh_copy_ = AllocStruct<SliceHeaderData>(1);
 
-    sei_rbsp_buf_ = NULL;
+    sei_rbsp_buf_ = nullptr;
     sei_rbsp_buf_size_ = 0;
-    sei_payload_buf_ = NULL;
+    sei_payload_buf_ = nullptr;
     sei_payload_buf_size_ = 0;
     sei_message_list_.assign(INIT_SEI_MESSAGE_COUNT, {0});
 
@@ -127,10 +127,10 @@ HEVCVideoParser::~HEVCVideoParser() {
         delete m_sh_copy_;
     }
     if (sei_rbsp_buf_) {
-        free(sei_rbsp_buf_);
+        delete[] sei_rbsp_buf_;
     }
     if (sei_payload_buf_) {
-        free(sei_payload_buf_);
+        delete[] sei_payload_buf_;
     }
 }
 
@@ -624,14 +624,14 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         int sei_ebsp_size = nal_unit_size_ - 5; // copy the entire NAL unit
                         if (sei_rbsp_buf_) {
                             if (sei_ebsp_size > sei_rbsp_buf_size_) {
-                                free(sei_rbsp_buf_);
-                                sei_rbsp_buf_ = (uint8_t*)malloc(sei_ebsp_size);
+                                delete[] sei_rbsp_buf_;
+                                sei_rbsp_buf_ = new uint8_t [sei_ebsp_size];
                                 sei_rbsp_buf_size_ = sei_ebsp_size;
                             }
                         }
                         else {
                             sei_rbsp_buf_size_ = sei_ebsp_size > INIT_SEI_PAYLOAD_BUF_SIZE ? sei_ebsp_size : INIT_SEI_PAYLOAD_BUF_SIZE;
-                            sei_rbsp_buf_ = (uint8_t*)malloc(sei_rbsp_buf_size_);
+                            sei_rbsp_buf_ = new uint8_t [sei_rbsp_buf_size_];
                         }
                         memcpy(sei_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
                         m_rbsp_size_ = EBSPtoRBSP(sei_rbsp_buf_, 0, sei_ebsp_size);
@@ -1830,16 +1830,16 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
 
         if (sei_payload_buf_) {
             if ((payload_size + sei_payload_size_) > sei_payload_buf_size_) {
-                uint8_t *tmp_ptr = (uint8_t*)malloc(payload_size + sei_payload_size_);
+                uint8_t *tmp_ptr = new uint8_t [payload_size + sei_payload_size_];
                 memcpy(tmp_ptr, sei_payload_buf_, sei_payload_size_); // save the existing payload
-                free(sei_payload_buf_);
+                delete[] sei_payload_buf_;
                 sei_payload_buf_ = tmp_ptr;
             }
         }
         else {
             // First payload, sei_payload_size_ is 0.
             sei_payload_buf_size_ = payload_size > INIT_SEI_PAYLOAD_BUF_SIZE ? payload_size : INIT_SEI_PAYLOAD_BUF_SIZE;
-            sei_payload_buf_ = (uint8_t*)malloc(sei_payload_buf_size_);
+            sei_payload_buf_ = new uint8_t [sei_payload_buf_size_];
         }
         // Append the current payload to sei_payload_buf_
         memcpy(sei_payload_buf_ + sei_payload_size_, nalu + offset, payload_size);
