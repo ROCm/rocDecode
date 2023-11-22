@@ -57,6 +57,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     double average_decoding_time = total_dec_time / n_frame;
     double n_fps = 1000 / average_decoding_time;
     *pn_fps = n_fps;
+    *pn_frame = n_frame;
 }
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -191,15 +192,6 @@ int main(int argc, char **argv) {
             n_total += v_frame[i];
         }
 
-        if (!v_viddec[0]->GetOutputSurfaceInfo(&p_surf_info)) {
-            std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
-        return -1;
-        }
-
-        std::cout << "info: Video codec format: " << v_viddec[0]->GetCodecFmtName(v_viddec[0]->GetCodecId()) << std::endl;
-        std::cout << "info: Video size: [ " << p_surf_info->output_width << ", " << p_surf_info->output_height << " ]" << std::endl;
-        std::cout << "info: Video surface format: " << v_viddec[0]->GetSurfaceFmtName(p_surf_info->surface_format) << std::endl;
-        std::cout << "info: Video Bit depth: " << p_surf_info->bit_depth << std::endl;
         std::cout << "info: Total frame decoded: " << n_total  << std::endl;
         std::cout << "info: avg decoding time per frame (ms): " << 1000 / total_fps << std::endl;
         std::cout << "info: avg FPS: " << total_fps  << std::endl;
