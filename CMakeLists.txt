@@ -279,17 +279,17 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   cpack_add_component(runtime
                     DISPLAY_NAME "rocDecode Runtime Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-                    rocDecode runtime package provides rocDecode library and license.txt")
+  rocDecode runtime package provides rocDecode library and license.txt")
 
   cpack_add_component(dev
                     DISPLAY_NAME "rocDecode Develop Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-                    rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
+  rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocDecode ASAN Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-                    rocDecode ASAN package provides rocDecode ASAN libraries")
+  rocDecode ASAN package provides rocDecode ASAN libraries")
 else()
   message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
