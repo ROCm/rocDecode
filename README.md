@@ -1,6 +1,6 @@
 # rocDecode
 
-rocDecode is a high performance video decode SDK for AMD hardware. rocDecode API lets developers access the video decoding features available on the GPU.
+rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API lets developers access the video decoding features available on the GPU.
 
 ## Supported Codecs
 
@@ -61,10 +61,10 @@ Please follow the instructions below to build and install the rocDecode library.
 
 The installer will copy
 
-* Libraries into /opt/rocm/lib
-* Header files into /opt/rocm/include/rocdecode
-* Samples folder into /opt/rocm/share/rocdecode
-* Documents folder into /opt/rocm/share/doc/rocdecode
+* Libraries into `/opt/rocm/lib`
+* Header files into `/opt/rocm/include/rocdecode`
+* Samples folder into `/opt/rocm/share/rocdecode`
+* Documents folder into `/opt/rocm/share/doc/rocdecode`
 
 Build and run sample
 
@@ -116,7 +116,7 @@ doxygen .Doxyfile
 * ROCm:
   * rocm-core - `5.6.1.50601-93`
   * amdgpu-core - `1:5.6.50601-1649308`
-* FFMPEG - `4.2.7` / `4.4.2-0`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * libdrm-dev - `2.4.107` / `2.4.113`
-* rocDecode Setup Script - `V1.2`
+* FFMPEG - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.3`
