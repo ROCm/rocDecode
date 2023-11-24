@@ -41,7 +41,7 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
-#define HVC_MAX_DPB_FRAMES 16  // (A-2)
+#define HEVC_MAX_DPB_FRAMES 16  // (A-2)
 #define HEVC_MAX_NUM_REF_PICS 16
 // 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
 #define MAX_ENTRY_POINT_OFFSETS 20 * 270
@@ -636,7 +636,9 @@ protected:
         int32_t prev_poc_lsb;  // prevPicOrderCntLsb
         int32_t prev_poc_msb;  // prevPicOrderCntMsb
         uint32_t slice_pic_order_cnt_lsb; // for long term ref pic identification
+        uint32_t decode_order_count;  // to record relative time in DPB
 
+        uint32_t pic_output_flag;  // PicOutputFlag
         uint32_t is_reference;
         uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
     } HevcPicInfo;
@@ -645,10 +647,13 @@ protected:
      */
     typedef struct
     {
-        uint32_t num_pics_not_yet_output;  /// number of pictures in DPB that have not been output yet
-        uint32_t dpb_fullness;  /// number of pictures in DPB
+        uint32_t dpb_size;  // DPB buffer size in number of frames
+        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t dpb_fullness;  // number of pictures in DPB
+        HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
-        HevcPicInfo frame_buffer_list[HVC_MAX_DPB_FRAMES];
+        uint32_t output_pic_num;  // number of pictures are output after the decode call
+        uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
@@ -701,6 +706,7 @@ protected:
 
     // DPB
     DecodedPictureBuffer dpb_buffer_;
+    int no_output_of_prior_pics_flag;  // NoOutputOfPriorPicsFlag
 
     uint32_t num_pic_total_curr_;  // NumPicTotalCurr
 
@@ -850,6 +856,7 @@ protected:
      * \return No return value
      */
     void ParseSeiMessage(uint8_t *nalu, size_t size);
+
     /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
      */
     void CalculateCurrPOC();
@@ -862,10 +869,29 @@ protected:
      */
     void ConstructRefPicLists();
 
-    /*! \brief Function to find a free buffer in DPM for the current picture and mark it.
+    /*! \brief Function to initialize DPB buffer.
+     */
+    void InitDpb();
+
+    /*! \brief Function to clear DPB buffer.
+     */
+    void EmptyDpb();
+
+    /*! \brief Function to output and remove pictures from DPB. C.5.2.2.
+     * \return Code in ParserResult form.
+     */
+    int MarkOutputPictures();
+
+    /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture
+     *         bumping is done if needed. C.5.2.3.
      * \return Code in ParserResult form.
      */
     int FindFreeBufAndMark();
+
+    /*! \brief Function to bump one picture out of DPB. C.5.2.4.
+     * \return Code in ParserResult form.
+     */
+    int BumpPicFromDpb();
 
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -903,6 +929,11 @@ private:
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
+
+    /*! \brief Function to output decoded pictures from DPB for post-processing.
+     * \return Return code in ParserResult form
+     */
+    int OutputDecodedPictures();
 
     bool IsIdrPic(NalUnitHeader *nal_header_ptr);
     bool IsCraPic(NalUnitHeader *nal_header_ptr);
