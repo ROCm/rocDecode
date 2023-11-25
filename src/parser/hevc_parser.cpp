@@ -79,38 +79,48 @@ rocDecStatus HEVCVideoParser::UnInitialize() {
 
 
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
-    // Clear DPB output/display buffer number
-    dpb_buffer_.output_pic_num = 0;
+    if (p_data->payload && p_data->payload_size) {
+        // Clear DPB output/display buffer number
+        dpb_buffer_.output_pic_num = 0;
 
-    bool status = ParseFrameData(p_data->payload, p_data->payload_size);
-    if (!status) {
-        ERR(STR("Parser failed!"));
-        return ROCDEC_RUNTIME_ERROR;
+        bool status = ParseFrameData(p_data->payload, p_data->payload_size);
+        if (!status) {
+            ERR(STR("Parser failed!"));
+            return ROCDEC_RUNTIME_ERROR;
+        }
+
+        // Init Roc decoder for the first time or reconfigure the existing decoder
+        if (new_sps_activated_) {
+            FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
+            new_sps_activated_ = false;
+        }
+
+        // Whenever new sei message found
+        if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
+            FillSeiMessageCallbackFn();
+        }
+
+        // Decode the picture
+        if (SendPicForDecode() != PARSER_OK) {
+            ERR(STR("Failed to decode!"));
+            return ROCDEC_RUNTIME_ERROR;
+        }
+
+        // Output decoded pictures from DPB if any are ready
+        if (pfn_display_picture_cb_ && dpb_buffer_.output_pic_num > 0) {
+            OutputDecodedPictures();
+        }
+
+        pic_count_++;
+    }
+    else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
+        // If no payload and EOS is not set, treated as invalid.
+        return ROCDEC_INVALID_PARAMETER;
     }
 
-    // Init Roc decoder for the first time or reconfigure the existing decoder
-    if (new_sps_activated_) {
-        FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
-        new_sps_activated_ = false;
+    if (p_data->flags & ROCDEC_PKT_ENDOFSTREAM) {
+        FlushDpb();
     }
-
-    // Whenever new sei message found
-    if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
-        FillSeiMessageCallbackFn();
-    }
-
-    // Decode the picture
-    if (SendPicForDecode() != PARSER_OK) {
-        ERR(STR("Failed to decode!"));
-        return ROCDEC_RUNTIME_ERROR;
-    }
-
-    // Output decoded pictures from DPB if any are ready
-    if (pfn_display_picture_cb_ && dpb_buffer_.output_pic_num > 0) {
-        OutputDecodedPictures();
-    }
-
-    pic_count_++;
 
     return ROCDEC_SUCCESS;
 }
@@ -519,6 +529,8 @@ int HEVCVideoParser::OutputDecodedPictures() {
         disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
         pfn_display_picture_cb_(parser_params_.pUserData, &disp_info);
     }
+
+    dpb_buffer_.output_pic_num = 0;
     return PARSER_OK;
 }
 
@@ -2182,6 +2194,17 @@ void HEVCVideoParser::EmptyDpb() {
     dpb_buffer_.dpb_fullness = 0;
     dpb_buffer_.num_needed_for_output = 0;
     dpb_buffer_.output_pic_num = 0;
+}
+
+void HEVCVideoParser::FlushDpb() {
+    dpb_buffer_.output_pic_num = 0;
+    // Bump the remaining pictures
+    while (dpb_buffer_.num_needed_for_output) {
+        BumpPicFromDpb();
+    }
+    if (pfn_display_picture_cb_ && dpb_buffer_.output_pic_num > 0) {
+        OutputDecodedPictures();
+    }
 }
 
 int HEVCVideoParser::MarkOutputPictures() {

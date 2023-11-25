@@ -877,6 +877,10 @@ protected:
      */
     void EmptyDpb();
 
+    /*! \brief Function to send out the remaining pictures that need for output in DPB buffer.
+     */
+    void FlushDpb();
+
     /*! \brief Function to output and remove pictures from DPB. C.5.2.2.
      * \return Code in ParserResult form.
      */

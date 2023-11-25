@@ -594,21 +594,18 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
 
 
 int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
-    if (data && size) {
-        decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
-        RocdecSourceDataPacket packet = { 0 };
-        packet.payload = data;
-        packet.payload_size = size;
-        packet.flags = pkt_flags | ROCDEC_PKT_TIMESTAMP;
-        packet.pts = pts;
-        if (!data || size == 0) {
-            packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
-        }
-        ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
+    decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+    RocdecSourceDataPacket packet = { 0 };
+    packet.payload = data;
+    packet.payload_size = size;
+    packet.flags = pkt_flags | ROCDEC_PKT_TIMESTAMP;
+    packet.pts = pts;
+    if (!data || size == 0) {
+        packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
+    }
+    ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
 
-        return decoded_frame_cnt_;
-    } else
-        return 0;
+    return decoded_frame_cnt_;
 }
 
 uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
