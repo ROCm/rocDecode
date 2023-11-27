@@ -1,13 +1,15 @@
 # rocDecode
-rocDecode is a high performance video decode SDK for AMD hardware. rocDecode API lets developers access the video decoding features available on the GPU.
+
+rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API lets developers access the video decoding features available on the GPU.
 
 ## Supported Codecs
+
 * H.265 (HEVC) - 8 bit, and 10 bit
 
-## Prerequisites:
+## Prerequisites
 
 * Linux distribution
-  + Ubuntu - `20.04` / `22.04`
+  * Ubuntu - `20.04` / `22.04`
 
 * [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
 
@@ -16,21 +18,24 @@ rocDecode is a high performance video decode SDK for AMD hardware. rocDecode API
 * CMake `3.5` or later
 
 * libva-dev `2.7` or later
-  ```
+
+  ```shell
   sudo apt install libva-dev
   ```
 
 * libdrm-dev `2.4` or later
-  ```
+  
+  ```shell
   sudo apt install libdrm-dev
   ```
 
 * **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
 
-## Build instructions:
+## Build instructions
+
 Please follow the instructions below to build and install the rocDecode library.
 
-```
+```shell
  cd rocDecode
  mkdir build; cd build
  cmake ..
@@ -39,13 +44,16 @@ Please follow the instructions below to build and install the rocDecode library.
 ```
 
 * run tests - Requires `FFMPEG` install
-  ```
+
+  ```shell
   make test
   ```
+
   **NOTE:** run tests with verbose option `make test ARGS="-VV"`
 
 * make package
-  ```
+  
+  ```shell
   sudo make test package
   ```
 
@@ -53,50 +61,62 @@ Please follow the instructions below to build and install the rocDecode library.
 
 The installer will copy
 
-* Libraries into /opt/rocm/lib
-* Header files into /opt/rocm/include/rocdecode
-* Samples folder into /opt/rocm/share/rocdecode
-* Documents folder into /opt/rocm/share/doc/rocdecode
+* Libraries into `/opt/rocm/lib`
+* Header files into `/opt/rocm/include/rocdecode`
+* Samples folder into `/opt/rocm/share/rocdecode`
+* Documents folder into `/opt/rocm/share/doc/rocdecode`
 
 Build and run sample
 
-```
+```shell
 mkdir rocdecode-sample && cd rocdecode-sample
 cmake /opt/rocm/share/rocdecode/samples/videoDecode/
 make -j8
 ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 ```
 
-## Samples:
+## Samples
+
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
 
-### Prerequisites
+### Sample Prerequisites
 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
-  ```
+
+  ```shell
   sudo apt install ffmpeg
   ```
 
-## Docker:
+## Docker
+
 Docker files to build rocDecode containers are available [here](docker/)
 
 ## Documentation
 
 Run the steps below to build documentation locally.
 
-* Doxygen 
+* Sphinx
+
+```shell
+cd docs
+pip3 install -r sphinx/requirements.txt
+python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
 ```
+
+* Doxygen
+
+```shell
 doxygen .Doxyfile
 ```
 
 ## Tested configurations
 
 * Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-* ROCm: 
-  + rocm-core - `5.6.1.50601-93`
-  + amdgpu-core - `1:5.6.50601-1649308`
-* FFMPEG - `4.2.7` / `4.4.2-0`
+  * Ubuntu - `20.04` / `22.04`
+* ROCm:
+  * rocm-core - `5.6.1.50601-93`
+  * amdgpu-core - `1:5.6.50601-1649308`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * libdrm-dev - `2.4.107` / `2.4.113`
-* rocDecode Setup Script - `V1.2`
+* FFMPEG - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.3`

@@ -174,10 +174,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode address sanitizer libraries")
     set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode address sanitizer libraries")
   else()
-    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.
-                  rocDecode is a toolkit to decode videos using a hardware-accelerated video \
-                  decoder on AMD’s GPUs.")
-    set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode hardware-accelerated video decoder on AMD’s GPUs.")
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs")
+    set(CPACK_RPM_PACKAGE_SUMMARY "AMD rocDecode is a high performance video decode SDK for AMD GPUs")
   endif()
 
   if(DEFINED ENV{ROCM_LIBPATCH_VERSION})
@@ -188,9 +186,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
   set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
   # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libswscale-dev")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev, libswscale-dev")
   # TBD - RPM packages need Fusion Packages
-  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libswscale-devel")
+  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel, libswscale-devel")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -268,7 +266,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
     message("-- ${White}AMD ROCm rocDecode RunTime Package -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
-    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
@@ -279,16 +277,19 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   include(CPack)
 
   cpack_add_component(runtime
-                    DISPLAY_NAME "Runtime"
-                    DESCRIPTION "Library, Header files and documentation for rocDecode")
+                    DISPLAY_NAME "rocDecode Runtime Package"
+                    DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
+  rocDecode runtime package provides rocDecode library and license.txt")
 
   cpack_add_component(dev
-                    DISPLAY_NAME "Devel"
-                    DESCRIPTION "Header files and documentation for rocDecode")
+                    DISPLAY_NAME "rocDecode Develop Package"
+                    DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
+  rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
 
   cpack_add_component(asan
-                    DISPLAY_NAME "ASAN"
-                    DESCRIPTION "ASAN libraries for the rocDecode")
+                    DISPLAY_NAME "rocDecode ASAN Package"
+                    DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
+  rocDecode ASAN package provides rocDecode ASAN libraries")
 else()
   message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
