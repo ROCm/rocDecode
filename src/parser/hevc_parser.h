@@ -652,7 +652,7 @@ protected:
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
-        uint32_t output_pic_num;  // number of pictures are output after the decode call
+        uint32_t num_output_pics;  // number of pictures that are output after the decode call
         uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 

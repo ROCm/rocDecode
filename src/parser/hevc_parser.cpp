@@ -81,7 +81,7 @@ rocDecStatus HEVCVideoParser::UnInitialize() {
 rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         // Clear DPB output/display buffer number
-        dpb_buffer_.output_pic_num = 0;
+        dpb_buffer_.num_output_pics = 0;
 
         bool status = ParseFrameData(p_data->payload, p_data->payload_size);
         if (!status) {
@@ -107,7 +107,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         }
 
         // Output decoded pictures from DPB if any are ready
-        if (pfn_display_picture_cb_ && dpb_buffer_.output_pic_num > 0) {
+        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
             OutputDecodedPictures();
         }
 
@@ -522,14 +522,14 @@ int HEVCVideoParser::SendPicForDecode() {
 int HEVCVideoParser::OutputDecodedPictures() {
     RocdecParserDispInfo disp_info = {0};
     disp_info.progressive_frame = m_sps_[m_active_sps_id_].profile_tier_level.general_progressive_source_flag;
-    disp_info.top_field_first = 0;
+    disp_info.top_field_first = 1;
 
-    for (int i = 0; i < dpb_buffer_.output_pic_num; i++) {
+    for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
         disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
         pfn_display_picture_cb_(parser_params_.pUserData, &disp_info);
     }
 
-    dpb_buffer_.output_pic_num = 0;
+    dpb_buffer_.num_output_pics = 0;
     return PARSER_OK;
 }
 
@@ -2182,7 +2182,7 @@ void HEVCVideoParser::InitDpb() {
     dpb_buffer_.dpb_size = 0;
     dpb_buffer_.dpb_fullness = 0;
     dpb_buffer_.num_needed_for_output = 0;
-    dpb_buffer_.output_pic_num = 0;
+    dpb_buffer_.num_output_pics = 0;
 }
 
 void HEVCVideoParser::EmptyDpb() {
@@ -2194,16 +2194,16 @@ void HEVCVideoParser::EmptyDpb() {
     }
     dpb_buffer_.dpb_fullness = 0;
     dpb_buffer_.num_needed_for_output = 0;
-    dpb_buffer_.output_pic_num = 0;
+    dpb_buffer_.num_output_pics = 0;
 }
 
 void HEVCVideoParser::FlushDpb() {
-    dpb_buffer_.output_pic_num = 0;
+    dpb_buffer_.num_output_pics = 0;
     // Bump the remaining pictures
     while (dpb_buffer_.num_needed_for_output) {
         BumpPicFromDpb();
     }
-    if (pfn_display_picture_cb_ && dpb_buffer_.output_pic_num > 0) {
+    if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
         OutputDecodedPictures();
     }
 }
@@ -2343,12 +2343,12 @@ int HEVCVideoParser::BumpPicFromDpb() {
     }
 
     // Insert into output/display picture list
-    if (dpb_buffer_.output_pic_num >= HEVC_MAX_DPB_FRAMES) {
+    if (dpb_buffer_.num_output_pics >= HEVC_MAX_DPB_FRAMES) {
         ERR("Error! DPB output buffer list overflow!");
         return PARSER_OUT_OF_RANGE;
     } else {
-        dpb_buffer_.output_pic_list[dpb_buffer_.output_pic_num] = min_poc_pic_idx;
-        dpb_buffer_.output_pic_num++;
+        dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx;
+        dpb_buffer_.num_output_pics++;
     }
 
     return PARSER_OK;
