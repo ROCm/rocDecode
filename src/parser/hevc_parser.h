@@ -652,7 +652,7 @@ protected:
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
-        uint32_t output_pic_num;  // number of pictures are output after the decode call
+        uint32_t num_output_pics;  // number of pictures that are output after the decode call
         uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
@@ -876,6 +876,11 @@ protected:
     /*! \brief Function to clear DPB buffer.
      */
     void EmptyDpb();
+
+    /*! \brief Function to send out the remaining pictures that need for output in DPB buffer.
+     * \return Code in ParserResult form.
+     */
+    int FlushDpb();
 
     /*! \brief Function to output and remove pictures from DPB. C.5.2.2.
      * \return Code in ParserResult form.

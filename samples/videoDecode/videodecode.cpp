@@ -130,6 +130,7 @@ int main(int argc, char **argv) {
 
         int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
         uint8_t *pvideo = nullptr;
+        int pkg_flags = 0;
         uint8_t *pframe = nullptr;
         int64_t pts = 0;
         OutputSurfaceInfo *surf_info;
@@ -139,7 +140,11 @@ int main(int argc, char **argv) {
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
             demuxer.Demux(&pvideo, &n_video_bytes, &pts);
-            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, 0, pts);
+            // Treat 0 bitstream size as end of stream indicator
+            if (n_video_bytes == 0) {
+                pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
+            }
+            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
             auto end_time = std::chrono::high_resolution_clock::now();
             auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             total_dec_time += time_per_frame;
