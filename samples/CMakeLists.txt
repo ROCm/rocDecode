@@ -33,5 +33,5 @@ add_test(
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
-            -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4 -z
+            -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
 )

@@ -56,8 +56,9 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame) {
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
-    << "-t Number of threads (>= 1) - optional; default: 4" << std::endl
-    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl;
+    << "-f Number of forks (>= 1) - optional; default: 4" << std::endl
+    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
+    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
     exit(0);
 }
 
@@ -68,7 +69,7 @@ int main(int argc, char **argv) {
     int device_id = 0;
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
-
+    bool b_force_zero_latency = false;
     // Parse command-line arguments
     if(argc < 1) {
         ShowHelpAndExit();
@@ -84,9 +85,9 @@ int main(int argc, char **argv) {
             input_file_path = argv[i];
             continue;
         }
-        if (!strcmp(argv[i], "-t")) {
+        if (!strcmp(argv[i], "-f")) {
             if (++i == argc) {
-                ShowHelpAndExit("-t");
+                ShowHelpAndExit("-f");
             }
             n_fork = atoi(argv[i]);
             if (n_fork <= 0) {
@@ -102,6 +103,13 @@ int main(int argc, char **argv) {
             if (device_id < 0) {
                 ShowHelpAndExit(argv[i]);
             }
+            continue;
+        }
+        if (!strcmp(argv[i], "-z")) {
+            if (i == argc) {
+                ShowHelpAndExit("-z");
+            }
+            b_force_zero_latency = true;
             continue;
         }
         ShowHelpAndExit(argv[i]);
@@ -151,7 +159,7 @@ int main(int argc, char **argv) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
             v_device_id[i] = (i % 2 == 0) ? 0 : sd;
-            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, false, true, p_crop_rect));
+            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));
         }
