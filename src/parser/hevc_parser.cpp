@@ -607,8 +607,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         if (IsIrapPic(&slice_nal_unit_header_)) {
                             if (IsIdrPic(&slice_nal_unit_header_) || IsBlaPic(&slice_nal_unit_header_) || pic_count_ == 0 || first_pic_after_eos_nal_unit_) {
                                 no_rasl_output_flag_ = 1;
-                            }
-                            else {
+                            } else {
                                 no_rasl_output_flag_ = 0;
                             }
                         }
@@ -619,8 +618,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
 
                         if (IsRaslPic(&slice_nal_unit_header_) && no_rasl_output_flag_ == 1) {
                             curr_pic_info_.pic_output_flag = 0;
-                        }
-                        else {
+                        } else {
                             curr_pic_info_.pic_output_flag = m_sh_->pic_output_flag;
                         }
 
@@ -636,10 +634,14 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         }
 
                         // C.5.2.2. Mark output buffers. (After 8.3.2.)
-                        MarkOutputPictures();
+                        if (MarkOutputPictures() != PARSER_OK) {
+                            return PARSER_FAIL;
+                        }
 
                         // C.5.2.3. Find a free buffer in DPB and mark as used. (After 8.3.2.)
-                        FindFreeBufAndMark();
+                        if (FindFreeBufAndMark() != PARSER_OK) {
+                            return PARSER_FAIL;
+                        }
                     }
                     slice_num_++;
                     break;
@@ -1553,7 +1555,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
         sps_ptr = &m_sps_[m_active_sps_id_];
         // Re-set DPB size. We add one addition buffer to avoid serialization of decode submission and display callback in certain cases.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1 + 1;
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 2;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     sps_ptr = &m_sps_[m_active_sps_id_];
@@ -2198,7 +2200,9 @@ int HEVCVideoParser::MarkOutputPictures() {
         if (!no_output_of_prior_pics_flag) {
             // Bump the remaining pictures
             while (dpb_buffer_.num_needed_for_output) {
-                BumpPicFromDpb();
+                if (BumpPicFromDpb() != PARSER_OK) {
+                    return PARSER_FAIL;
+                }
             }
         }
 
@@ -2213,6 +2217,7 @@ int HEVCVideoParser::MarkOutputPictures() {
                 }
                 else {
                     ERR("Invalid DPB buffer fullness:" + TOSTR(dpb_buffer_.dpb_fullness));
+                    return PARSER_FAIL;
                 }
             }
         }
@@ -2223,11 +2228,15 @@ int HEVCVideoParser::MarkOutputPictures() {
         uint32_t max_dec_pic_buffering = sps_ptr->sps_max_dec_pic_buffering_minus1[highest_tid] + 1;
 
         if (dpb_buffer_.dpb_fullness >= max_dec_pic_buffering) {
-            BumpPicFromDpb();
+            if (BumpPicFromDpb() != PARSER_OK) {
+                return PARSER_FAIL;
+            }
         }
 
         while (dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
-            BumpPicFromDpb();
+            if (BumpPicFromDpb() != PARSER_OK) {
+                return PARSER_FAIL;
+            }
         }
 
         // Skip SpsMaxLatencyPictures check as SpsMaxLatencyPictures >= sps_max_num_reorder_pics.
@@ -2315,8 +2324,7 @@ int HEVCVideoParser::BumpPicFromDpb() {
     if (dpb_buffer_.output_pic_num >= HEVC_MAX_DPB_FRAMES) {
         ERR("Error! DPB output buffer list overflow!");
         return PARSER_OUT_OF_RANGE;
-    }
-    else {
+    } else {
         dpb_buffer_.output_pic_list[dpb_buffer_.output_pic_num] = min_poc_pic_idx;
         dpb_buffer_.output_pic_num++;
     }
