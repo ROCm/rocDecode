@@ -53,10 +53,6 @@ idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==6.8.0
-    # via sphinx
-importlib-resources==6.1.1
-    # via rocm-docs-core
 jinja2==3.1.2
     # via
     #   myst-parser
@@ -100,15 +96,15 @@ pygments==2.17.1
 pyjson5==1.6.4
     # via doxysphinx
 pyjwt[crypto]==2.8.0
-    # via pygithub
+    # via
+    #   pygithub
+    #   pyjwt
 pynacl==1.5.0
     # via pygithub
 pyparsing==3.1.1
     # via doxysphinx
 python-dateutil==2.8.2
     # via pygithub
-pytz==2023.3.post1
-    # via babel
 pyyaml==6.0.1
     # via
     #   myst-parser
@@ -118,8 +114,10 @@ requests==2.31.0
     # via
     #   pygithub
     #   sphinx
-rocm-docs-core[api_reference]==0.28.0
-    # via -r requirements.in
+rocm-docs-core[api-reference]==0.29.0
+    # via
+    #   -r requirements.in
+    #   rocm-docs-core
 six==1.16.0
     # via python-dateutil
 smmap==5.0.1
@@ -173,7 +171,3 @@ urllib3==2.1.0
     #   requests
 wrapt==1.16.0
     # via deprecated
-zipp==3.17.0
-    # via
-    #   importlib-metadata
-    #   importlib-resources
