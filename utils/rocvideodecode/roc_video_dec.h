@@ -342,7 +342,7 @@ class RocVideoDecoder {
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
         bool b_low_latency_ = true;
-        bool b_force_zero_latency_ = true;
+        bool b_force_zero_latency_ = false;
         //bool b_device_frame_pitched_ = true;
         hipDeviceProp_t hip_dev_prop_;
         hipStream_t hip_stream_;
