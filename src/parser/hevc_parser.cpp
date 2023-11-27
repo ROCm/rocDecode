@@ -2230,10 +2230,8 @@ int HEVCVideoParser::MarkOutputPictures() {
 
         if (!no_output_of_prior_pics_flag) {
             // Bump the remaining pictures
-            while (dpb_buffer_.num_needed_for_output) {
-                if (BumpPicFromDpb() != PARSER_OK) {
-                    return PARSER_FAIL;
-                }
+            if (FlushDpb() != PARSER_OK) {
+                return PARSER_FAIL;
             }
         }
 
