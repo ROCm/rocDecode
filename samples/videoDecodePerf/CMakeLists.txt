@@ -43,6 +43,9 @@ set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific ma
 
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads QUIET)
+
 # find rocDecode
 find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS {ROCM_PATH}/lib)
 find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode {ROCM_PATH}/include/rocdecode)
@@ -52,7 +55,7 @@ if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
     message("-- ${White}Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
 endif()
 
-if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
+if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND AND Threads_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
     # FFMPEG
@@ -62,6 +65,8 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # rocDecode
     include_directories (${ROCDECODE_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    #threads
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
 
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodeperf.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
@@ -77,5 +82,8 @@ else()
     endif()
     if (NOT ROCDECODE_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+    endif()
+    if (NOT Threads_FOUND)
+        message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please insatll Threads!")
     endif()
 endif()
