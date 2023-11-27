@@ -108,7 +108,9 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Output decoded pictures from DPB if any are ready
         if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
-            OutputDecodedPictures();
+            if (OutputDecodedPictures() != PARSER_OK) {
+                return ROCDEC_RUNTIME_ERROR;
+            }
         }
 
         pic_count_++;
@@ -118,7 +120,9 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     if (p_data->flags & ROCDEC_PKT_ENDOFSTREAM) {
-        FlushDpb();
+        if (FlushDpb() != PARSER_OK) {
+            return ROCDEC_RUNTIME_ERROR;
+        }
     }
 
     return ROCDEC_SUCCESS;
@@ -2197,15 +2201,20 @@ void HEVCVideoParser::EmptyDpb() {
     dpb_buffer_.num_output_pics = 0;
 }
 
-void HEVCVideoParser::FlushDpb() {
+int HEVCVideoParser::FlushDpb() {
     dpb_buffer_.num_output_pics = 0;
     // Bump the remaining pictures
     while (dpb_buffer_.num_needed_for_output) {
-        BumpPicFromDpb();
+        if (BumpPicFromDpb() != PARSER_OK) {
+            return PARSER_FAIL;
+        }
     }
     if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
-        OutputDecodedPictures();
+        if (OutputDecodedPictures() != PARSER_OK) {
+            return PARSER_FAIL;
+        }
     }
+    return PARSER_OK;
 }
 
 int HEVCVideoParser::MarkOutputPictures() {
