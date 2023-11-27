@@ -30,13 +30,30 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
         close(drm_fd_);
     }
     if (va_display_) {
-        DestroyDataBuffers();
-        vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size());
+        rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+        rocdec_status = DestroyDataBuffers();
+        if (rocdec_status != ROCDEC_SUCCESS) {
+            ERR("ERROR: DestroyDataBuffers failed with status " + TOSTR(rocdec_status));
+        }
+        VAStatus va_status = VA_STATUS_SUCCESS;
+        va_status = vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size());
+        if (va_status != VA_STATUS_SUCCESS) {
+            ERR("ERROR: vaDestroySurfaces failed with status " + TOSTR(va_status));
+        }
         if (va_context_id_)
-            vaDestroyContext(va_display_, va_context_id_);
+            va_status = vaDestroyContext(va_display_, va_context_id_);
+            if (va_status != VA_STATUS_SUCCESS) {
+                ERR("ERROR: vaDestroyContext failed with status " + TOSTR(va_status));
+            }
         if (va_config_id_)
-            vaDestroyConfig(va_display_, va_config_id_);
-        vaTerminate(va_display_);
+            va_status = vaDestroyConfig(va_display_, va_config_id_);
+            if (va_status != VA_STATUS_SUCCESS) {
+                ERR("ERROR: vaDestroyConfig failed with status " + TOSTR(va_status));
+            }
+        va_status = vaTerminate(va_display_);
+        if (va_status != VA_STATUS_SUCCESS) {
+            ERR("ERROR: vaTerminate failed with status " + TOSTR(va_status));
+        }
     }
 }
 

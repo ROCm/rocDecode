@@ -98,6 +98,7 @@ rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
     rocdec_status = va_video_decoder_.ExportSurface(pic_idx, va_drm_prime_surface_desc);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to export surface for picture id" + TOSTR(pic_idx) + TOSTR(rocdec_status));
+        return rocdec_status;
     }
 
     external_mem_handle_desc_.type = hipExternalMemoryHandleTypeOpaqueFd;
