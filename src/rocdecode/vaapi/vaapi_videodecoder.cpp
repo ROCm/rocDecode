@@ -109,7 +109,6 @@ rocDecStatus VaapiVideoDecoder::InitVAAPI(std::string drm_node) {
     vaSetInfoCallback(va_display_, NULL, NULL);
     int major_version = 0, minor_version = 0;
     CHECK_VAAPI(vaInitialize(va_display_, &major_version, &minor_version));
-    CHECK_VAAPI(vaInitialize(va_display_, &major_version, &minor_version));
     return ROCDEC_SUCCESS;
 }
 
