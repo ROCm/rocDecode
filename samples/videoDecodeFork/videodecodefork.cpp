@@ -189,8 +189,7 @@ int main(int argc, char **argv) {
             if (pids[i] < 0) {
                 std::cout << "ERROR: failed to create fork" << std::endl;
                 abort();
-            }
-            else {
+            } else {
                 DecProc(v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i]);
                 *n_total += v_frame[i];
             }
