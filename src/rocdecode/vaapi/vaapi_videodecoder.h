@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "../../commons.h"
 #include "../../../api/rocdecode.h"
 
+#define DEFAULT_SLICE_DATA_BUF_SIZE 2 * 1024 * 1024  // 2 MB
 
 #define CHECK_VAAPI(call) {                                               \
     VAStatus va_status = (call);                                          \
@@ -48,6 +49,10 @@ public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
     rocDecStatus InitializeDecoder(std::string gcn_arch_name);
+    rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
+    rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
+    rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
+
 private:
     RocDecoderCreateInfo decoder_create_info_;
     int drm_fd_;
@@ -55,6 +60,19 @@ private:
     VAConfigAttrib va_config_attrib_;
     VAConfigID va_config_id_;
     VAProfile va_profile_;
-    rocDecStatus InitVAAPI();
+    VAContextID va_context_id_;
+    std::vector<VASurfaceID> va_surface_ids_;
+
+    VABufferID pic_params_buf_id_;
+    VABufferID iq_matrix_buf_id_;
+    VABufferID slice_params_buf_id_;
+    VABufferID slice_data_buf_id_;
+    uint32_t slice_data_buf_size_;
+
+    rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();
+    rocDecStatus CreateSurfaces();
+    rocDecStatus CreateContext();
+    rocDecStatus CreateDataBuffers();
+    rocDecStatus DestroyDataBuffers();
 };

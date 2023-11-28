@@ -2,7 +2,7 @@
 Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
 */
 
-#include "colorspace_kernels.hpp"
+#include "colorspace_kernels.h"
 
 #define HIP_ASSERT(status) \
  assert(status == hipSuccess)

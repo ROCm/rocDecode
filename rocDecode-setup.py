@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright 2023, AMD ROCm rocDecode"
-__version__ = "1.2"
+__version__ = "1.3"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -36,8 +36,11 @@ __status__ = "Shipping"
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocm_path', 	type=str, default='/opt/rocm',
                     help='ROCm Installation Path - optional (default:/opt/rocm) - ROCm Installation Required')
+parser.add_argument('--developer', 	type=str, default='ON',
+                    help='Setup Developer Options - optional (default:ON) [options:ON/OFF]')
 
 args = parser.parse_args()
+developerInstall = args.developer.upper()
 
 ROCM_PATH = args.rocm_path
 
@@ -54,6 +57,11 @@ else:
         "WARNING: If ROCm installed, set ROCm Path with \"--rocm_path\" option for full installation [Default:/opt/rocm]\n")
     print("ERROR: rocDecode Setup requires ROCm install\n")
     exit(-1)
+
+if developerInstall not in ('OFF', 'ON'):
+    print(
+        "ERROR: Developer Option Not Supported - [Supported Options: OFF or ON]\n")
+    exit()
 
 # get platfrom info
 platfromInfo = platform.platform()
@@ -112,55 +120,79 @@ os.system(linuxSystemInstall+' update')
 os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
           linuxSystemInstall_check+' install gcc cmake git wget unzip pkg-config inxi')
 
+# rocDecode RunTime Requirements
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libva-dev libdrm-dev ffmpeg libavcodec-dev libavformat-dev libswscale-dev')
+              ' install vainfo libva-dev libdrm-dev')
 else:
+    os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install autoconf automake bzip2 bzip2-devel freetype-devel')
-    os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install gcc-c++ libtool make pkgconfig zlib-devel libva-devel libdrm-devel')
-    # Nasm
-    os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install nasm')
-    if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
-        # Yasm
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install http://repo.okay.com.mx/centos/7/x86_64/release/okay-release-1-1.noarch.rpm')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' --enablerepo=extras install epel-release')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install yasm')
-        # libx264 & libx265
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install libx264-devel libx265-devel')
-        # libfdk_aac
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install https://forensics.cert.org/cert-forensics-tools-release-el7.rpm')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' --enablerepo=forensics install fdk-aac')
-        # libASS
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install libass-devel')
+              ' install libva-devel libdrm-devel')
+
+# rocDecode Dev Requirements
+if developerInstall == 'ON':
+    if "Ubuntu" in platfromInfo:
         os.system('sudo -v')
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                  ' install ffmpeg libavcodec-devel libavformat-devel libswscale-devel')
-    elif "centos-8" in platfromInfo or "redhat-8" in platfromInfo:
-        # el8 x86_64 packages
+                ' install ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev')
+    else:
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+              ' install autoconf automake bzip2 bzip2-devel freetype-devel')
+        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+              ' install gcc-c++ libtool make pkgconfig zlib-devel')
+        # Nasm
+        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                ' install nasm')
+        if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
+            # Yasm
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install http://repo.okay.com.mx/centos/7/x86_64/release/okay-release-1-1.noarch.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' --enablerepo=extras install epel-release')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install yasm')
+            # libx264 & libx265
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install libx264-devel libx265-devel')
+            # libfdk_aac
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install https://forensics.cert.org/cert-forensics-tools-release-el7.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' --enablerepo=forensics install fdk-aac')
+            # libASS
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install libass-devel')
+            os.system('sudo -v')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install ffmpeg')
+        elif "centos-8" in platfromInfo or "redhat-8" in platfromInfo:
+            # el8 x86_64 packages
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                   ' install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                   ' install https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                   ' install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/SDL2-2.0.10-2.el8.x86_64.rpm')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                   ' install ffmpeg ffmpeg-devel')
-    elif "SLES" in platfromInfo:
-        # FFMPEG-4 packages
-        os.system(
+        elif "centos-9" in platfromInfo or "redhat-9" in platfromInfo:
+            # el8 x86_64 packages
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install install https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install install --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm')
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+                  ' install ffmpeg ffmpeg-free-devel')
+        elif "SLES" in platfromInfo:
+            # FFMPEG-4 packages
+            os.system(
             'sudo zypper ar -cfp 90 \'https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Leap_$releasever/Essentials\' packman-essentials')
-        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+            os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                   ' install ffmpeg-4')
 
 print("\nrocDecode Dependencies Installed with rocDecode-setup.py V-"+__version__+"\n")

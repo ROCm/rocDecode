@@ -1,7 +1,9 @@
 # Video Decode Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using VAAPI.
+This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using VAAPI. 
 
-This sample supports both YUV420 8-bit and 10-bit streams.
+This sample supports both YUV420 8-bit and 10-bit streams. 
+
+This sample uses fork() to create multiple processes to decode the same input video parallely.
 
 ## Prerequisites:
 
@@ -30,7 +32,6 @@ make -j
 ```
 # Run 
 ```
-./videodecode -i <input video file [required]> 
-              -o <output path to save decoded YUV frames [optional]> 
-              -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
+./videodecodefork -i <input video file [required]> 
+                  -t <Number of forks ( >= 1) [optional; default:4]>
 ```

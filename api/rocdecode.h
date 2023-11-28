@@ -138,6 +138,7 @@ typedef enum rocDecodeStatus_enum {
     // 3 to 7 enums are reserved for future use
     rocDecodeStatus_Error           = 8,   // Decode is completed with an error (error is not concealed)
     rocDecodeStatus_Error_Concealed = 9,   // Decode is completed with an error and error is concealed 
+    rocDecodeStatus_Displaying      = 10,  // Decode is completed, displaying in progress
 } rocDecDecodeStatus;
 
 /**************************************************************************************************************/
@@ -464,15 +465,15 @@ typedef struct _RocdecH264PicParams {
 
 
 /***********************************************************/
-//! \struct RocdecHevcQMatrix
-//! HEVC QMatrix
+//! \struct RocdecHevcIQMatrix
+//! HEVC IQMatrix
 //! This structure is sent once per frame,
 //! and only when scaling_list_enabled_flag = 1.
 //! When sps_scaling_list_data_present_flag = 0, app still
 //! needs to send in this structure with default matrix values.
 //! This structure is used in RocdecHevcQMatrix structure
 /***********************************************************/
-typedef struct _RocdecHevcQMatrix {
+typedef struct _RocdecHevcIQMatrix {
     /**
      * \brief 4x4 scaling,
      * correspongs i = 0, MatrixID is in the range of 0 to 5,
@@ -512,7 +513,8 @@ typedef struct _RocdecHevcQMatrix {
      */
     uint8_t                 ScalingListDC32x32[2];
 
-} RocdecHevcQMatrix;
+    uint32_t                reserved[4];
+} RocdecHevcIQMatrix;
 
 /***********************************************************/
 //! \struct RocdecHevcPicParams
@@ -521,7 +523,7 @@ typedef struct _RocdecHevcQMatrix {
 /***********************************************************/
 typedef struct _RocdecHevcPicParams {
     RocdecHEVCPicture cur_pic;
-    RocdecHEVCPicture dpb[15];	/* in DPB */
+    RocdecHEVCPicture ref_frames[15];	/* reference frame list in DPB */
     uint16_t picture_width_in_luma_samples;
     uint16_t picture_height_in_luma_samples;
     union {
@@ -553,7 +555,7 @@ typedef struct _RocdecHevcPicParams {
             uint32_t        ReservedBits                                : 11;
         } bits;
         uint32_t            value;
-    } pps_fields;
+    } pic_fields;
 
     /** SPS fields: the following parameters have same syntax with those in HEVC spec */
     uint8_t                 sps_max_dec_pic_buffering_minus1;       /**< IN: DPB size for current temporal layer */
@@ -583,11 +585,36 @@ typedef struct _RocdecHevcPicParams {
     uint16_t                column_width_minus1[19];
     uint16_t                row_height_minus1[21];
 
-    uint32_t                slice_parsing_fields;       /**< IN: Needed only for Short Slice Format */
+    union {
+        struct {
+            /** following parameters have same syntax with those in HEVC spec */
+            uint32_t        lists_modification_present_flag             : 1;
+            uint32_t        long_term_ref_pics_present_flag             : 1;
+            uint32_t        sps_temporal_mvp_enabled_flag               : 1;
+            uint32_t        cabac_init_present_flag                     : 1;
+            uint32_t        output_flag_present_flag                    : 1;
+            uint32_t        dependent_slice_segments_enabled_flag       : 1;
+            uint32_t        pps_slice_chroma_qp_offsets_present_flag    : 1;
+            uint32_t        sample_adaptive_offset_enabled_flag         : 1;
+            uint32_t        deblocking_filter_override_enabled_flag     : 1;
+            uint32_t        pps_disable_deblocking_filter_flag          : 1;
+            uint32_t        slice_segment_header_extension_present_flag : 1;
+
+            /** current picture with NUT between 16 and 21 inclusive */
+            uint32_t        RapPicFlag                                  : 1;
+            /** current picture with NUT between 19 and 20 inclusive */
+            uint32_t        IdrPicFlag                                  : 1;
+            /** current picture has only intra slices */
+            uint32_t        IntraPicFlag                                : 1;
+
+            uint32_t        ReservedBits                                : 18;
+        } bits;
+        uint32_t            value;
+    } slice_parsing_fields;
 
     /** following parameters have same syntax with those in HEVC spec */
     uint8_t                 log2_max_pic_order_cnt_lsb_minus4;
-    uint8_t                 num_int16_t_term_ref_pic_sets;
+    uint8_t                 num_short_term_ref_pic_sets;
     uint8_t                 num_long_term_ref_pic_sps;
     uint8_t                 num_ref_idx_l0_default_active_minus1;
     uint8_t                 num_ref_idx_l1_default_active_minus1;
@@ -596,18 +623,17 @@ typedef struct _RocdecHevcPicParams {
     uint8_t                 num_extra_slice_header_bits;
     /**
      * \brief number of bits that structure
-     * int16_t_term_ref_pic_set( num_int16_t_term_ref_pic_sets ) takes in slice
-     * segment header when int16_t_term_ref_pic_set_sps_flag equals 0.
-     * if int16_t_term_ref_pic_set_sps_flag equals 1, the value should be 0.
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) takes in slice
+     * segment header when short_term_ref_pic_set_sps_flag equals 0.
+     * if short_term_ref_pic_set_sps_flag equals 1, the value should be 0.
      * the bit count is calculated after emulation prevention bytes are removed
      * from bit streams.
      * This variable is used for accelorater to skip parsing the
-     * int16_t_term_ref_pic_set( num_int16_t_term_ref_pic_sets ) structure.
+     * short_term_ref_pic_set( num_short_term_ref_pic_sets ) structure.
      */
     uint32_t                st_rps_bits;
 
-    RocdecHevcQMatrix      q_matrix;
-    uint32_t                Reserved[16];
+    uint32_t                reserved[8];
 } RocdecHevcPicParams;
 
 /***********************************************************/
@@ -619,6 +645,91 @@ typedef struct _RocdecVc1PicParams {
     int Reserved;
 } RocdecVc1PicParams;
 
+/***********************************************************/
+//! \struct RocdecHevcSliceParams
+//! HEVC slice parameters
+//! This structure is used in RocdecPicParams structure
+/***********************************************************/
+typedef struct _RocdecHevcSliceParams {
+    /** \brief Number of bytes in the slice data buffer for this slice
+     * counting from and including NAL unit header.
+     */
+    uint32_t                slice_data_size;
+    /** \brief The offset to the NAL unit header for this slice */
+    uint32_t                slice_data_offset;
+    /** \brief Slice data buffer flags. See \c VA_SLICE_DATA_FLAG_XXX. */
+    uint32_t                slice_data_flag;
+    /**
+     * \brief Byte offset from NAL unit header to the begining of slice_data().
+     *
+     * This byte offset is relative to and includes the NAL unit header
+     * and represents the number of bytes parsed in the slice_header()
+     * after the removal of any emulation prevention bytes in
+     * there. However, the slice data buffer passed to the hardware is
+     * the original bitstream, thus including any emulation prevention
+     * bytes.
+     */
+    uint32_t                slice_data_byte_offset;
+    /** HEVC syntax element. */
+    uint32_t                slice_segment_address;
+    /** \brief index into ReferenceFrames[]
+     * RefPicList[0][] corresponds to RefPicList0[] of HEVC variable.
+     * RefPicList[1][] corresponds to RefPicList1[] of HEVC variable.
+     * value range [0..14, 0xFF], where 0xFF indicates invalid entry.
+     */
+    uint8_t                 RefPicList[2][15];
+    union {
+        uint32_t            value;
+        struct {
+            /** current slice is last slice of picture. */
+            uint32_t        LastSliceOfPic                              : 1;
+            /** HEVC syntax element. */
+            uint32_t        dependent_slice_segment_flag                : 1;
+            uint32_t        slice_type                                  : 2;
+            uint32_t        color_plane_id                              : 2;
+            uint32_t        slice_sao_luma_flag                         : 1;
+            uint32_t        slice_sao_chroma_flag                       : 1;
+            uint32_t        mvd_l1_zero_flag                            : 1;
+            uint32_t        cabac_init_flag                             : 1;
+            uint32_t        slice_temporal_mvp_enabled_flag             : 1;
+            uint32_t        slice_deblocking_filter_disabled_flag       : 1;
+            uint32_t        collocated_from_l0_flag                     : 1;
+            uint32_t        slice_loop_filter_across_slices_enabled_flag : 1;
+            uint32_t        reserved                                    : 18;
+        } fields;
+    } LongSliceFlags;
+
+    /** HEVC syntax element. */
+    uint8_t                 collocated_ref_idx;
+    uint8_t                 num_ref_idx_l0_active_minus1;
+    uint8_t                 num_ref_idx_l1_active_minus1;
+    int8_t                  slice_qp_delta;
+    int8_t                  slice_cb_qp_offset;
+    int8_t                  slice_cr_qp_offset;
+    int8_t                  slice_beta_offset_div2;
+    int8_t                  slice_tc_offset_div2;
+    uint8_t                 luma_log2_weight_denom;
+    int8_t                  delta_chroma_log2_weight_denom;
+    int8_t                  delta_luma_weight_l0[15];
+    int8_t                  luma_offset_l0[15];
+    int8_t                  delta_chroma_weight_l0[15][2];
+    /** corresponds to HEVC spec variable of the same name. */
+    int8_t                  ChromaOffsetL0[15][2];
+    /** HEVC syntax element. */
+    int8_t                  delta_luma_weight_l1[15];
+    int8_t                  luma_offset_l1[15];
+    int8_t                  delta_chroma_weight_l1[15][2];
+    /** corresponds to HEVC spec variable of the same name. */
+    int8_t                  ChromaOffsetL1[15][2];
+    /** HEVC syntax element. */
+    uint8_t                 five_minus_max_num_merge_cand;
+    uint16_t                 num_entry_point_offsets;
+    uint16_t                 entry_offset_to_subset_array;
+    /** \brief Number of emulation prevention bytes in slice header. */
+    uint16_t                slice_data_num_emu_prevn_bytes;
+
+    uint32_t                reserved[2];
+} RocdecHevcSliceParams;
 
 /******************************************************************************************/
 //! \struct _RocdecPicParams
@@ -642,6 +753,7 @@ typedef struct _RocdecPicParams {
     int ref_pic_flag;                      /**< IN: This picture is a reference picture                       */
     int intra_pic_flag;                    /**< IN: This picture is entirely intra coded                      */
     uint32_t Reserved[30];             /**< Reserved for future use                                       */
+
     // IN: Codec-specific data
     union {
         RocdecMpeg2PicParams mpeg2;         /**< Also used for MPEG-1 */
@@ -650,8 +762,17 @@ typedef struct _RocdecPicParams {
         RocdecVc1PicParams   vc1;
         RocdecJPEGPicParams  jpeg;
         uint32_t CodecReserved[256];
-    } CodecSpecific;
+    } pic_params;
 
+    union {
+        // Todo: Add slice params defines for other codecs.
+        RocdecHevcSliceParams hevc;
+    } slice_params;
+
+    union {
+        // Todo: Added IQ matrix defines for other codecs.
+        RocdecHevcIQMatrix hevc;
+    } iq_matrix;
 } RocdecPicParams;
 
 /******************************************************/
@@ -757,10 +878,10 @@ extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, 
                                            RocdecProcParams *pVidPostprocParams);
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr)
-//! Unmap a previously mapped video frame with the associated mapped raw pointer (pMappedDevPtr) 
+//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx)
+//! Unmap a previously mapped video frame with the associated nPicIdx
 /*****************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, void *pMappedDevPtr);
+extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx);
 
 #ifdef  __cplusplus
 }

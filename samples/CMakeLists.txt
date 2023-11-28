@@ -26,17 +26,12 @@ set(ROC_VIDEO_DEC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../utils/rocvideodecode)
 # videoDecode
 add_test(
   NAME
-    video_decode-H264
+    video_decode-H265
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
-            -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H264.mp4
+            -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
 )
-
-add_test(NAME video_decode-H265 
-              COMMAND videodecode
-              -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
-              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/videoDecode)

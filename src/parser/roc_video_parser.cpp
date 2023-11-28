@@ -44,7 +44,7 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
     pfn_display_picture_cb_ = pParams->pfnDisplayPicture;      /**< Called whenever a picture is ready to be displayed (display order)  */
     pfn_get_sei_message_cb_ = pParams->pfnGetSEIMsg;       /**< Called when all SEI messages are parsed for particular frame        */
 
-    parser_params_ = pParams;
+    parser_params_ = *pParams;
 
     return ROCDEC_SUCCESS;
 }

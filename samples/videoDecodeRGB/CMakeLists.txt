@@ -21,34 +21,76 @@
 #
 ################################################################################
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.5)
 project(videodecodergb)
 set(CMAKE_CXX_STANDARD 17)
-set(ROCM_PATH /opt/rocm CACHE PATH "default ROCm installation path")
+
+# ROCM Path
+if(DEFINED ENV{ROCM_PATH})
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
+elseif(ROCM_PATH)
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
+else()
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
 
-set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1031;gfx1032")
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  # -O0 -- Don't Optimize output file 
+  # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
+  # -Og -- Optimize for debugging experience rather than speed or size
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4 -Og")
+else()
+  # -O3       -- Optimize output file 
+  # -DNDEBUG  -- turn off asserts 
+  # -fPIC     -- Generate position-independent code if possible
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
+endif()
+
+set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1031;gfx1032;gfx1100")
 set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
+
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
-if(HIP_FOUND AND FFMPEG_FOUND)
-    include_directories (${ROCM_PATH}/include/rocdecode
-                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils)
+# find rocDecode
+find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS {ROCM_PATH}/lib)
+find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode {ROCM_PATH}/include/rocdecode)
+
+if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
+    set(ROCDECODE_FOUND TRUE)
+    message("-- ${White}Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
+endif()
+
+if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
+    # HIP
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
+    # FFMPEG
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
+                        ${AVFORMAT_INCLUDE_DIR})
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+    # rocDecode
+    include_directories (${ROCDECODE_INCLUDE_DIR})
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} 
                         videodecrgb.cpp 
-                        ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp
+                        ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp 
                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/colorspace_kernels.cpp)
+
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
-    target_link_libraries(${PROJECT_NAME} ${AVUTIL_LIBRARY} ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} hip::device rocdecode)
+    target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()
+    message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)
         message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
     endif()
     if (NOT FFMPEG_FOUND)
-        message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please insatll FFMPEG!")
+        message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
-    message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
+    if (NOT ROCDECODE_FOUND)
+        message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+    endif()
 endif()

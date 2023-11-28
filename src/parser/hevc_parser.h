@@ -41,6 +41,12 @@ extern int scaling_list_default_3[1][2][64];
 #define MAX_SPS_COUNT 16    // 7.3.2.2.1
 #define MAX_PPS_COUNT 64    // 7.4.3.3.1
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+#define HEVC_MAX_DPB_FRAMES 16  // (A-2)
+#define HEVC_MAX_NUM_REF_PICS 16
+// 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
+#define MAX_ENTRY_POINT_OFFSETS 20 * 270
+#define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
+#define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 
 class HEVCVideoParser : public RocVideoParser {
 
@@ -64,7 +70,7 @@ public:
      * 
      * @return rocDecStatus 
      */
-    virtual rocDecStatus UnInitialize();     // derived method
+    virtual rocDecStatus UnInitialize();     // derived method :: nothing to do for this
 
     /**
      * @brief HEVCParser object destructor
@@ -248,8 +254,8 @@ protected:
      */
     typedef struct {
         int32_t num_of_pics;
-        int32_t pocs[32];
-        bool used_by_curr_pic[32];
+        int32_t pocs[32];  // PocLsbLt
+        bool used_by_curr_pic[32];  // UsedByCurrPicLt
     } H265LongTermRPS;
 
     /*! \brief Structure for Sub Layer Hypothetical Reference Decoder Parameters
@@ -345,12 +351,16 @@ protected:
         int32_t     luma_offset_l0[16];                         //se(v)
         int32_t     delta_chroma_weight_l0[16][2];              //se(v)
         int32_t     delta_chroma_offset_l0[16][2];              //se(v)
+        int32_t     chroma_weight_l0[16][2];                    //ChromaWeightL0[]
+        int32_t     chroma_offset_l0[16][2];                    //ChromaOffsetL0[]
         uint8_t     luma_weight_l1_flag[16];                    //u(1)
         uint8_t     chroma_weight_l1_flag[16];                  //u(1)
         int32_t     delta_luma_weight_l1[16];                   //se(v)
         int32_t     luma_offset_l1[16];                         //se(v)
         int32_t     delta_chroma_weight_l1[16][2];              //se(v)
         int32_t     delta_chroma_offset_l1[16][2];              //se(v)
+        int32_t     chroma_weight_l1[16][2];                    //ChromaWeightL1[]
+        int32_t     chroma_offset_l1[16][2];                    //ChromaOffsetL1[]
     } HevcPredWeightTable;
 
     /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
@@ -532,18 +542,6 @@ protected:
         H265RbspTrailingBits rbsp_trailing_bits;
     } PpsData;
 
-    /*! \brief Structure for Slice Data
-     */
-    typedef struct {
-        uint32_t prev_poc;
-        uint32_t curr_poc;
-        uint32_t prev_poc_lsb;
-        uint32_t prev_poc_msb;
-        uint32_t curr_poc_lsb;
-        uint32_t curr_poc_msb;
-        uint32_t max_poc_lsb;
-    } SliceData;
-
     /*! \brief Structure for Slice Header Data
      */
     typedef struct {
@@ -600,8 +598,7 @@ protected:
         bool slice_loop_filter_across_slices_enabled_flag;   //u(1)
         uint32_t num_entry_point_offsets;                    //ue(v)
         uint32_t offset_len_minus1;                          //ue(v)
-        //num_entry_point_offsets max is 440
-        uint32_t entry_point_offset_minus1[440];             //u(v)
+        uint32_t entry_point_offset_minus1[MAX_ENTRY_POINT_OFFSETS]; //u(v)
         uint32_t slice_segment_header_extension_length;      //ue(v)
         //slice_segment_header_extension_length max is 256
         uint8_t slice_segment_header_extension_data_byte[256];    //u(8)
@@ -624,6 +621,41 @@ protected:
         return nalu_header;
     }
 
+    enum HevcRefMarking {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
+
+    /*! \brief Picture info for decoding process
+     */
+    typedef struct {
+        int     pic_idx;  // picture index or id
+        // POC info
+        int32_t pic_order_cnt;  // PicOrderCnt
+        int32_t prev_poc_lsb;  // prevPicOrderCntLsb
+        int32_t prev_poc_msb;  // prevPicOrderCntMsb
+        uint32_t slice_pic_order_cnt_lsb; // for long term ref pic identification
+        uint32_t decode_order_count;  // to record relative time in DPB
+
+        uint32_t pic_output_flag;  // PicOutputFlag
+        uint32_t is_reference;
+        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+    } HevcPicInfo;
+
+    /*! \brief Decoded picture buffer
+     */
+    typedef struct
+    {
+        uint32_t dpb_size;  // DPB buffer size in number of frames
+        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t dpb_fullness;  // number of pictures in DPB
+        HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
+
+        uint32_t num_output_pics;  // number of pictures that are output after the decode call
+        uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
+    } DecodedPictureBuffer;
+
     /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
      * 
      * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
@@ -634,20 +666,70 @@ protected:
     size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
 
     // Data members of HEVC class
+    uint32_t            pic_count_;  // decoded picture count for the current bitstream
+
+    NalUnitHeader       nal_unit_header_;
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
     int32_t             m_active_pps_id_;
-    VpsData*            m_vps_;
-    SpsData*            m_sps_;
-    PpsData*            m_pps_;
-    SliceHeaderData*    m_sh_;
-    SliceHeaderData*    m_sh_copy_;
-    SliceData*          m_slice_;
+    VpsData*            m_vps_ = nullptr;
+    SpsData*            m_sps_ = nullptr;
+    PpsData*            m_pps_ = nullptr;
+    SliceHeaderData*    m_sh_ = nullptr;
+    SliceHeaderData*    m_sh_copy_ = nullptr;
+
+    NalUnitHeader       slice_nal_unit_header_;
+    HevcPicInfo         curr_pic_info_;
     bool                b_new_picture_;
     int                 m_packet_count_;
-    int                 slice_num_;
     int                 m_rbsp_size_;
     uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
+    uint32_t            sei_rbsp_buf_size_;
+    std::vector<RocdecSeiMessage> sei_message_list_;
+    int                 sei_message_count_;  // total SEI playload message count of the current frame.
+    uint8_t             *sei_payload_buf_;  // buffer to store SEI playload. Allocated at run time.
+    uint32_t            sei_payload_buf_size_;
+    uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
+
+    int                 slice_num_;
+    uint8_t*            pic_stream_data_ptr_;
+    int                 pic_stream_data_size_;
+
+    int first_pic_after_eos_nal_unit_; // to flag the first picture after EOS
+    int no_rasl_output_flag_; // NoRaslOutputFlag
+
+    int pic_width_in_ctbs_y_;  // PicWidthInCtbsY
+    int pic_height_in_ctbs_y_;  // PicHeightInCtbsY
+    int pic_size_in_ctbs_y_;  // PicSizeInCtbsY
+
+    // DPB
+    DecodedPictureBuffer dpb_buffer_;
+    int no_output_of_prior_pics_flag;  // NoOutputOfPriorPicsFlag
+
+    uint32_t num_pic_total_curr_;  // NumPicTotalCurr
+
+    // Reference picture set
+    uint32_t num_poc_st_curr_before_;  // NumPocStCurrBefore;
+    uint32_t num_poc_st_curr_after_;  // NumPocStCurrAfter;
+    uint32_t num_poc_st_foll_;  // NumPocStFoll;
+    uint32_t num_poc_lt_curr_;  // NumPocLtCurr;
+    uint32_t num_poc_lt_foll_;  // NumPocLtFoll;
+
+    int32_t poc_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrBefore
+    int32_t poc_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // PocStCurrAfter
+    int32_t poc_st_foll_[HEVC_MAX_NUM_REF_PICS];  // PocStFoll
+    int32_t poc_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // PocLtCurr
+    int32_t poc_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // PocLtFoll
+    uint8_t ref_pic_set_st_curr_before_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrBefore
+    uint8_t ref_pic_set_st_curr_after_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStCurrAfter
+    uint8_t ref_pic_set_st_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStFoll
+    uint8_t ref_pic_set_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtCurr
+    uint8_t ref_pic_set_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtFoll
+
+    uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
+    uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
 
     // Frame bit stream info
     uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
@@ -766,7 +848,55 @@ protected:
      * \param [in] size Size of the input stream
      * \return True is successful, else false
      */
-    bool ParseSliceHeader(uint32_t nal_unit_type, uint8_t *nalu, size_t size);
+    bool ParseSliceHeader(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to parse Sei Message Info
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
+    void ParseSeiMessage(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
+     */
+    void CalculateCurrPOC();
+
+    /*! \brief Function to perform decoding process for reference picture set (8.3.2)
+     */
+    void DeocdeRps();
+
+    /*! \brief Function to perform decoding process for reference picture lists construction (8.3.4)
+     */
+    void ConstructRefPicLists();
+
+    /*! \brief Function to initialize DPB buffer.
+     */
+    void InitDpb();
+
+    /*! \brief Function to clear DPB buffer.
+     */
+    void EmptyDpb();
+
+    /*! \brief Function to send out the remaining pictures that need for output in DPB buffer.
+     * \return Code in ParserResult form.
+     */
+    int FlushDpb();
+
+    /*! \brief Function to output and remove pictures from DPB. C.5.2.2.
+     * \return Code in ParserResult form.
+     */
+    int MarkOutputPictures();
+
+    /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture
+     *         bumping is done if needed. C.5.2.3.
+     * \return Code in ParserResult form.
+     */
+    int FindFreeBufAndMark();
+
+    /*! \brief Function to bump one picture out of DPB. C.5.2.4.
+     * \return Code in ParserResult form.
+     */
+    int BumpPicFromDpb();
 
     /*! \brief Function to parse the data received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -787,6 +917,7 @@ protected:
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
     void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
     void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
+    void PrintSeiMessage(HEVCVideoParser::SeiMessageData *sei_message_ptr);
 #endif // DBGINFO
 
 private:
@@ -795,31 +926,23 @@ private:
      */
     ParserResult     Init();
 
-    /*! \brief Function to allocate memory for VPS Structure
-     * \return Returns pointer to the allocated memory for <tt>VpsData</tt>
-     */
-    VpsData*         AllocVps();
-
-    /*! \brief Function to allocate memory for SPS Structure
-     * \return Returns pointer to the allocated memory for <tt>SpsData</tt>
-     */
-    SpsData*         AllocSps();
-
-    /*! \brief Function to allocate memory for PPS Structure
-     * \return Returns pointer to the allocated memory for <tt>PpsData</tt>
-     */
-    PpsData*         AllocPps();
-
-    /*! \brief Function to allocate memory for Slice Structure
-     * \return Returns pointer to the allocated memory for <tt>SliceData</tt>
-     */
-    SliceData*       AllocSlice();
-
-    /*! \brief Function to allocate memory for Slice Header Structure
-     * \return Returns pointer to the allocated memory for <tt>SliceHeaderData</tt>
-     */
-    SliceHeaderData* AllocSliceHeader();
-
     // functions to fill structures for callback functions
     void FillSeqCallbackFn(SpsData* sps_data);
+    void FillSeiMessageCallbackFn();
+
+    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+     * \return Return code in ParserResult form
+     */
+    int SendPicForDecode();
+
+    /*! \brief Function to output decoded pictures from DPB for post-processing.
+     * \return Return code in ParserResult form
+     */
+    int OutputDecodedPictures();
+
+    bool IsIdrPic(NalUnitHeader *nal_header_ptr);
+    bool IsCraPic(NalUnitHeader *nal_header_ptr);
+    bool IsBlaPic(NalUnitHeader *nal_header_ptr);
+    bool IsIrapPic(NalUnitHeader *nal_header_ptr);
+    bool IsRaslPic(NalUnitHeader *nal_header_ptr);
 };
