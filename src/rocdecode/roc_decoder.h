@@ -34,12 +34,12 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "vaapi/vaapi_videodecoder.h"
 
-#define CHECK_HIP(call) {                                             \
-    hipError_t hip_status = call;                                   \
-    if (hip_status != hipSuccess) {                                   \
-        std::cout << "HIP failure: 'status#" << hip_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
-        return ROCDEC_RUNTIME_ERROR;                                                      \
-    }                                                                 \
+#define CHECK_HIP(call) {\
+    hipError_t hip_status = call;\
+    if (hip_status != hipSuccess) {\
+        std::cout << "HIP failure: " << #call << " failed with 'status# " << hip_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
 }
 
 class RocDecoder {
