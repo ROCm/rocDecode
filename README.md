@@ -85,7 +85,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
   ```shell
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
 
 ## Docker
