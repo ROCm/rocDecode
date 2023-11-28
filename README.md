@@ -74,6 +74,7 @@ cmake /opt/rocm/share/rocdecode/samples/videoDecode/
 make -j8
 ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 ```
+**NOTE:** FFMPEG install required to run samples
 
 ## Samples
 
@@ -84,7 +85,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
   ```shell
-  sudo apt install ffmpeg
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
   ```
 
 ## Docker
