@@ -185,14 +185,13 @@ int main(int argc, char **argv) {
 
         auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < n_fork; i++) {
-            if ((pids[i] = fork()) < 0) {
+            pids[i] = fork();
+            if (pids[i] < 0) {
                 std::cout << "ERROR: failed to create fork" << std::endl;
                 abort();
-            }
-            else if (pids[i] == 0) {
+            } else {
                 DecProc(v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i]);
                 *n_total += v_frame[i];
-                _exit(0);
             }
         }
 
