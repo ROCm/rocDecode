@@ -863,7 +863,7 @@ protected:
 
     /*! \brief Function to perform decoding process for reference picture set (8.3.2)
      */
-    void DeocdeRps();
+    void DecodeRps();
 
     /*! \brief Function to perform decoding process for reference picture lists construction (8.3.4)
      */

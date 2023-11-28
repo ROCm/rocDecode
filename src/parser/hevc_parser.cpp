@@ -641,7 +641,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         CalculateCurrPOC();
 
                         // Decode RPS. 8.3.2.
-                        DeocdeRps();
+                        DecodeRps();
 
                         // Construct ref lists. 8.3.4.
                         if(m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
@@ -1953,7 +1953,7 @@ void HEVCVideoParser::CalculateCurrPOC() {
     }
 }
 
-void HEVCVideoParser::DeocdeRps() {
+void HEVCVideoParser::DecodeRps() {
     int i, j, k;
     int curr_delta_proc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
     int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
