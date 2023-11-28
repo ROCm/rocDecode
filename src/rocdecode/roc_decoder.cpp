@@ -26,12 +26,11 @@ THE SOFTWARE.
 RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, decoder_create_info_{decoder_create_info} {}
 
  RocDecoder::~RocDecoder() {
-    // todo::
     hipError_t hipStatus = hipSuccess;
     if (hip_stream_) {
         hipStatus = hipStreamDestroy(hip_stream_);
         if (hipStatus != hipSuccess) {
-            ERR("ERROR: hipStreamDestroy failed! (" + TOSTR(hipStatus) + ")");
+            ERR("ERROR: hipStreamDestroy failed! with hipStatus# " + TOSTR(hipStatus));
         }
     }
  }
@@ -40,7 +39,7 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     rocdec_status = InitHIP(decoder_create_info_.deviceid);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to initilize the HIP!" + TOSTR(rocdec_status));
+        ERR("ERROR: Failed to initilize the HIP! with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;
     }
     if (decoder_create_info_.ulNumDecodeSurfaces < 1) {
@@ -51,7 +50,7 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
 
     rocdec_status = va_video_decoder_.InitializeDecoder(hip_dev_prop_.gcnArchName);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to initilize the VAAPI Video decoder!" + TOSTR(rocdec_status));
+        ERR("ERROR: Failed to initilize the VAAPI Video decoder! with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;
     }
 
@@ -62,7 +61,7 @@ rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     rocdec_status = va_video_decoder_.SubmitDecode(pPicParams);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Decode submission is not successful!" + TOSTR(rocdec_status));
+        ERR("ERROR: Decode submission is not successful! with rocDecStatus# " + TOSTR(rocdec_status));
     }
 
      return rocdec_status;
@@ -72,7 +71,7 @@ rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecod
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     rocdec_status = va_video_decoder_.GetDecodeStatus(nPicIdx, pDecodeStatus);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to query the decode status!" + TOSTR(rocdec_status));
+        ERR("ERROR: Failed to query the decode status! with rocDecStatus# " + TOSTR(rocdec_status));
     }
     return rocdec_status;
 }
@@ -97,7 +96,7 @@ rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
 
     rocdec_status = va_video_decoder_.ExportSurface(pic_idx, va_drm_prime_surface_desc);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to export surface for picture id" + TOSTR(pic_idx) + TOSTR(rocdec_status));
+        ERR("ERROR: Failed to export surface for picture id" + TOSTR(pic_idx) + " , with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;
     }
 
@@ -136,37 +135,18 @@ rocDecStatus RocDecoder::unMapVideoFrame(int pic_idx) {
 
 
 rocDecStatus RocDecoder::InitHIP(int device_id) {
-    hipError_t hipStatus = hipSuccess;
-    hipStatus = hipGetDeviceCount(&num_devices_);
-    rocDecStatus decStatus = ROCDEC_SUCCESS;
-    if (hipStatus != hipSuccess) {
-        ERR("ERROR: hipGetDeviceCount failed!" + TOSTR(hipStatus));
-        decStatus = ROCDEC_DEVICE_INVALID;
-    }
+    CHECK_HIP(hipGetDeviceCount(&num_devices_));
     if (num_devices_ < 1) {
         ERR("ERROR: didn't find any GPU!");
-        decStatus = ROCDEC_DEVICE_INVALID;
+        return ROCDEC_DEVICE_INVALID;
     }
     if (device_id >= num_devices_) {
         ERR("ERROR: the requested device_id is not found! ");
-        decStatus = ROCDEC_DEVICE_INVALID;
+        return ROCDEC_DEVICE_INVALID;
     }
-    hipStatus = hipSetDevice(device_id);
-    if (hipStatus != hipSuccess) {
-        ERR("ERROR: hipSetDevice( " + TOSTR(device_id) + ") failed! (" + TOSTR(hipStatus) + ")" );
-        decStatus = ROCDEC_DEVICE_INVALID;
-    }
+    CHECK_HIP(hipSetDevice(device_id));
+    CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop_, device_id));
+    CHECK_HIP(hipStreamCreate(&hip_stream_));
 
-    hipStatus = hipGetDeviceProperties(&hip_dev_prop_, device_id);
-    if (hipStatus != hipSuccess) {
-        ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + TOSTR(hipStatus) + ")" );
-        decStatus = ROCDEC_DEVICE_INVALID;
-    }
-
-    hipStatus = hipStreamCreate(&hip_stream_);
-    if (hipStatus != hipSuccess) {
-        ERR("ERROR: hipStream_Create failed! (" + TOSTR(hipStatus) + ")");
-        decStatus = ROCDEC_DEVICE_INVALID;
-    }
-    return decStatus;
+    return ROCDEC_SUCCESS;
 }
