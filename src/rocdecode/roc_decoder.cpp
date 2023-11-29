@@ -57,9 +57,9 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
      return rocdec_status;
  }
 
-rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
+rocDecStatus RocDecoder::DecodeFrame(RocdecPicParams *pic_params) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    rocdec_status = va_video_decoder_.SubmitDecode(pPicParams);
+    rocdec_status = va_video_decoder_.SubmitDecode(pic_params);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Decode submission is not successful! with rocDecStatus# " + TOSTR(rocdec_status));
     }
@@ -67,16 +67,16 @@ rocDecStatus RocDecoder::decodeFrame(RocdecPicParams *pPicParams) {
      return rocdec_status;
 }
 
-rocDecStatus RocDecoder::getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus) {
+rocDecStatus RocDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    rocdec_status = va_video_decoder_.GetDecodeStatus(nPicIdx, pDecodeStatus);
+    rocdec_status = va_video_decoder_.GetDecodeStatus(pic_idx, decode_status);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to query the decode status! with rocDecStatus# " + TOSTR(rocdec_status));
     }
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams) {
+rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
     // todo:: return appropriate decStatus
     // this will be called when the current configuration is changed during decoding
     // release the current va-api decoder instance and create a new one with the new parameters (or reinit if available)
@@ -84,7 +84,7 @@ rocDecStatus RocDecoder::reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecRe
     return ROCDEC_NOT_IMPLEMENTED;
 }
 
-rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
+rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
                                 unsigned int horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {
     if (pic_idx >= hip_ext_mem_.size() || &dev_mem_ptr[0] == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
@@ -123,7 +123,7 @@ rocDecStatus RocDecoder::mapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::unMapVideoFrame(int pic_idx) {
+rocDecStatus RocDecoder::UnMapVideoFrame(int pic_idx) {
     if (pic_idx >= hip_ext_mem_.size()) {
         return ROCDEC_INVALID_PARAMETER;
     }

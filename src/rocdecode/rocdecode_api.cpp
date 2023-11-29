@@ -102,7 +102,7 @@ rocDecDecodeFrame(rocDecDecoderHandle hDecoder, RocdecPicParams *pPicParams) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->decodeFrame(pPicParams);
+        ret = handle->roc_decoder->DecodeFrame(pPicParams);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
@@ -126,7 +126,7 @@ rocDecGetDecodeStatus(rocDecDecoderHandle hDecoder, int nPicIdx, RocdecDecodeSta
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->getDecodeStatus(nPicIdx, pDecodeStatus);
+        ret = handle->roc_decoder->GetDecodeStatus(nPicIdx, pDecodeStatus);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
@@ -146,7 +146,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle hDecoder, RocdecReconfigureDecoderI
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->reconfigureDecoder(pDecReconfigParams);
+        ret = handle->roc_decoder->ReconfigureDecoder(pDecReconfigParams);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
@@ -169,7 +169,7 @@ rocDecMapVideoFrame(rocDecDecoderHandle hDecoder, int nPicIdx,
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->mapVideoFrame(nPicIdx, pDevMemPtr, pHorizontalPitch, pVidPostprocParams);
+        ret = handle->roc_decoder->MapVideoFrame(nPicIdx, pDevMemPtr, pHorizontalPitch, pVidPostprocParams);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
@@ -188,7 +188,7 @@ rocDecUnMapVideoFrame(rocDecDecoderHandle hDecoder, int pic_idx) {
     auto handle = static_cast<DecHandle *> (hDecoder);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder->unMapVideoFrame(pic_idx);
+        ret = handle->roc_decoder->UnMapVideoFrame(pic_idx);
     }
     catch(const std::exception& e) {
         handle->capture_error(e.what());
