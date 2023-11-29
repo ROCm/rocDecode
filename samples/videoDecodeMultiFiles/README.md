@@ -47,6 +47,6 @@ outfile output2.yuv [optional]
 ```
 
 ```
-./videodecodefiles -i <input file list[required - example.txt]>
+./videodecodemultifiles -i <input file list[required - example.txt]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
 ```
