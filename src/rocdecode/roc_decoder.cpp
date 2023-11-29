@@ -84,8 +84,7 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     return ROCDEC_NOT_IMPLEMENTED;
 }
 
-rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3],
-                                unsigned int horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {
+rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {
     if (pic_idx >= hip_ext_mem_.size() || &dev_mem_ptr[0] == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
