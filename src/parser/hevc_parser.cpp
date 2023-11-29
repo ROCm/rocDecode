@@ -307,6 +307,22 @@ int HEVCVideoParser::SendPicForDecode() {
         ref_idx++;
     }
 
+    for (i = 0; i < num_poc_st_foll_; i++) {
+        buf_idx = ref_pic_set_st_foll_[i]; // buffer index in DPB
+        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        ref_idx++;
+    }
+
+    for (i = 0; i < num_poc_lt_foll_; i++) {
+        buf_idx = ref_pic_set_lt_foll_[i]; // buffer index in DPB
+        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        ref_idx++;
+    }
+
     for (i = ref_idx; i < 15; i++) {
         pic_param_ptr->ref_frames[i].PicIdx = 0xFF;
     }
