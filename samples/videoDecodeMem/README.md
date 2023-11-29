@@ -1,8 +1,6 @@
 # Video Decode Sample
 This sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which are then decoded on AMD hardware using rocDecode library.
 
-This sample supports both YUV420 8-bit and 10-bit streams.
-
 ## Prerequisites:
 
 * Linux distribution
