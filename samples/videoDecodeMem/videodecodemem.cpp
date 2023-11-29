@@ -52,7 +52,7 @@ public:
     // Fill in the buffer owned by the demuxer
     int GetData(uint8_t *p_buf, int n_buf) {
         // We read a file for this example. You may get your data from network or somewhere else
-        return (int)fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount();
+        return static_cast<int>(fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount());
     }
 
 private:
