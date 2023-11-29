@@ -1,7 +1,5 @@
 # Video Decode Multi Files Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using VAAPI.
-
-This sample supports both YUV420 8-bit and 10-bit streams.
+This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
 
 This sample takes multiple files as a list and decodes each of them one after the other.
 

@@ -117,18 +117,14 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int
             file_data.b_extract_sei_messages = false;
             file_data.dump_output_frames = 0;
             file_data.crop_rect = {0, 0, 0, 0};
-        }
-        else if (!strcmp(param, "outfile")) {
+        } else if (!strcmp(param, "outfile")) {
             file_data.out_file = value;
             file_data.dump_output_frames = 1;
-        }
-        else if (!strcmp(param, "z")) {
+        } else if (!strcmp(param, "z")) {
             file_data.b_force_zero_latency = atoi(value) ? true : false;
-        }
-        else if (!strcmp(param, "sei")) {
+        } else if (!strcmp(param, "sei")) {
             file_data.b_extract_sei_messages = atoi(value) ? true : false;
-        }
-        else if (!strcmp(param, "crop")) {
+        } else if (!strcmp(param, "crop")) {
             sscanf(value, "%d,%d,%d,%d", &file_data.crop_rect.l, &file_data.crop_rect.t, &file_data.crop_rect.r, &file_data.crop_rect.b);
             if ((file_data.crop_rect.r - file_data.crop_rect.l) % 2 == 1 || (file_data.crop_rect.b - file_data.crop_rect.t) % 2 == 1) {
                 std::cout << "Cropping rect must have width and height of even numbers" << std::endl;
