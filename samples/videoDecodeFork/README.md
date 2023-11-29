@@ -33,5 +33,7 @@ make -j
 # Run 
 ```
 ./videodecodefork -i <input video file [required]> 
-                  -t <Number of forks ( >= 1) [optional; default:4]>
+                  -f <Number of forks ( >= 1) [optional; default:4]>
+                  -d <Device ID (>= 0) [optional - default:0]>
+                  -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
 ```

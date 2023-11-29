@@ -34,4 +34,6 @@ make -j
 ```
 ./videodecodeperf -i <input video file [required]> 
                   -t <number of threads [optional - default:4]>
+                  -d <Device ID (>= 0) [optional - default:0]>
+                  -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
 ```
