@@ -48,8 +48,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
-    << "-sei extract SEI messages; optional;" << std::endl
-    << "-of Output Format - (0: native, 1: bgr 2: bgr48, 3: rgb, 4: rgb48; 5: bgra, 6: bgra64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
+    << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
 
     exit(0);
@@ -151,7 +150,6 @@ void ColorConvertYUV2RGB(uint8_t *pSrc, OutputSurfaceInfo *surf_info, uint8_t *r
           P016ToColor64<RGBA64>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 8 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
     }
-
 }
 
 int main(int argc, char **argv) {
@@ -165,7 +163,7 @@ int main(int argc, char **argv) {
     size_t rgb_image_size;
     uint32_t rgb_image_stride;
     hipError_t hip_status = hipSuccess;
-    uint8_t *rgb_dev_mem_ptr = nullptr;
+    uint8_t *p_rgb_dev_mem= nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
     OutputFormatEnum e_output_format = native; 
     int rgb_width;
@@ -225,92 +223,98 @@ int main(int argc, char **argv) {
         ShowHelpAndExit(argv[i]);
     }
 
-    VideoDemuxer demuxer(input_file_path.c_str());
-    rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-    RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, true, p_crop_rect);
+    try {
+        VideoDemuxer demuxer(input_file_path.c_str());
+        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, true, p_crop_rect);
 
-    std::string device_name, gcn_arch_name;
-    int pci_bus_id, pci_domain_id, pci_device_id;
+        std::string device_name, gcn_arch_name;
+        int pci_bus_id, pci_domain_id, pci_device_id;
+        hipStream_t stream = viddec.GetStream();
 
-    viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-    std::cout << "info: Using GPU device " << device_id << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
-    std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
-    std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
-    std::cout << "info: decoding started, please wait!" << std::endl;
+        viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+        std::cout << "info: Using GPU device " << device_id << " " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+        std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
+        std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
+        std::cout << "info: decoding started, please wait!" << std::endl;
 
-    int n_video_bytes = 0, n_frames_returned = 0, n_frame = 0;
-    uint8_t *p_video = nullptr;
-    uint8_t *p_frame = nullptr;
-    int64_t pts = 0;
-    OutputSurfaceInfo *surf_info;
-    uint32_t width, height;
-    double total_dec_time = 0;
-    convert_to_rgb = e_output_format != native;
+        int n_video_bytes = 0, n_frames_returned = 0, n_frame = 0;
+        uint8_t *p_video = nullptr;
+        uint8_t *p_frame = nullptr;
+        int64_t pts = 0;
+        OutputSurfaceInfo *surf_info;
+        uint32_t width, height;
+        double total_dec_time = 0;
+        convert_to_rgb = e_output_format != native;
 
-    do {
-        auto startTime = std::chrono::high_resolution_clock::now();
-        demuxer.Demux(&p_video, &n_video_bytes, &pts);
-        n_frames_returned = viddec.DecodeFrame(p_video, n_video_bytes, 0, pts);
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - startTime).count();
-        total_dec_time += time_per_frame;
-        if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)){
-            std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
-            break;
-        }
+        do {
+            auto startTime = std::chrono::high_resolution_clock::now();
+            demuxer.Demux(&p_video, &n_video_bytes, &pts);
+            n_frames_returned = viddec.DecodeFrame(p_video, n_video_bytes, 0, pts);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - startTime).count();
+            total_dec_time += time_per_frame;
+            if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)){
+                std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
+                break;
+            }
 
-        for (int i = 0; i < n_frames_returned; i++) {
-            p_frame = viddec.GetFrame(&pts);
-            if (convert_to_rgb) {
-                if (surf_info->bit_depth == 8) {
-                    rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
-                    rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : rgb_width * surf_info->output_height * 4; 
-                } else {    // 16bit
-                    rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
-                    rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
-                                                          rgb_width * surf_info->output_height * 6 : rgb_width * surf_info->output_height * 8; 
-                }
-                if (rgb_dev_mem_ptr == nullptr) {
-                    hip_status = hipMalloc(&rgb_dev_mem_ptr, rgb_image_size);
-                    if (hip_status != hipSuccess) {
-                        std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
-                        return -1;
+            for (int i = 0; i < n_frames_returned; i++) {
+                p_frame = viddec.GetFrame(&pts);
+                if (convert_to_rgb) {
+                    if (surf_info->bit_depth == 8) {
+                        rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
+                        rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : rgb_width * surf_info->output_height * 4;
+                    } else {    // 16bit
+                        rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
+                        rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
+                                                              rgb_width * surf_info->output_height * 6 : rgb_width * surf_info->output_height * 8;
                     }
+                    if (p_rgb_dev_mem == nullptr) {
+                        hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
+                        if (hip_status != hipSuccess) {
+                            std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
+                            return -1;
+                        }
+                    }
+                    ColorConvertYUV2RGB(p_frame, surf_info, p_rgb_dev_mem, e_output_format);
                 }
-                ColorConvertYUV2RGB(p_frame, surf_info, rgb_dev_mem_ptr, e_output_format);
+                if (dump_output_frames) {
+                    if (convert_to_rgb)
+                        DumpRGBImage(output_file_path, p_rgb_dev_mem, surf_info, rgb_image_size);
+                    else
+                        viddec.SaveFrameToFile(output_file_path, p_frame, surf_info);
+                }
+                // release frame
+                viddec.ReleaseFrame(pts);
             }
-            if (dump_output_frames) {
-                if (convert_to_rgb)
-                    DumpRGBImage(output_file_path, rgb_dev_mem_ptr, surf_info, rgb_image_size);
-                else
-                    viddec.SaveFrameToFile(output_file_path, p_frame, surf_info);
+            n_frame += n_frames_returned;
+        } while (n_video_bytes);
+
+        if (p_rgb_dev_mem != nullptr) {
+            hip_status = hipFree(p_rgb_dev_mem);
+            if (hip_status != hipSuccess) {
+                std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
+                return -1;
             }
-            // release frame
-            viddec.ReleaseFrame(pts);
         }
-        n_frame += n_frames_returned;
-    } while (n_video_bytes);
-
-    if (rgb_dev_mem_ptr != nullptr) {
-        hip_status = hipFree(rgb_dev_mem_ptr);
-        if (hip_status != hipSuccess) {
-            std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
-            return -1;
+        if (fpOut) {
+          fclose(fpOut);
+          fpOut = nullptr;
         }
-    }
-    if (fpOut) {
-      fclose(fpOut);
-      fpOut = nullptr;
-    }
 
-    std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
-    std::cout << "info: Video size: [ " << surf_info->output_width << ", " << surf_info->output_height << " ]" << std::endl;
-    std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(surf_info->surface_format) << std::endl;
-    std::cout << "info: Video Bit depth: " << surf_info->bit_depth << std::endl;
-    std::cout << "info: Total frame decoded: " << n_frame << std::endl;
-    if (!dump_output_frames) {
-        std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
-        std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
+        std::cout << "info: Video size: [ " << surf_info->output_width << ", " << surf_info->output_height << " ]" << std::endl;
+        std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(surf_info->surface_format) << std::endl;
+        std::cout << "info: Video Bit depth: " << surf_info->bit_depth << std::endl;
+        std::cout << "info: Total frame decoded: " << n_frame << std::endl;
+        if (!dump_output_frames) {
+            std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
+            std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        }
+    } catch (const std::exception &ex) {
+        std::cout << ex.what() << std::endl;
+        exit(1);
     }
 
     return 0;
