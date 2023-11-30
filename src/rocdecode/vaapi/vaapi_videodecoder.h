@@ -36,12 +36,12 @@ THE SOFTWARE.
 
 #define DEFAULT_SLICE_DATA_BUF_SIZE 2 * 1024 * 1024  // 2 MB
 
-#define CHECK_VAAPI(call) {                                               \
-    VAStatus va_status = (call);                                          \
-    if (va_status != VA_STATUS_SUCCESS) {                                 \
-        std::cout << "VAAPI failure: 'status#" << va_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
-        return ROCDEC_RUNTIME_ERROR;                                      \
-    }                                                                     \
+#define CHECK_VAAPI(call) {\
+    VAStatus va_status = call;\
+    if (va_status != VA_STATUS_SUCCESS) {\
+        std::cout << "VAAPI failure: " << #call << " failed with 'status# " << va_status << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
 }
 
 class VaapiVideoDecoder {

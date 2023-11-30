@@ -32,14 +32,14 @@ THE SOFTWARE.
  */
 struct DecHandle {
 
-    explicit DecHandle(RocDecoderCreateInfo& decoder_create_info) : roc_decoder(std::make_shared<RocDecoder>(decoder_create_info)) {};   //constructor
-    ~DecHandle() { clear_errors(); }
-    std::shared_ptr<RocDecoder> roc_decoder;    // class instantiation
-    bool no_error() { return error.empty(); }
-    const char* error_msg() { return error.c_str(); }
-    void capture_error(const std::string& err_msg) { error = err_msg; }
+    explicit DecHandle(RocDecoderCreateInfo& decoder_create_info) : roc_decoder_(std::make_shared<RocDecoder>(decoder_create_info)) {};   //constructor
+    ~DecHandle() { ClearErrors(); }
+    std::shared_ptr<RocDecoder> roc_decoder_;
+    bool NoError() { return error_.empty(); }
+    const char* ErrorMsg() { return error_.c_str(); }
+    void CaptureError(const std::string& err_msg) { error_ = err_msg; }
 
 private:
-    void clear_errors() { error = "";}
-    std::string error;
+    void ClearErrors() { error_ = "";}
+    std::string error_;
 };

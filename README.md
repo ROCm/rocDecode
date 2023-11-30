@@ -24,9 +24,15 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
   ```
 
 * libdrm-dev `2.4` or later
-  
+
   ```shell
   sudo apt install libdrm-dev
+  ```
+
+* libstdc++-12-dev
+
+  ```shell
+  sudo apt install libstdc++-12-dev
   ```
 
 * **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
@@ -74,6 +80,7 @@ cmake /opt/rocm/share/rocdecode/samples/videoDecode/
 make -j8
 ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 ```
+**NOTE:** FFMPEG install required to run samples
 
 ## Samples
 
@@ -84,7 +91,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
   ```shell
-  sudo apt install ffmpeg
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
 
 ## Docker

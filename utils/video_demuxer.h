@@ -152,6 +152,7 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
 }
 
 VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx_(av_fmt_input_ctx) {
+    av_log_set_level(AV_LOG_QUIET);
     if (!av_fmt_input_ctx_) {
         std::cerr << "ERROR: av_fmt_input_ctx_ is not vaild!" << std::endl;
         return;
@@ -232,10 +233,10 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(StreamProvider *stream_provi
         return nullptr;
     }
     uint8_t *avioc_buffer = nullptr;
-    int avioc_buffer_size = 8 * 1024 * 1024;
+    int avioc_buffer_size = 10 * 1024 * 1024;
     avioc_buffer = (uint8_t *)av_malloc(avioc_buffer_size);
     if (!avioc_buffer) {
-        std::cerr << "ERROR: av_malloc failed!" << std::endl;;
+        std::cerr << "ERROR: av_malloc failed!" << std::endl;
         return nullptr;
     }
     av_io_ctx_ = avio_alloc_context(avioc_buffer, avioc_buffer_size,
@@ -255,7 +256,6 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(StreamProvider *stream_provi
 
 AVFormatContext *VideoDemuxer::CreateFmtContextUtil(const char *input_file_path) {
     avformat_network_init();
-    av_log_set_level(AV_LOG_QUIET);
     AVFormatContext *ctx = nullptr;
     if (avformat_open_input(&ctx, input_file_path, nullptr, nullptr) != 0 ) {
         std::cerr << "ERROR: avformat_open_input failed!" << std::endl;

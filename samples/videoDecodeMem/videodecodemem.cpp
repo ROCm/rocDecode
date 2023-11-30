@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include <fstream>
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -35,6 +36,28 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+
+class FileStreamProvider : public VideoDemuxer::StreamProvider {
+public:
+    FileStreamProvider(const char *input_file_path) {
+        fp_in_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
+        if (!fp_in_) {
+            std::cout << "Unable to open input file: " << input_file_path << std::endl;
+            return;
+        }
+    }
+    ~FileStreamProvider() {
+        fp_in_.close();
+    }
+    // Fill in the buffer owned by the demuxer
+    int GetData(uint8_t *p_buf, int n_buf) {
+        // We read a file for this example. You may get your data from network or somewhere else
+        return static_cast<int>(fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount());
+    }
+
+private:
+    std::ifstream fp_in_;
+};
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -124,7 +147,8 @@ int main(int argc, char **argv) {
         ShowHelpAndExit(argv[i]);
     }
     try {
-        VideoDemuxer demuxer(input_file_path.c_str());
+        FileStreamProvider stream_provider(input_file_path.c_str());
+        VideoDemuxer demuxer(&stream_provider);
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
 

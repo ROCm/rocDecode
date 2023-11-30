@@ -307,6 +307,22 @@ int HEVCVideoParser::SendPicForDecode() {
         ref_idx++;
     }
 
+    for (i = 0; i < num_poc_st_foll_; i++) {
+        buf_idx = ref_pic_set_st_foll_[i]; // buffer index in DPB
+        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        ref_idx++;
+    }
+
+    for (i = 0; i < num_poc_lt_foll_; i++) {
+        buf_idx = ref_pic_set_lt_foll_[i]; // buffer index in DPB
+        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        ref_idx++;
+    }
+
     for (i = ref_idx; i < 15; i++) {
         pic_param_ptr->ref_frames[i].PicIdx = 0xFF;
     }
@@ -641,7 +657,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         CalculateCurrPOC();
 
                         // Decode RPS. 8.3.2.
-                        DeocdeRps();
+                        DecodeRps();
 
                         // Construct ref lists. 8.3.4.
                         if(m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
@@ -1363,7 +1379,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     uint32_t quadtree_tu_log2_min_size = sps_ptr->log2_min_transform_block_size_minus2 + 2;
-    int add_cu_depth = max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
+    int add_cu_depth = std::max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
     sps_ptr->max_cu_depth = (max_cu_depth_delta + add_cu_depth);
 
     sps_ptr->log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1953,7 +1969,7 @@ void HEVCVideoParser::CalculateCurrPOC() {
     }
 }
 
-void HEVCVideoParser::DeocdeRps() {
+void HEVCVideoParser::DecodeRps() {
     int i, j, k;
     int curr_delta_proc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
     int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
@@ -2230,10 +2246,8 @@ int HEVCVideoParser::MarkOutputPictures() {
 
         if (!no_output_of_prior_pics_flag) {
             // Bump the remaining pictures
-            while (dpb_buffer_.num_needed_for_output) {
-                if (BumpPicFromDpb() != PARSER_OK) {
-                    return PARSER_FAIL;
-                }
+            if (FlushDpb() != PARSER_OK) {
+                return PARSER_FAIL;
             }
         }
 
