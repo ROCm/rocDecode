@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include <fstream>
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -36,6 +37,28 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 
+class FileStreamProvider : public VideoDemuxer::StreamProvider {
+public:
+    FileStreamProvider(const char *input_file_path) {
+        fp_in_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
+        if (!fp_in_) {
+            std::cout << "Unable to open input file: " << input_file_path << std::endl;
+            return;
+        }
+    }
+    ~FileStreamProvider() {
+        fp_in_.close();
+    }
+    // Fill in the buffer owned by the demuxer
+    int GetData(uint8_t *p_buf, int n_buf) {
+        // We read a file for this example. You may get your data from network or somewhere else
+        return static_cast<int>(fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount());
+    }
+
+private:
+    std::ifstream fp_in_;
+};
+
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
@@ -43,7 +66,6 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
-    << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
     << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
@@ -57,7 +79,6 @@ int main(int argc, char **argv) {
     int device_id = 0;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
-    bool b_generate_md5 = false;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
@@ -105,13 +126,6 @@ int main(int argc, char **argv) {
             b_extract_sei_messages = true;
             continue;
         }
-        if (!strcmp(argv[i], "-md5")) {
-            if (i == argc) {
-                ShowHelpAndExit("-md5");
-            }
-            b_generate_md5 = true;
-            continue;
-        }
         if (!strcmp(argv[i], "-crop")) {
             if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
                 ShowHelpAndExit("-crop");
@@ -133,7 +147,8 @@ int main(int argc, char **argv) {
         ShowHelpAndExit(argv[i]);
     }
     try {
-        VideoDemuxer demuxer(input_file_path.c_str());
+        FileStreamProvider stream_provider(input_file_path.c_str());
+        VideoDemuxer demuxer(&stream_provider);
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
 
@@ -155,10 +170,6 @@ int main(int argc, char **argv) {
         uint32_t width, height;
         double total_dec_time = 0;
 
-        if (b_generate_md5) {
-            viddec.InitMd5();
-        }
-
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
             demuxer.Demux(&pvideo, &n_video_bytes, &pts);
@@ -176,9 +187,6 @@ int main(int argc, char **argv) {
             }
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
-                if (b_generate_md5) {
-                    viddec.UpdateMd5ForFrame(pframe, surf_info);
-                }
                 if (dump_output_frames) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
@@ -192,15 +200,6 @@ int main(int argc, char **argv) {
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
-        }
-        if (b_generate_md5) {
-            uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
-            std::cout << "MD5 message digest: ";
-            for (int i = 0; i < 16; i++) {
-                std::cout << std::hex << (int)digest[i];
-            }
-            std::cout << std::endl;
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

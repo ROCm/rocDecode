@@ -1,5 +1,7 @@
-# Video Decode Sample
+# Video Decode Multi Files Sample
 This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
+
+This sample takes multiple files as a list and decodes each of them one after the other.
 
 ## Prerequisites:
 
@@ -26,13 +28,24 @@ cd build
 cmake ../
 make -j
 ```
-# Run 
+# Run
+
+* Example input file list - example.txt
+
 ```
-./videodecode -i <input video file [required]> 
-              -o <output path to save decoded YUV frames [optional]> 
+infile input1.[mp4/mov...] [required]
+outfile output1.yuv [optional]
+z 0 [optional]
+sei 0 [optional]
+crop l,t,r,b [optional]
+m  0 [optional] [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]
+infile input2.[mp4/mov...] [optional]
+outfile output2.yuv [optional]
+...
+...
+```
+
+```
+./videodecodemultifiles -i <input file list[required - example.txt]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
-              -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
-              -sei <extract SEI messages [optional]>
-              -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
-              -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
 ```

@@ -24,9 +24,15 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
   ```
 
 * libdrm-dev `2.4` or later
-  
+
   ```shell
   sudo apt install libdrm-dev
+  ```
+
+* libstdc++-12-dev
+
+  ```shell
+  sudo apt install libstdc++-12-dev
   ```
 
 * **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies

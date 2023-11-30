@@ -186,9 +186,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
   set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
   # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev, libswscale-dev")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   # TBD - RPM packages need Fusion Packages
-  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel, libswscale-devel")
+  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(

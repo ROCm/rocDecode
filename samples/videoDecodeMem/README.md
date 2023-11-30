@@ -1,5 +1,5 @@
 # Video Decode Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
+This sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which are then decoded on AMD hardware using rocDecode library.
 
 ## Prerequisites:
 
@@ -28,7 +28,7 @@ make -j
 ```
 # Run 
 ```
-./videodecode -i <input video file [required]> 
+./videodecodemem -i <input video file [required]> 
               -o <output path to save decoded YUV frames [optional]> 
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
               -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
