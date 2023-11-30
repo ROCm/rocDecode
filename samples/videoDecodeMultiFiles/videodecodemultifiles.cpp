@@ -117,6 +117,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int
             file_data.b_extract_sei_messages = false;
             file_data.dump_output_frames = 0;
             file_data.crop_rect = {0, 0, 0, 0};
+            file_data.p_crop_rect = nullptr;
         } else if (!strcmp(param, "outfile")) {
             file_data.out_file = value;
             file_data.dump_output_frames = 1;
