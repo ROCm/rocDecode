@@ -43,7 +43,9 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
-    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
+    << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
     exit(0);
 }
 
@@ -110,6 +112,13 @@ int main(int argc, char **argv) {
                 exit(1);
             }
             p_crop_rect = &crop_rect;
+            continue;
+        }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
         ShowHelpAndExit(argv[i]);
