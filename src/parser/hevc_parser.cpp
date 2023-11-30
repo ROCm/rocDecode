@@ -1379,7 +1379,7 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->log2_min_transform_block_size_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
 
     uint32_t quadtree_tu_log2_min_size = sps_ptr->log2_min_transform_block_size_minus2 + 2;
-    int add_cu_depth = max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
+    int add_cu_depth = std::max (0, log2_min_cu_size - (int)quadtree_tu_log2_min_size);
     sps_ptr->max_cu_depth = (max_cu_depth_delta + add_cu_depth);
 
     sps_ptr->log2_diff_max_min_transform_block_size = Parser::ExpGolomb::ReadUe(nalu, offset);
