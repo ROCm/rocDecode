@@ -124,7 +124,7 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libva-dev libdrm-dev')
+              ' install vainfo libva-dev libdrm-dev libstdc++-12-dev')
 else:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
@@ -135,7 +135,7 @@ if developerInstall == 'ON':
     if "Ubuntu" in platfromInfo:
         os.system('sudo -v')
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                ' install ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev')
+                ' install ffmpeg libavcodec-dev libavformat-dev libavutil-dev')
     else:
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install autoconf automake bzip2 bzip2-devel freetype-devel')
