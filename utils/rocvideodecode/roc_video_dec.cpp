@@ -669,7 +669,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
             return;
         }
     } else
-        hst_ptr = (uint8_t *)surf_mem;
+        hst_ptr = static_cast<uint8_t *> (surf_mem);
 
 
     uint8_t *tmp_hst_ptr = hst_ptr;
@@ -751,7 +751,7 @@ void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_
             return;
         }
     } else
-        hst_ptr = (uint8_t *)surf_mem;
+        hst_ptr = static_cast<uint8_t *> (surf_mem);
 
     // Need to covert interleaved planar to stacked planar, assuming 4:2:0 chroma sampling.
     uint8_t *stacked_ptr = new uint8_t [output_image_size];

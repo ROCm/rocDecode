@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
             viddec.FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
-                std::cout << std::hex << (int)digest[i];
+                std::cout << std::hex << static_cast<int>(digest[i]);
             }
             std::cout << std::endl;
         }
