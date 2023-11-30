@@ -34,4 +34,5 @@ make -j
               -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
               -sei <extract SEI messages [optional]>
               -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
+              -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
 ```

@@ -58,7 +58,9 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-f Number of forks (>= 1) - optional; default: 4" << std::endl
     << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
-    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
+    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
+    << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
     exit(0);
 }
 
@@ -110,6 +112,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-z");
             }
             b_force_zero_latency = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
         ShowHelpAndExit(argv[i]);

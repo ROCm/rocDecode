@@ -34,4 +34,5 @@ make -j
                   -t <number of threads [optional - default:4]>
                   -d <Device ID (>= 0) [optional - default:0]>
                   -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
+                  -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
 ```

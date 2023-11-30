@@ -47,6 +47,7 @@ typedef struct {
     Rect crop_rect;
     Rect *p_crop_rect;
     int dump_output_frames;
+    OutputSurfaceMemoryType mem_type;        // set to internal
 } FileInfo;
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -58,6 +59,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "z 0 (force_zero_latency - Decoded frames will be flushed out for display immediately; default: 0)" << std::endl
     << "sei 0 (extract SEI messages; default: 0)" << std::endl
     << "crop l,t,r,b (crop rectangle for output (not used when using interopped decoded frame); default: 0)" << std::endl
+    << "m 0 decoded surface memory; optional; default - 0 [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl
     << "infile input2.[mp4/mov...]" << std::endl
     << "outfile output2.yuv" << std::endl
     << "...." << std::endl
@@ -118,6 +120,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int
             file_data.dump_output_frames = 0;
             file_data.crop_rect = {0, 0, 0, 0};
             file_data.p_crop_rect = nullptr;
+            file_data.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
         } else if (!strcmp(param, "outfile")) {
             file_data.out_file = value;
             file_data.dump_output_frames = 1;
@@ -132,6 +135,8 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int
                 exit(1);
             }
             file_data.p_crop_rect = &file_data.crop_rect;
+        } else if (!strcmp(param, "m")) {
+            file_data.mem_type = static_cast<OutputSurfaceMemoryType>(atoi(value));
         }
     }
     if (file_idx > 0) {
@@ -144,7 +149,6 @@ int main(int argc, char **argv) {
     std::deque<FileInfo> multi_file_data;
     FileInfo file_data;
     int device_id = 0;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
 
     ParseCommandLine (&multi_file_data, device_id, argc, argv);
 
@@ -154,7 +158,7 @@ int main(int argc, char **argv) {
             multi_file_data.pop_front();
             VideoDemuxer demuxer(file_data.in_file.c_str());
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-            RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+            RocVideoDecoder viddec(device_id, file_data.mem_type, rocdec_codec_id, false, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
 
             std::string device_name, gcn_arch_name;
             int pci_bus_id, pci_domain_id, pci_device_id;
