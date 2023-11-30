@@ -1596,6 +1596,10 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
     if ( pic_width_ != sps_ptr->pic_width_in_luma_samples || pic_height_ != sps_ptr->pic_height_in_luma_samples) {
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
+        // Take care of the case where a new SPS replaces the old SPS with the same id but with different dimensions
+        // Re-set DPB size. We add one addition buffer to avoid serialization of decode submission and display callback in certain cases.
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 2;
+        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
     if (!m_sh_->first_slice_segment_in_pic_flag) {
