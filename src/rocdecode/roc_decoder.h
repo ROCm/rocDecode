@@ -47,11 +47,11 @@ public:
     RocDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~RocDecoder();
     rocDecStatus InitializeDecoder();
-    rocDecStatus decodeFrame(RocdecPicParams *pPicParams);
-    rocDecStatus getDecodeStatus(int nPicIdx, RocdecDecodeStatus* pDecodeStatus);
-    rocDecStatus reconfigureDecoder(RocdecReconfigureDecoderInfo *pDecReconfigParams);
-    rocDecStatus mapVideoFrame(int pic_idx, void *dev_mem_ptr[3], unsigned int horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
-    rocDecStatus unMapVideoFrame(int pic_idx);
+    rocDecStatus DecodeFrame(RocdecPicParams *pic_params);
+    rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
+    rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
+    rocDecStatus MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
+    rocDecStatus UnMapVideoFrame(int pic_idx);
 
 private:
     rocDecStatus InitHIP(int device_id);
