@@ -1,0 +1,60 @@
+info: Input file: data1.img
+info: stream 0 using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started for thread 0 ,please wait!
+info: stream 1 using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started for thread 1 ,please wait!
+info: stream 2 using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started for thread 2 ,please wait!
+info: stream 3 using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started for thread 3 ,please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [2912, 1888]
+	Display area : [0, 0, 2896, 1876]
+	Chroma       : YUV 420
+	Bit depth    : 10
+Video Decoding Params:
+	Num Surfaces : 3
+	Crop         : [0, 0, 0, 0]
+	Resize       : 2896x1876
+
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [2912, 1888]
+	Display area : [0, 0, 2896, 1876]
+	Chroma       : YUV 420
+	Bit depth    : 10
+Video Decoding Params:
+	Num Surfaces : 3
+	Crop         : [0, 0, 0, 0]
+	Resize       : 2896x1876
+
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [2912, 1888]
+	Display area : [0, 0, 2896, 1876]
+	Chroma       : YUV 420
+	Bit depth    : 10
+Video Decoding Params:
+	Num Surfaces : 3
+	Crop         : [0, 0, 0, 0]
+	Resize       : 2896x1876
+
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [2912, 1888]
+	Display area : [0, 0, 2896, 1876]
+	Chroma       : YUV 420
+	Bit depth    : 10
+Video Decoding Params:
+	Num Surfaces : 3
+	Crop         : [0, 0, 0, 0]
+	Resize       : 2896x1876
+
+info: Total frame decoded: 9900
+info: avg decoding time per frame: 2.74514 ms
+info: avg FPS: 364.281

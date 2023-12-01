@@ -1,0 +1,273 @@
+info: Input file: chimei_demo_4k_h265_no_audio_30fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 6352
+info: avg decoding time per frame: 6.35044 ms
+info: avg FPS: 157.469
+info: Input file: Aruba_4K_265_new_no_audio.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 4765
+info: avg decoding time per frame: 6.34836 ms
+info: avg FPS: 157.521
+info: Input file: BIRDS_OF_PREY_4K_ULTRA_HD_60fps-hevc.mov
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 4299
+info: avg decoding time per frame: 6.74617 ms
+info: avg FPS: 148.232
+info: Input file: chimei_demo_4k_h265_no_audio_24fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 5082
+info: avg decoding time per frame: 6.33789 ms
+info: avg FPS: 157.781
+info: Input file: chimei_demo_4k_h265_no_audio_60fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 12704
+info: avg decoding time per frame: 6.2556 ms
+info: avg FPS: 159.857
+info: Input file: chimei_demo_4k_h265_no_audio.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [3840, 2160]
+	Display area : [0, 0, 3840, 2160]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 3840x2160
+
+info: Total frame decoded: 6352
+info: avg decoding time per frame: 6.34989 ms
+info: avg FPS: 157.483
+ { RocVideoDecoder } rocDecCreateVideoParser(&rocdec_parser_, &parser_params) returned err -3 at /home/svcbuild/work/lk/rocDecode/utils/rocvideodecode/roc_video_dec.cpp:50
+info: Input file: chimei_demo_1080p_h265.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [1920, 1080]
+	Display area : [0, 0, 1920, 1080]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 1920x1080
+
+info: Total frame decoded: 6325
+info: avg decoding time per frame: 1.89936 ms
+info: avg FPS: 526.494
+ { RocVideoDecoder } rocDecCreateVideoParser(&rocdec_parser_, &parser_params) returned err -3 at /home/svcbuild/work/lk/rocDecode/utils/rocvideodecode/roc_video_dec.cpp:50
+ { RocVideoDecoder } rocDecCreateVideoParser(&rocdec_parser_, &parser_params) returned err -3 at /home/svcbuild/work/lk/rocDecode/utils/rocvideodecode/roc_video_dec.cpp:50
+info: Input file: LG_8K_SDR_NATURE_8k_video_ultra_hd_for_8k_tv_in_HEVC.mkv
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [7680, 4320]
+	Display area : [0, 0, 7680, 4320]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 7680x4320
+
+info: Total frame decoded: 11464
+info: avg decoding time per frame: 23.9475 ms
+info: avg FPS: 41.758
+info: Input file: Perfume_1080p_h265_10bit.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [1920, 1080]
+	Display area : [0, 0, 1920, 1080]
+	Chroma       : YUV 420
+	Bit depth    : 10
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 1920x1080
+
+info: Total frame decoded: 2775
+info: avg decoding time per frame: 1.91282 ms
+info: avg FPS: 522.789
+info: Input file: chimei_demo_1080p_h265_60fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [1920, 1080]
+	Display area : [0, 0, 1920, 1080]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 1920x1080
+
+info: Total frame decoded: 12650
+info: avg decoding time per frame: 1.89025 ms
+info: avg FPS: 529.032
+info: Input file: chimei_demo_1080p_h265_30fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [1920, 1080]
+	Display area : [0, 0, 1920, 1080]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 1920x1080
+
+info: Total frame decoded: 6325
+info: avg decoding time per frame: 1.89575 ms
+info: avg FPS: 527.495
+info: Input file: chimei_demo_1080p_h265_24fps.mp4
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [1920, 1080]
+	Display area : [0, 0, 1920, 1080]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 1920x1080
+
+info: Total frame decoded: 5060
+info: avg decoding time per frame: 1.90543 ms
+info: avg FPS: 524.816
+info: Input file: LG_8K_SDR_NATURE_8k_video_ultra_hd_for_8k_tv_in_HEVC_24fps.mkv
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [7680, 4320]
+	Display area : [0, 0, 7680, 4320]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 7680x4320
+
+info: Total frame decoded: 9180
+info: avg decoding time per frame: 23.9328 ms
+info: avg FPS: 41.7837
+info: Input file: LG_8K_SDR_NATURE_8k_video_ultra_hd_for_8k_tv_in_HEVC_30fps.mkv
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [7680, 4320]
+	Display area : [0, 0, 7680, 4320]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 7680x4320
+
+info: Total frame decoded: 11464
+info: avg decoding time per frame: 23.9534 ms
+info: avg FPS: 41.7477
+info: Input file: LG_8K_SDR_NATURE_8k_video_ultra_hd_for_8k_tv_in_HEVC_60fps.mkv
+info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0
+info: decoding started, please wait!
+Input Video Information
+	Codec        : H.265/HEVC
+	Sequence     : Progressive
+	Coded size   : [7680, 4320]
+	Display area : [0, 0, 7680, 4320]
+	Chroma       : YUV 420
+	Bit depth    : 8
+Video Decoding Params:
+	Num Surfaces : 6
+	Crop         : [0, 0, 0, 0]
+	Resize       : 7680x4320
+
+info: Total frame decoded: 22951
+info: avg decoding time per frame: 23.7745 ms
+info: avg FPS: 42.0619
