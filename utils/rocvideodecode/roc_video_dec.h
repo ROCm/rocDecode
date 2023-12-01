@@ -152,7 +152,7 @@ class RocVideoDecoder {
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
+        RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
@@ -365,7 +365,6 @@ class RocVideoDecoder {
         rocDecDecoderHandle roc_decoder_ = nullptr;
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
-        bool b_low_latency_ = true;
         bool b_force_zero_latency_ = false;
         //bool b_device_frame_pitched_ = true;
         hipDeviceProp_t hip_dev_prop_;
