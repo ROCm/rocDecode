@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
             multi_file_data.pop_front();
             VideoDemuxer demuxer(file_data.in_file.c_str());
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-            RocVideoDecoder viddec(device_id, file_data.mem_type, rocdec_codec_id, false, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+            RocVideoDecoder viddec(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
 
             std::string device_name, gcn_arch_name;
             int pci_bus_id, pci_domain_id, pci_device_id;

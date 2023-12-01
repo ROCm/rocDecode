@@ -22,10 +22,9 @@ THE SOFTWARE.
 
 #include "roc_video_dec.h"
 
-RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec,  bool b_low_latency, bool force_zero_latency,
-              const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height,uint32_t clk_rate) : 
-              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_low_latency_(b_low_latency), 
-              b_force_zero_latency_(force_zero_latency), b_extract_sei_message_(extract_user_sei_Message),
+RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
+              const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height, uint32_t clk_rate) :
+              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), b_extract_sei_message_(extract_user_sei_Message),
               max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
@@ -42,7 +41,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
     parser_params.CodecType = codec_id_;
     parser_params.ulMaxNumDecodeSurfaces = 1;
     parser_params.ulClockRate = clk_rate;
-    parser_params.ulMaxDisplayDelay = b_low_latency ? 0 : 1;
+    parser_params.ulMaxDisplayDelay = 0;
     parser_params.pUserData = this;
     parser_params.pfnSequenceCallback = HandleVideoSequenceProc;
     parser_params.pfnDecodePicture = HandlePictureDecodeProc;
@@ -232,8 +231,6 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     input_video_info_str_.clear();
     input_video_info_str_ << "Input Video Information" << std::endl
         << "\tCodec        : " << GetCodecFmtName(p_video_format->codec) << std::endl
-        << "\tFrame rate   : " << p_video_format->frame_rate.numerator << "/" << p_video_format->frame_rate.denominator
-            << " = " << 1.0 * p_video_format->frame_rate.numerator / p_video_format->frame_rate.denominator << " fps" << std::endl
         << "\tSequence     : " << (p_video_format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
         << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
         << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
