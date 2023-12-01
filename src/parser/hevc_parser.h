@@ -927,7 +927,7 @@ private:
     ParserResult     Init();
 
     // functions to fill structures for callback functions
-    void FillSeqCallbackFn(SpsData* sps_data);
+    int FillSeqCallbackFn(SpsData* sps_data);
     void FillSeiMessageCallbackFn();
 
     /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
