@@ -48,7 +48,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
-    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
+    << "-m output_surface_memory_type - decoded surface memory; optional; default - 0" << std::endl;
 
     exit(0);
 }
@@ -194,6 +195,13 @@ int main(int argc, char **argv) {
             device_id = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
+            continue;
+        }
         if (!strcmp(argv[i], "-crop")) {
             if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
                 ShowHelpAndExit("-crop");
@@ -222,7 +230,7 @@ int main(int argc, char **argv) {
     try {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, true, p_crop_rect);
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect);
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
