@@ -22,10 +22,9 @@ THE SOFTWARE.
 
 #include "roc_video_dec.h"
 
-RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec,  bool b_low_latency, bool force_zero_latency,
-              const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height,uint32_t clk_rate) : 
-              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_low_latency_(b_low_latency), 
-              b_force_zero_latency_(force_zero_latency), b_extract_sei_message_(extract_user_sei_Message),
+RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
+              const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height, uint32_t clk_rate) :
+              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), b_extract_sei_message_(extract_user_sei_Message),
               max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
@@ -42,7 +41,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
     parser_params.CodecType = codec_id_;
     parser_params.ulMaxNumDecodeSurfaces = 1;
     parser_params.ulClockRate = clk_rate;
-    parser_params.ulMaxDisplayDelay = b_low_latency ? 0 : 1;
+    parser_params.ulMaxDisplayDelay = 0;
     parser_params.pUserData = this;
     parser_params.pfnSequenceCallback = HandleVideoSequenceProc;
     parser_params.pfnDecodePicture = HandlePictureDecodeProc;
@@ -232,8 +231,6 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     input_video_info_str_.clear();
     input_video_info_str_ << "Input Video Information" << std::endl
         << "\tCodec        : " << GetCodecFmtName(p_video_format->codec) << std::endl
-        << "\tFrame rate   : " << p_video_format->frame_rate.numerator << "/" << p_video_format->frame_rate.denominator
-            << " = " << 1.0 * p_video_format->frame_rate.numerator / p_video_format->frame_rate.denominator << " fps" << std::endl
         << "\tSequence     : " << (p_video_format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
         << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
         << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
@@ -669,7 +666,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
             return;
         }
     } else
-        hst_ptr = (uint8_t *)surf_mem;
+        hst_ptr = static_cast<uint8_t *> (surf_mem);
 
 
     uint8_t *tmp_hst_ptr = hst_ptr;
@@ -728,6 +725,84 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
     if (hst_ptr && (surf_info->mem_type != OUT_SURFACE_MEM_HOST_COPIED)) {
         delete [] hst_ptr;
     }
+}
+
+void RocVideoDecoder::InitMd5() {
+    md5_ctx_ = av_md5_alloc();
+    av_md5_init(md5_ctx_);
+}
+
+void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_info) {
+    int i;
+    uint8_t *hst_ptr = nullptr;
+    uint64_t output_image_size = surf_info->output_surface_size_in_bytes;
+    if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL || surf_info->mem_type == OUT_SURFACE_MEM_DEV_COPIED) {
+        if (hst_ptr == nullptr) {
+            hst_ptr = new uint8_t [output_image_size];
+        }
+        hipError_t hip_status = hipSuccess;
+        hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
+        if (hip_status != hipSuccess) {
+            std::cout << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
+            delete [] hst_ptr;
+            return;
+        }
+    } else
+        hst_ptr = static_cast<uint8_t *> (surf_mem);
+
+    // Need to covert interleaved planar to stacked planar, assuming 4:2:0 chroma sampling.
+    uint8_t *stacked_ptr = new uint8_t [output_image_size];
+
+    uint8_t *tmp_hst_ptr = hst_ptr;
+    uint8_t *tmp_stacked_ptr = stacked_ptr;
+    int img_width = surf_info->output_width;
+    int img_height = surf_info->output_height;
+    int output_stride =  surf_info->output_pitch;
+    // Luma
+    if (img_width * surf_info->bytes_per_pixel == output_stride && img_height == surf_info->output_vstride) {
+        memcpy(stacked_ptr, hst_ptr, img_width * surf_info->bytes_per_pixel * img_height);
+    } else {
+        for (i = 0; i < img_height; i++) {
+            memcpy(tmp_stacked_ptr, tmp_hst_ptr, img_width * surf_info->bytes_per_pixel);
+            tmp_hst_ptr += output_stride;
+            tmp_stacked_ptr += img_width * surf_info->bytes_per_pixel;
+        }
+    }
+    // Chroma
+    int img_width_chroma = img_width >> 1;
+    tmp_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
+    tmp_stacked_ptr = stacked_ptr + img_width * surf_info->bytes_per_pixel * img_height; // Cb
+    uint8_t *tmp_stacked_ptr_v = tmp_stacked_ptr + img_width_chroma * surf_info->bytes_per_pixel * chroma_height_; // Cr
+    for (i = 0; i < chroma_height_; i++) {
+        for ( int j = 0; j < img_width_chroma; j++) {
+            uint8_t *src_ptr, *dst_ptr;
+            // Cb
+            src_ptr = &tmp_hst_ptr[j * surf_info->bytes_per_pixel * 2];
+            dst_ptr = &tmp_stacked_ptr[j * surf_info->bytes_per_pixel];
+            memcpy(dst_ptr, src_ptr, surf_info->bytes_per_pixel);
+            // Cr
+            src_ptr += surf_info->bytes_per_pixel;
+            dst_ptr = &tmp_stacked_ptr_v[j * surf_info->bytes_per_pixel];
+            memcpy(dst_ptr, src_ptr, surf_info->bytes_per_pixel);
+        }
+        tmp_hst_ptr += output_stride;
+        tmp_stacked_ptr += img_width_chroma * surf_info->bytes_per_pixel;
+        tmp_stacked_ptr_v += img_width_chroma * surf_info->bytes_per_pixel;
+    }
+
+    int img_size = img_width * surf_info->bytes_per_pixel * (img_height + chroma_height_);
+    av_md5_update(md5_ctx_, stacked_ptr, img_size);
+
+    if (hst_ptr && (surf_info->mem_type != OUT_SURFACE_MEM_HOST_COPIED)) {
+        delete [] hst_ptr;
+    }
+    delete [] stacked_ptr;
+}
+
+void RocVideoDecoder::FinalizeMd5(uint8_t **digest) {
+    av_md5_final(md5_ctx_, md5_digest_);
+    av_freep(&md5_ctx_);
+    *digest = md5_digest_;
 }
 
 void RocVideoDecoder::GetDeviceinfo(std::string &device_name, std::string &gcn_arch_name, int &pci_bus_id, int &pci_domain_id, int &pci_device_id) {

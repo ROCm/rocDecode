@@ -34,6 +34,10 @@ THE SOFTWARE.
 #include <stdexcept>
 #include <exception>
 #include <hip/hip_runtime.h>
+extern "C" {
+#include "libavutil/md5.h"
+#include "libavutil/mem.h"
+}
 #include "rocdecode.h"
 #include "rocparser.h"
 
@@ -148,7 +152,7 @@ class RocVideoDecoder {
        * @param clk_rate 
        * @param force_zero_latency 
        */
-        RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool b_low_latency, bool force_zero_latency = false,
+        RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
@@ -284,6 +288,26 @@ class RocVideoDecoder {
          */
         void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
 
+        /**
+         * @brief Helper function to start MD5 calculation
+         */
+        void InitMd5();
+
+        /**
+         * @brief Helper function to dump decoded output surface to file
+         *
+         * @param dev_mem           - pointer to surface memory
+         * @param surf_info         - surface info
+         */
+        void UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_info);
+
+        /**
+         * @brief Helper function to complete MD5 calculation
+         *
+         * @param [out] digest Pointer to the 16 byte message digest
+         */
+        void FinalizeMd5(uint8_t **digest);
+
     private:
         int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
         /**
@@ -344,7 +368,6 @@ class RocVideoDecoder {
         rocDecDecoderHandle roc_decoder_ = nullptr;
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
-        bool b_low_latency_ = true;
         bool b_force_zero_latency_ = false;
         //bool b_device_frame_pitched_ = true;
         hipDeviceProp_t hip_dev_prop_;
@@ -378,4 +401,6 @@ class RocVideoDecoder {
         Rect crop_rect_ = {};
         FILE *fp_sei_ = NULL;
         FILE *fp_out_ = NULL;
+        struct AVMD5 *md5_ctx_;
+        uint8_t md5_digest_[16];
 };

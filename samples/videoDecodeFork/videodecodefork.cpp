@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
             v_device_id[i] = (i % 2 == 0) ? 0 : sd;
-            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, false, b_force_zero_latency, p_crop_rect));
+            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));
         }
