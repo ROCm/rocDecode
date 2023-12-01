@@ -1,5 +1,5 @@
 # Video Decode Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded and optionally color-converted on AMD hardware using rocDecode API. This sample supports both YUV420 8-bit and 10-bit streams.
+This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded using rocDecode API and optionally color-converted using custom HIP kernels on AMD hardware. This sample converts decoded YUV output to one of the RGB or BGR formats(24bit, 32bit, 464bit)
 
 ## Build and run the sample:
 ```

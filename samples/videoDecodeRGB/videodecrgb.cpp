@@ -37,11 +37,10 @@ THE SOFTWARE.
 #include "colorspace_kernels.h"
 
 FILE *fpOut = nullptr;
-enum OutputFormatEnum
-{
+enum OutputFormatEnum {
     native = 0, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64
 };
-std::vector<std::string> stOutputForamtName = {"native", "bgr", "bgr48", "rgb", "rgb48", "bgra", "bgra64", "rgba", "rgba64"};
+std::vector<std::string> st_output_format_name = {"native", "bgr", "bgr48", "rgb", "rgb48", "bgra", "bgra64", "rgba", "rgba64"};
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -54,8 +53,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     exit(0);
 }
 
-void DumpRGBImage(std::string outputfileName, void* pdevMem, OutputSurfaceInfo *surf_info, int rgb_image_size)
-{
+void DumpRGBImage(std::string outputfileName, void* pdevMem, OutputSurfaceInfo *surf_info, int rgb_image_size) {
     if (fpOut == nullptr) {
         fpOut = fopen(outputfileName.c_str(), "wb");
     }
@@ -78,76 +76,74 @@ void DumpRGBImage(std::string outputfileName, void* pdevMem, OutputSurfaceInfo *
     }
 }
 
-void ColorConvertYUV2RGB(uint8_t *pSrc, OutputSurfaceInfo *surf_info, uint8_t *rgb_dev_mem_ptr, OutputFormatEnum e_output_format) {
+void ColorConvertYUV2RGB(uint8_t *p_src, OutputSurfaceInfo *surf_info, uint8_t *rgb_dev_mem_ptr, OutputFormatEnum e_output_format) {
     
     int  rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
     // todo:: get color standard from the decoder
     if (surf_info->surface_format == rocDecVideoSurfaceFormat_YUV444) {
         if (e_output_format == bgr)
-          YUV444ToColor24<BGR24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          YUV444ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgra)
-          YUV444ToColor32<BGRA32>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 4 * rgb_width, surf_info->output_width, 
+          YUV444ToColor32<BGRA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb)
-          YUV444ToColor24<RGB24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          YUV444ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgba)
-          YUV444ToColor32<RGBA32>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 4 * rgb_width, surf_info->output_width, 
+          YUV444ToColor32<RGBA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
-    }
-    else if (surf_info->surface_format == rocDecVideoSurfaceFormat_NV12) {
+    } else if (surf_info->surface_format == rocDecVideoSurfaceFormat_NV12) {
         if (e_output_format == bgr)
-          Nv12ToColor24<BGR24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          Nv12ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgra)
-          Nv12ToColor32<BGRA32>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 4 * rgb_width, surf_info->output_width, 
+          Nv12ToColor32<BGRA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb)
-          Nv12ToColor24<RGB24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          Nv12ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgba)
-          Nv12ToColor32<RGBA32>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 4 * rgb_width, surf_info->output_width, 
+          Nv12ToColor32<RGBA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
     }
     if (surf_info->surface_format == rocDecVideoSurfaceFormat_YUV444_16Bit) {
         if (e_output_format == bgr)
-          YUV444P16ToColor24<BGR24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb)
-          YUV444P16ToColor24<RGB24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgr48)
-          YUV444P16ToColor48<BGR48>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 6 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor48<BGR48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb48)
-          YUV444P16ToColor48<RGB48>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 6 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor48<RGB48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgra64)
-          YUV444P16ToColor64<BGRA64>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 8 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor64<BGRA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgba64)
-          YUV444P16ToColor64<RGBA64>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 8 * rgb_width, surf_info->output_width, 
+          YUV444P16ToColor64<RGBA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
                                 surf_info->output_height, surf_info->output_vstride, 0);
-    }
-    else if (surf_info->surface_format == rocDecVideoSurfaceFormat_P016) {
+    } else if (surf_info->surface_format == rocDecVideoSurfaceFormat_P016) {
         if (e_output_format == bgr)
-          P016ToColor24<BGR24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          P016ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb)
-          P016ToColor24<RGB24>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 3 * rgb_width, surf_info->output_width, 
+          P016ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgr48)
-          P016ToColor48<BGR48>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 6 * rgb_width, surf_info->output_width, 
+          P016ToColor48<BGR48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgb48)
-          P016ToColor48<RGB48>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 6 * rgb_width, surf_info->output_width, 
+          P016ToColor48<RGB48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == bgra64)
-          P016ToColor64<BGRA64>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 8 * rgb_width, surf_info->output_width, 
+          P016ToColor64<BGRA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
         else if (e_output_format == rgba64)
-          P016ToColor64<RGBA64>(pSrc, surf_info->output_pitch, (uint8_t *)rgb_dev_mem_ptr, 8 * rgb_width, surf_info->output_width, 
+          P016ToColor64<RGBA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
                               surf_info->output_height, surf_info->output_vstride, 0);
     }
 }
@@ -213,11 +209,11 @@ int main(int argc, char **argv) {
             if (++i == argc) {
                 ShowHelpAndExit("-of");
             }
-            auto it = find(stOutputForamtName.begin(), stOutputForamtName.end(), argv[i]);
-            if (it == stOutputForamtName.end()) {
+            auto it = find(st_output_format_name.begin(), st_output_format_name.end(), argv[i]);
+            if (it == st_output_format_name.end()) {
                 ShowHelpAndExit("-of");
             }
-            e_output_format = (OutputFormatEnum)(it-stOutputForamtName.begin());
+            e_output_format = (OutputFormatEnum)(it-st_output_format_name.begin());
             continue;
         }
         ShowHelpAndExit(argv[i]);
