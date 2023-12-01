@@ -112,22 +112,22 @@ void YUV444ToColor32(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgra, int bgra_
 template <class COLOR64>
 void YUV444ToColor64(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR24>
-void YUV444ToColor24(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void YUV444ToColor24(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR48>
-void YUV444ToColor48(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void YUV444ToColor48(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 
 template <class COLOR24>
-void Nv12ToColor24(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void Nv12ToColor24(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR32>
 void Nv12ToColor32(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR48>
-void Nv12ToColor48(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void Nv12ToColor48(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR64>
 void Nv12ToColor64(uint8_t *dp_nv12, int nv12_pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR24>
 void YUV444P16ToColor24(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR48>
-void YUV444P16ToColor48(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void YUV444P16ToColor48(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR32>
 void YUV444P16ToColor32(uint8_t *dp_yuv_444, int pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR64>
@@ -137,7 +137,7 @@ void P016ToColor32(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgra, int bgra_
 template <class COLOR64>
 void P016ToColor64(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgra, int bgra_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR24>
-void P016ToColor24(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void P016ToColor24(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 template <class COLOR48>
-void P016ToColor48(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgr, int nBgrPitch, int width, int height, int v_pitch, int col_standard);
+void P016ToColor48(uint8_t *dp_p016, int p016_pitch, uint8_t *dp_bgr, int bgr_pitch, int width, int height, int v_pitch, int col_standard);
 
