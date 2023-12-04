@@ -224,7 +224,7 @@ protected:
         bool scaling_list_pred_mode_flag[4][6];              //u(1)
         uint32_t scaling_list_pred_matrix_id_delta[4][6];    //ue(v)
         int32_t scaling_list_dc_coef_minus8[4][6];           //se(v)
-        int32_t scaling_list_delta_coef;                     //se(v)         could have issues......
+        int32_t scaling_list_delta_coef;                     //se(v)
         int32_t scaling_list[H265_SCALING_LIST_SIZE_NUM][H265_SCALING_LIST_NUM][H265_SCALING_LIST_MAX_I];
         int32_t scaling_list_dc_coef[2][6];  // DC coefficient for 16x16 and 32x32
     } H265ScalingListData;
@@ -232,23 +232,26 @@ protected:
     /*! \brief Structure for Short Term Reference Picture Set
      */
     typedef struct {
-        uint32_t inter_ref_pic_set_prediction_flag;
-        uint32_t delta_idx_minus1;
-        uint32_t delta_rps_sign;
-        uint32_t abs_delta_rps_minus1;
-        uint32_t used_by_curr_pic_flag[16];
-        uint32_t use_delta_flag[16];
-        uint32_t num_negative_pics;  // NumNegativePics
-        uint32_t num_positive_pics;  // NumPositivePics
-        uint32_t num_of_pics;
-        uint32_t num_of_delta_poc;  // NumDeltaPocs
-        uint32_t delta_poc_s0_minus1[16];
-        uint32_t used_by_curr_pic_s0_flag[16];
-        uint32_t delta_poc_s1_minus1[16];
-        uint32_t used_by_curr_pic_s1_flag[16];
-        int32_t delta_poc[16];  // DeltaPocS0 + DeltaPocS1
-        bool used_by_curr_pic[16];  // UsedByCurrPicS0 + UsedByCurrPicS1
-    } H265ShortTermRPS;
+        uint8_t     inter_ref_pic_set_prediction_flag;
+        uint32_t    delta_idx_minus1;
+        uint8_t     delta_rps_sign;
+        uint32_t    abs_delta_rps_minus1;
+        uint8_t     used_by_curr_pic_flag[HEVC_MAX_DPB_FRAMES];
+        uint8_t     use_delta_flag[HEVC_MAX_DPB_FRAMES];
+
+        uint32_t    delta_poc_s0_minus1[HEVC_MAX_DPB_FRAMES];
+        uint8_t     used_by_curr_pic_s0_flag[HEVC_MAX_DPB_FRAMES];
+        uint32_t    delta_poc_s1_minus1[HEVC_MAX_DPB_FRAMES];
+        uint8_t     used_by_curr_pic_s1_flag[HEVC_MAX_DPB_FRAMES];
+
+        uint32_t    num_negative_pics; // NumNegativePics
+        uint32_t    num_positive_pics; // NumPositivePics
+        uint32_t    num_of_delta_pocs; // NumDeltaPocs
+        uint8_t     used_by_curr_pic_s0[HEVC_MAX_DPB_FRAMES]; // UsedByCurrPicS0
+        uint8_t     used_by_curr_pic_s1[HEVC_MAX_DPB_FRAMES]; // UsedByCurrPicS1
+        int32_t     delta_poc_s0[HEVC_MAX_DPB_FRAMES]; // DeltaPocS0
+        int32_t     delta_poc_s1[HEVC_MAX_DPB_FRAMES]; // DeltaPocS1
+} H265ShortTermRPS;
 
     /*! \brief Structure for Long Term Reference Picture Set
      */
@@ -824,7 +827,7 @@ protected:
     
     /*! \brief Function to parse Short Term Reference Picture Set
      * \param [out] rps A pointer of <tt>H265ShortTermRPS</tt> for the output from the parsed stream
-     * \param [in] st_rps_idx Input of <tt>int32_t</tt> - specifies the index in the RPS buffer
+     * \param [in] st_rps_idx specifies the index in the RPS buffer
      * \param [in] num_short_term_ref_pic_sets Specifies the count of Short Term RPS in <tt>uint32_t</tt>
      * \param [in] rps_ref A reference of <tt>H265ShortTermRPS</tt> to the RPS buffer
      * \param [in] data A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -832,7 +835,7 @@ protected:
      * \param [in] offset Reference to the offset in the input buffer
      * \return No return value
      */
-    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, int32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size, size_t &offset);
+    void ParseShortTermRefPicSet(H265ShortTermRPS *rps, uint32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *data, size_t size, size_t &offset);
     
     /*! \brief Function to parse weighted prediction table
      * \param [in/out] Slice_header_ptr Pointer to the slice segment header
@@ -917,7 +920,6 @@ protected:
     void PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr);
     void PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr);
     void PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr);
-    void PrintSeiMessage(HEVCVideoParser::SeiMessageData *sei_message_ptr);
 #endif // DBGINFO
 
 private:
