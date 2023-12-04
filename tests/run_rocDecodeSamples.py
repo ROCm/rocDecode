@@ -65,7 +65,7 @@ parser.add_argument('--files_directory',    type=str, default='',
 parser.add_argument('--sample_mode',          type=int, default=0,
                     help='The sample to run - optional (default:0 [range:0-1] 0: videoDecode, 1: videoDecodePerf)')
 parser.add_argument('--num_threads',          type=int, default=4,
-                    help='The number of threads for only for perf sample (dample_mode = 1) - optional (default:4)')
+                    help='The number of threads for only for perf sample (sample_mode = 1) - optional (default:4)')
 
 args = parser.parse_args()
 

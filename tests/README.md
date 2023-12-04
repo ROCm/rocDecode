@@ -30,5 +30,5 @@ optional arguments:
   --sample_mode SAMPLE_MODE
                         The sample to run - optional (default:0 [range:0-1] 0: videoDecode, 1: videoDecodePerf)
   --num_threads NUM_THREADS
-                        The number of threads for only for perf sample (dample_mode = 1) - optional (default:4)
+                        The number of threads for only for perf sample (sample_mode = 1) - optional (default:4)
 ```
