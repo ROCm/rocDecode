@@ -91,6 +91,12 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_sps_activated_) {
+            // If reconfigure, flush DPB first
+            if ( pic_count_) {
+                if (FlushDpb() != PARSER_OK) {
+                    return ROCDEC_RUNTIME_ERROR;
+                }
+            }
             if (FillSeqCallbackFn(&m_sps_[m_active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
@@ -2235,7 +2241,6 @@ void HEVCVideoParser::EmptyDpb() {
 }
 
 int HEVCVideoParser::FlushDpb() {
-    dpb_buffer_.num_output_pics = 0;
     // Bump the remaining pictures
     while (dpb_buffer_.num_needed_for_output) {
         if (BumpPicFromDpb() != PARSER_OK) {
