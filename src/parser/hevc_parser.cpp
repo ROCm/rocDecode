@@ -91,7 +91,9 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_sps_activated_) {
-            FillSeqCallbackFn(&m_sps_[m_active_sps_id_]);
+            if (FillSeqCallbackFn(&m_sps_[m_active_sps_id_]) != PARSER_OK) {
+                return ROCDEC_RUNTIME_ERROR;
+            }
             new_sps_activated_ = false;
         }
 
@@ -157,7 +159,7 @@ ParserResult HEVCVideoParser::Init() {
     return PARSER_OK;
 }
 
-void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
+int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
     video_format_params_.frame_rate.numerator = 0;
     video_format_params_.frame_rate.denominator = 0;
@@ -197,7 +199,7 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
         }
         default:
             ERR(STR("Error: Sequence Callback function - Chroma Format is not supported"));
-            return;  
+            return PARSER_FAIL;
     }
     if(sps_data->conformance_window_flag) {
         video_format_params_.display_area.left = sub_width_c * sps_data->conf_win_left_offset;
@@ -234,7 +236,12 @@ void HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_);
+    if (pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_) == 0) {
+        ERR("Sequence callback function failed.");
+        return PARSER_FAIL;
+    } else {
+        return PARSER_OK;
+    }
 }
 
 void HEVCVideoParser::FillSeiMessageCallbackFn() {
