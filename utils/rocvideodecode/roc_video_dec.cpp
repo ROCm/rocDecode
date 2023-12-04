@@ -270,10 +270,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     }
 
     if (width_ && height_ && chroma_height_) {
-
         // rocdecCreateDecoder() has been called before, and now there's possible config change
-        // todo:: support reconfigure
-        //return ReconfigureDecoder(p_video_format);
+        return ReconfigureDecoder(p_video_format);
     }
 
     // e_codec has been set in the constructor (for parser). Here it's set again for potential correction
@@ -397,8 +395,103 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
 
 int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
-    ROCDEC_THROW("ReconfigureDecoder is not supported in this version: ", ROCDEC_NOT_SUPPORTED);
-    return ROCDEC_NOT_SUPPORTED;
+    if (p_video_format->codec != codec_id_) {
+        ROCDEC_THROW("Reconfigure Not supported for codec change", ROCDEC_NOT_SUPPORTED);
+        return 0;
+    }
+    if (p_video_format->chroma_format != video_chroma_format_) {
+        ROCDEC_THROW("Reconfigure Not supported for chroma format change", ROCDEC_NOT_SUPPORTED);
+        return 0;
+    }
+    if (p_video_format->bit_depth_luma_minus8 != bitdepth_minus_8_){
+        ROCDEC_THROW("Reconfigure Not supported for bit depth change", ROCDEC_NOT_SUPPORTED);
+        return 0;
+    }
+
+    bool is_decode_res_changed = !(p_video_format->coded_width == width_ && p_video_format->coded_height == height_);
+    bool is_display_rect_changed = !(p_video_format->display_area.bottom == disp_rect_.b &&
+                                     p_video_format->display_area.top == disp_rect_.t &&
+                                     p_video_format->display_area.left == disp_rect_.l &&
+                                     p_video_format->display_area.right == disp_rect_.r);
+    if (!is_decode_res_changed) {
+        // if the coded_width and coded_height hasn't changed but display resolution has changed, then need to update width and height for
+        // correct output without cropping. There is no need to reconfigure the decoder.
+        if (is_display_rect_changed) {
+            width_ = p_video_format->display_area.right - p_video_format->display_area.left;
+            height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
+            chroma_height_ = static_cast<int>(std::ceil(height_ * GetChromaHeightFactor(video_surface_format_)));
+            num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
+        }
+        return 1;
+    }
+
+    width_ = p_video_format->coded_width;
+    height_ = p_video_format->coded_height;
+
+    RocdecReconfigureDecoderInfo reconfig_params = {0};
+    reconfig_params.ulWidth = width_;
+    reconfig_params.ulHeight = height_;
+    reconfig_params.ulTargetWidth = (width_ + 1) & ~1;
+    reconfig_params.ulTargetHeight = (height_ + 1) & ~1;
+    reconfig_params.ulNumDecodeSurfaces = p_video_format->min_num_decode_surfaces;
+    reconfig_params.roi_area.left = crop_rect_.l;
+    reconfig_params.roi_area.top = crop_rect_.t;
+    reconfig_params.roi_area.right = crop_rect_.r;
+    reconfig_params.roi_area.bottom = crop_rect_.b;
+    reconfig_params.target_rect.left = p_video_format->display_area.left;
+    reconfig_params.target_rect.top = p_video_format->display_area.top;
+    reconfig_params.target_rect.right = p_video_format->display_area.right;
+    reconfig_params.target_rect.bottom = p_video_format->display_area.bottom;
+
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+        GetSurfaceStrideInternal(video_surface_format_, p_video_format->coded_width, p_video_format->coded_height, &surface_stride_, &surface_vstride_);
+    } else {
+        surface_stride_ = reconfig_params.ulTargetWidth * byte_per_pixel_;
+    }
+    chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    // fill output_surface_info_
+    output_surface_info_.output_width = width_;
+    output_surface_info_.output_height = height_;
+    output_surface_info_.output_pitch  = surface_stride_;
+    output_surface_info_.output_vstride = (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) ? surface_vstride_ : reconfig_params.ulTargetHeight;
+    output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
+    output_surface_info_.bytes_per_pixel = byte_per_pixel_;
+    output_surface_info_.surface_format = video_surface_format_;
+    output_surface_info_.num_chroma_planes = num_chroma_planes_;
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+        output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
+    } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+        output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
+    } else {
+        output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
+    }
+
+    if (roc_decoder_ == nullptr) {
+        ROCDEC_THROW("Reconfigurition of the decoder detected but the decoder was not initialized previoulsy!", ROCDEC_NOT_SUPPORTED);
+        return 0;
+    }
+    ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+
+    input_video_info_str_.str("");
+    input_video_info_str_.clear();
+    input_video_info_str_ << "Input Video Resolution Changed:" << std::endl
+        << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
+        << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
+            << p_video_format->display_area.right << ", " << p_video_format->display_area.bottom << "]" << std::endl;
+    input_video_info_str_ << std::endl;
+    input_video_info_str_ << "Video Decoding Params:" << std::endl
+        << "\tNum Surfaces : " << reconfig_params.ulNumDecodeSurfaces << std::endl
+        << "\tResize       : " << reconfig_params.ulTargetWidth << "x" << reconfig_params.ulTargetHeight << std::endl
+    ;
+    input_video_info_str_ << std::endl;
+    std::cout << input_video_info_str_.str();
+
+    is_decoder_reconfigured_ = true;
+
+    return 1;
 }
 
 /**
@@ -649,7 +742,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp) {
     }
     return true;
 }
-
 
 void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info) {
     uint8_t *hst_ptr = nullptr;

@@ -77,11 +77,16 @@ rocDecStatus RocDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode
 }
 
 rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
-    // todo:: return appropriate decStatus
-    // this will be called when the current configuration is changed during decoding
-    // release the current va-api decoder instance and create a new one with the new parameters (or reinit if available)
-    // return status
-    return ROCDEC_NOT_IMPLEMENTED;
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    if (reconfig_params == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Reconfiguration of the decoder failed with rocDecStatus# " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    return rocdec_status;
 }
 
 rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {

@@ -323,3 +323,45 @@ rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDesc
 
    return ROCDEC_SUCCESS;
 }
+
+rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
+    if (reconfig_params == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    if (va_display_ == 0) {
+        ERR("ERROR: VAAPI decoder has not been initialized but reconfiguration of the decoder has been requested!");
+        return ROCDEC_NOT_SUPPORTED;
+    }
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = DestroyDataBuffers();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to destroy VAAPI buffers during the reconfiguration, with rocDecStatus# " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    CHECK_VAAPI(vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size()));
+    CHECK_VAAPI(vaDestroyContext(va_display_, va_context_id_));
+
+    va_surface_ids_.clear();
+    decoder_create_info_.ulWidth = reconfig_params->ulWidth;
+    decoder_create_info_.ulHeight = reconfig_params->ulHeight;
+    decoder_create_info_.ulNumDecodeSurfaces = reconfig_params->ulNumDecodeSurfaces;
+    decoder_create_info_.ulTargetHeight = reconfig_params->ulTargetHeight;
+    decoder_create_info_.ulTargetWidth = reconfig_params->ulTargetWidth;
+
+    rocdec_status = CreateSurfaces();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create VAAPI surfaces during the decoder reconfiguration " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateContext();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create a VAAPI context during the decoder reconfiguration " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    rocdec_status = CreateDataBuffers();
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("ERROR: Failed to create VAAPI buffers during the decoder reconfiguration " + TOSTR(rocdec_status));
+        return rocdec_status;
+    }
+    return rocdec_status;
+}

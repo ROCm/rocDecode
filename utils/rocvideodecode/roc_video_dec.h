@@ -384,16 +384,16 @@ class RocVideoDecoder {
         std::ostringstream input_video_info_str_;
         int bitdepth_minus_8_ = 0;
         uint32_t byte_per_pixel_ = 1;
-        uint32_t width_;
-        uint32_t height_;
-        int max_width_, max_height_;
-        uint32_t chroma_height_;
-        uint32_t num_chroma_planes_;
-        uint32_t num_components_;
-        uint32_t surface_stride_;
-        uint32_t surface_vstride_, chroma_vstride_;      // vertical stride between planes: used when using internal dev memory
-        size_t surface_size_;
-        OutputSurfaceInfo output_surface_info_;
+        uint32_t width_ = 0;
+        uint32_t height_ = 0;
+        int max_width_ = 0, max_height_ = 0;
+        uint32_t chroma_height_ = 0;
+        uint32_t num_chroma_planes_ = 0;
+        uint32_t num_components_ = 0;
+        uint32_t surface_stride_ = 0;
+        uint32_t surface_vstride_ = 0, chroma_vstride_ = 0;      // vertical stride between planes: used when using internal dev memory
+        size_t surface_size_ = 0;
+        OutputSurfaceInfo output_surface_info_ = {};
         std::mutex mtx_vp_frame_;
         std::vector<DecFrameBuffer> vp_frames_;      // vector of decoded frames
         std::queue<DecFrameBuffer> vp_frames_q_;
