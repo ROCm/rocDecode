@@ -393,7 +393,12 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     return nDecodeSurface;
 }
 
-
+/**
+ * @brief function to reconfigure decoder if there is a change in sequence params.
+ *
+ * @param p_video_format
+ * @return int 1: success 0: fail
+ */
 int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     if (p_video_format->codec != codec_id_) {
         ROCDEC_THROW("Reconfigure Not supported for codec change", ROCDEC_NOT_SUPPORTED);
