@@ -57,15 +57,15 @@ def iter_files(path):
 # Import arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocDecode_directory',   type=str, default='',
-                    help='The rocDecode Samples Directory - required')
+                    help='The rocDecode samples Directory - required')
 parser.add_argument('--gpu_device_id',      type=int, default=0,
-                    help='The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N] N = total number of available GPUs on a machine)')
+                    help='The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N-1] N = total number of available GPUs on a machine)')
 parser.add_argument('--files_directory',    type=str, default='',
                     help='The path to a dirctory containing one or more supported files for decoding (e.g., mp4, mov, etc.) - required')
 parser.add_argument('--sample_mode',          type=int, default=0,
                     help='The sample to run - optional (default:0 [range:0-1] 0: videoDecode, 1: videoDecodePerf)')
 parser.add_argument('--num_threads',          type=int, default=4,
-                    help='The number of threads for only for perf sample (sample_mode = 1) - optional (default:4)')
+                    help='The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:4)')
 
 args = parser.parse_args()
 
