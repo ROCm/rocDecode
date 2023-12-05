@@ -143,6 +143,9 @@ rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDec
 /*********************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params) {
+    if (decoder_handle == nullptr || reconfig_params == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
     auto handle = static_cast<DecHandle *> (decoder_handle);
     rocDecStatus ret;
     try {
