@@ -140,6 +140,8 @@ int main(int argc, char **argv) {
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
+        std::size_t found_file = input_file_path.find_last_of('/');
+        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
         viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
         std::cout << "info: Using GPU device " << device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
         std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
@@ -190,7 +192,7 @@ int main(int argc, char **argv) {
 
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
+            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame <<  << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         }
         if (b_generate_md5) {

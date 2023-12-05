@@ -192,6 +192,9 @@ int main(int argc, char **argv) {
         std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
+        std::size_t found_file = input_file_path.find_last_of('/');
+        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        std::cout << "info: Number of threads: " << n_thread << std::endl;
         for (int i = 0; i < n_thread; i++) {
             v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
             std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
@@ -211,7 +214,7 @@ int main(int argc, char **argv) {
         }
 
         std::cout << "info: Total frame decoded: " << n_total  << std::endl;
-        std::cout << "info: avg decoding time per frame (ms): " << 1000 / total_fps << std::endl;
+        std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
         std::cout << "info: avg FPS: " << total_fps  << std::endl;
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;
