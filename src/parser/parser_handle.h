@@ -29,20 +29,20 @@ THE SOFTWARE.
 #include "hevc_parser.h"
 
 class RocParserHandle {
-public:    
-    explicit RocParserHandle(RocdecParserParams *pParams) { create_parser(pParams); };   // default constructor
-    ~RocParserHandle() { clear_errors(); }
-    bool no_error() { return error.empty(); }
-    const char* error_msg() { return error.c_str(); }
-    void capture_error(const std::string& err_msg) { error = err_msg; }
-    rocDecStatus ParseVideoData(RocdecSourceDataPacket *pPacket) { return roc_parser_->ParseVideoData(pPacket); }
-    rocDecStatus DestroyParser() { return destroy_parser(); };
+public:
+    explicit RocParserHandle(RocdecParserParams *params) { CreateParser(params); };
+    ~RocParserHandle() { ClearErrors(); }
+    bool NoError() { return error_.empty(); }
+    const char* ErrorMsg() { return error_.c_str(); }
+    void CaptureError(const std::string& err_msg) { error_ = err_msg; }
+    rocDecStatus ParseVideoData(RocdecSourceDataPacket *packet) { return roc_parser_->ParseVideoData(packet); }
+    rocDecStatus DestroyParser() { return DestroyParserInternal(); };
 
 private:
-    std::shared_ptr<RocVideoParser> roc_parser_ = nullptr;    // class instantiation
-    void clear_errors() { error = ""; }
-    void create_parser(RocdecParserParams *pParams) {
-        switch(pParams->CodecType) {
+    std::shared_ptr<RocVideoParser> roc_parser_ = nullptr;
+    void ClearErrors() { error_ = ""; }
+    void CreateParser(RocdecParserParams *params) {
+        switch(params->CodecType) {
             case rocDecVideoCodec_H264:
                 roc_parser_ = std::make_shared<H264VideoParser>();
                 break;
@@ -50,19 +50,19 @@ private:
                 roc_parser_ = std::make_shared<HEVCVideoParser>();
                 break;
             default:
-                THROW("Unsupported parser type "+ TOSTR(pParams->CodecType));
+                THROW("Unsupported parser type "+ TOSTR(params->CodecType));
                 break;
         }
 
         if (roc_parser_ ) {
-            rocDecStatus ret = roc_parser_->Initialize(pParams);
+            rocDecStatus ret = roc_parser_->Initialize(params);
             if (ret != ROCDEC_SUCCESS)
                 THROW("rocParser Initialization failed with error: "+ TOSTR(ret));
         }
     }
-    rocDecStatus destroy_parser() {
+    rocDecStatus DestroyParserInternal() {
       rocDecStatus ret = ROCDEC_NOT_INITIALIZED;
-        if (roc_parser_ ) {
+        if (roc_parser_) {
             ret = roc_parser_->UnInitialize();
             if (ret != ROCDEC_SUCCESS)
                 THROW("rocParser UnInitialization failed with error: "+ TOSTR(ret));
@@ -70,5 +70,5 @@ private:
         return ret;
     }
 
-    std::string error;
+    std::string error_;
 };
