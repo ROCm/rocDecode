@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame <<  << " ms" <<std::endl;
+            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         }
         if (b_generate_md5) {
