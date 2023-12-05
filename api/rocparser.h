@@ -271,14 +271,14 @@ typedef struct _RocdecParserParams {
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocDecodeStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
+//! \fn rocDecodeStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *params)
 //! Create video parser object and initialize
 /************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams);
+extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *params);
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocDecodeStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket)
+//! \fn rocDecodeStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet)
 //! Parse the video data from source data packet in pPacket 
 //! Extracts parameter sets like SPS, PPS, bitstream etc. from pPacket and 
 //! calls back pfnDecodePicture with RocdecPicParams data for kicking of HW decoding
@@ -286,14 +286,14 @@ extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle
 //! the decoder encounters a video format change
 //! calls back pfnDisplayPicture with RocdecParserDispInfo data to display a video frame
 /************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket);
+extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet);
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle)
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle)
 //! Destroy the video parser object
 /************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle);
+extern rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle);
 
 #if defined(__cplusplus)
 }
