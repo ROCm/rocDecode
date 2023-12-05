@@ -77,11 +77,10 @@ rocDecStatus RocDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode
 }
 
 rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
-    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     if (reconfig_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
+    rocDecStatus rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Reconfiguration of the decoder failed with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;

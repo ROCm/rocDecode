@@ -489,8 +489,6 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     input_video_info_str_ << std::endl;
     std::cout << input_video_info_str_.str();
 
-    is_decoder_reconfigured_ = true;
-
     return 1;
 }
 

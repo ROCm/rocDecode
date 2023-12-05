@@ -332,8 +332,7 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
         ERR("ERROR: VAAPI decoder has not been initialized but reconfiguration of the decoder has been requested!");
         return ROCDEC_NOT_SUPPORTED;
     }
-    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    rocdec_status = DestroyDataBuffers();
+    rocDecStatus rocdec_status = DestroyDataBuffers();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to destroy VAAPI buffers during the reconfiguration, with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;
