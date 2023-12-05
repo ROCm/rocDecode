@@ -64,11 +64,12 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "outfile output2.yuv" << std::endl
     << "...." << std::endl
     << "...." << std::endl
-    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl;
+    << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-use_reconfigure flag (bool - 0/1); optional; default: 1; set 0 to disable reconfigure api for decoding multiple files" << std::endl;
     exit(0);
 }
 
-void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int argc, char *argv[]) {
+void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, bool &use_reconfigure, int argc, char *argv[]) {
 
     FileInfo file_data;
     std::string file_list_path;
@@ -93,6 +94,13 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, int
                 ShowHelpAndExit("-d");
             }
             device_id = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-use_reconfigure")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-use_reconfigure");
+            }
+            use_reconfigure = atoi(argv[i]) ? true : false;
             continue;
         }
         ShowHelpAndExit(argv[i]);
@@ -149,8 +157,10 @@ int main(int argc, char **argv) {
     std::deque<FileInfo> multi_file_data;
     FileInfo file_data;
     int device_id = 0;
+    bool use_reconfigure = true;
 
-    ParseCommandLine (&multi_file_data, device_id, argc, argv);
+    ParseCommandLine (&multi_file_data, device_id, use_reconfigure, argc, argv);
+    RocVideoDecoder *viddec = NULL;
 
     try {
         while (!multi_file_data.empty()) {
@@ -158,12 +168,20 @@ int main(int argc, char **argv) {
             multi_file_data.pop_front();
             VideoDemuxer demuxer(file_data.in_file.c_str());
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-            RocVideoDecoder viddec(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
 
+            if (use_reconfigure) {
+                if (!viddec) {
+                    viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+                }
+            } else {
+                viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+            }
             std::string device_name, gcn_arch_name;
             int pci_bus_id, pci_domain_id, pci_device_id;
 
-            viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+            std::size_t found_file = file_data.in_file.find_last_of('/');
+            std::cout << "info: Input file: " << file_data.in_file.substr(found_file + 1) << std::endl;
+            viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
             std::cout << "info: Using GPU device " << device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
             std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
@@ -185,21 +203,21 @@ int main(int argc, char **argv) {
                 if (n_video_bytes == 0) {
                     pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
                 }
-                n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
+                n_frame_returned = viddec->DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
                 auto end_time = std::chrono::high_resolution_clock::now();
                 auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
                 total_dec_time += time_per_frame;
-                if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
+                if (!n_frame && !viddec->GetOutputSurfaceInfo(&surf_info)) {
                     std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                     break;
                 }
                 for (int i = 0; i < n_frame_returned; i++) {
-                    pframe = viddec.GetFrame(&pts);
+                    pframe = viddec->GetFrame(&pts);
                     if (file_data.dump_output_frames) {
-                        viddec.SaveFrameToFile(file_data.out_file, pframe, surf_info);
+                        viddec->SaveFrameToFile(file_data.out_file, pframe, surf_info);
                     }
                     // release frame
-                    viddec.ReleaseFrame(pts);
+                    viddec->ReleaseFrame(pts);
                 }
                 n_frame += n_frame_returned;
             } while (n_video_bytes);
@@ -209,6 +227,15 @@ int main(int argc, char **argv) {
                 std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
                 std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
             }
+            if (!use_reconfigure) {
+                delete viddec;
+                viddec = NULL;
+            }
+            std::cout << "\n";
+        }
+        if(viddec) {
+            delete viddec;
+            viddec = NULL;
         }
     } catch (const std::exception &ex) {
         std::cout << ex.what() << std::endl;
