@@ -21,6 +21,9 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <fstream>
+#include <cstring>
+#include <string>
 #include <iomanip>
 #include <unistd.h>
 #include <vector>
@@ -54,7 +57,7 @@ void ShowHelpAndExit(const char *option = NULL) {
 int main(int argc, char **argv) {
 
     std::string input_file_path, output_file_path, md5_file_path;
-    FILE *md5_file;
+    std::fstream ref_md5_file;
     int dump_output_frames = 0;
     int device_id = 0;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
@@ -171,7 +174,7 @@ int main(int argc, char **argv) {
             viddec.InitMd5();
         }
         if (b_md5_check) {
-            md5_file = fopen(md5_file_path.c_str(), "rb");
+            ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
         }
 
         do {
@@ -218,12 +221,16 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
 
             if (b_md5_check) {
-                char ref_md5_string[33];
+                char ref_md5_string[33], c2[2];
                 uint8_t ref_md5[16];
-                fscanf(md5_file, "%s", ref_md5_string);
+                std::string str;
+
                 for (int i = 0; i < 16; i++) {
                     int c;
-                    sscanf(&ref_md5_string[i * 2], "%02x", &c);
+                    ref_md5_file.get(c2[0]);
+                    ref_md5_file.get(c2[1]);
+                    str = c2;
+                    c = std::stoi(str, nullptr, 16);
                     ref_md5[i] = c;
                 }
                 if (memcmp(digest, ref_md5, 16) == 0) {
@@ -231,11 +238,10 @@ int main(int argc, char **argv) {
                 } else {
                     std::cout << "MD5 digest does not matche the reference MD5 digest: ";
                 }
-                for (int i = 0; i < 16; i++) {
-                    std::cout << std::hex << static_cast<int>(ref_md5[i]);
-                }
-                std::cout << std::endl;
-                fclose(md5_file);
+                ref_md5_file.seekg(0, std::ios_base::beg);
+                ref_md5_file.getline(ref_md5_string, 33);
+                std::cout << ref_md5_string << std::endl;
+                ref_md5_file.close();
             }
         }
     } catch (const std::exception &ex) {
