@@ -33,6 +33,8 @@ make -j
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
               -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
               -sei <extract SEI messages [optional]>
+              -md5 <generate MD5 message digest on the decoded YUV image sequence [optional]>
+              -md5_check MD5_File_Path <generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file [optional]>
               -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
               -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
 ```
