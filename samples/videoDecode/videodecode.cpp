@@ -21,6 +21,9 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <fstream>
+#include <cstring>
+#include <string>
 #include <iomanip>
 #include <unistd.h>
 #include <vector>
@@ -44,6 +47,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
     << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
+    << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
     << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
@@ -52,12 +56,14 @@ void ShowHelpAndExit(const char *option = NULL) {
 
 int main(int argc, char **argv) {
 
-    std::string input_file_path, output_file_path;
+    std::string input_file_path, output_file_path, md5_file_path;
+    std::fstream ref_md5_file;
     int dump_output_frames = 0;
     int device_id = 0;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
     bool b_generate_md5 = false;
+    bool b_md5_check = false;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
@@ -112,6 +118,15 @@ int main(int argc, char **argv) {
             b_generate_md5 = true;
             continue;
         }
+        if (!strcmp(argv[i], "-md5_check")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-md5_check");
+            }
+            b_generate_md5 = true;
+            b_md5_check = true;
+            md5_file_path = argv[i];
+            continue;
+        }
         if (!strcmp(argv[i], "-crop")) {
             if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
                 ShowHelpAndExit("-crop");
@@ -160,6 +175,9 @@ int main(int argc, char **argv) {
         if (b_generate_md5) {
             viddec.InitMd5();
         }
+        if (b_md5_check) {
+            ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
+        }
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -192,7 +210,7 @@ int main(int argc, char **argv) {
 
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame <<  << " ms" <<std::endl;
+            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         }
         if (b_generate_md5) {
@@ -203,6 +221,30 @@ int main(int argc, char **argv) {
                 std::cout << std::hex << static_cast<int>(digest[i]);
             }
             std::cout << std::endl;
+
+            if (b_md5_check) {
+                char ref_md5_string[33], c2[2];
+                uint8_t ref_md5[16];
+                std::string str;
+
+                for (int i = 0; i < 16; i++) {
+                    int c;
+                    ref_md5_file.get(c2[0]);
+                    ref_md5_file.get(c2[1]);
+                    str = c2;
+                    c = std::stoi(str, nullptr, 16);
+                    ref_md5[i] = c;
+                }
+                if (memcmp(digest, ref_md5, 16) == 0) {
+                    std::cout << "MD5 digest matches the reference MD5 digest: ";
+                } else {
+                    std::cout << "MD5 digest does not matche the reference MD5 digest: ";
+                }
+                ref_md5_file.seekg(0, std::ios_base::beg);
+                ref_md5_file.getline(ref_md5_string, 33);
+                std::cout << ref_md5_string << std::endl;
+                ref_md5_file.close();
+            }
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

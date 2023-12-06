@@ -25,45 +25,48 @@ THE SOFTWARE.
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams)
+//! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *parser_params)
 //! Create video parser object and initialize
 /************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecCreateVideoParser(RocdecVideoParser *pHandle, RocdecParserParams *pParams) {
+rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *parser_params) {
+    if (parser_handle == nullptr || parser_params == nullptr) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
     RocdecVideoParser handle = nullptr;
     try {
-        handle = new RocParserHandle(pParams);
+        handle = new RocParserHandle(parser_params);
     } 
     catch(const std::exception& e) {
         ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
         return ROCDEC_RUNTIME_ERROR;
     }
-    *pHandle = handle;
+    *parser_handle = handle;
     return rocDecStatus::ROCDEC_SUCCESS;
 }
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocParserStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket)
-//! Parse the video data from source data packet in pPacket 
-//! Extracts parameter sets like SPS, PPS, bitstream etc. from pPacket and 
+//! \fn rocParserStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet)
+//! Parse the video data from source data packet in packet
+//! Extracts parameter sets like SPS, PPS, bitstream etc. from packet and
 //! calls back pfnDecodePicture with RocdecPicParams data for kicking of HW decoding
 //! calls back pfnSequenceCallback with RocdecVideoFormat data for initial sequence header or when
 //! the decoder encounters a video format change
 //! calls back pfnDisplayPicture with ROCDECPARSERDISPINFO data to display a video frame
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
-rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) {
-    if (handle == nullptr) {
+rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet) {
+    if (parser_handle == nullptr || packet == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    auto parser_hdl = static_cast<RocParserHandle *> (handle);
+    auto roc_parser_handle = static_cast<RocParserHandle *>(parser_handle);
     rocDecStatus ret;
     try {
-        ret = parser_hdl->ParseVideoData(pPacket);
+        ret = roc_parser_handle->ParseVideoData(packet);
     }
     catch(const std::exception& e) {
-        parser_hdl->capture_error(e.what());
+        roc_parser_handle->CaptureError(e.what());
         ERR(e.what())
         return ROCDEC_RUNTIME_ERROR;
     }
@@ -72,21 +75,21 @@ rocDecParseVideoData(RocdecVideoParser handle, RocdecSourceDataPacket *pPacket) 
 
 /************************************************************************************************/
 //! \ingroup FUNCTS
-//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser handle)
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle)
 //! Destroy the video parser object
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI
-rocDecDestroyVideoParser(RocdecVideoParser handle) {
-    if (handle == nullptr) {
+rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
+    if (parser_handle == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    auto parser_hdl = static_cast<RocParserHandle *> (handle);
+    auto roc_parser_handle = static_cast<RocParserHandle *>(parser_handle);
     rocDecStatus ret;
     try {
-        ret = parser_hdl->DestroyParser();
+        ret = roc_parser_handle->DestroyParser();
     }
     catch(const std::exception& e) {
-        parser_hdl->capture_error(e.what());
+        roc_parser_handle->CaptureError(e.what());
         ERR(e.what())
         return ROCDEC_RUNTIME_ERROR;
     }
