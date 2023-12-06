@@ -48,4 +48,6 @@ outfile output2.yuv [optional]
 ```
 ./videodecodemultifiles -i <input file list[required - example.txt]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
+              -use_reconfigure <flag (bool - 0/1) [optional - default: 1] set 0 to disable reconfigure api for decoding multiple files. Only resolution changes between files are supported when reconfigure is enabled.
+                                The codec, bit_depth, and the chroma_format must be the same between files.>
 ```
