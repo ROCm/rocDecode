@@ -79,6 +79,11 @@ RocVideoDecoder::~RocVideoDecoder() {
             std::cout << "ERROR: hipStream_Destroy failed! (" << hip_status << ")" << std::endl;
         }
     }
+    if (fp_out_) {
+        fclose(fp_out_);
+        fp_out_ = nullptr;
+    }
+
 }
 
 static const char * GetVideoCodecString(rocDecVideoCodec e_codec) {
@@ -494,6 +499,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     input_video_info_str_ << std::endl;
     std::cout << input_video_info_str_.str();
 
+    is_decoder_reconfigured_ = true;
+
     return 1;
 }
 
@@ -765,6 +772,32 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
 
 
     uint8_t *tmp_hst_ptr = hst_ptr;
+
+    if (current_output_filename.empty()) {
+        current_output_filename = output_file_name;
+    }
+
+    // don't overwrite to the same file if reconfigure is detected for a resolution changes.
+    if (is_decoder_reconfigured_) {
+        if (fp_out_) {
+            fclose(fp_out_);
+            fp_out_ = nullptr;
+        }
+        // Append the width and height of the new stream to the old file name to create a file name to save the new frames
+        // do this only if resolution changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
+        // don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
+        if (!current_output_filename.compare(output_file_name)) {
+            std::string::size_type const pos(output_file_name.find_last_of('.'));
+            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height);
+            if (pos != std::string::npos) {
+                output_file_name.insert(pos, to_append);
+            } else {
+                output_file_name += to_append;
+            }
+        }
+        is_decoder_reconfigured_ = false;
+    }
+
     if (fp_out_ == nullptr) {
         fp_out_ = fopen(output_file_name.c_str(), "wb");
     }
