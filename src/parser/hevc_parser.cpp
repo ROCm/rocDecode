@@ -2235,16 +2235,17 @@ void HEVCVideoParser::EmptyDpb() {
 }
 
 int HEVCVideoParser::FlushDpb() {
-    dpb_buffer_.num_output_pics = 0;
-    // Bump the remaining pictures
-    while (dpb_buffer_.num_needed_for_output) {
-        if (BumpPicFromDpb() != PARSER_OK) {
-            return PARSER_FAIL;
+    if (dpb_buffer_.num_needed_for_output) {
+        // Bump the remaining pictures
+        while (dpb_buffer_.num_needed_for_output) {
+            if (BumpPicFromDpb() != PARSER_OK) {
+                return PARSER_FAIL;
+            }
         }
-    }
-    if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
-        if (OutputDecodedPictures() != PARSER_OK) {
-            return PARSER_FAIL;
+        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+            if (OutputDecodedPictures() != PARSER_OK) {
+                return PARSER_FAIL;
+            }
         }
     }
     return PARSER_OK;
