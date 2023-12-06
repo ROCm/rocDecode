@@ -403,4 +403,6 @@ class RocVideoDecoder {
         FILE *fp_out_ = NULL;
         struct AVMD5 *md5_ctx_;
         uint8_t md5_digest_[16];
+        bool is_decoder_reconfigured_ = false;
+        std::string current_output_filename = "";
 };
