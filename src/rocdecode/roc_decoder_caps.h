@@ -125,6 +125,7 @@ private:
             {"gfx90a",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 4096, 2176, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2160, 64, 64}}}, 2}},
             {"gfx940",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 3}},
             {"gfx941",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 4}},
+            {"gfx942",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 3}},
             {"gfx1030",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
             {"gfx1031",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
             {"gfx1032",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
