@@ -922,7 +922,7 @@ void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_
 
     // For 10 bit, convert from P010 to little endian to match reference decoder output
     if (surf_info->bytes_per_pixel == 2) {
-        uint16_t *ptr = (uint16_t*)stacked_ptr;
+        uint16_t *ptr = reinterpret_cast<uint16_t *> (stacked_ptr);
         for (i = 0; i < img_size / 2; i++) {
             ptr[i] = ptr[i] >> 6;
         }
