@@ -72,6 +72,18 @@ RocVideoDecoder::~RocVideoDecoder() {
         roc_decoder_ = nullptr;
     }
 
+    std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
+        for (DecFrameBuffer p_frame : vp_frames_) {
+            if (p_frame.frame_ptr) {
+              if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED)
+                  hipFree(p_frame.frame_ptr);
+              else
+                  delete[] p_frame.frame_ptr;
+              p_frame.frame_ptr = nullptr;
+            }
+        }
+    }
     if (hip_stream_) {
         hipError_t hip_status = hipSuccess;
         hip_status = hipStreamDestroy(hip_stream_);
