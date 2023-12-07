@@ -919,6 +919,15 @@ void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_
     }
 
     int img_size = img_width * surf_info->bytes_per_pixel * (img_height + chroma_height_);
+
+    // For 10 bit, convert from P010 to little endian to match reference decoder output
+    if (surf_info->bytes_per_pixel == 2) {
+        uint16_t *ptr = reinterpret_cast<uint16_t *> (stacked_ptr);
+        for (i = 0; i < img_size / 2; i++) {
+            ptr[i] = ptr[i] >> 6;
+        }
+    }
+
     av_md5_update(md5_ctx_, stacked_ptr, img_size);
 
     if (hst_ptr && (surf_info->mem_type != OUT_SURFACE_MEM_HOST_COPIED)) {
