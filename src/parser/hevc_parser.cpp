@@ -1595,8 +1595,8 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
     if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
         sps_ptr = &m_sps_[m_active_sps_id_];
-        // Re-set DPB size. We add one addition buffer to avoid serialization of decode submission and display callback in certain cases.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 2;
+        // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     sps_ptr = &m_sps_[m_active_sps_id_];
@@ -1607,8 +1607,8 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
         // Take care of the case where a new SPS replaces the old SPS with the same id but with different dimensions
-        // Re-set DPB size. We add one addition buffer to avoid serialization of decode submission and display callback in certain cases.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 2;
+        // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
@@ -2344,16 +2344,7 @@ int HEVCVideoParser::FindFreeBufAndMark() {
     }
     dpb_buffer_.dpb_fullness++;
 
-    SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
-    uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
-    uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
-
-    while (dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
-        if (BumpPicFromDpb() != PARSER_OK) {
-            return PARSER_FAIL;
-        }
-    }
-
+    // Skip the additional bumping to avoid synchronous job submission
     // Skip SpsMaxLatencyPictures check as SpsMaxLatencyPictures >= sps_max_num_reorder_pics.
 
     return PARSER_OK;
