@@ -74,7 +74,7 @@ RocVideoDecoder::~RocVideoDecoder() {
 
     std::lock_guard<std::mutex> lock(mtx_vp_frame_);
     if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
-        for (auto p_frame : vp_frames_) {
+        for (auto &p_frame : vp_frames_) {
             if (p_frame.frame_ptr) {
               if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                   hipError_t hip_status = hipFree(p_frame.frame_ptr);
