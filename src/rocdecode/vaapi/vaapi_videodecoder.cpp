@@ -23,7 +23,8 @@ THE SOFTWARE.
 #include "vaapi_videodecoder.h"
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
-    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}} {};
+    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
+    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_params_buf_id_{0}, slice_data_buf_id_{0} {};
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
     if (drm_fd_ != -1) {
@@ -89,11 +90,6 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     rocdec_status = CreateContext();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to create a VAAPI context " + TOSTR(rocdec_status));
-        return rocdec_status;
-    }
-    rocdec_status = CreateDataBuffers();
-    if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create VAAPI data buffers " + TOSTR(rocdec_status));
         return rocdec_status;
     }
     return rocdec_status;
@@ -196,10 +192,18 @@ rocDecStatus VaapiVideoDecoder::CreateDataBuffers() {
 }
 
 rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
-    CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
-    CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
-    CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_));
-    CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+    if (pic_params_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
+    }
+    if (iq_matrix_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
+    }
+    if (slice_params_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_));
+    }
+    if (slice_data_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+    }
     return ROCDEC_SUCCESS;
 }
 
@@ -242,6 +246,18 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
                     ERR("HEVC data_buffer parameter_size not matching vaapi parameter buffer size!");
                     return ROCDEC_RUNTIME_ERROR;
             }
+            rocDecStatus rocdec_status = DestroyDataBuffers();
+            if (rocdec_status != ROCDEC_SUCCESS) {
+                ERR("Error: Failed to destroy VAAPI buffer");
+                return ROCDEC_SUCCESS;
+            }
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAPictureParameterBufferType, sizeof(VAPictureParameterBufferHEVC), 1, (void*)pic_params_ptr, &pic_params_buf_id_));
+            if (pPicParams->pic_params.hevc.pic_fields.bits.scaling_list_enabled_flag) {
+                CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAIQMatrixBufferType, sizeof(VAIQMatrixBufferHEVC), 1, (void*)iq_matrix_ptr, &iq_matrix_buf_id_));
+            }
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, sizeof(VASliceParameterBufferHEVC), 1, (void*)slice_params_ptr, &slice_params_buf_id_));
+            CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->nBitstreamDataLen, 1, (void*)pPicParams->pBitstreamData, &slice_data_buf_id_));
+
             break;
         }
 
@@ -250,30 +266,6 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             return ROCDEC_NOT_SUPPORTED;
         }
     }
-
-    CHECK_VAAPI(vaMapBuffer(va_display_, pic_params_buf_id_, (void**)&data_buf_ptr));
-    memcpy(data_buf_ptr, pic_params_ptr, pic_params_size);
-    CHECK_VAAPI(vaUnmapBuffer(va_display_, pic_params_buf_id_));
-
-    if (scaling_list_enabled) {
-        CHECK_VAAPI(vaMapBuffer(va_display_, iq_matrix_buf_id_, (void**)&data_buf_ptr));
-        memcpy(data_buf_ptr, iq_matrix_ptr, iq_matrix_size);
-        CHECK_VAAPI(vaUnmapBuffer(va_display_, iq_matrix_buf_id_));
-    }
-
-    CHECK_VAAPI(vaMapBuffer(va_display_, slice_params_buf_id_, (void**)&data_buf_ptr));
-    memcpy(data_buf_ptr, slice_params_ptr, slice_params_size);
-    CHECK_VAAPI(vaUnmapBuffer(va_display_, slice_params_buf_id_));
-
-    if ( pPicParams->nBitstreamDataLen > slice_data_buf_size_) {
-        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
-        slice_data_buf_size_ = pPicParams->nBitstreamDataLen * 3 / 2;  // to reduce the chance to re-allocate again.
-        CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, slice_data_buf_size_, 1, NULL, &slice_data_buf_id_));
-    }
-
-    CHECK_VAAPI(vaMapBuffer(va_display_, slice_data_buf_id_, (void**)&data_buf_ptr));
-    memcpy(data_buf_ptr, pPicParams->pBitstreamData, pPicParams->nBitstreamDataLen);
-    CHECK_VAAPI(vaUnmapBuffer(va_display_, slice_data_buf_id_));
 
     // Sumbmit buffers to VAAPI driver
     CHECK_VAAPI(vaBeginPicture(va_display_, va_context_id_, curr_surface_id));
