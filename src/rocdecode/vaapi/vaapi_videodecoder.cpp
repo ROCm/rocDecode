@@ -299,11 +299,6 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
         ERR("ERROR: VAAPI decoder has not been initialized but reconfiguration of the decoder has been requested!");
         return ROCDEC_NOT_SUPPORTED;
     }
-    rocDecStatus rocdec_status = DestroyDataBuffers();
-    if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to destroy VAAPI buffers during the reconfiguration, with rocDecStatus# " + TOSTR(rocdec_status));
-        return rocdec_status;
-    }
     CHECK_VAAPI(vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size()));
     CHECK_VAAPI(vaDestroyContext(va_display_, va_context_id_));
 
@@ -314,7 +309,7 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
     decoder_create_info_.ulTargetHeight = reconfig_params->ulTargetHeight;
     decoder_create_info_.ulTargetWidth = reconfig_params->ulTargetWidth;
 
-    rocdec_status = CreateSurfaces();
+    rocDecStatus rocdec_status = CreateSurfaces();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to create VAAPI surfaces during the decoder reconfiguration " + TOSTR(rocdec_status));
         return rocdec_status;
