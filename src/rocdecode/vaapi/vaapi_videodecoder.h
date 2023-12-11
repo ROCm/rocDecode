@@ -34,8 +34,6 @@ THE SOFTWARE.
 #include "../../commons.h"
 #include "../../../api/rocdecode.h"
 
-#define DEFAULT_SLICE_DATA_BUF_SIZE 2 * 1024 * 1024  // 2 MB
-
 #define CHECK_VAAPI(call) {\
     VAStatus va_status = call;\
     if (va_status != VA_STATUS_SUCCESS) {\
@@ -73,6 +71,5 @@ private:
     rocDecStatus CreateDecoderConfig();
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
-    rocDecStatus CreateDataBuffers();
     rocDecStatus DestroyDataBuffers();
 };
