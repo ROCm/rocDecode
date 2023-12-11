@@ -251,8 +251,11 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     input_video_info_str_.str("");
     input_video_info_str_.clear();
     input_video_info_str_ << "Input Video Information" << std::endl
-        << "\tCodec        : " << GetCodecFmtName(p_video_format->codec) << std::endl
-        << "\tSequence     : " << (p_video_format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
+        << "\tCodec        : " << GetCodecFmtName(p_video_format->codec) << std::endl;
+        if (p_video_format->frame_rate.numerator && p_video_format->frame_rate.denominator) {
+            input_video_info_str_ << "\tFrame rate   : " << p_video_format->frame_rate.numerator << "/" << p_video_format->frame_rate.denominator << " = " << 1.0 * p_video_format->frame_rate.numerator / p_video_format->frame_rate.denominator << " fps" << std::endl;
+        }
+    input_video_info_str_ << "\tSequence     : " << (p_video_format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
         << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
         << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
             << p_video_format->display_area.right << ", " << p_video_format->display_area.bottom << "]" << std::endl

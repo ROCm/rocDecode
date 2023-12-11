@@ -56,6 +56,11 @@ protected:
     uint32_t pic_height_;
     bool new_sps_activated_;
 
+    struct {
+        uint32_t numerator;
+        uint32_t denominator;
+    } frame_rate_;
+
     RocdecVideoFormat video_format_params_;
     RocdecSeiMessageInfo sei_message_info_params_;
     RocdecPicParams dec_pic_params_;
