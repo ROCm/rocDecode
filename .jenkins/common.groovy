@@ -17,7 +17,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
     }
 
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
                 python rocDecode-setup.py
@@ -36,7 +36,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 def runTestCommand (platform, project) {
 
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 export HOME=/home/jenkins
                 echo Make Test
                 cd ${project.paths.project_build_prefix}/build/release
@@ -89,7 +89,7 @@ def runPackageCommand(platform, project) {
     }
 
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 export HOME=/home/jenkins
                 echo Make rocDecode Package
                 cd ${project.paths.project_build_prefix}/build/release
