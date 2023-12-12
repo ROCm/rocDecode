@@ -94,12 +94,12 @@ else:
     print("\nERROR: rocDecode Executable Not Found\n")
     exit()
 
-if os.path.exists(filesDir) and not os.path.isfile(filesDir): 
-        # Checking if the directory is empty or not 
-        if not os.listdir(filesDir): 
-            print("\nERROR: Empty directory - no videos to decode")
-            exit()
-else: 
+if os.path.exists(filesDir) and not os.path.isfile(filesDir):
+    # Checking if the directory is empty or not
+    if not os.listdir(filesDir):
+        print("\nERROR: Empty directory - no videos to decode")
+        exit()
+else:
     print("\nERROR: The input directory path is either for a file or directory does not exist!")
     exit()
 
