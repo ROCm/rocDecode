@@ -161,8 +161,8 @@ ParserResult HEVCVideoParser::Init() {
 
 int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
-    video_format_params_.frame_rate.numerator = 0;
-    video_format_params_.frame_rate.denominator = 0;
+    video_format_params_.frame_rate.numerator = frame_rate_.numerator;
+    video_format_params_.frame_rate.denominator = frame_rate_.denominator;
     video_format_params_.bit_depth_luma_minus8 = sps_data->bit_depth_luma_minus8;
     video_format_params_.bit_depth_chroma_minus8 = sps_data->bit_depth_chroma_minus8;
     if (sps_data->profile_tier_level.general_progressive_source_flag && !sps_data->profile_tier_level.general_interlaced_source_flag)
@@ -1271,59 +1271,60 @@ void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_laye
 void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     size_t offset = 0; // current bit offset
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
-    memset(&m_vps_[vps_id], 0, sizeof(m_vps_[vps_id]));
+    VpsData *p_vps = &m_vps_[vps_id];
+    memset(p_vps, 0, sizeof(VpsData));
 
-    m_vps_[vps_id].vps_video_parameter_set_id = vps_id;
-    m_vps_[vps_id].vps_base_layer_internal_flag = Parser::GetBit(nalu, offset);
-    m_vps_[vps_id].vps_base_layer_available_flag = Parser::GetBit(nalu, offset);
-    m_vps_[vps_id].vps_max_layers_minus1 = Parser::ReadBits(nalu, offset, 6);
-    m_vps_[vps_id].vps_max_sub_layers_minus1 = Parser::ReadBits(nalu, offset, 3);
-    m_vps_[vps_id].vps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
-    m_vps_[vps_id].vps_reserved_0xffff_16bits = Parser::ReadBits(nalu, offset, 16);
-    ParsePtl(&m_vps_[vps_id].profile_tier_level, true, m_vps_[vps_id].vps_max_sub_layers_minus1, nalu, size, offset);
-    m_vps_[vps_id].vps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
+    p_vps->vps_video_parameter_set_id = vps_id;
+    p_vps->vps_base_layer_internal_flag = Parser::GetBit(nalu, offset);
+    p_vps->vps_base_layer_available_flag = Parser::GetBit(nalu, offset);
+    p_vps->vps_max_layers_minus1 = Parser::ReadBits(nalu, offset, 6);
+    p_vps->vps_max_sub_layers_minus1 = Parser::ReadBits(nalu, offset, 3);
+    p_vps->vps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
+    p_vps->vps_reserved_0xffff_16bits = Parser::ReadBits(nalu, offset, 16);
+    ParsePtl(&p_vps->profile_tier_level, true, p_vps->vps_max_sub_layers_minus1, nalu, size, offset);
+    p_vps->vps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
 
-    for (int i = 0; i <= m_vps_[vps_id].vps_max_sub_layers_minus1; i++) {
-        if (m_vps_[vps_id].vps_sub_layer_ordering_info_present_flag || (i == 0)) {
-            m_vps_[vps_id].vps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_vps_[vps_id].vps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            m_vps_[vps_id].vps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+    for (int i = 0; i <= p_vps->vps_max_sub_layers_minus1; i++) {
+        if (p_vps->vps_sub_layer_ordering_info_present_flag || (i == 0)) {
+            p_vps->vps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            p_vps->vps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            p_vps->vps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         else {
-            m_vps_[vps_id].vps_max_dec_pic_buffering_minus1[i] = m_vps_[vps_id].vps_max_dec_pic_buffering_minus1[0];
-            m_vps_[vps_id].vps_max_num_reorder_pics[i] = m_vps_[vps_id].vps_max_num_reorder_pics[0];
-            m_vps_[vps_id].vps_max_latency_increase_plus1[i] = m_vps_[vps_id].vps_max_latency_increase_plus1[0];
+            p_vps->vps_max_dec_pic_buffering_minus1[i] = p_vps->vps_max_dec_pic_buffering_minus1[0];
+            p_vps->vps_max_num_reorder_pics[i] = p_vps->vps_max_num_reorder_pics[0];
+            p_vps->vps_max_latency_increase_plus1[i] = p_vps->vps_max_latency_increase_plus1[0];
         }
     }
-    m_vps_[vps_id].vps_max_layer_id = Parser::ReadBits(nalu, offset, 6);
-    m_vps_[vps_id].vps_num_layer_sets_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    for (int i = 1; i <= m_vps_[vps_id].vps_num_layer_sets_minus1; i++) {
-        for (int j = 0; j <= m_vps_[vps_id].vps_max_layer_id; j++) {
-            m_vps_[vps_id].layer_id_included_flag[i][j] = Parser::GetBit(nalu, offset);
+    p_vps->vps_max_layer_id = Parser::ReadBits(nalu, offset, 6);
+    p_vps->vps_num_layer_sets_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    for (int i = 1; i <= p_vps->vps_num_layer_sets_minus1; i++) {
+        for (int j = 0; j <= p_vps->vps_max_layer_id; j++) {
+            p_vps->layer_id_included_flag[i][j] = Parser::GetBit(nalu, offset);
         }
     }
-    m_vps_[vps_id].vps_timing_info_present_flag = Parser::GetBit(nalu, offset);
-    if(m_vps_[vps_id].vps_timing_info_present_flag) {
-        m_vps_[vps_id].vps_num_units_in_tick = Parser::ReadBits(nalu, offset, 32);
-        m_vps_[vps_id].vps_time_scale = Parser::ReadBits(nalu, offset, 32);
-        m_vps_[vps_id].vps_poc_proportional_to_timing_flag = Parser::GetBit(nalu, offset);
-        if(m_vps_[vps_id].vps_poc_proportional_to_timing_flag) {
-            m_vps_[vps_id].vps_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    p_vps->vps_timing_info_present_flag = Parser::GetBit(nalu, offset);
+    if(p_vps->vps_timing_info_present_flag) {
+        p_vps->vps_num_units_in_tick = Parser::ReadBits(nalu, offset, 32);
+        p_vps->vps_time_scale = Parser::ReadBits(nalu, offset, 32);
+        p_vps->vps_poc_proportional_to_timing_flag = Parser::GetBit(nalu, offset);
+        if(p_vps->vps_poc_proportional_to_timing_flag) {
+            p_vps->vps_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
-        m_vps_[vps_id].vps_num_hrd_parameters = Parser::ExpGolomb::ReadUe(nalu, offset);
-        for (int i = 0; i<m_vps_[vps_id].vps_num_hrd_parameters; i++) {
-            m_vps_[vps_id].hrd_layer_set_idx[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+        p_vps->vps_num_hrd_parameters = Parser::ExpGolomb::ReadUe(nalu, offset);
+        for (int i = 0; i<p_vps->vps_num_hrd_parameters; i++) {
+            p_vps->hrd_layer_set_idx[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
             if (i > 0) {
-                m_vps_[vps_id].cprms_present_flag[i] = Parser::GetBit(nalu, offset);
+                p_vps->cprms_present_flag[i] = Parser::GetBit(nalu, offset);
             }
             //parse HRD parameters
-            ParseHrdParameters(&m_vps_[vps_id].hrd_parameters[i], m_vps_[vps_id].cprms_present_flag[i], m_vps_[vps_id].vps_max_sub_layers_minus1, nalu, size, offset);
+            ParseHrdParameters(&p_vps->hrd_parameters[i], p_vps->cprms_present_flag[i], p_vps->vps_max_sub_layers_minus1, nalu, size, offset);
         }
     }
-    m_vps_[vps_id].vps_extension_flag = Parser::GetBit(nalu, offset);
+    p_vps->vps_extension_flag = Parser::GetBit(nalu, offset);
 
 #if DBGINFO
-    PrintVps(&m_vps_[vps_id]);
+    PrintVps(p_vps);
 #endif // DBGINFO
 }
 
@@ -1610,6 +1611,20 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+    }
+
+    // Set frame rate if available
+    if (new_sps_activated_) {
+        if (m_vps_[m_active_vps_id_].vps_timing_info_present_flag) {
+            frame_rate_.numerator = m_vps_[m_active_vps_id_].vps_time_scale;
+            frame_rate_.denominator = m_vps_[m_active_vps_id_].vps_num_units_in_tick;
+        } else if (sps_ptr->vui_parameters.vui_timing_info_present_flag) {
+            frame_rate_.numerator = sps_ptr->vui_parameters.vui_time_scale;
+            frame_rate_.denominator = sps_ptr->vui_parameters.vui_num_units_in_tick;
+        } else {
+            frame_rate_.numerator = 0;
+            frame_rate_.denominator = 0;
+        }
     }
 
     if (!m_sh_->first_slice_segment_in_pic_flag) {
