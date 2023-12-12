@@ -57,7 +57,7 @@ def iter_files(path):
 # Import arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocDecode_directory',   type=str, default='',
-                    help='The rocDecode samples Directory - required')
+                    help='The rocDecode Directory - required')
 parser.add_argument('--gpu_device_id',      type=int, default=0,
                     help='The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N-1] N = total number of available GPUs on a machine)')
 parser.add_argument('--files_directory',    type=str, default='',
@@ -92,6 +92,15 @@ if(os.path.isfile(run_rocDecode_app)):
     print("STATUS: rocDecode path - "+run_rocDecode_app+"\n")
 else:
     print("\nERROR: rocDecode Executable Not Found\n")
+    exit()
+
+if os.path.exists(filesDir) and not os.path.isfile(filesDir): 
+        # Checking if the directory is empty or not 
+        if not os.listdir(filesDir): 
+            print("\nERROR: Empty directory - no videos to decode")
+            exit()
+else: 
+    print("\nERROR: The input directory path is either for a file or directory does not exist!")
     exit()
 
 # Get cwd
