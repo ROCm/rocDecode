@@ -22,7 +22,7 @@ usage: run_rocDecodeSamples.py [--rocDecode_directory ROCDECODE_DIRECTORY]
 optional arguments:
   -h, --help            show this help message and exit
   --rocDecode_directory ROCDECODE_DIRECTORY
-                        The rocDecode samples Directory - required
+                        The rocDecode Directory - required
   --gpu_device_id GPU_DEVICE_ID
                         The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N-1] N = total number of available GPUs on a machine)
   --files_directory FILES_DIRECTORY
