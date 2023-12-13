@@ -33,6 +33,7 @@ optional arguments:
                         The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:4)
 ```
 
+```
 usage: run_rocDecode_Conformance.py [--rocDecode_directory ROCDECODE_DIRECTORY] 
                                     [--gpu_device_id GPU_DEVICE_ID]
                                     [--files_directory FILES_DIRECTORY]
