@@ -90,6 +90,7 @@ if streamListSize == 0:
     exit()
 if streamListSize != md5ListSize:
     print("Error: Bit stream file number and MD5 file number do not match\n")
+    exit()
 
 for i in range(streamListSize):
     streamFilePath = streamFileDir + streamFileList[i]
