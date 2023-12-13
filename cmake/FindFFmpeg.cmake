@@ -44,8 +44,6 @@ find_package_handle_standard_args(
     AVFORMAT_LIBRARY
     AVUTIL_INCLUDE_DIR
     AVUTIL_LIBRARY
-    SWSCALE_INCLUDE_DIR
-    SWSCALE_LIBRARY
   VERSION_VAR FFMPEG_VERSION
 )
 
@@ -124,27 +122,6 @@ else()
   )
   mark_as_advanced(AVUTIL_LIBRARY)
 
-  # SWSCALE  
-  find_path(SWSCALE_INCLUDE_DIR 
-    NAMES libswscale/swscale.h
-    PATHS ${_FFMPEG_SWSCALE_INCLUDE_DIRS}
-      /usr/local/include
-      /usr/include
-      /opt/local/include
-      /sw/include
-    PATH_SUFFIXES ffmpeg libav sw
-  )
-  mark_as_advanced(SWSCALE_INCLUDE_DIR)
-  find_library(SWSCALE_LIBRARY
-    NAMES swscale
-    PATHS ${_FFMPEG_SWSCALE_LIBRARY_DIRS}
-      /usr/local/lib
-      /usr/lib
-      /opt/local/lib
-      /sw/lib
-  )
-  mark_as_advanced(SWSCALE_LIBRARY)
-
   if(AVCODEC_LIBRARY AND AVFORMAT_LIBRARY)
     set(FFMPEG_FOUND TRUE)
   endif()
@@ -162,11 +139,10 @@ else()
   
   if(FFMPEG_FOUND)
     set(FFMPEG_INCLUDE_DIR ${AVFORMAT_INCLUDE_DIR} CACHE INTERNAL "")
-    set(FFMPEG_LIBRARIES 
+    set(FFMPEG_LIBRARIES
       ${AVCODEC_LIBRARY}
       ${AVFORMAT_LIBRARY}
       ${AVUTIL_LIBRARY}
-      ${SWSCALE_LIBRARY} 
       CACHE INTERNAL ""
     )
   endif()
