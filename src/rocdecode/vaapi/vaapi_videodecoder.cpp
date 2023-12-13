@@ -233,7 +233,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     rocDecStatus rocdec_status = DestroyDataBuffers();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Error: Failed to destroy VAAPI buffer");
-        return ROCDEC_SUCCESS;
+        return rocdec_status;
     }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAPictureParameterBufferType, pic_params_size, 1, pic_params_ptr, &pic_params_buf_id_));
     if (scaling_list_enabled) {
