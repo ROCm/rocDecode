@@ -2305,7 +2305,7 @@ int HEVCVideoParser::MarkOutputPictures() {
         uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
         uint32_t max_dec_pic_buffering = sps_ptr->sps_max_dec_pic_buffering_minus1[highest_tid] + 1;
 
-        if (dpb_buffer_.dpb_fullness >= max_dec_pic_buffering) {
+        while (dpb_buffer_.dpb_fullness >= max_dec_pic_buffering) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2324,7 +2324,7 @@ int HEVCVideoParser::MarkOutputPictures() {
 }
 
 int HEVCVideoParser::FindFreeBufAndMark() {
-    int i;
+    int i, j;
 
     // Look for an empty buffer with longest decode history (lowest decode count)
     uint32_t min_decode_order_count = 0xFFFFFFFF;
@@ -2332,8 +2332,18 @@ int HEVCVideoParser::FindFreeBufAndMark() {
     for (i = 0; i < dpb_buffer_.dpb_size; i++) {
         if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
             if (dpb_buffer_.frame_buffer_list[i].decode_order_count < min_decode_order_count) {
-                min_decode_order_count = dpb_buffer_.frame_buffer_list[i].decode_order_count;
-                index = i;
+                // Check if this picture has been bumped to the output/display list. If yes, skip it because we do not want to
+                // decode the current picture into any buffers in the output list
+                bool is_in_output_list = false;
+                for (j = 0; j < dpb_buffer_.num_output_pics; j++) {
+                    if (dpb_buffer_.output_pic_list[j] == i) {
+                        is_in_output_list = true;
+                    }
+                }
+                if (!is_in_output_list) {
+                    min_decode_order_count = dpb_buffer_.frame_buffer_list[i].decode_order_count;
+                    index = i;
+                }
             }
         }
     }
@@ -2359,7 +2369,17 @@ int HEVCVideoParser::FindFreeBufAndMark() {
     }
     dpb_buffer_.dpb_fullness++;
 
-    // Skip the additional bumping to avoid synchronous job submission
+    SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
+    uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
+    uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
+
+    // Conditional bumping (when max_num_reorder_pics > 0) to avoid synchronous job submission while keeping in conformance with the spec.
+    while (max_num_reorder_pics > 0 && dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
+        if (BumpPicFromDpb() != PARSER_OK) {
+            return PARSER_FAIL;
+        }
+    }
+
     // Skip SpsMaxLatencyPictures check as SpsMaxLatencyPictures >= sps_max_num_reorder_pics.
 
     return PARSER_OK;
