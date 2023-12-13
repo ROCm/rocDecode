@@ -77,12 +77,12 @@ if os.path.exists(resultsPath+'/rocDecode_output.log'):
 print("Starting conformance test .....................................\n")
 streamFileDir = filesDir + '/Streams/'
 streamFileList = os.listdir(streamFileDir)
-streamFileList.sort()
+streamFileList.sort(key=str.lower)
 streamListSize = len(streamFileList)
 
 md5FileDir = filesDir + '/MD5/'
 md5FileList = os.listdir(md5FileDir)
-md5FileList.sort()
+md5FileList.sort(key=str.lower)
 md5ListSize = len(md5FileList)
 
 if streamListSize == 0:
