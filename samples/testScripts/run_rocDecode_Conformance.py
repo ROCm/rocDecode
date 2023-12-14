@@ -101,7 +101,7 @@ for i in range(streamListSize):
 fileString = 'Input file'
 md5String = 'MD5 message digest'
 matchString = 'MD5 digest matches the reference MD5 digest'
-mismatchString = 'MD5 digest does not matche the reference MD5 digest'
+mismatchString = 'MD5 digest does not match the reference MD5 digest'
 passNum = 0
 failNum = 0
 with open(resultsPath + '/rocDecode_output.log', 'r') as logFile:
