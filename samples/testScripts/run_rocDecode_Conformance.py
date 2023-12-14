@@ -132,5 +132,6 @@ with open(resultsPath + '/rocDecode_output.log', 'r') as logFile:
     resultFile.write("===================================================")
     resultFile.write("\n     - The number of passing streams is " + str(passNum))
     resultFile.write("\n     - The number of failing streams is " + str(failNum))
+    resultFile.write("\n     - The number of streams that did not finish decoding is " + str(streamListSize - passNum - failNum))
     resultFile.close()
 logFile.close()
