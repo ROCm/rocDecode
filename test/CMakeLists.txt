@@ -22,6 +22,12 @@
 # ##############################################################################
 cmake_minimum_required(VERSION 3.5)
 
+project(rocdecode-test)
+
+# make test with CTest
+enable_testing()
+include(CTest)
+
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
   set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
