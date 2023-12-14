@@ -145,11 +145,14 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(DIRECTORY samples/videoDecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples COMPONENT dev)
   install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/video COMPONENT dev)
-  # set license information - {ROCM_PATH}/share/doc/rocdecode
+  # install license information - {ROCM_PATH}/share/doc/rocdecode
   set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT runtime)
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT dev)
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev COMPONENT dev)
+  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-test COMPONENT test)
+  # install test cmake
+  install(FILES test/CMakeLists.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
@@ -212,10 +215,13 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
   set(CPACK_DEBIAN_DEV_PACKAGE_NAME "${PROJECT_NAME}-dev")
   set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS 
-  "rocm-core, ${PROJECT_NAME}, ${rocDecode_DEBIAN_PACKAGE_LIST}, ${rocDecode_DEBIAN_DEV_PACKAGE_LIST}")
+  "rocm-core, ${PROJECT_NAME}, ${rocDecode_DEBIAN_DEV_PACKAGE_LIST}")
   # Debian package - specific variable for ASAN
   set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
   set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "rocm-core-asan, ${rocDecode_DEBIAN_PACKAGE_LIST}" )
+  # Debian package - Test
+  set(CPACK_DEBIAN_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
+  set(CPACK_DEBIAN_TEST_PACKAGE_DEPENDS "rocm-core, ${CPACK_DEBIAN_DEV_PACKAGE_NAME}" )
   # RPM package
   set(CPACK_RPM_COMPONENT_INSTALL ON)
   set(CPACK_RPM_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
@@ -223,28 +229,37 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_RPM_RUNTIME_PACKAGE_PROVIDES "${PROJECT_NAME}")
   set(CPACK_RPM_RUNTIME_PACKAGE_OBSOLETES "${PROJECT_NAME}")
   set(CPACK_RPM_DEV_PACKAGE_NAME "${PROJECT_NAME}-devel")
-  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}, ${rocDecode_RPM_PACKAGE_LIST}")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}")
   set(CPACK_RPM_DEV_PACKAGE_PROVIDES "${PROJECT_NAME}-devel")
   set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "${PROJECT_NAME}-devel")
   set(CPACK_RPM_PACKAGE_LICENSE "MIT" )
   # RPM package specific variable for ASAN
   set(CPACK_RPM_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
   set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, ${rocDecode_RPM_PACKAGE_LIST}" )
+  set(CPACK_RPM_ASAN_PACKAGE_PROVIDES "${PROJECT_NAME}-asan")
+  set(CPACK_RPM_ASAN_PACKAGE_OBSOLETES "${PROJECT_NAME}-asan")
+  # RPM package specific variable for Test
+  set(CPACK_RPM_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
+  set(CPACK_RPM_TEST_PACKAGE_REQUIRES "rocm-core, ${CPACK_RPM_DEV_PACKAGE_NAME}" )
+  set(CPACK_RPM_TEST_PACKAGE_PROVIDES "${PROJECT_NAME}-test")
+  set(CPACK_RPM_TEST_PACKAGE_OBSOLETES "${PROJECT_NAME}-test")
 
   if(NOT ROCM_DEP_ROCMCORE)
    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_RUNTIME_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES})
    string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_DEV_PACKAGE_REQUIRES ${CPACK_RPM_DEV_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_TEST_PACKAGE_REQUIRES ${CPACK_RPM_TEST_PACKAGE_REQUIRES})
    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS})
    string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
+   string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_TEST_PACKAGE_DEPENDS ${CPACK_DEBIAN_TEST_PACKAGE_DEPENDS})
   endif()
 
   if(ENABLE_ASAN_PACKAGING)
    # ASAN Package requires asan component with only libraries and license file
    set(CPACK_COMPONENTS_ALL asan)
   else()
-   set(CPACK_COMPONENTS_ALL runtime dev)
+   set(CPACK_COMPONENTS_ALL runtime dev test)
   endif()
 
   set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
@@ -279,17 +294,23 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   cpack_add_component(runtime
                     DISPLAY_NAME "rocDecode Runtime Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-  rocDecode runtime package provides rocDecode library and license.txt")
+rocDecode runtime package provides rocDecode library and license.txt")
 
   cpack_add_component(dev
                     DISPLAY_NAME "rocDecode Develop Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-  rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
+rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocDecode ASAN Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-  rocDecode ASAN package provides rocDecode ASAN libraries")
+rocDecode ASAN package provides rocDecode ASAN libraries")
+
+  cpack_add_component(test
+                  DISPLAY_NAME "rocDecode Test Package"
+                  DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
+rocDecode Test package provides rocDecode Test Components")
+
 else()
   message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)

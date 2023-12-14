@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
     // Parse command-line arguments
-    if(argc < 1) {
+    if(argc <= 1) {
         ShowHelpAndExit();
     }
     for (int i = 1; i < argc; i++) {

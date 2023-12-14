@@ -77,7 +77,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
     std::string file_list_path;
 
     // Parse command-line arguments
-    if(argc < 1) {
+    if(argc <= 1) {
         ShowHelpAndExit();
     }
     for (int i = 1; i < argc; i++) {

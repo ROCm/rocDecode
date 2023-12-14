@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
     int rgb_width;
 
     // Parse command-line arguments
-    if(argc < 1) {
+    if(argc <= 1) {
         ShowHelpAndExit();
     }
     for (int i = 1; i < argc; i++) {

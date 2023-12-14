@@ -35,7 +35,15 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
   sudo apt install libstdc++-12-dev
   ```
 
-* **Note** [rocDecode-setup.py](rocDecode-setup.py) script can be used for installing all the dependencies
+### Prerequisites setup script for Linux
+For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
+
+**Usage:**
+```shell
+  python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
+                             --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
+```
+**NOTE:** This script only needs to be executed once.
 
 ## Build instructions
 

@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
     bool b_force_zero_latency = false;
     // Parse command-line arguments
-    if(argc < 1) {
+    if(argc <= 1) {
         ShowHelpAndExit();
     }
     for (int i = 1; i < argc; i++) {
