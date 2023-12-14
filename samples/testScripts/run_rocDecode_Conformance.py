@@ -127,6 +127,7 @@ with open(resultsPath + '/rocDecode_output.log', 'r') as logFile:
     print("Conformance test completed on the", streamListSize, "streams:")
     print("     - The number of passing streams is", passNum)
     print("     - The number of failing streams is", failNum)
+    print("     - The number of streams that did not finish decoding is " + str(streamListSize - passNum - failNum))
     resultFile.write("\n===================================================\n")
     resultFile.write("Conformance test result summary on the " + str(streamListSize) + " streams:\n")
     resultFile.write("===================================================")
