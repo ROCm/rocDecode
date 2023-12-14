@@ -44,6 +44,7 @@ typedef struct {
     std::string out_file;
     bool b_force_zero_latency;
     bool b_extract_sei_messages;
+    bool b_flush_last_frames;
     Rect crop_rect;
     Rect *p_crop_rect;
     int dump_output_frames;
@@ -126,6 +127,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
             file_idx++;
             file_data.b_force_zero_latency = false;
             file_data.b_extract_sei_messages = false;
+            file_data.b_flush_last_frames = true;
             file_data.dump_output_frames = 0;
             file_data.crop_rect = {0, 0, 0, 0};
             file_data.p_crop_rect = nullptr;
@@ -153,6 +155,30 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
     }
 }
 
+// callback function to flush last frames when reconfigure happens
+int ReconfigureFlushCallback(void *p_viddec_obj, bool b_dump_to_file, std::string& out_file_name) {
+    int n_frames_flushed = 0;
+    if (!p_viddec_obj) return n_frames_flushed;
+
+    RocVideoDecoder *viddec = static_cast<RocVideoDecoder *> (p_viddec_obj);
+    OutputSurfaceInfo *surf_info;
+    if (!viddec->GetOutputSurfaceInfo(&surf_info)) {
+        std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+        return n_frames_flushed;
+    }
+    uint8_t *pframe = nullptr;
+    int64_t pts;
+    while ((pframe = viddec->GetFrame(&pts))) {
+        if (b_dump_to_file) {
+            viddec->SaveFrameToFile(out_file_name, pframe, surf_info);
+        }
+        // release and flush frame
+        viddec->ReleaseFrame(pts, true);
+        n_frames_flushed ++;
+    }
+    return n_frames_flushed;
+}
+
 int main(int argc, char **argv) {
 
     std::deque<FileInfo> multi_file_data;
@@ -162,6 +188,7 @@ int main(int argc, char **argv) {
 
     ParseCommandLine (&multi_file_data, device_id, use_reconfigure, argc, argv);
     RocVideoDecoder *viddec = NULL;
+    ReconfigParams reconfig_params = { 0 };
 
     try {
         while (!multi_file_data.empty()) {
@@ -171,8 +198,13 @@ int main(int argc, char **argv) {
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
 
             if (use_reconfigure) {
+                reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+                reconfig_params.b_dump_frames_to_file = file_data.dump_output_frames;
+                reconfig_params.output_file_name = file_data.out_file;
+
                 if (!viddec) {
                     viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+                    if (viddec) viddec->SetReconfigParams(&reconfig_params);
                 }
             } else {
                 viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
@@ -231,6 +263,8 @@ int main(int argc, char **argv) {
             if (!use_reconfigure) {
                 delete viddec;
                 viddec = NULL;
+            } else {
+                std::cout << "info: Total frame flushed during reconfig: " << viddec->GetNumOfFlushedFrames() << std::endl;
             }
             std::cout << "\n";
         }

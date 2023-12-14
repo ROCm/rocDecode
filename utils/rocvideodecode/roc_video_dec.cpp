@@ -24,8 +24,8 @@ THE SOFTWARE.
 
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
               const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height, uint32_t clk_rate) :
-              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), b_extract_sei_message_(extract_user_sei_Message),
-              max_width_ (max_width), max_height_(max_height) {
+              device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
+              b_extract_sei_message_(extract_user_sei_Message),max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -418,6 +418,24 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 }
 
 /**
+ * @brief Function to set the Reconfig Params object
+ * 
+ * @param p_reconfig_params: pointer to reconfig params struct
+ * @return true : success
+ * @return false : fail
+ */
+bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params) {
+    if (!p_reconfig_params) {
+        std::cout << "ERROR: Invalid reconfig struct passed! "<< std::endl;
+        return false;
+    }
+    //save it
+    p_reconfig_params_ = p_reconfig_params;
+    return true;
+}
+
+
+/**
  * @brief function to reconfigure decoder if there is a change in sequence params.
  *
  * @param p_video_format
@@ -453,6 +471,30 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         }
         return 1;
     }
+    // flush and clear internal frame store to reconfigure
+    if (p_reconfig_params_ && p_reconfig_params_->p_fn_reconfigure_flush) 
+        num_frames_flushed_during_reconfig_ = p_reconfig_params_->p_fn_reconfigure_flush(this, p_reconfig_params_->b_dump_frames_to_file, p_reconfig_params_->output_file_name);
+    // clear the existing output buffers of different size
+    // note that app lose the remaining frames in the vp_frames/vp_frames_q in case application didn't set p_fn_reconfigure_flush_ callback
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+        ReleaseInternalFrames();
+    } else {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        while(!vp_frames_.empty()) {
+            DecFrameBuffer *p_frame = &vp_frames_.back();
+            // pop decoded frame
+            vp_frames_.pop_back();
+            if (p_frame->frame_ptr) {
+              if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                  hipError_t hip_status = hipFree(p_frame->frame_ptr);
+                  if (hip_status != hipSuccess) std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
+              }
+              else
+                  delete[] (p_frame->frame_ptr);
+            }
+        }
+    }
+    decoded_frame_cnt_ = 0;     //reset frame_count
 
     width_ = p_video_format->coded_width;
     height_ = p_video_format->coded_height;
@@ -477,6 +519,9 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     } else {
         surface_stride_ = reconfig_params.ulTargetWidth * byte_per_pixel_;
     }
+    chroma_height_ = (int)(ceil(height_ * GetChromaHeightFactor(video_surface_format_)));
+    num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
+    if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
     // fill output_surface_info_
     output_surface_info_.output_width = width_;
@@ -503,6 +548,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         return 0;
     }
     ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+
 
     input_video_info_str_.str("");
     input_video_info_str_.clear();
@@ -744,6 +790,8 @@ uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
     return nullptr;
 }
 
+
+
 /**
  * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
  * 
@@ -752,9 +800,19 @@ uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
  * @return false     - falied
  */
 
-bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp) {
-    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL)
-        return true;            // nothing to do
+bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
+    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
+        if (!b_flushing)  // if not flushing the buffers are re-used, so keep them
+            return true;            // nothing to do
+        else {
+            DecFrameBuffer *fb = &vp_frames_[0];
+            if (pTimestamp != fb->pts) {
+                std::cerr << "Decoded Frame is released out of order" << std::endl;
+                return false;
+            }
+            vp_frames_.erase(vp_frames_.begin());     // get rid of the frames from the framestore
+        }
+    }
     // only needed when using internal mapped buffer
     if (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
@@ -771,6 +829,29 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp) {
     }
     return true;
 }
+
+
+/**
+ * @brief function to release all internal frames and clear the q (used with reconfigure): Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
+ * 
+ * @return true      - success
+ * @return false     - falied
+ */
+bool RocVideoDecoder::ReleaseInternalFrames()
+{
+    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL)
+        return true;            // nothing to do
+    // only needed when using internal mapped buffer
+    while (!vp_frames_q_.empty()) {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        DecFrameBuffer *fb = &vp_frames_q_.front();
+        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
+        // pop decoded frame
+        vp_frames_q_.pop();
+    }
+    return true;
+}
+
 
 void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info) {
     uint8_t *hst_ptr = nullptr;
