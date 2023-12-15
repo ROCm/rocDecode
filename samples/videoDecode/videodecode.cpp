@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
                 if (memcmp(digest, ref_md5, 16) == 0) {
                     std::cout << "MD5 digest matches the reference MD5 digest: ";
                 } else {
-                    std::cout << "MD5 digest does not matche the reference MD5 digest: ";
+                    std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
                 ref_md5_file.seekg(0, std::ios_base::beg);
                 ref_md5_file.getline(ref_md5_string, 33);

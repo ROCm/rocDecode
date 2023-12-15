@@ -2073,13 +2073,13 @@ void HEVCVideoParser::DecodeRps() {
         /*
         * RPS derivation and picture marking
         */
-        // Init as "no reference picture"
+        // Init to a valid index value to take care of undecodable RASL pictures, whose reference pictures are emptied after a CRA.
         for (i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
-            ref_pic_set_st_curr_before_[i] = 0xFF;
-            ref_pic_set_st_curr_after_[i] = 0xFF;
-            ref_pic_set_st_foll_[i] = 0xFF;
-            ref_pic_set_lt_curr_[i] = 0xFF;
-            ref_pic_set_lt_foll_[i] = 0xFF;
+            ref_pic_set_st_curr_before_[i] = 0;
+            ref_pic_set_st_curr_after_[i] = 0;
+            ref_pic_set_st_foll_[i] = 0;
+            ref_pic_set_lt_curr_[i] = 0;
+            ref_pic_set_lt_foll_[i] = 0;
         }
 
         // Mark all in DPB as unused. We will mark them back while we go through the ref lists. The rest will be actually unused.
