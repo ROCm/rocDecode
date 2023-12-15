@@ -1781,7 +1781,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
 
                 m_sh_->ref_pic_list_modification_flag_l0 = Parser::GetBit(nalu, offset);
                 if (m_sh_->ref_pic_list_modification_flag_l0) {
-                    for (int i = 0; i < m_sh_->num_ref_idx_l0_active_minus1; i++) {
+                    for (int i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
                         m_sh_->list_entry_l0[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
                     }
                 }
@@ -1789,7 +1789,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
                 if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
                     m_sh_->ref_pic_list_modification_flag_l1 = Parser::GetBit(nalu, offset);
                     if (m_sh_->ref_pic_list_modification_flag_l1) {
-                        for (int i = 0; i < m_sh_->num_ref_idx_l1_active_minus1; i++) {
+                        for (int i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
                             m_sh_->list_entry_l1[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
                         }
                     }
