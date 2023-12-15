@@ -96,12 +96,15 @@ def runPackageCommand(platform, project) {
                 sudo make package
                 mkdir -p package
                 mv rocdecode-dev*.${packageType} package/${osType}-rocdecode-dev.${packageType}
+                mv rocdecode-test*.${packageType} package/${osType}-rocdecode-test.${packageType}
                 mv ${packageRunTime}.${packageType} package/${osType}-rocdecode.${packageType}
                 mv Testing/Temporary/LastTest.log package/${osType}-LastTest.log
                 mv Testing/Temporary/LastTestsFailed.log package/${osType}-LastTestsFailed.log
                 ${packageDetail} package/${osType}-rocdecode-dev.${packageType}
+                ${packageDetail} package/${osType}-rocdecode-test.${packageType}
                 ${packageDetail} package/${osType}-rocdecode.${packageType}
                 ${packageInfo} package/${osType}-rocdecode-dev.${packageType}
+                ${packageInfo} package/${osType}-rocdecode-test.${packageType}
                 ${packageInfo} package/${osType}-rocdecode.${packageType}
                 """
 
