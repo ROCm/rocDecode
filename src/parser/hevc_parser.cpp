@@ -1979,6 +1979,7 @@ bool HEVCVideoParser::IsRefPic(NalUnitHeader *nal_header_ptr) {
         return false;
     }
 }
+
 void HEVCVideoParser::CalculateCurrPOC() {
     // Recode decode order count
     curr_pic_info_.decode_order_count = pic_count_;
