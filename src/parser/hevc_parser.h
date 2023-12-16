@@ -947,4 +947,6 @@ private:
     bool IsBlaPic(NalUnitHeader *nal_header_ptr);
     bool IsIrapPic(NalUnitHeader *nal_header_ptr);
     bool IsRaslPic(NalUnitHeader *nal_header_ptr);
+    bool IsRadlPic(NalUnitHeader *nal_header_ptr);
+    bool IsRefPic(NalUnitHeader *nal_header_ptr);
 };
