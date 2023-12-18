@@ -1963,8 +1963,21 @@ bool HEVCVideoParser::IsRaslPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_R);
 }
 
+bool HEVCVideoParser::IsRadlPic(NalUnitHeader *nal_header_ptr) {
+    return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_R);
+}
+
 bool HEVCVideoParser::IsIrapPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23);
+}
+
+bool HEVCVideoParser::IsRefPic(NalUnitHeader *nal_header_ptr) {
+    if (((nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_VCL_R15) && ((nal_header_ptr->nal_unit_type % 2) != 0)) ||
+         ((nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP) && (nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23))) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void HEVCVideoParser::CalculateCurrPOC() {
@@ -1996,9 +2009,11 @@ void HEVCVideoParser::CalculateCurrPOC() {
         }
 
         curr_pic_info_.pic_order_cnt = poc_msb + m_sh_->slice_pic_order_cnt_lsb;
-        curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
-        curr_pic_info_.prev_poc_msb = poc_msb;
         curr_pic_info_.slice_pic_order_cnt_lsb = m_sh_->slice_pic_order_cnt_lsb;
+        if ((slice_nal_unit_header_.nuh_temporal_id_plus1 - 1) == 0 && IsRefPic(&slice_nal_unit_header_) && !IsRaslPic(&slice_nal_unit_header_) && !IsRadlPic(&slice_nal_unit_header_)) {
+            curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
+            curr_pic_info_.prev_poc_msb = poc_msb;
+        }
     }
 }
 
