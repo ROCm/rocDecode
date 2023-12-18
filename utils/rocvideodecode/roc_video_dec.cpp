@@ -25,7 +25,7 @@ THE SOFTWARE.
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
               const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
-              b_extract_sei_message_(extract_user_sei_Message),max_width_ (max_width), max_height_(max_height) {
+              b_extract_sei_message_(extract_user_sei_Message), max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
