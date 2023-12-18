@@ -1781,7 +1781,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
 
                 m_sh_->ref_pic_list_modification_flag_l0 = Parser::GetBit(nalu, offset);
                 if (m_sh_->ref_pic_list_modification_flag_l0) {
-                    for (int i = 0; i < m_sh_->num_ref_idx_l0_active_minus1; i++) {
+                    for (int i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
                         m_sh_->list_entry_l0[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
                     }
                 }
@@ -1789,7 +1789,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
                 if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
                     m_sh_->ref_pic_list_modification_flag_l1 = Parser::GetBit(nalu, offset);
                     if (m_sh_->ref_pic_list_modification_flag_l1) {
-                        for (int i = 0; i < m_sh_->num_ref_idx_l1_active_minus1; i++) {
+                        for (int i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
                             m_sh_->list_entry_l1[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
                         }
                     }
@@ -1963,8 +1963,21 @@ bool HEVCVideoParser::IsRaslPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_R);
 }
 
+bool HEVCVideoParser::IsRadlPic(NalUnitHeader *nal_header_ptr) {
+    return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_R);
+}
+
 bool HEVCVideoParser::IsIrapPic(NalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23);
+}
+
+bool HEVCVideoParser::IsRefPic(NalUnitHeader *nal_header_ptr) {
+    if (((nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_VCL_R15) && ((nal_header_ptr->nal_unit_type % 2) != 0)) ||
+         ((nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP) && (nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23))) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void HEVCVideoParser::CalculateCurrPOC() {
@@ -1996,9 +2009,11 @@ void HEVCVideoParser::CalculateCurrPOC() {
         }
 
         curr_pic_info_.pic_order_cnt = poc_msb + m_sh_->slice_pic_order_cnt_lsb;
-        curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
-        curr_pic_info_.prev_poc_msb = poc_msb;
         curr_pic_info_.slice_pic_order_cnt_lsb = m_sh_->slice_pic_order_cnt_lsb;
+        if ((slice_nal_unit_header_.nuh_temporal_id_plus1 - 1) == 0 && IsRefPic(&slice_nal_unit_header_) && !IsRaslPic(&slice_nal_unit_header_) && !IsRadlPic(&slice_nal_unit_header_)) {
+            curr_pic_info_.prev_poc_lsb = m_sh_->slice_pic_order_cnt_lsb;
+            curr_pic_info_.prev_poc_msb = poc_msb;
+        }
     }
 }
 
@@ -2073,13 +2088,13 @@ void HEVCVideoParser::DecodeRps() {
         /*
         * RPS derivation and picture marking
         */
-        // Init as "no reference picture"
+        // Init to a valid index value to take care of undecodable RASL pictures, whose reference pictures are emptied after a CRA.
         for (i = 0; i < HEVC_MAX_NUM_REF_PICS; i++) {
-            ref_pic_set_st_curr_before_[i] = 0xFF;
-            ref_pic_set_st_curr_after_[i] = 0xFF;
-            ref_pic_set_st_foll_[i] = 0xFF;
-            ref_pic_set_lt_curr_[i] = 0xFF;
-            ref_pic_set_lt_foll_[i] = 0xFF;
+            ref_pic_set_st_curr_before_[i] = 0;
+            ref_pic_set_st_curr_after_[i] = 0;
+            ref_pic_set_st_foll_[i] = 0;
+            ref_pic_set_lt_curr_[i] = 0;
+            ref_pic_set_lt_foll_[i] = 0;
         }
 
         // Mark all in DPB as unused. We will mark them back while we go through the ref lists. The rest will be actually unused.

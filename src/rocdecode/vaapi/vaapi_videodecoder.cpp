@@ -190,7 +190,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     VASurfaceID curr_surface_id;
 
     // Get the surface id for the current picture, assuming 1:1 mapping between DPB and VAAPI decoded surfaces.
-    if (pPicParams->CurrPicIdx >= va_surface_ids_.size()) {
+    if (pPicParams->CurrPicIdx >= va_surface_ids_.size() || pPicParams->CurrPicIdx < 0) {
         ERR("CurrPicIdx exceeded the VAAPI surface pool limit.");
         return ROCDEC_INVALID_PARAMETER;
     }
@@ -202,6 +202,10 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             pPicParams->pic_params.hevc.cur_pic.PicIdx = curr_surface_id;
             for (int i = 0; i < 15; i++) {
                 if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx != 0xFF) {
+                    if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx >= va_surface_ids_.size() || pPicParams->pic_params.hevc.ref_frames[i].PicIdx < 0) {
+                        ERR("Reference frame index exceeded the VAAPI surface pool limit.");
+                        return ROCDEC_INVALID_PARAMETER;
+                    }
                     pPicParams->pic_params.hevc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.hevc.ref_frames[i].PicIdx];
                 }
             }
