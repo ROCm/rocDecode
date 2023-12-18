@@ -39,7 +39,7 @@ typedef struct ReconfigDumpFileStruct_t {
 // callback function to flush last frames and save it to file when reconfigure happens
 int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_user_struct) {
     int n_frames_flushed = 0;
-    if (!p_viddec_obj) return n_frames_flushed;
+    if ((p_viddec_obj != nullptr) ||  (p_user_struct != nullptr)) return n_frames_flushed;
 
     RocVideoDecoder *viddec = static_cast<RocVideoDecoder *> (p_viddec_obj);
     OutputSurfaceInfo *surf_info;

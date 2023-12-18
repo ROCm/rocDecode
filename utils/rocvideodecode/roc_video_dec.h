@@ -42,7 +42,7 @@ extern "C" {
 #include "rocparser.h"
 
 #define MAX_FRAME_NUM     16
-typedef int (ROCDECAPI *PFN_RECONFIGUE_FLUSH_CALLBACK)(void *, uint32_t, void *);
+typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 
 typedef enum SeiH264HevcPayloadType_enum {
     SEI_TYPE_TIME_CODE = 136,
@@ -136,7 +136,7 @@ typedef struct OutputSurfaceInfoType {
 } OutputSurfaceInfo;
 
 typedef struct ReconfigParams_t {
-    PFN_RECONFIGUE_FLUSH_CALLBACK p_fn_reconfigure_flush;
+    PFNRECONFIGUEFLUSHCALLBACK p_fn_reconfigure_flush;
     void *p_reconfig_user_struct;
     uint32_t reconfig_flush_mode;
 } ReconfigParams;
