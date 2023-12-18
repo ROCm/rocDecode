@@ -473,7 +473,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     }
     // flush and clear internal frame store to reconfigure
     if (p_reconfig_params_ && p_reconfig_params_->p_fn_reconfigure_flush) 
-        num_frames_flushed_during_reconfig_ = p_reconfig_params_->p_fn_reconfigure_flush(this, p_reconfig_params_->b_dump_frames_to_file, p_reconfig_params_->output_file_name);
+        num_frames_flushed_during_reconfig_ = p_reconfig_params_->p_fn_reconfigure_flush(this, p_reconfig_params_->reconfig_flush_mode, 
+                                                                                        static_cast<void *>(p_reconfig_params_->p_reconfig_user_struct));
     // clear the existing output buffers of different size
     // note that app lose the remaining frames in the vp_frames/vp_frames_q in case application didn't set p_fn_reconfigure_flush_ callback
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
@@ -490,7 +491,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
                   if (hip_status != hipSuccess) std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
               }
               else
-                  delete[] (p_frame->frame_ptr);
+                  delete [] (p_frame->frame_ptr);
             }
         }
     }
@@ -519,7 +520,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     } else {
         surface_stride_ = reconfig_params.ulTargetWidth * byte_per_pixel_;
     }
-    chroma_height_ = (int)(ceil(height_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_height_ = static_cast<int>(ceil(height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
@@ -837,8 +838,7 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
  * @return true      - success
  * @return false     - falied
  */
-bool RocVideoDecoder::ReleaseInternalFrames()
-{
+bool RocVideoDecoder::ReleaseInternalFrames() {
     if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL)
         return true;            // nothing to do
     // only needed when using internal mapped buffer
