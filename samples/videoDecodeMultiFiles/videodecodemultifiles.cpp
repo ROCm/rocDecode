@@ -38,12 +38,14 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "common.h"
 
 typedef struct {
     std::string in_file;
     std::string out_file;
     bool b_force_zero_latency;
     bool b_extract_sei_messages;
+    bool b_flush_last_frames;
     Rect crop_rect;
     Rect *p_crop_rect;
     int dump_output_frames;
@@ -60,6 +62,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "sei 0 (extract SEI messages; default: 0)" << std::endl
     << "crop l,t,r,b (crop rectangle for output (not used when using interopped decoded frame); default: 0)" << std::endl
     << "m 0 decoded surface memory; optional; default - 0 [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl
+    << "flush 1 flush last frames during reconfig; optional; default - 1 [1 : Flush last frames during reconfig  0 : Discard last frames during reconfigure ]" << std::endl
     << "infile input2.[mp4/mov...]" << std::endl
     << "outfile output2.yuv" << std::endl
     << "...." << std::endl
@@ -126,6 +129,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
             file_idx++;
             file_data.b_force_zero_latency = false;
             file_data.b_extract_sei_messages = false;
+            file_data.b_flush_last_frames = true;
             file_data.dump_output_frames = 0;
             file_data.crop_rect = {0, 0, 0, 0};
             file_data.p_crop_rect = nullptr;
@@ -137,6 +141,8 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
             file_data.b_force_zero_latency = atoi(value) ? true : false;
         } else if (!strcmp(param, "sei")) {
             file_data.b_extract_sei_messages = atoi(value) ? true : false;
+        } else if (!strcmp(param, "flush")) {
+            file_data.b_flush_last_frames = atoi(value) ? true : false;
         } else if (!strcmp(param, "crop")) {
             sscanf(value, "%d,%d,%d,%d", &file_data.crop_rect.l, &file_data.crop_rect.t, &file_data.crop_rect.r, &file_data.crop_rect.b);
             if ((file_data.crop_rect.r - file_data.crop_rect.l) % 2 == 1 || (file_data.crop_rect.b - file_data.crop_rect.t) % 2 == 1) {
@@ -162,6 +168,8 @@ int main(int argc, char **argv) {
 
     ParseCommandLine (&multi_file_data, device_id, use_reconfigure, argc, argv);
     RocVideoDecoder *viddec = NULL;
+    ReconfigParams reconfig_params = { 0 };
+    ReconfigDumpFileStruct reconfig_user_struct = { 0 };
 
     try {
         while (!multi_file_data.empty()) {
@@ -169,14 +177,22 @@ int main(int argc, char **argv) {
             multi_file_data.pop_front();
             VideoDemuxer demuxer(file_data.in_file.c_str());
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-
+            if (file_data.b_flush_last_frames && file_data.dump_output_frames) {
+                reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+                reconfig_user_struct.b_dump_frames_to_file = file_data.dump_output_frames;
+                reconfig_user_struct.output_file_name = file_data.out_file;
+                reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+                reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
+            }
             if (use_reconfigure) {
+
                 if (!viddec) {
                     viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
                 }
             } else {
                 viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
             }
+            if (viddec && file_data.b_flush_last_frames) viddec->SetReconfigParams(&reconfig_params);
             std::string device_name, gcn_arch_name;
             int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -223,6 +239,7 @@ int main(int argc, char **argv) {
                 n_frame += n_frame_returned;
             } while (n_video_bytes);
 
+            n_frame += viddec->GetNumOfFlushedFrames();
             std::cout << "info: Total frame decoded: " << n_frame << std::endl;
             if (!file_data.dump_output_frames) {
                 std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;

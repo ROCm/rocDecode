@@ -38,6 +38,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -64,9 +65,13 @@ int main(int argc, char **argv) {
     bool b_extract_sei_messages = false;
     bool b_generate_md5 = false;
     bool b_md5_check = false;
+    bool b_flush_frames_during_reconfig = true;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
+    ReconfigParams reconfig_params = { 0 };
+    ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -145,8 +150,14 @@ int main(int argc, char **argv) {
             mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
+        if (!strcmp(argv[i], "flush")) {
+            b_flush_frames_during_reconfig = atoi(argv[i]) ? true : false;
+            continue;
+        }
+
         ShowHelpAndExit(argv[i]);
     }
+
     try {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
@@ -171,6 +182,12 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
+        // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
+        reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+        reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
+        reconfig_user_struct.output_file_name = output_file_path;
+        reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+        reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
         if (b_generate_md5) {
             viddec.InitMd5();
@@ -178,6 +195,7 @@ int main(int argc, char **argv) {
         if (b_md5_check) {
             ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
         }
+        if (dump_output_frames) viddec.SetReconfigParams(&reconfig_params);
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -207,7 +225,8 @@ int main(int argc, char **argv) {
             }
             n_frame += n_frame_returned;
         } while (n_video_bytes);
-
+        
+        n_frame += viddec.GetNumOfFlushedFrames();
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;

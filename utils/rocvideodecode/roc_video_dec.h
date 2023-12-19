@@ -42,6 +42,7 @@ extern "C" {
 #include "rocparser.h"
 
 #define MAX_FRAME_NUM     16
+typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 
 typedef enum SeiH264HevcPayloadType_enum {
     SEI_TYPE_TIME_CODE = 136,
@@ -133,6 +134,12 @@ typedef struct OutputSurfaceInfoType {
     rocDecVideoSurfaceFormat surface_format;      /**< Chroma format of the decoded image*/
     OutputSurfaceMemoryType mem_type;             /**< Output mem_type of the surface*/    
 } OutputSurfaceInfo;
+
+typedef struct ReconfigParams_t {
+    PFNRECONFIGUEFLUSHCALLBACK p_fn_reconfigure_flush;
+    void *p_reconfig_user_struct;
+    uint32_t reconfig_flush_mode;
+} ReconfigParams;
 
 class RocVideoDecoder {
     public:
@@ -233,6 +240,15 @@ class RocVideoDecoder {
          * @return false 
          */
         bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info);
+
+        /**
+         * @brief Function to set the Reconfig Params object
+         * 
+         * @param p_reconfig_params: pointer to reconfig params struct
+         * @return true : success
+         * @return false : fail
+         */
+        bool SetReconfigParams(ReconfigParams *p_reconfig_params);
         /**
          * @brief this function decodes a frame and returns the number of frames avalable for display
          * 
@@ -253,10 +269,11 @@ class RocVideoDecoder {
          * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
          * 
          * @param pTimestamp - timestamp of the frame to be released (unmapped)
+         * @param b_flushing - true when flushing
          * @return true      - success
          * @return false     - falied
          */
-        bool ReleaseFrame(int64_t pTimestamp);
+        bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
 
         /**
          * @brief utility function to save image to a file
@@ -307,6 +324,12 @@ class RocVideoDecoder {
          * @param [out] digest Pointer to the 16 byte message digest
          */
         void FinalizeMd5(uint8_t **digest);
+        /**
+         * @brief Get the Num Of Flushed Frames from video decoder object
+         * 
+         * @return int32_t 
+         */
+        int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
 
     private:
         int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
@@ -356,12 +379,21 @@ class RocVideoDecoder {
          *   @brief  This function reconfigure decoder if there is a change in sequence params.
          */
         int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
+        
+        /**
+         * @brief function to release all internal frames and clear the vp_frames_q_ (used with reconfigure): Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
+         * 
+         * @return true      - success
+         * @return false     - falied
+         */
+        bool ReleaseInternalFrames();
 
         /**
          * @brief Function to Initialize GPU-HIP
          * 
          */
         bool InitHIP(int device_id);
+
         int num_devices_;
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
@@ -369,7 +401,8 @@ class RocVideoDecoder {
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
         bool b_force_zero_latency_ = false;
-        //bool b_device_frame_pitched_ = true;
+        ReconfigParams *p_reconfig_params_ = nullptr;
+        int32_t num_frames_flushed_during_reconfig_ = 0;
         hipDeviceProp_t hip_dev_prop_;
         hipStream_t hip_stream_;
         rocDecVideoCodec codec_id_ = rocDecVideoCodec_NumCodecs;
