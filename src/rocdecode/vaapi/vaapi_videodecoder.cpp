@@ -68,9 +68,10 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
         ERR("ERROR: the codec config combination is not supported!");
         return ROCDEC_NOT_SUPPORTED;
     }
-    // There are 8 renderDXXX per physical device on gfx940 and gfx941
+    // There are 8 renderDXXX per physical device on gfx940/gfx941/gfx942
     int num_render_cards_per_device = ((gcn_arch_name.compare("gfx940") == 0) ||
-                                       (gcn_arch_name.compare("gfx941") == 0)) ? 8 : 1;
+                                       (gcn_arch_name.compare("gfx941") == 0) ||
+                                       (gcn_arch_name.compare("gfx942") == 0)) ? 8 : 1;
     std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.deviceid * num_render_cards_per_device);
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
@@ -102,6 +103,10 @@ rocDecStatus VaapiVideoDecoder::InitVAAPI(std::string drm_node) {
         return ROCDEC_NOT_INITIALIZED;
     }
     va_display_ = vaGetDisplayDRM(drm_fd_);
+    if (!va_display_) {
+        ERR("ERROR: failed to create va_display ");
+        return ROCDEC_NOT_INITIALIZED;
+    }
     vaSetInfoCallback(va_display_, NULL, NULL);
     int major_version = 0, minor_version = 0;
     CHECK_VAAPI(vaInitialize(va_display_, &major_version, &minor_version));
