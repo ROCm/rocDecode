@@ -1598,6 +1598,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         sps_ptr = &m_sps_[m_active_sps_id_];
         // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
+        dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     sps_ptr = &m_sps_[m_active_sps_id_];
@@ -1610,6 +1611,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
         // Take care of the case where a new SPS replaces the old SPS with the same id but with different dimensions
         // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
+        dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
@@ -2185,10 +2187,6 @@ void HEVCVideoParser::ConstructRefPicLists() {
     rIdx = 0;
     num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l0_active_minus1 + 1, num_pic_total_curr_);
 
-    // Error handling to prevent infinite loop
-    if ((num_poc_st_curr_before_ + num_poc_st_curr_after_ + num_poc_lt_curr_) < num_rps_curr_temp_list) {
-        return;
-    }
     while (rIdx < num_rps_curr_temp_list) {
         for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
             ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
@@ -2211,11 +2209,6 @@ void HEVCVideoParser::ConstructRefPicLists() {
     if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
         rIdx = 0;
         num_rps_curr_temp_list = std::max(m_sh_->num_ref_idx_l1_active_minus1 + 1, num_pic_total_curr_);
-
-        // Error handling to prevent infinite loop
-        if ((num_poc_st_curr_before_ + num_poc_st_curr_after_ + num_poc_lt_curr_) < num_rps_curr_temp_list) {
-            return;
-        }
 
         while (rIdx < num_rps_curr_temp_list) {
             for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
