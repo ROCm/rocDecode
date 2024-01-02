@@ -175,15 +175,19 @@ rocDecStatus VaapiVideoDecoder::CreateContext() {
 rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
     if (pic_params_buf_id_) {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
+        pic_params_buf_id_ = 0;
     }
     if (iq_matrix_buf_id_) {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
+        iq_matrix_buf_id_ = 0;
     }
     if (slice_params_buf_id_) {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_));
+        slice_params_buf_id_ = 0;
     }
     if (slice_data_buf_id_) {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+        slice_data_buf_id_ = 0;
     }
     return ROCDEC_SUCCESS;
 }
