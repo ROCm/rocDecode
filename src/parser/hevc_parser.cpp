@@ -1709,16 +1709,17 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
                         m_sh_->lt_rps.pocs[i] = m_sh_->poc_lsb_lt[i];  // PocLsbLt[]
                         m_sh_->lt_rps.used_by_curr_pic[i] = m_sh_->used_by_curr_pic_lt_flag[i];  // UsedByCurrPicLt[]
                     }
+                    int delta_poc_msb_cycle_lt = 0;
                     m_sh_->delta_poc_msb_present_flag[i] = Parser::GetBit(nalu, offset);
                     if (m_sh_->delta_poc_msb_present_flag[i]) {
                         // Store DeltaPocMsbCycleLt in delta_poc_msb_cycle_lt for later use
-                        int delta_poc_msb_cycle_lt = Parser::ExpGolomb::ReadUe(nalu, offset);
-                        if ( i == 0 || i == m_sh_->num_long_term_sps) {
-                            m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt;
-                        }
-                        else {
-                            m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt + m_sh_->delta_poc_msb_cycle_lt[i - 1];
-                        }
+                        delta_poc_msb_cycle_lt = Parser::ExpGolomb::ReadUe(nalu, offset);
+                    }
+                    if ( i == 0 || i == m_sh_->num_long_term_sps) {
+                        m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt;
+                    }
+                    else {
+                        m_sh_->delta_poc_msb_cycle_lt[i] = delta_poc_msb_cycle_lt + m_sh_->delta_poc_msb_cycle_lt[i - 1];
                     }
                 }
             }
@@ -2021,7 +2022,7 @@ void HEVCVideoParser::CalculateCurrPOC() {
 
 void HEVCVideoParser::DecodeRps() {
     int i, j, k;
-    int curr_delta_proc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
+    int curr_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
     int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
     int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
 
@@ -2072,12 +2073,12 @@ void HEVCVideoParser::DecodeRps() {
         for (i = 0, j = 0, k = 0; i < lt_rps_ptr->num_of_pics; i++) {
             uint32_t poc_lt = lt_rps_ptr->pocs[i];  // oocLt
             if (m_sh_->delta_poc_msb_present_flag[i]) {
-                poc_lt += curr_pic_info_.pic_order_cnt - m_sh_->delta_poc_msb_cycle_lt[i] * max_poc_lsb - curr_pic_info_.pic_order_cnt & (max_poc_lsb - 1);
+                poc_lt += curr_pic_info_.pic_order_cnt - m_sh_->delta_poc_msb_cycle_lt[i] * max_poc_lsb - (curr_pic_info_.pic_order_cnt & (max_poc_lsb - 1));
             }
 
             if (lt_rps_ptr->used_by_curr_pic[i]) {
                 poc_lt_curr_[j] = poc_lt;
-                curr_delta_proc_msb_present_flag[j++] = m_sh_->delta_poc_msb_present_flag[i];
+                curr_delta_poc_msb_present_flag[j++] = m_sh_->delta_poc_msb_present_flag[i];
             }
             else {
                 poc_lt_foll_[k] = poc_lt;
@@ -2138,8 +2139,8 @@ void HEVCVideoParser::DecodeRps() {
         /// Long term reference pictures
         for (i = 0; i < num_poc_lt_curr_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if(!curr_delta_proc_msb_present_flag[i]) {
-                    if (poc_lt_curr_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1))) {
+                if(!curr_delta_poc_msb_present_flag[i]) {
+                    if (poc_lt_curr_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1)) && dpb_buffer_.frame_buffer_list[j].use_status) {
                         ref_pic_set_lt_curr_[i] = j;  // RefPicSetLtCurr
                         dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
                         break;
@@ -2158,7 +2159,7 @@ void HEVCVideoParser::DecodeRps() {
         for (i = 0; i < num_poc_lt_foll_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
                 if(!foll_delta_poc_msb_present_flag[i]) {
-                    if (poc_lt_foll_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1))) {
+                    if (poc_lt_foll_[i] == (dpb_buffer_.frame_buffer_list[j].pic_order_cnt & (max_poc_lsb - 1)) && dpb_buffer_.frame_buffer_list[j].use_status) {
                         ref_pic_set_lt_foll_[i] = j;  // RefPicSetLtFoll
                         dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForLongTerm;
                         break;
