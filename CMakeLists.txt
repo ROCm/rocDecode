@@ -23,7 +23,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-set(VERSION "0.4.0")
+set(VERSION "0.5.0")
 set(CMAKE_CXX_STANDARD 17)
 
 # Set Project Version and Language
@@ -171,7 +171,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_PACKAGE_CONTACT "rocDecode Support <mivisionx.support@amd.com>")
   set(CPACK_PACKAGE_VENDOR "AMD ROCm")
   set(CPACK_PACKAGE_GROUP "Development/Tools")
-  set(CPACK_PACKAGE_HOMEPAGE "https://github.com/ROCmSoftwarePlatform/rocDecode")
+  set(CPACK_PACKAGE_HOMEPAGE "https://github.com/ROCm/rocDecode")
 
   if(ENABLE_ASAN_PACKAGING)
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AMD rocDecode address sanitizer libraries")
@@ -186,12 +186,12 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   endif()
 
   # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "libva-dev, libdrm-dev")
-  set(rocDecode_RPM_PACKAGE_LIST     "libva-devel, libdrm-devel")
-  # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
-  # TBD - RPM packages need Fusion Packages
-  #set(rocDecode_RPM_DEV_PACKAGE_LIST  "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel")
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, mesa-amdgpu-multimedia")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, mesa-amdgpu-multimedia")
+  # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, mesa-amdgpu-multimedia-devel, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, mesa-amdgpu-multimedia-devel")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -229,7 +229,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(CPACK_RPM_RUNTIME_PACKAGE_PROVIDES "${PROJECT_NAME}")
   set(CPACK_RPM_RUNTIME_PACKAGE_OBSOLETES "${PROJECT_NAME}")
   set(CPACK_RPM_DEV_PACKAGE_NAME "${PROJECT_NAME}-devel")
-  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}, ${rocDecode_RPM_DEV_PACKAGE_LIST}")
   set(CPACK_RPM_DEV_PACKAGE_PROVIDES "${PROJECT_NAME}-devel")
   set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "${PROJECT_NAME}-devel")
   set(CPACK_RPM_PACKAGE_LICENSE "MIT" )

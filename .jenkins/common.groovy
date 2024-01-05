@@ -26,8 +26,8 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 cmake ${buildTypeArg} ../..
                 make -j\$(nproc)
                 sudo make install
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 sudo make package
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 """
 
     platform.runCommand(this, command)

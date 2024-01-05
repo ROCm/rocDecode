@@ -9,25 +9,25 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
 ## Prerequisites
 
 * Linux distribution
-  * Ubuntu - `20.04` / `22.04`
+  + Ubuntu - `20.04` / `22.04`
+  + RHEL - `8` / `9`
+  + SLES - `15-SP4`
 
 * [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
 
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
+* Install [ROCm](https://rocm.docs.amd.com/en/latest/)
+  + [ROCm 5.7.1 or earlier](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) - Install with `--usecase=graphics,rocm --no-32`
+  + [ROCm 6.0.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html)
+    * Install packages on `Ubuntu`
+      ```shell
+      sudo apt install rocm-hip-runtime-dev mesa-amdgpu-multimedia-devel
+      ```
+    * Install packages on `RHEL` / `SLES`
+      ```shell
+      sudo yum install rocm-hip-runtime-devel mesa-amdgpu-multimedia-devel
+      ```
 
 * CMake `3.5` or later
-
-* libva-dev `2.7` or later
-
-  ```shell
-  sudo apt install libva-dev
-  ```
-
-* libdrm-dev `2.4` or later
-
-  ```shell
-  sudo apt install libdrm-dev
-  ```
 
 * libstdc++-12-dev
 
@@ -128,10 +128,10 @@ doxygen .Doxyfile
 
 * Linux distribution
   * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+  * SLES - `15-SP4`
 * ROCm:
   * rocm-core - `5.6.1.50601-93`
   * amdgpu-core - `1:5.6.50601-1649308`
-* libva-dev - `2.7.0-2` / `2.14.0-1`
-* libdrm-dev - `2.4.107` / `2.4.113`
 * FFMPEG - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.3`
+* rocDecode Setup Script - `V1.4`

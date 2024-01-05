@@ -6,7 +6,36 @@
 
 [rocDecode Documentation](https://github.com/ROCmSoftwarePlatform/rocDecode#rocDecode)
 
-## rocDecode 0.4.0 (unreleased)
+## rocDecode 0.5.0 (unreleased)
+
+### Added
+
+* AMDGPU package support
+
+### Optimizations
+
+* Package dependdencies
+* Readme
+
+### Changed
+
+* Setup Updates
+
+### Fixed
+
+* minor bug fix and updates
+
+### Tested configurations
+
+* Linux distribution
+  + Ubuntu - `20.04` / `22.04`
+* ROCm: 
+  + rocm-core - `5.6.1.50601-93`
+  + amdgpu-core - `1:5.6.50601-1649308`
+* FFMPEG - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.4`
+
+## rocDecode 0.4.0
 
 ### Added
 
