@@ -21,8 +21,8 @@
 #
 ################################################################################
 
-find_library(LIBVA_LIBRARY NAMES va HINTS /opt/amdgpu/lib/x86_64-linux-gnu)
-find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu)
+find_library(LIBVA_LIBRARY NAMES va HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
+find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
 find_path(LIBVA_INCLUDE_DIR NAMES va/va.h PATHS /opt/amdgpu/include)
 
 include(FindPackageHandleStandardArgs)

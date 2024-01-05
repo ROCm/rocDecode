@@ -16,8 +16,7 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
 * [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
 
 * Install [ROCm](https://rocm.docs.amd.com/en/latest/)
-  + [ROCm 5.7.1 or earlier](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) - Install with `--usecase=graphics,rocm --no-32`
-  + [ROCm 6.0.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html)
+  + [ROCm 6.1.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html)
     * Install packages on `Ubuntu`
       ```shell
       sudo apt install rocm-hip-runtime-dev mesa-amdgpu-multimedia-devel
