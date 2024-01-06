@@ -6,14 +6,16 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String enableSCL = 'echo build-rocDecode'
     String libLocation = ''
+    String installDKMS = 'sudo apt install amdgpu-dkms'
 
-    if (platform.jenkinsLabel.contains('centos7')) {
-            enableSCL = 'source scl_source enable llvm-toolset-7'
-    }
-    else if (platform.jenkinsLabel.contains('rhel')) {
+    if (platform.jenkinsLabel.contains('rhel')) {
         libLocation = ':/usr/local/lib'
+        installDKMS = 'sudo yum install amdgpu-dkms'
+    }
+    else if (platform.jenkinsLabel.contains('sles')) {
+        libLocation = ':/usr/local/lib'
+        installDKMS = 'sudo zypper install amdgpu-dkms'
     }
 
     def command = """#!/usr/bin/env bash
@@ -22,7 +24,6 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 cd ${project.paths.project_build_prefix}
                 python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                ${enableSCL}
                 cmake ${buildTypeArg} ../..
                 make -j\$(nproc)
                 sudo make install

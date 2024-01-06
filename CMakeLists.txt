@@ -189,9 +189,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, mesa-amdgpu-multimedia")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, mesa-amdgpu-multimedia")
   # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, mesa-amdgpu-multimedia-devel, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, mesa-amdgpu-multimedia-devel, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev pkg-config")
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, mesa-amdgpu-multimedia-devel")
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, mesa-amdgpu-multimedia-devel pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
