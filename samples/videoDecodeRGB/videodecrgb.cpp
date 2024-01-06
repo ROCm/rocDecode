@@ -32,6 +32,11 @@ THE SOFTWARE.
 #else
     #include <experimental/filesystem>
 #endif
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <atomic>
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 #include "colorspace_kernels.h"
@@ -149,21 +154,80 @@ void ColorConvertYUV2RGB(uint8_t *p_src, OutputSurfaceInfo *surf_info, uint8_t *
     }
 }
 
+constexpr int frame_buffers_size = 2;
+std::queue<uint8_t*> frame_queue[frame_buffers_size];
+std::mutex mutex[frame_buffers_size];
+std::condition_variable cv[frame_buffers_size];
+
+void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, OutputSurfaceInfo **surf_info, OutputFormatEnum e_output_format,
+    uint8_t *p_rgb_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
+    size_t rgb_image_size;
+    hipError_t hip_status = hipSuccess;
+    int current_frame_index = 0;
+    uint8_t *frame;
+
+    while (continue_processing || !frame_queue[current_frame_index].empty()) {
+        {
+            std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
+            cv[current_frame_index].wait(lock, [&] {return !frame_queue[current_frame_index].empty() || !continue_processing;});
+            if (!continue_processing && frame_queue[current_frame_index].empty()) {
+                break;
+            }
+            // Get the current frame at the curren_buffer index for processing
+            frame = frame_queue[current_frame_index].front();
+            frame_queue[current_frame_index].pop();
+        }
+
+        if (convert_to_rgb) {
+            int rgb_width;
+            if ((*surf_info)->bit_depth == 8) {
+                rgb_width = ((*surf_info)->output_width + 1) & ~1; // has to be a multiple of 2 for hip colorconvert kernels
+                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * (*surf_info)->output_height * 3 : rgb_width * (*surf_info)->output_height * 4;
+            } else {
+                rgb_width = ((*surf_info)->output_width + 1) & ~1;
+                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * (*surf_info)->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
+                                                        rgb_width * (*surf_info)->output_height * 6 : rgb_width * (*surf_info)->output_height * 8;
+            }
+            if (p_rgb_dev_mem == nullptr) {
+                hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
+                if (hip_status != hipSuccess) {
+                    std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
+                    return;
+                }
+            }
+            ColorConvertYUV2RGB(frame, *surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
+        }
+        if (dump_output_frames) {
+            if (convert_to_rgb)
+                DumpRGBImage(output_file_path, p_rgb_dev_mem, *surf_info, rgb_image_size);
+            else
+                viddec.SaveFrameToFile(output_file_path, frame, *surf_info);
+        }
+
+        //current_frame_index = 1 - current_frame_index;
+        current_frame_index = (current_frame_index + 1) % frame_buffers_size;
+
+        cv[current_frame_index].notify_one();
+    }
+}
+
 int main(int argc, char **argv) {
 
     std::string input_file_path, output_file_path;
-    int dump_output_frames = 0;
-    int convert_to_rgb = 0;
+    bool dump_output_frames = false;
+    bool convert_to_rgb = false;
     int device_id = 0;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     size_t rgb_image_size;
     uint32_t rgb_image_stride;
     hipError_t hip_status = hipSuccess;
-    uint8_t *p_rgb_dev_mem= nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
+    uint8_t *p_rgb_dev_mem = nullptr;
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     OutputFormatEnum e_output_format = native; 
     int rgb_width;
+    uint8_t* frame_buffers[frame_buffers_size] = {0};
+    int current_frame_index = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -185,7 +249,7 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-o");
             }
             output_file_path = argv[i];
-            dump_output_frames = 1;
+            dump_output_frames = true;
             continue;
         }
         if (!strcmp(argv[i], "-d")) {
@@ -217,11 +281,11 @@ int main(int argc, char **argv) {
             if (++i == argc) {
                 ShowHelpAndExit("-of");
             }
-            auto it = find(st_output_format_name.begin(), st_output_format_name.end(), argv[i]);
+            auto it = std::find(st_output_format_name.begin(), st_output_format_name.end(), argv[i]);
             if (it == st_output_format_name.end()) {
                 ShowHelpAndExit("-of");
             }
-            e_output_format = (OutputFormatEnum)(it-st_output_format_name.begin());
+            e_output_format = (OutputFormatEnum)(it - st_output_format_name.begin());
             continue;
         }
         ShowHelpAndExit(argv[i]);
@@ -251,49 +315,58 @@ int main(int argc, char **argv) {
         double total_dec_time = 0;
         convert_to_rgb = e_output_format != native;
 
+        std::atomic<bool> continue_processing(true);
+        std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &surf_info, std::ref(e_output_format),
+                                    std::ref(p_rgb_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
+
+        auto startTime = std::chrono::high_resolution_clock::now();
         do {
-            auto startTime = std::chrono::high_resolution_clock::now();
             demuxer.Demux(&p_video, &n_video_bytes, &pts);
             n_frames_returned = viddec.DecodeFrame(p_video, n_video_bytes, 0, pts);
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - startTime).count();
-            total_dec_time += time_per_frame;
-            if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)){
+            if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
                 break;
             }
 
+            int last_index = 0;
             for (int i = 0; i < n_frames_returned; i++) {
                 p_frame = viddec.GetFrame(&pts);
-                if (convert_to_rgb) {
-                    if (surf_info->bit_depth == 8) {
-                        rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
-                        rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : rgb_width * surf_info->output_height * 4;
-                    } else {    // 16bit
-                        rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
-                        rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
-                                                              rgb_width * surf_info->output_height * 6 : rgb_width * surf_info->output_height * 8;
+                // allocate extra device memories to use double-buffering for keeping two decoded frames
+                if (frame_buffers[0] == nullptr) {
+                    for (int i = 0; i < frame_buffers_size; i++) {
+                        HIP_API_CALL(hipMalloc(&frame_buffers[i], surf_info->output_surface_size_in_bytes));
                     }
-                    if (p_rgb_dev_mem == nullptr) {
-                        hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
-                        if (hip_status != hipSuccess) {
-                            std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
-                            return -1;
-                        }
-                    }
-                    ColorConvertYUV2RGB(p_frame, surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
                 }
-                if (dump_output_frames) {
-                    if (convert_to_rgb)
-                        DumpRGBImage(output_file_path, p_rgb_dev_mem, surf_info, rgb_image_size);
-                    else
-                        viddec.SaveFrameToFile(output_file_path, p_frame, surf_info);
+
+                {
+                    std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
+                    cv[current_frame_index].wait(lock, [&] {return frame_queue[current_frame_index].empty();});
+                    // copy the decoded frame into the frame_buffers at current_frame_index
+                    HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, viddec.GetStream()));
+                    frame_queue[current_frame_index].push(frame_buffers[current_frame_index]);
                 }
-                // release frame
+
                 viddec.ReleaseFrame(pts);
+                cv[current_frame_index].notify_one(); // Notify the ColorSpaceConversionThread that a frame is available for post-processing
+                current_frame_index = (current_frame_index + 1) % frame_buffers_size; // update the current_frame_index to the next index in the frame_buffers
             }
+
             n_frame += n_frames_returned;
         } while (n_video_bytes);
+
+        {
+            std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
+            //Signal ColorSpaceConversionThread to stop
+            continue_processing = false;
+            lock.unlock();
+            cv[current_frame_index].notify_one();
+        }
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - startTime).count();
+        total_dec_time += time_per_frame;
+
+        color_space_conversion_thread.join();
 
         if (p_rgb_dev_mem != nullptr) {
             hip_status = hipFree(p_rgb_dev_mem);
@@ -306,14 +379,20 @@ int main(int argc, char **argv) {
           fclose(fpOut);
           fpOut = nullptr;
         }
+        for (int i = 0; i < frame_buffers_size; i++) {
+            hip_status = hipFree(frame_buffers[i]);
+            if (hip_status != hipSuccess) {
+                std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
+            }
+        }
 
-        std::cout << "info: Video codec format: " << viddec.GetCodecFmtName(viddec.GetCodecId()) << std::endl;
-        std::cout << "info: Video size: [ " << surf_info->output_width << ", " << surf_info->output_height << " ]" << std::endl;
-        std::cout << "info: Video surface format: " << viddec.GetSurfaceFmtName(surf_info->surface_format) << std::endl;
-        std::cout << "info: Video Bit depth: " << surf_info->bit_depth << std::endl;
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
+            std::string info_message = "info: avg decoding time per frame (ms): ";
+            if (convert_to_rgb) {
+                info_message = "info: avg decoding and post processing time per frame (ms): ";
+            }
+            std::cout << info_message << total_dec_time / n_frame << std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         }
     } catch (const std::exception &ex) {
