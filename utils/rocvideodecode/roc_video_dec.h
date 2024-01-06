@@ -171,17 +171,17 @@ class RocVideoDecoder {
         /**
          * @brief Get the output frame width
          */
-        uint32_t GetWidth() { assert(width_); return width_;}
+        uint32_t GetWidth() { assert(disp_width_); return disp_width_;}
 
         /**
         *  @brief  This function is used to get the actual decode width
         */
-        int GetDecodeWidth() { assert(width_); return width_; }
+        int GetDecodeWidth() { assert(disp_width_); return disp_width_; }
 
         /**
          * @brief Get the output frame height
          */
-        uint32_t GetHeight() { assert(height_); return height_; }
+        uint32_t GetHeight() { assert(disp_height_); return disp_height_; }
 
         /**
         *  @brief  This function is used to get the current chroma height.
@@ -196,12 +196,12 @@ class RocVideoDecoder {
         /**
         *   @brief  This function is used to get the current frame size based on pixel format.
         */
-        int GetFrameSize() { assert(width_); return width_ * (height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
+        int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
 
         /**
         *   @brief  This function is used to get the current frame size based on pitch
         */
-        int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (height_ + (chroma_height_ * num_chroma_planes_)); }
+        int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)); }
 
         /**
          * @brief Get the Bit Depth and BytesPerPixel associated with the pixel format
@@ -417,8 +417,10 @@ class RocVideoDecoder {
         std::ostringstream input_video_info_str_;
         int bitdepth_minus_8_ = 0;
         uint32_t byte_per_pixel_ = 1;
-        uint32_t width_ = 0;
-        uint32_t height_ = 0;
+        uint32_t coded_width_ = 0;
+        uint32_t disp_width_ = 0;
+        uint32_t coded_height_ = 0;
+        uint32_t disp_height_ = 0;
         int max_width_ = 0, max_height_ = 0;
         uint32_t chroma_height_ = 0;
         uint32_t num_chroma_planes_ = 0;
@@ -438,4 +440,5 @@ class RocVideoDecoder {
         uint8_t md5_digest_[16];
         bool is_decoder_reconfigured_ = false;
         std::string current_output_filename = "";
+        uint32_t extra_output_file_count_ = 0;
 };
