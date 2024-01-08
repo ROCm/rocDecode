@@ -28,7 +28,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
+                ldd -v /opt/rocm/lib/librocdecode.so
                 """
 
     platform.runCommand(this, command)
@@ -40,8 +40,8 @@ def runTestCommand (platform, project) {
                 set -x
                 export HOME=/home/jenkins
                 echo Make Test
-                cd ${project.paths.project_build_prefix}/build/release
-                ldd -v /opt/rocm/lib/librocdecode.so
+                cd ${project.paths.project_build_prefix}/build/${buildTypeDir}
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 """
 
     platform.runCommand(this, command)
