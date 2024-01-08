@@ -25,8 +25,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 
 typedef enum ReconfigFlushMode_enum {
-    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0,      /**<  The remaining frames will be dumped to file in this mode */
-    //TODO;; Add new flush modes here : defined by the application
+    RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = 2,      /**<  Calculate the MD5 of the flushed frames */
 } ReconfigFlushMode;
 
 // this struct is used by videodecode and videodecodeMultiFiles to dump last frames to file
@@ -47,20 +48,24 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
         std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
         return n_frames_flushed;
     }
-    if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
-        ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
-        uint8_t *pframe = nullptr;
-        int64_t pts;
-        while ((pframe = viddec->GetFrame(&pts))) {
-            if (p_dump_file_struct->b_dump_frames_to_file) {
-                viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
+
+    uint8_t *pframe = nullptr;
+    int64_t pts;
+    while ((pframe = viddec->GetFrame(&pts))) {
+        if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
+            if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
+                ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
+                if (p_dump_file_struct->b_dump_frames_to_file) {
+                    viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
+                }
+            } else if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
+                viddec->UpdateMd5ForFrame(pframe, surf_info);
             }
-            // release and flush frame
-            viddec->ReleaseFrame(pts, true);
-            n_frames_flushed ++;
         }
-    } else {
-        //todo:: handle other cases
+        // release and flush frame
+        viddec->ReleaseFrame(pts, true);
+        n_frames_flushed ++;
     }
+
     return n_frames_flushed;
 }

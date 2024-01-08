@@ -462,21 +462,13 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
                                      p_video_format->display_area.top == disp_rect_.t &&
                                      p_video_format->display_area.left == disp_rect_.l &&
                                      p_video_format->display_area.right == disp_rect_.r);
-    if (!is_decode_res_changed) {
-        // if the coded_width and coded_height hasn't changed but display resolution has changed, then need to update width and height for
-        // correct output without cropping. There is no need to reconfigure the decoder.
-        if (is_display_rect_changed) {
-            disp_width_ = p_video_format->display_area.right - p_video_format->display_area.left;
-            disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
-            chroma_height_ = static_cast<int>(std::ceil(disp_height_ * GetChromaHeightFactor(video_surface_format_)));
-            num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
-        }
+    if (!is_decode_res_changed && !is_display_rect_changed) {
         return 1;
     }
-    // flush and clear internal frame store to reconfigure
+
+    // Flush and clear internal frame store to reconfigure when either coded size or display size has changed.
     if (p_reconfig_params_ && p_reconfig_params_->p_fn_reconfigure_flush) 
-        num_frames_flushed_during_reconfig_ = p_reconfig_params_->p_fn_reconfigure_flush(this, p_reconfig_params_->reconfig_flush_mode, 
-                                                                                        static_cast<void *>(p_reconfig_params_->p_reconfig_user_struct));
+        num_frames_flushed_during_reconfig_ += p_reconfig_params_->p_fn_reconfigure_flush(this, p_reconfig_params_->reconfig_flush_mode, static_cast<void *>(p_reconfig_params_->p_reconfig_user_struct));
     // clear the existing output buffers of different size
     // note that app lose the remaining frames in the vp_frames/vp_frames_q in case application didn't set p_fn_reconfigure_flush_ callback
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
@@ -498,6 +490,16 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         }
     }
     decoded_frame_cnt_ = 0;     //reset frame_count
+
+    // If the coded_width or coded_height hasn't changed but display resolution has changed, then need to update width and height for
+    // correct output with cropping. There is no need to reconfigure the decoder.
+    if (!is_decode_res_changed && is_display_rect_changed) {
+            disp_width_ = p_video_format->display_area.right - p_video_format->display_area.left;
+            disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
+            chroma_height_ = static_cast<int>(std::ceil(disp_height_ * GetChromaHeightFactor(video_surface_format_)));
+            num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
+            return 1;
+        }
 
     coded_width_ = p_video_format->coded_width;
     coded_height_ = p_video_format->coded_height;
