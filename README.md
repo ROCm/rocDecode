@@ -15,25 +15,35 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
 
 * [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
 
-* Install [ROCm](https://rocm.docs.amd.com/en/latest/)
-  + [ROCm 6.1.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html)
-    * Install packages on `Ubuntu`
-      ```shell
-      sudo apt install rocm-hip-runtime-dev mesa-amdgpu-multimedia-devel
-      ```
-    * Install packages on `RHEL` / `SLES`
-      ```shell
-      sudo yum install rocm-hip-runtime-devel mesa-amdgpu-multimedia-devel
-      ```
+### Build and install from source
+
+* Install [ROCm 5.6.1 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
 
 * CMake `3.5` or later
 
-* libstdc++-12-dev
+* **NOTE:** Ubuntu 22.04 - Install `libstdc++-12-dev`
 
   ```shell
   sudo apt install libstdc++-12-dev
   ```
+### Install package
 
+* [ROCm 6.1.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html) - Follow below steps from the installation via native package manager on ROCm installation documentation
+  * Registering repositories
+  * Register kernel-mode driver
+  * Register ROCm packages
+  * Install kernel driver
+
+* Install rocDecode
+    * Install packages on `Ubuntu`
+      ```shell
+      sudo apt install rocdecode-dev
+      ```
+    * Install packages on `RHEL` / `SLES`
+      ```shell
+      sudo yum install rocdecode-devel
+      ```
+ 
 ### Prerequisites setup script for Linux
 For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
 
@@ -44,16 +54,17 @@ For the convenience of the developer, we provide the setup script [rocDecode-set
 ```
 **NOTE:** This script only needs to be executed once.
 
-## Build instructions
+## Build from source instructions
 
 Please follow the instructions below to build and install the rocDecode library.
 
 ```shell
- cd rocDecode
- mkdir build; cd build
- cmake ..
- make -j8
- sudo make install
+git clone https://github.com/ROCm/rocDecode.git
+cd rocDecode
+mkdir build && cd build
+cmake ../
+make -j8
+sudo make install
 ```
 
 * run tests - Requires `FFMPEG` install
@@ -61,13 +72,12 @@ Please follow the instructions below to build and install the rocDecode library.
   ```shell
   make test
   ```
-
   **NOTE:** run tests with verbose option `make test ARGS="-VV"`
 
 * make package
   
   ```shell
-  sudo make test package
+  sudo make package
   ```
 
 ## Verify Installation

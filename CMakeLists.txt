@@ -189,9 +189,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, mesa-amdgpu-multimedia")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, mesa-amdgpu-multimedia")
   # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, mesa-amdgpu-multimedia-devel, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev pkg-config")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, mesa-amdgpu-multimedia-devel, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, mesa-amdgpu-multimedia-devel pkg-config")
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, mesa-amdgpu-multimedia-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -314,12 +314,12 @@ rocDecode Test package provides rocDecode Test Components")
 else()
   message("-- ${Red}AMD ROCm rocDecode -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
-    message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
+    message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install rocm-hip-runtime-dev!")
   endif()
   if(NOT Libva_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libva-dev Not Found - please install libva-dev!")
+    message(FATAL_ERROR "-- ERROR!: libva Not Found - please install mesa-amdgpu-multimedia-devel!")
   endif()
   if(NOT Libdrm_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libdrm-dev Not Found - please install libdrm-dev!")
+    message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install mesa-amdgpu-multimedia-devel!")
   endif()
 endif()
