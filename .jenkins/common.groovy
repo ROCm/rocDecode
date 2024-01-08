@@ -22,6 +22,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 set -x
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
+                ${installDKMS}
                 python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
                 cmake ${buildTypeArg} ../..
