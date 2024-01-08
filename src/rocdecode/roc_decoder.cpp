@@ -25,15 +25,7 @@ THE SOFTWARE.
 
 RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, decoder_create_info_{decoder_create_info} {}
 
- RocDecoder::~RocDecoder() {
-    hipError_t hipStatus = hipSuccess;
-    if (hip_stream_) {
-        hipStatus = hipStreamDestroy(hip_stream_);
-        if (hipStatus != hipSuccess) {
-            ERR("ERROR: hipStreamDestroy failed! with hipStatus# " + TOSTR(hipStatus));
-        }
-    }
- }
+ RocDecoder::~RocDecoder() {}
 
  rocDecStatus RocDecoder::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
@@ -149,7 +141,6 @@ rocDecStatus RocDecoder::InitHIP(int device_id) {
     }
     CHECK_HIP(hipSetDevice(device_id));
     CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop_, device_id));
-    CHECK_HIP(hipStreamCreate(&hip_stream_));
 
     return ROCDEC_SUCCESS;
 }
