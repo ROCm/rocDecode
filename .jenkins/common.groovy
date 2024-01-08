@@ -6,15 +6,12 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String libLocation = ''
     String installDKMS = 'sudo apt install amdgpu-dkms'
 
     if (platform.jenkinsLabel.contains('rhel')) {
-        libLocation = ':/usr/local/lib'
         installDKMS = 'sudo yum install amdgpu-dkms'
     }
     else if (platform.jenkinsLabel.contains('sles')) {
-        libLocation = ':/usr/local/lib'
         installDKMS = 'sudo zypper install amdgpu-dkms'
     }
 
@@ -36,6 +33,15 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 }
 
 def runTestCommand (platform, project) {
+
+    String libLocation = ''
+
+    if (platform.jenkinsLabel.contains('rhel')) {
+        libLocation = ':/usr/local/lib'
+    }
+    else if (platform.jenkinsLabel.contains('sles')) {
+        libLocation = ':/usr/local/lib'
+    }
 
     def command = """#!/usr/bin/env bash
                 set -x
