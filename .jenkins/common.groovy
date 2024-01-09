@@ -6,28 +6,27 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String enableSCL = 'echo build-rocDecode'
-    String libLocation = ''
+    String installDKMS = 'sudo apt -y install amdgpu-dkms'
 
-    if (platform.jenkinsLabel.contains('centos7')) {
-            enableSCL = 'source scl_source enable llvm-toolset-7'
+    if (platform.jenkinsLabel.contains('rhel')) {
+        installDKMS = 'sudo yum -y install amdgpu-dkms'
     }
-    else if (platform.jenkinsLabel.contains('rhel')) {
-        libLocation = ':/usr/local/lib'
+    else if (platform.jenkinsLabel.contains('sles')) {
+        installDKMS = 'sudo zypper -n install amdgpu-dkms'
     }
 
     def command = """#!/usr/bin/env bash
                 set -x
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
+                ${installDKMS}
                 python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                ${enableSCL}
                 cmake ${buildTypeArg} ../..
                 make -j\$(nproc)
                 sudo make install
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 sudo make package
+                ldd -v /opt/rocm/lib/librocdecode.so
                 """
 
     platform.runCommand(this, command)
@@ -35,12 +34,21 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
 def runTestCommand (platform, project) {
 
+    String libLocation = ''
+
+    if (platform.jenkinsLabel.contains('rhel')) {
+        libLocation = ':/usr/local/lib'
+    }
+    else if (platform.jenkinsLabel.contains('sles')) {
+        libLocation = ':/usr/local/lib'
+    }
+
     def command = """#!/usr/bin/env bash
                 set -x
                 export HOME=/home/jenkins
                 echo Make Test
                 cd ${project.paths.project_build_prefix}/build/release
-                ldd -v /opt/rocm/lib/librocdecode.so
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 """
 
     platform.runCommand(this, command)

@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.3"
+__version__ = "1.4"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -120,15 +120,15 @@ os.system(linuxSystemInstall+' update')
 os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
           linuxSystemInstall_check+' install gcc cmake git wget unzip pkg-config inxi')
 
-# rocDecode RunTime Requirements
+# rocDecode Core - VA/DRM Requirements
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libva-dev libdrm-dev libstdc++-12-dev')
+              ' install vainfo mesa-amdgpu-multimedia-devel libstdc++-12-dev')
 else:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install libva-devel libdrm-devel')
+              ' install mesa-amdgpu-multimedia-devel')
 
 # rocDecode Dev Requirements
 if developerInstall == 'ON':
