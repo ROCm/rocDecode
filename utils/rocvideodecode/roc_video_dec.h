@@ -176,7 +176,7 @@ class RocVideoDecoder {
         /**
         *  @brief  This function is used to get the actual decode width
         */
-        int GetDecodeWidth() { assert(disp_width_); return disp_width_; }
+        int GetDecodeWidth() { assert(coded_width_); return coded_width_; }
 
         /**
          * @brief Get the output frame height
