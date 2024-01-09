@@ -97,12 +97,6 @@ else()
 endif()
 message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
-set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1031;gfx1032;gfx1100")
-if(BUILD_WITH_AMD_ADVANCE)
-  set(DEFAULT_AMDGPU_TARGETS ${DEFAULT_AMDGPU_TARGETS} "gfx941;gfx942")
-endif()
-set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
-
 find_package(HIP QUIET)
 find_package(Libdrm QUIET)
 find_package(Libva QUIET)
@@ -110,7 +104,7 @@ find_package(Libva QUIET)
 if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
 
   # HIP
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
   # LibDRM
   include_directories(${LIBDRM_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})

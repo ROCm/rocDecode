@@ -59,6 +59,5 @@ private:
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
     hipDeviceProp_t hip_dev_prop_;
-    hipStream_t hip_stream_;
     std::vector<hipExternalMemory_t> hip_ext_mem_;
 };
