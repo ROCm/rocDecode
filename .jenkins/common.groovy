@@ -6,13 +6,13 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String installDKMS = 'sudo apt install amdgpu-dkms'
+    String installDKMS = 'sudo apt -y install amdgpu-dkms'
 
     if (platform.jenkinsLabel.contains('rhel')) {
-        installDKMS = 'sudo yum install amdgpu-dkms'
+        installDKMS = 'sudo yum -y install amdgpu-dkms'
     }
     else if (platform.jenkinsLabel.contains('sles')) {
-        installDKMS = 'sudo zypper install amdgpu-dkms'
+        installDKMS = 'sudo zypper -n install amdgpu-dkms'
     }
 
     def command = """#!/usr/bin/env bash
