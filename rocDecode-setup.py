@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ if sys.version_info[0] < 3:
 else:
     import subprocess
 
-__copyright__ = "Copyright 2023, AMD ROCm rocDecode"
+__copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
 __version__ = "1.3"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
