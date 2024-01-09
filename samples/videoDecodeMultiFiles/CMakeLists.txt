@@ -50,12 +50,6 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
 endif()
 
-set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1031;gfx1032;gfx1100")
-if(BUILD_WITH_AMD_ADVANCE)
-  set(DEFAULT_AMDGPU_TARGETS ${DEFAULT_AMDGPU_TARGETS} "gfx941;gfx942")
-endif()
-set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
-
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 # find rocDecode
@@ -69,7 +63,7 @@ endif()
 
 if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # HIP
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # FFMPEG
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                         ${AVFORMAT_INCLUDE_DIR})
