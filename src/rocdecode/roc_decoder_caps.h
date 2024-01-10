@@ -129,7 +129,9 @@ private:
             {"gfx1030",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
             {"gfx1031",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
             {"gfx1032",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
-            {"gfx1100",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},};
+            {"gfx1100",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},
+            {"gfx1101",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 1}},
+            {"gfx1102",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_H264, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}}, 2}},};
     }
     RocDecVcnCodecSpec(const RocDecVcnCodecSpec&) = delete;
     RocDecVcnCodecSpec& operator = (const RocDecVcnCodecSpec) = delete;
