@@ -35,15 +35,10 @@ THE SOFTWARE.
  * \file
  * \brief The AMD rocDecode Library.
  *
- * \defgroup group_amd_rocdecode rocDecode: AMD VCN Decode API
- * \brief AMD The rocDECODE is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
+ * \defgroup group_amd_rocdecode rocDecode: AMD ROCm Decode API
+ * \brief AMD The rocDecode is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
  */
 
-/*****************************************************************************************************/
-//! \file rocdecode.h
-//! rocDecode API provides video decoding interface to AMD GPU devices.
-//! This file contains constants, structure definitions and function prototypes used for decoding.
-/*****************************************************************************************************/
 
 #if defined(__cplusplus)
 extern "C" {
@@ -59,6 +54,7 @@ typedef void *rocDecDecoderHandle;
 
 /*********************************************************************************/
 //! \enum rocDecStatus
+//! \ingroup group_amd_rocdecode
 //! rocDecoder return status enums
 //! These enums are used in all API calls to rocDecoder
 /*********************************************************************************/
@@ -77,6 +73,7 @@ typedef enum rocDecStatus_enum{
 
 /*********************************************************************************/
 //! \enum rocDecodeVideoCodec
+//! \ingroup group_amd_rocdecode
 //! Video codec enums
 //! These enums are used in ROCDECODECREATEINFO and ROCDECODEVIDDECODECAPS structures
 /*********************************************************************************/
@@ -101,6 +98,7 @@ typedef enum rocDecVideoCodec_enum {
 
 /*********************************************************************************/
 //! \enum rocDecVideoSurfaceFormat
+//! \ingroup group_amd_rocdecode
 //! Video surface format enums used for output format of decoded output
 //! These enums are used in RocDecoderCreateInfo structure
 /*********************************************************************************/
@@ -115,6 +113,7 @@ typedef enum rocDecVideoSurfaceFormat_enum {
 
 /**************************************************************************************************************/
 //! \enum rocDecVideoChromaFormat
+//! \ingroup group_amd_rocdecode
 //! Chroma format enums
 //! These enums are used in ROCDCODECREATEINFO and RocdecDecodeCaps structures
 /**************************************************************************************************************/
@@ -128,6 +127,7 @@ typedef enum rocDecVideoChromaFormat_enum {
 
 /*************************************************************************/
 //! \enum rocDecDecodeStatus
+//! \ingroup group_amd_rocdecode
 //! Decode status enums
 //! These enums are used in RocdecGetDecodeStatus structure
 /*************************************************************************/
@@ -143,6 +143,7 @@ typedef enum rocDecodeStatus_enum {
 
 /**************************************************************************************************************/
 //! \struct RocdecDecodeCaps;
+//! \ingroup group_amd_rocdecode
 //! This structure is used in rocDecGetDecoderCaps API
 /**************************************************************************************************************/
 typedef struct _RocdecDecodeCaps {
@@ -165,6 +166,7 @@ typedef struct _RocdecDecodeCaps {
 
 /**************************************************************************************************************/
 //! \struct RocDecoderCreateInfo
+//! \ingroup group_amd_rocdecode
 //! This structure is used in rocDecCreateDecoder API
 /**************************************************************************************************************/
 typedef struct _RocDecoderCreateInfo {
@@ -214,6 +216,7 @@ typedef struct _RocDecoderCreateInfo {
 
 /*********************************************************************************************************/
 //! \struct RocdecDecodeStatus
+//! \ingroup group_amd_rocdecode
 //! Struct for reporting decode status.
 //! This structure is used in RocdecGetDecodeStatus API.
 /*********************************************************************************************************/
@@ -225,6 +228,7 @@ typedef struct _RocdecDecodeStatus {
 
 /****************************************************/
 //! \struct RocdecReconfigureDecoderInfo
+//! \ingroup group_amd_rocdecode
 //! Struct for decoder reset
 //! This structure is used in rocDecReconfigureDecoder() API
 /****************************************************/
@@ -258,6 +262,7 @@ typedef struct _RocdecReconfigureDecoderInfo {
 
 /*********************************************************/
 //! \struct RocdecH264Picture
+//! \ingroup group_amd_rocdecode
 //! H.264 Picture Entry
 //! This structure is used in RocdecH264PicParams structure
 /*********************************************************/
@@ -279,12 +284,14 @@ typedef struct _RocdecH264Picture {
 
 /*********************************************************/
 //! \struct RocdecHEVCPicture
+//! \ingroup group_amd_rocdecode
 //! HEVC Picture Entry
 //! This structure is used in RocdecHevcPicParams structure
 /*********************************************************/
 typedef struct _RocdecHEVCPicture {
     int PicIdx;                 /**< reconstructed picture surface ID    */
     /** \brief picture order count.
+    //! \ingroup group_amd_rocdecode
      * in HEVC, POCs for top and bottom fields of same picture should
      * take different values.
      */
@@ -334,6 +341,7 @@ typedef struct _RocdecHEVCPicture {
 
 /***********************************************************/
 //! \struct RocdecJPEGPicParams placeholder
+//! \ingroup group_amd_rocdecode
 //! JPEG picture parameters
 //! This structure is used in RocdecPicParams structure
 /***********************************************************/
@@ -343,6 +351,7 @@ typedef struct _RocdecJPEGPicParams {
 
 /***********************************************************/
 //! \struct RocdecMpeg2QMatrix
+//! \ingroup group_amd_rocdecode
 //! MPEG2 QMatrix
 //! This structure is used in _RocdecMpeg2PicParams structure
 /***********************************************************/
@@ -360,6 +369,7 @@ typedef struct _RocdecMpeg2QMatrix {
 
 /***********************************************************/
 //! \struct RocdecMpeg2PicParams
+//! \ingroup group_amd_rocdecode
 //! MPEG2 picture parameters
 //! This structure is used in RocdecMpeg2PicParams structure
 /***********************************************************/
@@ -394,6 +404,7 @@ typedef struct _RocdecMpeg2PicParams {
 
 /***********************************************************/
 //! \struct RocdecH264PicParams placeholder
+//! \ingroup group_amd_rocdecode
 //! H.264 picture parameters
 //! This structure is used in RocdecH264PicParams structure
 //! This structure is configured similar to VA-API VAPictureParameterBufferH264 structure
@@ -466,6 +477,7 @@ typedef struct _RocdecH264PicParams {
 
 /***********************************************************/
 //! \struct RocdecHevcIQMatrix
+//! \ingroup group_amd_rocdecode
 //! HEVC IQMatrix
 //! This structure is sent once per frame,
 //! and only when scaling_list_enabled_flag = 1.
@@ -518,6 +530,7 @@ typedef struct _RocdecHevcIQMatrix {
 
 /***********************************************************/
 //! \struct RocdecHevcPicParams
+//! \ingroup group_amd_rocdecode
 //! HEVC picture parameters
 //! This structure is used in RocdecHevcPicParams structure
 /***********************************************************/
@@ -638,6 +651,7 @@ typedef struct _RocdecHevcPicParams {
 
 /***********************************************************/
 //! \struct RocdecVc1PicParams placeholder
+//! \ingroup group_amd_rocdecode
 //! JPEG picture parameters
 //! This structure is used in RocdecVc1PicParams structure
 /***********************************************************/
@@ -647,6 +661,7 @@ typedef struct _RocdecVc1PicParams {
 
 /***********************************************************/
 //! \struct RocdecHevcSliceParams
+//! \ingroup group_amd_rocdecode
 //! HEVC slice parameters
 //! This structure is used in RocdecPicParams structure
 /***********************************************************/
@@ -733,6 +748,7 @@ typedef struct _RocdecHevcSliceParams {
 
 /******************************************************************************************/
 //! \struct _RocdecPicParams
+//! \ingroup group_amd_rocdecode
 //! Picture parameters for decoding
 //! This structure is used in rocDecDecodePicture API
 //! IN  for rocDecDecodePicture
@@ -777,6 +793,7 @@ typedef struct _RocdecPicParams {
 
 /******************************************************/
 //! \struct RocdecProcParams
+//! \ingroup group_amd_rocdecode
 //! Picture parameters for postprocessing
 //! This structure is used in rocDecMapVideoFrame API
 /******************************************************/
@@ -825,18 +842,21 @@ typedef struct _RocdecProcParams
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *decoder_create_info)
+//! \ingroup group_amd_rocdecode
 //! Create the decoder object based on decoder_create_info. A handle to the created decoder is returned
 /*****************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *decoder_create_info);
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle)
+//! \ingroup group_amd_rocdecode
 //! Destroy the decoder object
 /*****************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle);
 
 /**********************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(RocdecDecodeCaps *decode_caps)
+//! \ingroup group_amd_rocdecode
 //! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
 //! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of RocdecDecodeCaps structure
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters (for GPU device) if the IN parameters are supported
@@ -846,6 +866,7 @@ extern rocDecStatus ROCDECAPI rocDecGetDecoderCaps(RocdecDecodeCaps *decode_caps
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_params)
+//! \ingroup group_amd_rocdecode
 //! Decodes a single picture
 //! Submits the frame for HW decoding 
 /*****************************************************************************************************/
@@ -853,6 +874,7 @@ extern rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_hand
 
 /************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
+//! \ingroup group_amd_rocdecode
 //! Get the decode status for frame corresponding to nPicIdx
 //! API is currently supported for HEVC, H264 and JPEG codecs.
 //! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
@@ -861,6 +883,7 @@ extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_
 
 /*********************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params)
+//! \ingroup group_amd_rocdecode
 //! Used to reuse single decoder for multiple clips. Currently supports resolution change, resize params 
 //! params, target area params change for same codec. Must be called during RocdecParserParams::pfnSequenceCallback 
 /*********************************************************************************************************/
@@ -870,6 +893,7 @@ extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decod
 //! \fn extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
 //!                                           uint32_t *dev_mem_ptr, uint32_t *horizontal_pitch,
 //!                                           RocdecProcParams *vid_postproc_params);
+//! \ingroup group_amd_rocdecode
 //! Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
@@ -879,6 +903,7 @@ extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle decoder_ha
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx)
+//! \ingroup group_amd_rocdecode
 //! Unmap a previously mapped video frame with the associated nPicIdx
 /*****************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx);

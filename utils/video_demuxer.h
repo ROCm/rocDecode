@@ -34,7 +34,7 @@ extern "C" {
  * \brief The AMD Video Demuxer for rocDecode Library.
  *
  * \defgroup group_amd_rocdecode_videodemuxer videoDemuxer: AMD rocDecode Video Demuxer API
- * \brief AMD The rocDecode Video Demuxer API.
+ * \brief AMD The rocDecode video demuxer API.
  */
 
 
