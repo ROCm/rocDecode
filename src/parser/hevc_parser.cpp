@@ -35,7 +35,7 @@ inline T *AllocStruct(const int max_cnt) {
     return p;
 }
 
-HEVCVideoParser::HEVCVideoParser() {
+HevcVideoParser::HevcVideoParser() {
     pic_count_ = 0;
     first_pic_after_eos_nal_unit_ = 0;
     m_active_vps_id_ = -1; 
@@ -43,11 +43,11 @@ HEVCVideoParser::HEVCVideoParser() {
     m_active_pps_id_ = -1;
     b_new_picture_ = false;
     // allocate all fixed size structors here
-    m_vps_ = AllocStruct<VpsData>(MAX_VPS_COUNT);
-    m_sps_ = AllocStruct<SpsData>(MAX_SPS_COUNT);
-    m_pps_ = AllocStruct<PpsData>(MAX_PPS_COUNT);
-    m_sh_ = AllocStruct<SliceHeaderData>(1);
-    m_sh_copy_ = AllocStruct<SliceHeaderData>(1);
+    m_vps_ = AllocStruct<HevcVideoParamSet>(MAX_VPS_COUNT);
+    m_sps_ = AllocStruct<HevcSeqParamSet>(MAX_SPS_COUNT);
+    m_pps_ = AllocStruct<HevcPicParamSet>(MAX_PPS_COUNT);
+    m_sh_ = AllocStruct<HevcSliceSegHeader>(1);
+    m_sh_copy_ = AllocStruct<HevcSliceSegHeader>(1);
 
     sei_rbsp_buf_ = nullptr;
     sei_rbsp_buf_size_ = 0;
@@ -59,7 +59,7 @@ HEVCVideoParser::HEVCVideoParser() {
     InitDpb();
 }
 
-rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
+rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
     ParserResult status = Init();
     if (status)
         return ROCDEC_RUNTIME_ERROR;
@@ -72,13 +72,13 @@ rocDecStatus HEVCVideoParser::Initialize(RocdecParserParams *p_params) {
  * 
  * @return rocDecStatus 
  */
-rocDecStatus HEVCVideoParser::UnInitialize() {
+rocDecStatus HevcVideoParser::UnInitialize() {
     //todo:: do any uninitialization here
     return ROCDEC_SUCCESS;
 }
 
 
-rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
+rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
@@ -130,7 +130,7 @@ rocDecStatus HEVCVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     return ROCDEC_SUCCESS;
 }
 
-HEVCVideoParser::~HEVCVideoParser() {
+HevcVideoParser::~HevcVideoParser() {
     if (m_vps_) {
         delete [] m_vps_;
     }
@@ -154,12 +154,12 @@ HEVCVideoParser::~HEVCVideoParser() {
     }
 }
 
-ParserResult HEVCVideoParser::Init() {
+ParserResult HevcVideoParser::Init() {
     b_new_picture_ = false;
     return PARSER_OK;
 }
 
-int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
+int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
     video_format_params_.frame_rate.numerator = frame_rate_.numerator;
     video_format_params_.frame_rate.denominator = frame_rate_.denominator;
@@ -242,7 +242,7 @@ int HEVCVideoParser::FillSeqCallbackFn(SpsData* sps_data) {
     }
 }
 
-void HEVCVideoParser::FillSeiMessageCallbackFn() {
+void HevcVideoParser::FillSeiMessageCallbackFn() {
     sei_message_info_params_.sei_message_count = sei_message_count_;
     sei_message_info_params_.pSEIMessage = sei_message_list_.data();
     sei_message_info_params_.pSEIData = (void*)sei_payload_buf_;
@@ -252,10 +252,10 @@ void HEVCVideoParser::FillSeiMessageCallbackFn() {
     if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
 }
 
-int HEVCVideoParser::SendPicForDecode() {
+int HevcVideoParser::SendPicForDecode() {
     int i, j, ref_idx, buf_idx;
-    SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
-    PpsData *pps_ptr = &m_pps_[m_active_pps_id_];
+    HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
+    HevcPicParamSet *pps_ptr = &m_pps_[m_active_pps_id_];
     dec_pic_params_ = {0};
 
     dec_pic_params_.PicWidth = sps_ptr->pic_width_in_luma_samples;
@@ -512,7 +512,7 @@ int HEVCVideoParser::SendPicForDecode() {
     /// Fill scaling lists
     if (sps_ptr->scaling_list_enabled_flag) {
         RocdecHevcIQMatrix *iq_matrix_ptr = &dec_pic_params_.iq_matrix.hevc;
-        H265ScalingListData *scaling_list_data_ptr = &pps_ptr->scaling_list_data;
+        HevcScalingListData *scaling_list_data_ptr = &pps_ptr->scaling_list_data;
         for (i = 0; i < 6; i++) {
             for (j = 0; j < 16; j++) {
                     iq_matrix_ptr->ScalingList4x4[i][j] = scaling_list_data_ptr->scaling_list[0][i][j];
@@ -541,7 +541,7 @@ int HEVCVideoParser::SendPicForDecode() {
     }
 }
 
-int HEVCVideoParser::OutputDecodedPictures() {
+int HevcVideoParser::OutputDecodedPictures() {
     RocdecParserDispInfo disp_info = {0};
     disp_info.progressive_frame = m_sps_[m_active_sps_id_].profile_tier_level.general_progressive_source_flag;
     disp_info.top_field_first = 1;
@@ -555,7 +555,7 @@ int HEVCVideoParser::OutputDecodedPictures() {
     return PARSER_OK;
 }
 
-bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
+bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
     int ret = PARSER_OK;
 
     frame_data_buffer_ptr_ = (uint8_t*)p_stream;
@@ -725,7 +725,7 @@ bool HEVCVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
     return true;
 }
 
-int HEVCVideoParser::GetNalUnit() {
+int HevcVideoParser::GetNalUnit() {
     bool start_code_found = false;
 
     nal_unit_size_ = 0;
@@ -766,7 +766,7 @@ int HEVCVideoParser::GetNalUnit() {
     }        
 }
 
-void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
+void HevcVideoParser::ParsePtl(HevcProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
     if (profile_present_flag) {
         ptl->general_profile_space = Parser::ReadBits(nalu, offset, 2);
         ptl->general_tier_flag = Parser::GetBit(nalu, offset);
@@ -815,7 +815,7 @@ void HEVCVideoParser::ParsePtl(H265ProfileTierLevel *ptl, bool profile_present_f
     }
 }
 
-void HEVCVideoParser::ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcVideoParser::ParseSubLayerHrdParameters(HevcSubLayerHrdParameters *sub_hrd, uint32_t cpb_cnt, bool sub_pic_hrd_params_present_flag, uint8_t *nalu, size_t /*size*/, size_t& offset) {
     for (uint32_t i = 0; i <= cpb_cnt; i++) {
         sub_hrd->bit_rate_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         sub_hrd->cpb_size_value_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -827,7 +827,7 @@ void HEVCVideoParser::ParseSubLayerHrdParameters(H265SubLayerHrdParameters *sub_
     }
 }
 
-void HEVCVideoParser::ParseHrdParameters(H265HrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
+void HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
     if (common_inf_present_flag) {
         hrd->nal_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         hrd->vcl_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
@@ -923,7 +923,7 @@ static const int diag_scan_8x8[64] = {
     46,39,61,54,47,62,55,63
 };
 
-void HEVCVideoParser::SetDefaultScalingList(H265ScalingListData *sl_ptr) {
+void HevcVideoParser::SetDefaultScalingList(HevcScalingListData *sl_ptr) {
     int size_id, matrix_id, i;
 
     // DC coefficient for 16x16 and 32x32
@@ -958,7 +958,7 @@ void HEVCVideoParser::SetDefaultScalingList(H265ScalingListData *sl_ptr) {
     }
 }
 
-void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *nalu, size_t size, size_t& offset, SpsData *sps_ptr) {
+void HevcVideoParser::ParseScalingList(HevcScalingListData * sl_ptr, uint8_t *nalu, size_t size, size_t& offset, HevcSeqParamSet *sps_ptr) {
     for (int size_id = 0; size_id < 4; size_id++) {
         for (int matrix_id = 0; matrix_id < 6; matrix_id += (size_id == 3) ? 3 : 1) {
             sl_ptr->scaling_list_pred_mode_flag[size_id][matrix_id] = Parser::GetBit(nalu, offset);
@@ -1015,10 +1015,10 @@ void HEVCVideoParser::ParseScalingList(H265ScalingListData * sl_ptr, uint8_t *na
     }
 }
 
-void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, uint32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, H265ShortTermRPS rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
+void HevcVideoParser::ParseShortTermRefPicSet(HevcShortTermRps *rps, uint32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, HevcShortTermRps rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
     int i, j;
 
-    memset(rps, 0, sizeof(H265ShortTermRPS));
+    memset(rps, 0, sizeof(HevcShortTermRps));
      if (st_rps_idx != 0) {
         rps->inter_ref_pic_set_prediction_flag = Parser::GetBit(nalu, offset);
     } else {
@@ -1035,7 +1035,7 @@ void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, uint32_t st
         int ref_rps_idx = st_rps_idx - (rps->delta_idx_minus1 + 1);  // (7-59)
         int delta_rps = (1 - 2 * rps->delta_rps_sign) * (rps->abs_delta_rps_minus1 + 1);  // (7-60)
 
-        H265ShortTermRPS *ref_rps = &rps_ref[ref_rps_idx];
+        HevcShortTermRps *ref_rps = &rps_ref[ref_rps_idx];
         for (j = 0; j <= ref_rps->num_of_delta_pocs; j++) {
             rps->used_by_curr_pic_flag[j] = Parser::GetBit(nalu, offset);
             if (!rps->used_by_curr_pic_flag[j]) {
@@ -1116,7 +1116,7 @@ void HEVCVideoParser::ParseShortTermRefPicSet(H265ShortTermRPS *rps, uint32_t st
     }
 }
 
-void HEVCVideoParser::ParsePredWeightTable(HEVCVideoParser::SliceHeaderData *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset) {
+void HevcVideoParser::ParsePredWeightTable(HevcSliceSegHeader *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset) {
     HevcPredWeightTable *pred_weight_table_ptr = &slice_header_ptr->pred_weight_table;
     int chroma_log2_weight_denom; // ChromaLog2WeightDenom
     int i, j;
@@ -1186,7 +1186,7 @@ void HEVCVideoParser::ParsePredWeightTable(HEVCVideoParser::SliceHeaderData *sli
     }
 }
 
-void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset) {
+void HevcVideoParser::ParseVui(HevcVuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t &offset) {
     vui->aspect_ratio_info_present_flag = Parser::GetBit(nalu, offset);
     if (vui->aspect_ratio_info_present_flag) {
         vui->aspect_ratio_idc = Parser::ReadBits(nalu, offset, 8);
@@ -1251,11 +1251,11 @@ void HEVCVideoParser::ParseVui(H265VuiParameters *vui, uint32_t max_num_sub_laye
     }
 }
 
-void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
+void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     size_t offset = 0; // current bit offset
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
-    VpsData *p_vps = &m_vps_[vps_id];
-    memset(p_vps, 0, sizeof(VpsData));
+    HevcVideoParamSet *p_vps = &m_vps_[vps_id];
+    memset(p_vps, 0, sizeof(HevcVideoParamSet));
 
     p_vps->vps_video_parameter_set_id = vps_id;
     p_vps->vps_base_layer_internal_flag = Parser::GetBit(nalu, offset);
@@ -1310,21 +1310,21 @@ void HEVCVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
-    SpsData *sps_ptr = nullptr;
+void HevcVideoParser::ParseSps(uint8_t *nalu, size_t size) {
+    HevcSeqParamSet *sps_ptr = nullptr;
     size_t offset = 0;
 
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
     uint32_t max_sub_layer_minus1 = Parser::ReadBits(nalu, offset, 3);
     uint32_t sps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
-    H265ProfileTierLevel ptl;
+    HevcProfileTierLevel ptl;
     memset (&ptl, 0, sizeof(ptl));
     ParsePtl(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
 
     uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
     sps_ptr = &m_sps_[sps_id];
 
-    memset(sps_ptr, 0, sizeof(SpsData));
+    memset(sps_ptr, 0, sizeof(HevcSeqParamSet));
     sps_ptr->sps_video_parameter_set_id = vps_id;
     sps_ptr->sps_max_sub_layers_minus1 = max_sub_layer_minus1;
     sps_ptr->sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
@@ -1437,12 +1437,12 @@ void HEVCVideoParser::ParseSps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
+void HevcVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     int i;
     size_t offset = 0;
     uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    PpsData *pps_ptr = &m_pps_[pps_id];
-    memset(pps_ptr, 0, sizeof(PpsData));
+    HevcPicParamSet *pps_ptr = &m_pps_[pps_id];
+    memset(pps_ptr, 0, sizeof(HevcPicParamSet));
 
     pps_ptr->pps_pic_parameter_set_id = pps_id;
     pps_ptr->pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1554,12 +1554,12 @@ void HEVCVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
-    PpsData *pps_ptr = nullptr;
-    SpsData *sps_ptr = nullptr;
+bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
+    HevcPicParamSet *pps_ptr = nullptr;
+    HevcSeqParamSet *sps_ptr = nullptr;
     size_t offset = 0;
-    SliceHeaderData temp_sh;
-    memset(m_sh_, 0, sizeof(SliceHeaderData));
+    HevcSliceSegHeader temp_sh;
+    memset(m_sh_, 0, sizeof(HevcSliceSegHeader));
     memset(&temp_sh, 0, sizeof(temp_sh));
 
     temp_sh.first_slice_segment_in_pic_flag = m_sh_->first_slice_segment_in_pic_flag = Parser::GetBit(nalu, offset);
@@ -1727,7 +1727,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
             // 7.3.6.2 Reference picture list modification
             // Calculate NumPicTotalCurr
             num_pic_total_curr_ = 0;
-            H265ShortTermRPS *st_rps_ptr = &m_sh_->st_rps;
+            HevcShortTermRps *st_rps_ptr = &m_sh_->st_rps;
             for (int i = 0; i < st_rps_ptr->num_negative_pics; i++) {
                 if (st_rps_ptr->used_by_curr_pic_s0[i]) {
                     num_pic_total_curr_++;
@@ -1739,7 +1739,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
                 }
             }
 
-            H265LongTermRPS *lt_rps_ptr = &m_sh_->lt_rps;
+            HevcLongTermRps *lt_rps_ptr = &m_sh_->lt_rps;
             // Check the combined list
             for (int i = 0; i < lt_rps_ptr->num_of_pics; i++) {
                 if (lt_rps_ptr->used_by_curr_pic[i]) {
@@ -1817,10 +1817,10 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
             m_sh_->slice_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
         }
 
-        memcpy(m_sh_copy_, m_sh_, sizeof(SliceHeaderData));
+        memcpy(m_sh_copy_, m_sh_, sizeof(HevcSliceSegHeader));
     } else {
         //dependant slice
-        memcpy(m_sh_, m_sh_copy_, sizeof(SliceHeaderData));
+        memcpy(m_sh_, m_sh_copy_, sizeof(HevcSliceSegHeader));
         m_sh_->first_slice_segment_in_pic_flag = temp_sh.first_slice_segment_in_pic_flag;
         m_sh_->no_output_of_prior_pics_flag = temp_sh.no_output_of_prior_pics_flag;
         m_sh_->slice_pic_parameter_set_id = temp_sh.slice_pic_parameter_set_id;
@@ -1867,7 +1867,7 @@ bool HEVCVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size) {
     return false;
 }
 
-void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
+void HevcVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
     int offset = 0; // byte offset
     int payload_type;
     int payload_size;
@@ -1918,31 +1918,31 @@ void HEVCVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
     } while (offset < size && nalu[offset] != 0x80);
 }
 
-bool HEVCVideoParser::IsIdrPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsIdrPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP);
 }
 
-bool HEVCVideoParser::IsBlaPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsBlaPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_W_LP || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_W_RADL || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_BLA_N_LP);
 }
 
-bool HEVCVideoParser::IsCraPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsCraPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_CRA_NUT);
 }
 
-bool HEVCVideoParser::IsRaslPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsRaslPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RASL_R);
 }
 
-bool HEVCVideoParser::IsRadlPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsRadlPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_N || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_RADL_R);
 }
 
-bool HEVCVideoParser::IsIrapPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsIrapPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23);
 }
 
-bool HEVCVideoParser::IsRefPic(NalUnitHeader *nal_header_ptr) {
+bool HevcVideoParser::IsRefPic(HevcNalUnitHeader *nal_header_ptr) {
     if (((nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_VCL_R15) && ((nal_header_ptr->nal_unit_type % 2) != 0)) ||
          ((nal_header_ptr->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP) && (nal_header_ptr->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23))) {
         return true;
@@ -1951,7 +1951,7 @@ bool HEVCVideoParser::IsRefPic(NalUnitHeader *nal_header_ptr) {
     }
 }
 
-void HEVCVideoParser::CalculateCurrPOC() {
+void HevcVideoParser::CalculateCurrPOC() {
     // Recode decode order count
     curr_pic_info_.decode_order_count = pic_count_;
     if (IsIdrPic(&slice_nal_unit_header_)) {
@@ -1984,7 +1984,7 @@ void HEVCVideoParser::CalculateCurrPOC() {
     }
 }
 
-void HEVCVideoParser::DecodeRps() {
+void HevcVideoParser::DecodeRps() {
     int i, j, k;
     int curr_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
     int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
@@ -2010,7 +2010,7 @@ void HEVCVideoParser::DecodeRps() {
         memset(poc_lt_curr_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
         memset(poc_lt_foll_, 0, sizeof(int32_t) * HEVC_MAX_NUM_REF_PICS);
     } else {
-        H265ShortTermRPS *rps_ptr = &m_sh_->st_rps;
+        HevcShortTermRps *rps_ptr = &m_sh_->st_rps;
         for (i = 0, j = 0, k = 0; i < rps_ptr->num_negative_pics; i++) {
             if (rps_ptr->used_by_curr_pic_s0[i]) {
                 poc_st_curr_before_[j++] = curr_pic_info_.pic_order_cnt + rps_ptr->delta_poc_s0[i];
@@ -2030,7 +2030,7 @@ void HEVCVideoParser::DecodeRps() {
         num_poc_st_curr_after_ = j;
         num_poc_st_foll_ = k;
 
-        H265LongTermRPS *lt_rps_ptr = &m_sh_->lt_rps;
+        HevcLongTermRps *lt_rps_ptr = &m_sh_->lt_rps;
         for (i = 0, j = 0, k = 0; i < lt_rps_ptr->num_of_pics; i++) {
             uint32_t poc_lt = lt_rps_ptr->pocs[i];  // oocLt
             if (m_sh_->delta_poc_msb_present_flag[i]) {
@@ -2135,7 +2135,7 @@ void HEVCVideoParser::DecodeRps() {
     }
 }
 
-void HEVCVideoParser::ConstructRefPicLists() {
+void HevcVideoParser::ConstructRefPicLists() {
 
     uint32_t num_rps_curr_temp_list; // NumRpsCurrTempList0 or NumRpsCurrTempList1;
     int i, j;
@@ -2189,7 +2189,7 @@ void HEVCVideoParser::ConstructRefPicLists() {
     }
 }
 
-void HEVCVideoParser::InitDpb() {
+void HevcVideoParser::InitDpb() {
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
     for (int i = 0; i < HEVC_MAX_DPB_FRAMES; i++) {
         dpb_buffer_.frame_buffer_list[i].pic_idx = i;
@@ -2204,7 +2204,7 @@ void HEVCVideoParser::InitDpb() {
     dpb_buffer_.num_output_pics = 0;
 }
 
-void HEVCVideoParser::EmptyDpb() {
+void HevcVideoParser::EmptyDpb() {
     for (int i = 0; i < HEVC_MAX_DPB_FRAMES; i++) {
         dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
         dpb_buffer_.frame_buffer_list[i].pic_output_flag = 0;
@@ -2216,7 +2216,7 @@ void HEVCVideoParser::EmptyDpb() {
     dpb_buffer_.num_output_pics = 0;
 }
 
-int HEVCVideoParser::FlushDpb() {
+int HevcVideoParser::FlushDpb() {
     if (dpb_buffer_.num_needed_for_output) {
         // Bump the remaining pictures
         while (dpb_buffer_.num_needed_for_output) {
@@ -2233,7 +2233,7 @@ int HEVCVideoParser::FlushDpb() {
     return PARSER_OK;
 }
 
-int HEVCVideoParser::MarkOutputPictures() {
+int HevcVideoParser::MarkOutputPictures() {
     int i;
 
     if (IsIrapPic(&slice_nal_unit_header_) && no_rasl_output_flag_ == 1 && pic_count_ != 0) {
@@ -2264,7 +2264,7 @@ int HEVCVideoParser::MarkOutputPictures() {
             }
         }
 
-        SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
+        HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
         uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
         uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
         uint32_t max_dec_pic_buffering = sps_ptr->sps_max_dec_pic_buffering_minus1[highest_tid] + 1;
@@ -2287,7 +2287,7 @@ int HEVCVideoParser::MarkOutputPictures() {
     return PARSER_OK;
 }
 
-int HEVCVideoParser::FindFreeBufAndMark() {
+int HevcVideoParser::FindFreeBufAndMark() {
     int i, j;
 
     // Look for an empty buffer with longest decode history (lowest decode count)
@@ -2333,7 +2333,7 @@ int HEVCVideoParser::FindFreeBufAndMark() {
     }
     dpb_buffer_.dpb_fullness++;
 
-    SpsData *sps_ptr = &m_sps_[m_active_sps_id_];
+    HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
     uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
     uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
 
@@ -2349,7 +2349,7 @@ int HEVCVideoParser::FindFreeBufAndMark() {
     return PARSER_OK;
 }
 
-int HEVCVideoParser::BumpPicFromDpb() {
+int HevcVideoParser::BumpPicFromDpb() {
     int32_t min_poc = 0x7FFFFFFF;  // largest possible POC value 2^31 - 1
     int min_poc_pic_idx = HEVC_MAX_DPB_FRAMES;
     int i;
@@ -2393,7 +2393,7 @@ int HEVCVideoParser::BumpPicFromDpb() {
     return PARSER_OK;
 }
 
-size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
+size_t HevcVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
     int count = 0;
     if (end_bytepos < begin_bytepos) {
         return end_bytepos;
@@ -2434,7 +2434,7 @@ size_t HEVCVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, s
 }
 
 #if DBGINFO
-void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
+void HevcVideoParser::PrintVps(HevcVideoParser::HevcVideoParamSet *vps_ptr) {
     MSG("=== hevc_video_parameter_set_t ===");
     MSG("vps_video_parameter_set_id               = " <<  vps_ptr->vps_video_parameter_set_id);
     MSG("vps_base_layer_internal_flag             = " <<  vps_ptr->vps_base_layer_internal_flag);
@@ -2485,7 +2485,7 @@ void HEVCVideoParser::PrintVps(HEVCVideoParser::VpsData *vps_ptr) {
     MSG("");
 }
 
-void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
+void HevcVideoParser::PrintSps(HevcVideoParser::HevcSeqParamSet *sps_ptr) {
     MSG("=== hevc_sequence_parameter_set_t ===");
     MSG("sps_video_parameter_set_id                = " <<  sps_ptr->sps_video_parameter_set_id);
     MSG("sps_max_sub_layers_minus1                 = " <<  sps_ptr->sps_max_sub_layers_minus1);
@@ -2545,10 +2545,10 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("scaling_list_enabled_flag                 = " <<  sps_ptr->scaling_list_enabled_flag);
     MSG("sps_scaling_list_data_present_flag        = " <<  sps_ptr->sps_scaling_list_data_present_flag);
     MSG("Scaling list:");
-    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
-        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+    for (int i = 0; i < HEVC_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < HEVC_SCALING_LIST_NUM; j++) {
             MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
-            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+            for (int k = 0; k < HEVC_SCALING_LIST_MAX_INDEX; k++) {
                 MSG_NO_NEWLINE(" " << sps_ptr->scaling_list_data.scaling_list[i][j][k]);
             }
             MSG("");
@@ -2597,7 +2597,7 @@ void HEVCVideoParser::PrintSps(HEVCVideoParser::SpsData *sps_ptr) {
     MSG("");
 }
 
-void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
+void HevcVideoParser::PrintPps(HevcVideoParser::HevcPicParamSet *pps_ptr) {
     MSG("=== hevc_picture_parameter_set_t ===");
     MSG("pps_pic_parameter_set_id                    = " <<  pps_ptr->pps_pic_parameter_set_id);
     MSG("pps_seq_parameter_set_id                    = " <<  pps_ptr->pps_seq_parameter_set_id);
@@ -2645,10 +2645,10 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
     MSG("pps_tc_offset_div2                          = " <<  pps_ptr->pps_tc_offset_div2);
     MSG("pps_scaling_list_data_present_flag          = " <<  pps_ptr->pps_scaling_list_data_present_flag);
     MSG("Scaling list:");
-    for (int i = 0; i < H265_SCALING_LIST_SIZE_NUM; i++) {
-        for (int j = 0; j < H265_SCALING_LIST_NUM; j++) {
+    for (int i = 0; i < HEVC_SCALING_LIST_SIZE_NUM; i++) {
+        for (int j = 0; j < HEVC_SCALING_LIST_NUM; j++) {
             MSG_NO_NEWLINE("scaling_list[" << i <<"][" << j << "][]:")
-            for (int k = 0; k < H265_SCALING_LIST_MAX_I; k++) {
+            for (int k = 0; k < HEVC_SCALING_LIST_MAX_INDEX; k++) {
                 MSG_NO_NEWLINE(" " << pps_ptr->scaling_list_data.scaling_list[i][j][k]);
             }
             MSG("");
@@ -2662,7 +2662,7 @@ void HEVCVideoParser::PrintPps(HEVCVideoParser::PpsData *pps_ptr) {
     MSG("");
 }
 
-void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slice_header_ptr) {
+void HevcVideoParser::PrintSliceSegHeader(HevcSliceSegHeader *slice_header_ptr) {
     MSG("=== hevc_slice_segment_header_t ===");
     MSG("first_slice_segment_in_pic_flag             = " <<  slice_header_ptr->first_slice_segment_in_pic_flag);
     MSG("no_output_of_prior_pics_flag                = " <<  slice_header_ptr->no_output_of_prior_pics_flag);
@@ -2747,7 +2747,7 @@ void HEVCVideoParser::PrintSliceSegHeader(HEVCVideoParser::SliceHeaderData *slic
     MSG("");
 }
 
-void HEVCVideoParser::PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr) {
+void HevcVideoParser::PrintStRps(HevcVideoParser::HevcShortTermRps *rps_ptr) {
     MSG("==== Short-term reference picture set =====")
     MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
     MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
@@ -2810,7 +2810,7 @@ void HEVCVideoParser::PrintStRps(HEVCVideoParser::H265ShortTermRPS *rps_ptr) {
     MSG("");
 }
 
-void HEVCVideoParser::PrintLtRefInfo(HEVCVideoParser::H265LongTermRPS *lt_info_ptr) {
+void HevcVideoParser::PrintLtRefInfo(HevcVideoParser::HevcLongTermRps *lt_info_ptr) {
     MSG("==== Long-term reference picture info =====");
     MSG("num_of_pics                 = " <<  lt_info_ptr->num_of_pics);
     MSG_NO_NEWLINE("pocs[]:");
