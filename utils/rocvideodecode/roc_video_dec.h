@@ -41,6 +41,14 @@ extern "C" {
 #include "rocdecode.h"
 #include "rocparser.h"
 
+/*!
+ * \file
+ * \brief The AMD Video Decode Library.
+ *
+ * \defgroup group_amd_roc_video_dec rocDecode Video Decode: AMD Video Decode API
+ * \brief AMD The rocDecode video decoder for AMD’s GPUs.
+ */
+
 #define MAX_FRAME_NUM     16
 typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 

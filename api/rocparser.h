@@ -28,20 +28,15 @@ THE SOFTWARE.
  * \file
  * \brief The AMD rocParser Library.
  *
- * \defgroup group_amd_rocdecode rocDecode: AMD Decode API
- * \brief AMD The rocDECODE is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
- */
+ * \defgroup group_rocparser rocDecode Parser: AMD ROCm Video Parser API
+ * \brief AMD The rocDecode video parser for AMD’s GPUs.
+ * \defgroup group_rocdec_struct rocDecode Parser Structs: AMD ROCm Video Parser Structs
+ * \brief AMD The rocDecode video parser struct 
 
 #if defined(__cplusplus)
 extern "C" {
 #endif /* __cplusplus */
-/*!
- * \file
- * \brief The AMD rocDecode library.
- *
- * \defgroup group_rocparser API: APIs for Video Parser
- * \defgroup group_rocdec_struct
- */
+
 /*********************************************************************************/
 //! HANDLE pf rocDecDecoder
 //! Used in subsequent API calls after rocDecCreateDecoder
@@ -148,7 +143,7 @@ typedef enum {
 } RocdecVideoPacketFlags;
 
 /*****************************************************************************/
-//! \ingroup STRUCTS
+//! \ingroup group_rocdec_struct
 //! \struct RocdecSourceDataPacket
 //! Data Packet
 //! Used in rocDecParseVideoData API
@@ -198,7 +193,7 @@ typedef struct _RocdecOperatingPointInfo {
 
 
 /**********************************************************************************/
-//! \ingroup STRUCTS
+//! \ingroup group_rocdec_struct
 //! \struct RocdecSeiMessage;
 //! Used in RocdecSeiMessageInfo structure
 /**********************************************************************************/
@@ -210,7 +205,7 @@ typedef struct _RocdecSeiMessage {
 
 
 /**********************************************************************************/
-//! \ingroup STRUCTS
+//! \ingroup group_rocdec_struct
 //! \struct RocdecSeiMessageInfo
 //! Used in rocDecParseVideoData API with PFNVIDSEIMSGCALLBACK pfnGetSEIMsg
 /**********************************************************************************/
@@ -270,14 +265,14 @@ typedef struct _RocdecParserParams {
 } RocdecParserParams;
 
 /************************************************************************************************/
-//! \ingroup FUNCTS
+//! \ingroup group_rocparser
 //! \fn rocDecodeStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *params)
 //! Create video parser object and initialize
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *params);
 
 /************************************************************************************************/
-//! \ingroup FUNCTS
+//! \ingroup group_rocparser
 //! \fn rocDecodeStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet)
 //! Parse the video data from source data packet in pPacket 
 //! Extracts parameter sets like SPS, PPS, bitstream etc. from pPacket and 
@@ -289,7 +284,7 @@ extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_
 extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet);
 
 /************************************************************************************************/
-//! \ingroup FUNCTS
+//! \ingroup group_rocparser
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle)
 //! Destroy the video parser object
 /************************************************************************************************/
