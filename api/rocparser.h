@@ -31,7 +31,8 @@ THE SOFTWARE.
  * \defgroup group_rocparser rocDecode Parser: AMD ROCm Video Parser API
  * \brief AMD The rocDecode video parser for AMD’s GPUs.
  * \defgroup group_rocdec_struct rocDecode Parser Structs: AMD ROCm Video Parser Structs
- * \brief AMD The rocDecode video parser struct 
+ * \brief AMD The rocDecode video parser struct
+*/
 
 #if defined(__cplusplus)
 extern "C" {
