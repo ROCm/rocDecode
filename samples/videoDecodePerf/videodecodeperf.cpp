@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -35,6 +36,15 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+
+static bool GetEnv(const char *name, char *value, size_t valueSize) {
+    const char *v = getenv(name);
+    if (v) {
+        strncpy(value, v, valueSize);
+        value[valueSize - 1] = 0;
+    }
+    return v ? true : false;
+}
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
@@ -137,6 +147,7 @@ int main(int argc, char **argv) {
         hipError_t hip_status = hipSuccess;
         hipDeviceProp_t hip_dev_prop;
         std::string gcn_arch_name;
+        bool env_var = false;
         hip_status = hipGetDeviceCount(&num_devices);
         if (hip_status != hipSuccess) {
             std::cout << "ERROR: hipGetDeviceCount failed! (" << hip_status << ")" << std::endl;
@@ -171,13 +182,34 @@ int main(int argc, char **argv) {
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         std::vector<int> v_device_id(n_thread);
 
+        char env_var_hip_vis_dev[20] = {};
+        std::vector<int> hip_vis_dev;
+        if (GetEnv("HIP_VISIBLE_DEVICES", env_var_hip_vis_dev, sizeof(env_var_hip_vis_dev))) {
+            env_var = true;
+            char * p_tkn = strtok(env_var_hip_vis_dev, ",");
+            while (p_tkn != NULL) {
+                hip_vis_dev.push_back(atoi(p_tkn));
+                p_tkn = strtok(NULL, ",");
+            }
+            std::cout << "hip_vis_dev = ";
+            for(int i = 0; i < hip_vis_dev.size(); i++)
+                std::cout << hip_vis_dev[i] << " ";
+            std::cout << std::endl;
+        }
+
         for (int i = 0; i < n_thread; i++) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
-            if (device_id % 2 == 0)
-                v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
-            else
-                v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+            if (!env_var) {
+                if (device_id % 2 == 0)
+                    v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
+                else
+                    v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+            } else {
+                int idx = i % hip_vis_dev.size();
+                v_device_id[i] = hip_vis_dev[idx];
+                std::cout << "thread id: " << i << " dev id: " << v_device_id[i] << std::endl;
+            }
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));
