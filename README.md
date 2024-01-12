@@ -63,17 +63,18 @@ Install rocDecode runtime, development, and test packages.
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
 * Test package - `rocdecode-test` provides ctest to verify installation
+
 **NOTE:** Package install will auto install all dependencies.
 
-#### Install packages on Ubuntu
+#### Ubuntu
 ```shell
 sudo apt install rocdecode rocdecode-dev rocdecode-test
 ```
-#### Install packages on RHEL
+#### RHEL
 ```shell
 sudo yum install rocdecode rocdecode-devel rocdecode-test
 ```
-#### Install packages on SLES
+#### SLES
 ```shell
 sudo zypper install rocdecode rocdecode-devel rocdecode-test
 ```
