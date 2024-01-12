@@ -49,7 +49,6 @@ def runTestCommand (platform, project) {
                 echo Make Test
                 cd ${project.paths.project_build_prefix}/build/release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
-                cd ${project.paths.project_build_prefix}
                 mkdir -p rocdecode-sample && cd rocdecode-sample
                 cmake /opt/rocm/share/rocdecode/samples/videoDecode/
                 make -j8
