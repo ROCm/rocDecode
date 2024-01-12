@@ -1,8 +1,10 @@
-# rocDecode
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+<p align="center"><img width="70%" src="https://raw.githubusercontent.com/ROCm/rocDecode/master/docs/data/AMD_rocDecode_Logo.png" /></p>
 
 rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API lets developers access the video decoding features available on the GPU.
 
-## Supported Codecs
+## Supported codecs
 
 * H.265 (HEVC) - 8 bit, and 10 bit
 
@@ -13,27 +15,35 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
   + RHEL - `8` / `9`
   + SLES - `15-SP4`
 
-* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
+* [ROCm supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
 
-### To install package
-
-* [ROCm 6.1.0 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/index.html) - Follow below steps from the installation via native package manager on ROCm installation documentation
-  * Registering repositories
-  * Register kernel-mode driver
-  * Register ROCm packages
-  * Install kernel driver
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
+  + **NOTE:** To install rocdecode with minimum requirements follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
 
 ### To build from source
 
-* Install [ROCm 6.1.0 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=multimediasdk,rocm --no-32`
-
 * CMake `3.5` or later
+```shell
+sudo apt install cmake
+```
 
-**NOTE:** Ubuntu 22.04 - Install `libstdc++-12-dev`
+* [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
+```shell
+sudo apt install pkg-config
+```
+
+* [FFMPEG](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
+```shell
+sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+```
+
+**NOTE:** 
+* All package install shown with `apt` package manager, use appropriate package manager depending on the OS.
+
+* Ubuntu 22.04 - Install `libstdc++-12-dev`
 ```shell
 sudo apt install libstdc++-12-dev
 ```
-
 #### Prerequisites setup script for Linux
 For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
 
@@ -44,19 +54,27 @@ For the convenience of the developer, we provide the setup script [rocDecode-set
 ```
 **NOTE:** This script only needs to be executed once.
 
-## Build and Install instructions
+## Build and install instructions
 
 ### Package install
-Install rocDecode runtime, development, and test packages. Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`, development package `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples. `rocdecode-test` package provides ctest to verify installation. Package install will auto install all dependencies.
+
+Install rocDecode runtime, development, and test packages. 
+* Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
+* Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
+* Test package - `rocdecode-test` provides ctest to verify installation
+**NOTE:** Package install will auto install all dependencies.
 
 * Install packages on `Ubuntu`
 ```shell
 sudo apt install rocdecode rocdecode-dev rocdecode-test
 ```
-    
-* Install packages on `RHEL` / `SLES`
+* Install packages on `RHEL`
 ```shell
 sudo yum install rocdecode rocdecode-devel rocdecode-test
+```
+* Install packages on `SLES`
+```shell
+sudo zypper install rocdecode rocdecode-devel rocdecode-test
 ```
 
 ### Source build and install
@@ -83,7 +101,7 @@ sudo make install
   sudo make package
   ```
 
-## Verify Installation
+## Verify installation
 
 The installer will copy
 
@@ -92,7 +110,9 @@ The installer will copy
 * Samples folder into `/opt/rocm/share/rocdecode`
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
 
-Build and run sample
+**NOTE:** FFMPEG dev install required to run samples and tests
+
+### Verify with sample application
 
 ```shell
 mkdir rocdecode-sample && cd rocdecode-sample
@@ -100,13 +120,22 @@ cmake /opt/rocm/share/rocdecode/samples/videoDecode/
 make -j8
 ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 ```
-**NOTE:** FFMPEG dev install required to run samples
+
+### Verify with rocdecode-test package
+
+Test package will install ctest module to test rocdecode. Follow below steps to test packge install
+
+```shell
+mkdir rocdecode-test && cd rocdecode-test
+cmake /opt/rocm/share/rocdecode/test/
+ctest -VV
+```
 
 ## Samples
 
 The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
 
-### Sample Prerequisites
+### Sample prerequisites
 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
