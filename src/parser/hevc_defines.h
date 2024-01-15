@@ -30,7 +30,6 @@ THE SOFTWARE.
 #define HEVC_SCALING_LIST_NUM 6                              ///< list number for quantization matrix
 #define HEVC_SCALING_LIST_MAX_INDEX 64
 
-#define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 #define HEVC_MAX_DPB_FRAMES 16  // (A-2)
 #define HEVC_MAX_NUM_REF_PICS 16
 // 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
