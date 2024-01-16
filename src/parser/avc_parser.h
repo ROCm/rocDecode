@@ -82,7 +82,7 @@ protected:
      * \param [in] pic_data_size Size of the input stream
      * \return <tt>ParserResult</tt>
      */
-    ParserResult ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size);
+    ParserResult ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size);
 
     /*! \brief Function to parse the NAL unit header
      * \param [in] header_byte The AVC NAL unit header byte

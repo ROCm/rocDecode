@@ -38,8 +38,7 @@ THE SOFTWARE.
 #define AVC_MACRO_BLOCK_SIZE                            16
 
 // AVC spec. Table 7-1 – NAL unit type codes, syntax element categories, and NAL unit type classes.
-enum AvcNalUnitType 
-{
+enum AvcNalUnitType {
     kAvcNalTypeUnspecified                    = 0, 
     kAvcNalTypeSlice_Non_IDR                  = 1,
     kAvcNalTypeSlice_Data_Partition_A         = 2,
@@ -60,8 +59,7 @@ enum AvcNalUnitType
 };
 
 // AVC spec. Table 7-6 – Name association to slice_type.
-enum AvcSliceType
-{
+enum AvcSliceType {
     kAvcSliceTypeP                    = 0, 
     kAvcSliceTypeB                    = 1, 
     kAvcSliceTypeI                    = 2, 
@@ -75,8 +73,7 @@ enum AvcSliceType
 };
 
 // AVC spec. Annex A.2.
-enum AvcProfile
-{
+enum AvcProfile {
     kAvcBaselineProfile        = 66,
     kAvcMainProfile            = 77,
     kAvcExtendedProfile        = 88,
@@ -87,8 +84,7 @@ enum AvcProfile
 };
 
 // AVC spec. Annex A.3.
-enum AvcLevel
-{
+enum AvcLevel {
     kAvcLevel1      = 10,
     kAvcLevel1_1    = 11,
     kAvcLevel1_2    = 12,
@@ -111,16 +107,14 @@ enum AvcLevel
 };
 
 // NAL unit header syntax. AVC spec. Section 7.3.1.
-typedef struct
-{
+typedef struct {
     uint32_t    forbidden_zero_bit;     // f(1)
     uint32_t    nal_ref_idc;            // u(2)
     uint32_t    nal_unit_type;          // u(5)
 } AvcNalUnitHeader;
 
 // HRD parameters syntax. AVC spec. Section E.1.2.
-typedef struct
-{
+typedef struct {
     uint32_t    cpb_cnt_minus1;                                     // ue(v)
     uint32_t    bit_rate_scale;                                     // u(4)
     uint32_t    cpb_size_scale;                                     // u(4)
@@ -134,8 +128,7 @@ typedef struct
 } AvcHrdParameters;
 
 // VUI parameters syntax. AVC spec. Section E.1.1.
-typedef struct
-{
+typedef struct {
     uint32_t            aspect_ratio_info_present_flag;                         // u(1)
     uint32_t            aspect_ratio_idc;                                       // u(8)
     uint32_t            sar_width;                                              // u(16)
@@ -173,8 +166,7 @@ typedef struct
 } AvcVuiSeqParameters;
 
 // Sequence parameter set data syntax. AVC spec. 7.3.2.1.1.
-typedef struct 
-{
+typedef struct {
     uint32_t    is_received;                                                            // received with seq_parameter_set_id
     uint32_t    profile_idc;                                                            // u(8)
     uint32_t    constraint_set0_flag;                                                   // u(1)
@@ -222,8 +214,7 @@ typedef struct
 } AvcSeqParameterSet;
 
 // Picture parameter set RBSP syntax. AVC Spec. 7.3.2.2.
-typedef struct 
-{
+typedef struct {
     uint32_t    is_received;                                                        // is received with pic_parameter_set_id
     uint32_t    pic_parameter_set_id;                                               // ue(v)
     uint32_t    seq_parameter_set_id;                                               // ue(v)
@@ -259,15 +250,13 @@ typedef struct
 } AvcPicParameterSet;
 
 // Reference picture list modification syntax. AVC spec. 7.3.3.1.
-typedef struct 
-{
+typedef struct {
 	uint32_t	modification_of_pic_nums_idc;                   // ue(v)
 	uint32_t	abs_diff_pic_num_minus1;                        // ue(v)
 	uint32_t	long_term_pic_num;                              // ue(v)
 } AvcListMod;
 
-typedef struct 
-{
+typedef struct {
 	uint32_t        ref_pic_list_modification_flag_l0;                  // u(1)
 	AvcListMod      modification_l0[AVC_MAX_REF_PICTURE_NUM];
 	uint32_t        ref_pic_list_modification_flag_l1;                  // u(1)
@@ -275,8 +264,7 @@ typedef struct
 } AvcRefPicListMod;
 
 // Prediction weight table syntax. AVC spec. 7.3.3.2.
-typedef struct 
-{
+typedef struct {
     uint32_t    luma_weight_l0_flag;                        // u(1)
     int32_t     luma_weight_l0;                             // se(v)
     int32_t     luma_offset_l0;                             // se(v)
@@ -291,16 +279,14 @@ typedef struct
     int32_t     chroma_offset_l1[2];                        // se(v)
 } AvcWeightFactor;
 
-typedef struct 
-{
+typedef struct {
     uint32_t    luma_log2_weight_denom;                     // ue(v)
     uint32_t    chroma_log2_weight_denom;                   // ue(v)
     AvcWeightFactor	weight_factor[AVC_MAX_REF_PICTURE_NUM];		
 } AvcPredWeightTable;
 
 // Decoded reference picture marking syntax. AVC spec. 7.3.3.3.
-typedef struct
-{
+typedef struct {
     uint32_t    memory_management_control_operation;                    // ue(v)
     uint32_t    difference_of_pic_nums_minus1;                          // ue(v)
     uint32_t    long_term_pic_num;                                      // ue(v)
@@ -317,8 +303,7 @@ typedef struct {
 } AvcDecRefPicMarking;
 
 // Slice header syntax. AVC Spec. 7.3.3.
-typedef struct 
-{
+typedef struct {
     uint32_t    first_mb_in_slice;                                          // ue(v)
     uint32_t    slice_type;                                                 // ue(v)
     uint32_t    pic_parameter_set_id;                                       // ue(v)

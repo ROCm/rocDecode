@@ -89,7 +89,7 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     return ROCDEC_SUCCESS;
 }
 
-ParserResult AvcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
+ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size) {
     ParserResult ret = PARSER_OK;
 
     pic_data_buffer_ptr_ = (uint8_t*)p_stream;
