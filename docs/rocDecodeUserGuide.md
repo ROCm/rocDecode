@@ -7,15 +7,15 @@
 #### Chapter 2 Decoder Capabalities
 #### Chapter 3 Decoder Pipeline
 #### Chapter 4 Using rocDecode API
-4.1 Video Parser
-4.2 Querying decode capabilities
-4.3 Creating a Decoder
-4.4 Decoding the frame/field
-4.5 Preparing the decoded frame for further processing
-4.6 Getting histogram data buffer
-4.7 Querying the decoding status
-4.8 Reconfiguring the decoder
-4.9 Destroying the decoder
+4.1 Video Parser \
+4.2 Querying decode capabilities \
+4.3 Creating a Decoder \
+4.4 Decoding the frame/field \
+4.5 Preparing the decoded frame for further processing \
+4.6 Getting data buffer \
+4.7 Querying the decoding status \
+4.8 Reconfiguring the decoder \
+4.9 Destroying the decoder \
 
 ## Chapter 1 Overview
 AMD GPUs contain one or more hardware decoders as separate engines that provide fully accelerated hardware based video decoding. Hardware decoders consume lower power than CPU decoders. 
@@ -48,6 +48,7 @@ Table 1 shows the codec support and capabilities of the VCN for each GPU archite
 | Rembrandt, Mendocino   | VCN 3.1.1     | No     | Yes       | Yes        | No   | Yes     | No   |
 | Raphael, Dragon Range  | VCN 3.1.2     | No     | Yes       | Yes        | No   | No      | Yes  |
 | Navi 3x, Phoenix       | VCN 4.0       | No     | Yes       | Yes        | No   | Yes     | Yes  |
+
 Table 1: HArdware video decoder capabilities
 
 ## Chapter 3 Decoder Pipeline
