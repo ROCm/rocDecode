@@ -18,42 +18,47 @@
 4.9 Destroying the decoder \
 
 ## Chapter 1 Overview
-AMD GPUs contain one or more hardware decoders as separate engines that provide fully accelerated hardware based video decoding. Hardware decoders consume lower power than CPU decoders. 
+AMD GPUs contain one or more hardware decoders as separate engines that provide fully accelerated hardware based video decoding. Hardware decoders consume lower power than CPU decoders. Dedicated hardware decoders offload decoding tasks from CPU, boosting overall decoding throughput. And with proper power management, decoding on hardware decoders can lower the overall system power consumption.
 
-This document talks about AMDs rocDecode SDK which provides APIs, allowing the developers to access the video decoding features of VCNs and allows interoperability with other compute engines on the GPU. rocDecode API facilitates decoding of the compressed video streams and keeps the resulting YUV frames in video memory. With decoded frames in video memory, video post processing can 
+This document describes AMDs rocDecode SDK which provides APIs, allowing the developers to access the video decoding features of VCNs and allows interoperability with other compute engines on the GPU. rocDecode API facilitates decoding of the compressed video streams and keeps the resulting YUV frames in video memory. With decoded frames in video memory, video post processing can 
 be done using ROCm HIP, thereby avoiding unnecessary data copies via PCIe bus. The video frames can further be post-processed using scaling/color-conversion and augmentation kernels (on GPU or host) and be in a formatfor GPU/CPU accelerated inferencing/training.
 
 In addition, rocDecode API can be used to create multiple instances of video decoder based on the number of available VCN engines in a GPU. By configuring the decoder for a device, all the available engines can be used seamlessly for decoding a batch of video streams in parallel.
 
 ### 1.1 Supported Codecs
 The codecs currently supported by rocDecode are:
-* HEVC/H.265
+* HEVC/H.265 (8 bit and 10 bit)
 
 Future versions of the SDK will support:
-* H264/AVC (8 bit and 10 bit)
+* H.264/AVC (8 bit)
 * AV1
 
 
 ## Chapter 2 Decoder Capabilities
 
-Table 1 shows the codec support and capabilities of the VCN for each GPU architecture.
+Table 1 shows the codec support and capabilities of the VCN for each GPU architecture supported by rocDecode.
 
-|GPU Architecture        |VCN Generation | MPEG-2 | H.264/AVC | H.265/HEVC | AV1  | VP8/VP9 | JPEG |
-| :---                   | :---          | :---   | :---      | :---       | :--- | :---    | :--- |
-| Raven/Picasso          | VCN 1.0       | Yes    | Yes       | Yes        | No   | Yes     | Yes  |
-| Navi 1x                | VCN 2.0       | Yes    | Yes       | Yes        | No   | Yes     | Yes  |
-| Navi21, Navi22, Navi23 | VCN 3.0       | Yes    | Yes       | Yes        | No   | Yes     | Yes  |
-| Navi24                 | VCN3.0.33     | No     | Yes       | Yes        | No   | Yes     | No   |
-| Van Gogh               | VCN 3.1       | Yes    | Yes       | Yes        | No   | Yes     | No   |
-| Rembrandt, Mendocino   | VCN 3.1.1     | No     | Yes       | Yes        | No   | Yes     | No   |
-| Raphael, Dragon Range  | VCN 3.1.2     | No     | Yes       | Yes        | No   | No      | Yes  |
-| Navi 3x, Phoenix       | VCN 4.0       | No     | Yes       | Yes        | No   | Yes     | Yes  |
+|GPU Architecture                    |VCN Generation | Number of VCNs |H.265/HEVC | Max width, Max height - H.265 | H.264/AVC | Max width, Max height - H.264 |
+| :---                               | :---          | :---           | :---      | :---                          | :---      | :---                      |
+| gfx908 - MI1xx                     | VCN 2.5.0     | 2              | Yes       | 4096, 2176                    | No        | 4096, 2160                |
+| gfx90a - MI2xx                     | VCN 2.6.0     | 2              | Yes       | 4096, 2176                    | No        | 4096, 2160                |
+| gfx940, gfx942 - MI3xx             | VCN 3.0       | 3              | Yes       | 7680, 4320                    | No        |
+ 4096, 2176               |
+| gfx941 - MI3xx                     | VCN 3.0       | 4              | Yes       | 7680, 4320                    | No        |
+ 4096, 2176               |
+| gfx1030, gfx1031, gfx1032 - Navi2x | VCN 3.x       | 2              | Yes       | 7680, 4320                    | No        |
+ 4096, 2176               |
+| gfx1100, gfx1102 - Navi3x          | VCN 4.0       | 2              | Yes       | 7680, 4320                    | No        |
+ 4096, 2176               |
+| gfx1101 - Navi3x                   | VCN 4.0       | 1              | Yes       | 7680, 4320                    | No        |
+ 4096, 2176               |
 
-Table 1: HArdware video decoder capabilities
+Table 1: Hardware video decoder capabilities
 
 ## Chapter 3 Decoder Pipeline
 
-The hardware video decoding pipeline consists of three major components ![Fig. 1](data/VideoDecoderPipeline.PNG) – Demuxer, Parser, and VCN engines accessible using rocDecode API. The Demuxer and Parser components are external tools that convert compressed frames into a format that can be used by the rocDecode API.
+There are three main components ![Fig. 1](data/VideoDecoderPipeline.PNG)  in the rocDecode: Demuxer, Video Parser APIs, and Video Decode APIs.
+The Demuxer is based on FFMPEG. The demuxer extracts a segment of video data and sends it to the Video Parser. The parser then extracts crucial information such as picture and slice parameters, which is then sent to the Decoder APIs. These APIs submit the information to the hardware for the decoding of a frame. This process repeats in a loop until all frames have been decoded.
 
 Steps in decoding video content for applications (available in rocDecode Toolkit)
 
