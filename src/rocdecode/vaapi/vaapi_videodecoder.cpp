@@ -68,10 +68,14 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
         ERR("ERROR: the codec config combination is not supported!");
         return ROCDEC_NOT_SUPPORTED;
     }
+
+    std::size_t pos = gcn_arch_name.find_first_of(":");
+    std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
+
     // There are 8 renderDXXX per physical device on gfx940/gfx941/gfx942
-    int num_render_cards_per_device = ((gcn_arch_name.compare("gfx940") == 0) ||
-                                       (gcn_arch_name.compare("gfx941") == 0) ||
-                                       (gcn_arch_name.compare("gfx942") == 0)) ? 8 : 1;
+    int num_render_cards_per_device = ((gcn_arch_name_base.compare("gfx940") == 0) ||
+                                       (gcn_arch_name_base.compare("gfx941") == 0) ||
+                                       (gcn_arch_name_base.compare("gfx942") == 0)) ? 8 : 1;
     std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.deviceid * num_render_cards_per_device);
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
