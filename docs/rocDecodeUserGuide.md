@@ -26,7 +26,7 @@ AMD GPUs contain one or more hardware decoders as separate engines (VCNs) that p
 
 This document describes AMD's rocDecode SDK library which provides APIs, utilities and samples, allowing the developers to access the video decoding features of VCNs easily. Further more, it allows interoperability with other compute engines on the GPU using VA-API/HIP interop. rocDecode API facilitates decoding of the compressed video streams and keeps the resulting YUV frames in video memory. With decoded frames in video memory, video post processing can be executed using ROCm HIP, thereby avoiding unnecessary data copies via PCIe bus. The video frames can further be post-processed using scaling/color-conversion and augmentation kernels (on GPU or host) and be in a format for GPU/CPU accelerated inferencing/training.
 
-In addition, rocDecode API can be used to create multiple instances of video decoder based on the number of available VCN engines available in a GPU device . By configuring the decoder for a device, all the available engines can be used seamlessly for decoding a batch of video streams in parallel.
+In addition, rocDecode API can be used to create multiple instances of video decoder based on the number of available VCN engines in a GPU device . By configuring the decoder for a device, all the available engines can be used seamlessly for decoding a batch of video streams in parallel.
 
 ### 1.1 Supported Codecs
 The codecs currently supported by rocDecode are:
