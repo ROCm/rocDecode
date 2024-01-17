@@ -36,12 +36,10 @@ inline T *AllocStruct(const int max_cnt) {
 }
 
 HevcVideoParser::HevcVideoParser() {
-    pic_count_ = 0;
     first_pic_after_eos_nal_unit_ = 0;
     m_active_vps_id_ = -1; 
     m_active_sps_id_ = -1;
     m_active_pps_id_ = -1;
-    b_new_picture_ = false;
     // allocate all fixed size structors here
     m_vps_ = AllocStruct<HevcVideoParamSet>(MAX_VPS_COUNT);
     m_sps_ = AllocStruct<HevcSeqParamSet>(MAX_SPS_COUNT);
@@ -60,11 +58,7 @@ HevcVideoParser::HevcVideoParser() {
 }
 
 rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
-    ParserResult status = Init();
-    if (status)
-        return ROCDEC_RUNTIME_ERROR;
-    RocVideoParser::Initialize(p_params);
-    return ROCDEC_SUCCESS;
+    return RocVideoParser::Initialize(p_params);
 }
 
 /**
@@ -83,7 +77,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
 
-        bool status = ParseFrameData(p_data->payload, p_data->payload_size);
+        bool status = ParsePictureData(p_data->payload, p_data->payload_size);
         if (!status) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
@@ -152,11 +146,6 @@ HevcVideoParser::~HevcVideoParser() {
     if (sei_payload_buf_) {
         delete [] sei_payload_buf_;
     }
-}
-
-ParserResult HevcVideoParser::Init() {
-    b_new_picture_ = false;
-    return PARSER_OK;
 }
 
 int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
@@ -555,11 +544,11 @@ int HevcVideoParser::OutputDecodedPictures() {
     return PARSER_OK;
 }
 
-bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
+bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
     int ret = PARSER_OK;
 
-    frame_data_buffer_ptr_ = (uint8_t*)p_stream;
-    frame_data_size_ = frame_data_size;
+    pic_data_buffer_ptr_ = (uint8_t*)p_stream;
+    pic_data_size_ = pic_data_size;
     curr_byte_offset_ = 0;
     start_code_num_ = 0;
     curr_start_code_offset_ = 0;
@@ -571,7 +560,6 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
 
     do {
         ret = GetNalUnit();
-
         if (ret == PARSER_NOT_FOUND) {
             ERR(STR("Error: no start code found in the frame data."));
             return false;
@@ -582,26 +570,26 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
             // start code + NAL unit header = 5 bytes
             int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
-            nal_unit_header_ = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
+            nal_unit_header_ = ParseNalUnitHeader(&pic_data_buffer_ptr_[curr_start_code_offset_ + 3]);
             switch (nal_unit_header_.nal_unit_type) {
                 case NAL_UNIT_VPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseVps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParseVps(rbsp_buf_, rbsp_size_);
                     break;
                 }
 
                 case NAL_UNIT_SPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseSps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParseSps(rbsp_buf_, rbsp_size_);
                     break;
                 }
 
                 case NAL_UNIT_PPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParsePps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParsePps(rbsp_buf_, rbsp_size_);
                     break;
                 }
                 
@@ -621,20 +609,20 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 case NAL_UNIT_CODED_SLICE_RADL_R:
                 case NAL_UNIT_CODED_SLICE_RASL_N:
                 case NAL_UNIT_CODED_SLICE_RASL_R: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
                     if (slice_num_ == 0) {
                         // Save slice NAL unit header
                         slice_nal_unit_header_ = nal_unit_header_;
 
                         // Use the data directly from demuxer without copying
-                        pic_stream_data_ptr_ = frame_data_buffer_ptr_ + curr_start_code_offset_;
+                        pic_stream_data_ptr_ = pic_data_buffer_ptr_ + curr_start_code_offset_;
                         // Picture stream data size is calculated as the diff between the frame end and the first slice offset.
                         // This is to consider the possibility of non-slice NAL units between slices.
-                        pic_stream_data_size_ = frame_data_size - curr_start_code_offset_;
+                        pic_stream_data_size_ = pic_data_size - curr_start_code_offset_;
 
-                        ParseSliceHeader(m_rbsp_buf_, m_rbsp_size_);
+                        ParseSliceHeader(rbsp_buf_, rbsp_size_);
 
                         // Start decode process
                         if (IsIrapPic(&slice_nal_unit_header_)) {
@@ -694,9 +682,9 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                             sei_rbsp_buf_size_ = sei_ebsp_size > INIT_SEI_PAYLOAD_BUF_SIZE ? sei_ebsp_size : INIT_SEI_PAYLOAD_BUF_SIZE;
                             sei_rbsp_buf_ = new uint8_t [sei_rbsp_buf_size_];
                         }
-                        memcpy(sei_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
-                        m_rbsp_size_ = EBSPtoRBSP(sei_rbsp_buf_, 0, sei_ebsp_size);
-                        ParseSeiMessage(sei_rbsp_buf_, m_rbsp_size_);
+                        memcpy(sei_rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
+                        rbsp_size_ = EbspToRbsp(sei_rbsp_buf_, 0, sei_ebsp_size);
+                        ParseSeiMessage(sei_rbsp_buf_, rbsp_size_);
                     }
                     break;
                 }
@@ -723,47 +711,6 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
     } while (1);
 
     return true;
-}
-
-int HevcVideoParser::GetNalUnit() {
-    bool start_code_found = false;
-
-    nal_unit_size_ = 0;
-    curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
-
-    // Search for the next start code
-    while (curr_byte_offset_ < frame_data_size_ - 2) {
-        if (frame_data_buffer_ptr_[curr_byte_offset_] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 1] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 2] == 0x01) {
-            curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
-
-            start_code_found = true;
-            start_code_num_++;
-            next_start_code_offset_ = curr_byte_offset_;
-            // Move the pointer 3 bytes forward
-            curr_byte_offset_ += 3;
-
-            // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
-                start_code_found = false;
-                curr_start_code_offset_ = next_start_code_offset_;
-                continue;
-            } else {
-                break;
-            }
-        }
-        curr_byte_offset_++;
-    }    
-    if (start_code_num_ == 0) {
-        // No NAL unit in the frame data
-        return PARSER_NOT_FOUND;
-    }
-    if (start_code_found) {
-        nal_unit_size_ = next_start_code_offset_ - curr_start_code_offset_;
-        return PARSER_OK;
-    } else {
-        nal_unit_size_ = frame_data_size_ - curr_start_code_offset_;
-        return PARSER_EOF;
-    }        
 }
 
 void HevcVideoParser::ParsePtl(HevcProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
@@ -2393,48 +2340,8 @@ int HevcVideoParser::BumpPicFromDpb() {
     return PARSER_OK;
 }
 
-size_t HevcVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
-    int count = 0;
-    if (end_bytepos < begin_bytepos) {
-        return end_bytepos;
-    }
-    uint8_t *streamBuffer_i = streamBuffer + begin_bytepos;
-    uint8_t *streamBuffer_end = streamBuffer + end_bytepos;
-    int reduce_count = 0;
-    for (; streamBuffer_i != streamBuffer_end; ) { 
-        //starting from begin_bytepos to avoid header information
-        //in NAL unit, 0x000000, 0x000001 or 0x000002 shall not occur at any uint8_t-aligned position
-        uint8_t tmp =* streamBuffer_i;
-        if (count == ZEROBYTES_SHORTSTARTCODE) {
-            if (tmp == 0x03) {
-                //check the 4th uint8_t after 0x000003, except when cabac_zero_word is used, in which case the last three bytes of this NAL unit must be 0x000003
-                if ((streamBuffer_i + 1 != streamBuffer_end) && (streamBuffer_i[1] > 0x03)) {
-                    return static_cast<size_t>(-1);
-                }
-                //if cabac_zero_word is used, the final uint8_t of this NAL unit(0x03) is discarded, and the last two bytes of RBSP must be 0x0000
-                if (streamBuffer_i + 1 == streamBuffer_end) {
-                    break;
-                }
-                memmove(streamBuffer_i, streamBuffer_i + 1, streamBuffer_end-streamBuffer_i - 1);
-                streamBuffer_end--;
-                reduce_count++;
-                count = 0;
-                tmp = *streamBuffer_i;
-            } else if (tmp < 0x03) {
-            }
-        }
-        if (tmp == 0x00) {
-            count++;
-        } else {
-            count = 0;
-        }
-        streamBuffer_i++;
-    }
-    return end_bytepos - begin_bytepos + reduce_count;
-}
-
 #if DBGINFO
-void HevcVideoParser::PrintVps(HevcVideoParser::HevcVideoParamSet *vps_ptr) {
+void HevcVideoParser::PrintVps(HevcVideoParamSet *vps_ptr) {
     MSG("=== hevc_video_parameter_set_t ===");
     MSG("vps_video_parameter_set_id               = " <<  vps_ptr->vps_video_parameter_set_id);
     MSG("vps_base_layer_internal_flag             = " <<  vps_ptr->vps_base_layer_internal_flag);
@@ -2485,7 +2392,7 @@ void HevcVideoParser::PrintVps(HevcVideoParser::HevcVideoParamSet *vps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintSps(HevcVideoParser::HevcSeqParamSet *sps_ptr) {
+void HevcVideoParser::PrintSps(HevcSeqParamSet *sps_ptr) {
     MSG("=== hevc_sequence_parameter_set_t ===");
     MSG("sps_video_parameter_set_id                = " <<  sps_ptr->sps_video_parameter_set_id);
     MSG("sps_max_sub_layers_minus1                 = " <<  sps_ptr->sps_max_sub_layers_minus1);
@@ -2597,7 +2504,7 @@ void HevcVideoParser::PrintSps(HevcVideoParser::HevcSeqParamSet *sps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintPps(HevcVideoParser::HevcPicParamSet *pps_ptr) {
+void HevcVideoParser::PrintPps(HevcPicParamSet *pps_ptr) {
     MSG("=== hevc_picture_parameter_set_t ===");
     MSG("pps_pic_parameter_set_id                    = " <<  pps_ptr->pps_pic_parameter_set_id);
     MSG("pps_seq_parameter_set_id                    = " <<  pps_ptr->pps_seq_parameter_set_id);
@@ -2747,7 +2654,7 @@ void HevcVideoParser::PrintSliceSegHeader(HevcSliceSegHeader *slice_header_ptr) 
     MSG("");
 }
 
-void HevcVideoParser::PrintStRps(HevcVideoParser::HevcShortTermRps *rps_ptr) {
+void HevcVideoParser::PrintStRps(HevcShortTermRps *rps_ptr) {
     MSG("==== Short-term reference picture set =====")
     MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
     MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
@@ -2810,7 +2717,7 @@ void HevcVideoParser::PrintStRps(HevcVideoParser::HevcShortTermRps *rps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintLtRefInfo(HevcVideoParser::HevcLongTermRps *lt_info_ptr) {
+void HevcVideoParser::PrintLtRefInfo(HevcLongTermRps *lt_info_ptr) {
     MSG("==== Long-term reference picture info =====");
     MSG("num_of_pics                 = " <<  lt_info_ptr->num_of_pics);
     MSG_NO_NEWLINE("pocs[]:");

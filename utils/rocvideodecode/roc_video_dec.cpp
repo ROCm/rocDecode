@@ -1060,7 +1060,7 @@ void RocVideoDecoder::GetDeviceinfo(std::string &device_name, std::string &gcn_a
 
 bool RocVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     if (!disp_width_ || !disp_height_) {
-        std::cerr << "ERROR: RocVideoDecoderr is not intialized" << std::endl;
+        std::cerr << "ERROR: RocVideoDecoder is not intialized" << std::endl;
         return false;
     }
     *surface_info = &output_surface_info_;
@@ -1071,10 +1071,6 @@ bool RocVideoDecoder::InitHIP(int device_id) {
     HIP_API_CALL(hipGetDeviceCount(&num_devices_));
     if (num_devices_ < 1) {
         std::cerr << "ERROR: didn't find any GPU!" << std::endl;
-        return false;
-    }
-    if (device_id >= num_devices_) {
-        std::cerr << "ERROR: the requested device_id is not found! " << std::endl;
         return false;
     }
     HIP_API_CALL(hipSetDevice(device_id));
