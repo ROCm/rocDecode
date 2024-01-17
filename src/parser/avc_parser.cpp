@@ -215,7 +215,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
         crop_unit_x = sub_width_c; // (7-21)
         crop_unit_y = sub_height_c * (2 - p_sps->frame_mbs_only_flag); // (7-22)
     }
-    if(p_sps->frame_cropping_flag) {
+    if (p_sps->frame_cropping_flag) {
         video_format_params_.display_area.left = crop_unit_x * p_sps->frame_crop_left_offset;
         video_format_params_.display_area.top = crop_unit_y * p_sps->frame_crop_top_offset;
         video_format_params_.display_area.right = pic_width_ - (crop_unit_x * p_sps->frame_crop_right_offset);
