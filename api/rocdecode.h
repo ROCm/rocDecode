@@ -911,6 +911,7 @@ extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_
 /*****************************************************************************************************/
 //! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)
 //! \ingroup group_amd_rocdecode
+//! Return name of the specified error code in text form.
 /*****************************************************************************************************/
 extern const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status);
 

@@ -218,6 +218,7 @@ rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx) {
 /*****************************************************************************************************/
 //! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)
 //! \ingroup group_amd_rocdecode
+//! Return name of the specified error code in text form.
 /*****************************************************************************************************/
 const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status) {
     switch (rocdec_status) {
