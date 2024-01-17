@@ -54,36 +54,11 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             }
             new_sps_activated_ = false;
         }
-
-        // Whenever new sei message found
-        /*if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
-            FillSeiMessageCallbackFn();
-        }
-
-        // Decode the picture
-        if (SendPicForDecode() != PARSER_OK) {
-            ERR(STR("Failed to decode!"));
-            return ROCDEC_RUNTIME_ERROR;
-        }
-
-        // Output decoded pictures from DPB if any are ready
-        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
-            if (OutputDecodedPictures() != PARSER_OK) {
-                return ROCDEC_RUNTIME_ERROR;
-            }
-        }*/
-
         pic_count_++;
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
         // If no payload and EOS is not set, treated as invalid.
         return ROCDEC_INVALID_PARAMETER;
     }
-
-    /*if (p_data->flags & ROCDEC_PKT_ENDOFSTREAM) {
-        if (FlushDpb() != PARSER_OK) {
-            return ROCDEC_RUNTIME_ERROR;
-        }
-    }*/
 
     return ROCDEC_SUCCESS;
 }
