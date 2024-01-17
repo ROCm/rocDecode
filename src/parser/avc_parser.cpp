@@ -49,7 +49,7 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_sps_activated_) {
-            if (NotifyNewSequence(&sps_list_[active_sps_id_]) != PARSER_OK) {
+            if (NotifyNewSps(&sps_list_[active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
             new_sps_activated_ = false;
@@ -162,7 +162,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     return PARSER_OK;
 }
 
-ParserResult AvcVideoParser::NotifyNewSequence(AvcSeqParameterSet *p_sps) {
+ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.codec = rocDecVideoCodec_H264;
     video_format_params_.frame_rate.numerator = frame_rate_.numerator;
     video_format_params_.frame_rate.denominator = frame_rate_.denominator;
