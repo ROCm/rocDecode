@@ -214,3 +214,31 @@ rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx) {
     }
     return ret;
 }
+
+/*****************************************************************************************************/
+//! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)
+//! \ingroup group_amd_rocdecode
+//! Return name of the specified error code in text form.
+/*****************************************************************************************************/
+const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status) {
+    switch (rocdec_status) {
+        case ROCDEC_DEVICE_INVALID:
+            return "ROCDEC_DEVICE_INVALID";
+        case ROCDEC_CONTEXT_INVALID:
+            return "ROCDEC_CONTEXT_INVALID";
+        case ROCDEC_RUNTIME_ERROR:
+            return "ROCDEC_RUNTIME_ERROR";
+        case ROCDEC_OUTOF_MEMORY:
+            return "ROCDEC_OUTOF_MEMORY";
+        case ROCDEC_INVALID_PARAMETER:
+            return "ROCDEC_INVALID_PARAMETER";
+        case ROCDEC_NOT_IMPLEMENTED:
+            return "ROCDEC_NOT_IMPLEMENTED";
+        case ROCDEC_NOT_INITIALIZED:
+            return "ROCDEC_NOT_INITIALIZED";
+        case ROCDEC_NOT_SUPPORTED:
+            return "ROCDEC_NOT_SUPPORTED";
+        default:
+            return "UNKNOWN_ERROR";
+    }
+}
