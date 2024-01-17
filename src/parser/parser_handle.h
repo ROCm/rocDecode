@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <string>
 #include "rocparser.h"
 #include "roc_video_parser.h"
-#include "h264_parser.h"
+#include "avc_parser.h"
 #include "hevc_parser.h"
 
 class RocParserHandle {
@@ -44,7 +44,7 @@ private:
     void CreateParser(RocdecParserParams *params) {
         switch(params->CodecType) {
             case rocDecVideoCodec_H264:
-                roc_parser_ = std::make_shared<H264VideoParser>();
+                roc_parser_ = std::make_shared<AvcVideoParser>();
                 break;
             case rocDecVideoCodec_HEVC:
                 roc_parser_ = std::make_shared<HevcVideoParser>();
