@@ -1060,7 +1060,7 @@ void RocVideoDecoder::GetDeviceinfo(std::string &device_name, std::string &gcn_a
 
 bool RocVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     if (!disp_width_ || !disp_height_) {
-        std::cerr << "ERROR: RocVideoDecoderr is not intialized" << std::endl;
+        std::cerr << "ERROR: RocVideoDecoder is not intialized" << std::endl;
         return false;
     }
     *surface_info = &output_surface_info_;
