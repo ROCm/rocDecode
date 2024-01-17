@@ -203,15 +203,33 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     }
     
     video_format_params_.bitrate = 0;
+
+    // Dispaly aspect ratio
+    // Table E-1.
+    static const Rational hevc_sar[] = {
+        {0, 0}, // unspecified
+        {1, 1}, {12, 11}, {10, 11}, {16, 11}, {40, 33}, {24, 11}, {20, 11}, {32, 11},
+        {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, {4, 3}, {3, 2}, {2, 1},
+    };
+    Rational sar;
+    sar.numerator = 1; // set to square pixel if not present or unspecified
+    sar.denominator = 1; // set to square pixel if not present or unspecified
     if (sps_data->vui_parameters_present_flag) {
         if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
-            video_format_params_.display_aspect_ratio.x = sps_data->vui_parameters.sar_width;
-            video_format_params_.display_aspect_ratio.y = sps_data->vui_parameters.sar_height;
-        } else { // default values
-            video_format_params_.display_aspect_ratio.x = 0;
-            video_format_params_.display_aspect_ratio.y = 0;
+            if (sps_data->vui_parameters.aspect_ratio_idc == 255 /*Extended_SAR*/) {
+                sar.numerator = sps_data->vui_parameters.sar_width;
+                sar.denominator = sps_data->vui_parameters.sar_height;
+            } else if (sps_data->vui_parameters.aspect_ratio_idc > 0 && sps_data->vui_parameters.aspect_ratio_idc < 17) {
+                sar = hevc_sar[sps_data->vui_parameters.aspect_ratio_idc];
+            }
         }
     }
+    int disp_width = video_format_params_.display_area.right - video_format_params_.display_area.left;
+    int disp_height = video_format_params_.display_area.bottom - video_format_params_.display_area.top;
+    int gcd = std::__gcd(disp_width * sar.numerator, disp_height * sar.denominator); // greatest common divisor
+    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+
     if (sps_data->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = sps_data->vui_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = sps_data->vui_parameters.video_full_range_flag;
