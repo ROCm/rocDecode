@@ -37,8 +37,7 @@ rocDecStatus AvcVideoParser::Initialize(RocdecParserParams *p_params) {
 }
 
 rocDecStatus AvcVideoParser::UnInitialize() {
-  //todo::
-    return ROCDEC_NOT_IMPLEMENTED;
+    return ROCDEC_SUCCESS;
 }
 
 rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
@@ -49,42 +48,17 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         }
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
-        /*if (new_sps_activated_) {
-            if (FillSeqCallbackFn(&pps_list_[active_sps_id_]) != PARSER_OK) {
+        if (new_sps_activated_) {
+            if (NotifyNewSps(&sps_list_[active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
             new_sps_activated_ = false;
         }
-
-        // Whenever new sei message found
-        if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
-            FillSeiMessageCallbackFn();
-        }
-
-        // Decode the picture
-        if (SendPicForDecode() != PARSER_OK) {
-            ERR(STR("Failed to decode!"));
-            return ROCDEC_RUNTIME_ERROR;
-        }
-
-        // Output decoded pictures from DPB if any are ready
-        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
-            if (OutputDecodedPictures() != PARSER_OK) {
-                return ROCDEC_RUNTIME_ERROR;
-            }
-        }*/
-
         pic_count_++;
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
         // If no payload and EOS is not set, treated as invalid.
         return ROCDEC_INVALID_PARAMETER;
     }
-
-    /*if (p_data->flags & ROCDEC_PKT_ENDOFSTREAM) {
-        if (FlushDpb() != PARSER_OK) {
-            return ROCDEC_RUNTIME_ERROR;
-        }
-    }*/
 
     return ROCDEC_SUCCESS;
 }
@@ -186,6 +160,100 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     } while (1);
 
     return PARSER_OK;
+}
+
+ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
+    video_format_params_.codec = rocDecVideoCodec_H264;
+    video_format_params_.frame_rate.numerator = frame_rate_.numerator;
+    video_format_params_.frame_rate.denominator = frame_rate_.denominator;
+    video_format_params_.bit_depth_luma_minus8 = p_sps->bit_depth_luma_minus8;
+    video_format_params_.bit_depth_chroma_minus8 = p_sps->bit_depth_chroma_minus8;
+    video_format_params_.progressive_sequence = p_sps->frame_mbs_only_flag ? 1 : 0;
+    video_format_params_.min_num_decode_surfaces = dpb_buffer_.dpb_size;
+    video_format_params_.coded_width = pic_width_;
+    video_format_params_.coded_height = pic_height_;
+    video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(p_sps->chroma_format_idc);
+
+    // Table 6-1
+    int sub_width_c, sub_height_c;
+    switch (video_format_params_.chroma_format) {
+        case rocDecVideoChromaFormat_Monochrome: {
+            sub_width_c = 0; // not defined
+            sub_height_c = 0; // not defined
+            break;
+        }
+        case rocDecVideoChromaFormat_420: {
+            sub_width_c = 2;
+            sub_height_c = 2;
+            break;
+        }
+        case rocDecVideoChromaFormat_422: {
+            sub_width_c = 2;
+            sub_height_c = 1;
+            break;
+        }
+        case rocDecVideoChromaFormat_444: {
+            if (p_sps->separate_colour_plane_flag) {
+                sub_width_c = 0; // not defined
+                sub_height_c = 0; // not defined
+            } else {
+                sub_width_c = 1;
+                sub_height_c = 1;
+            }
+            break;
+        }
+        default:
+            ERR(STR("Error: Sequence Callback function - Chroma Format is not supported"));
+            return PARSER_FAIL;
+    }
+    int chroma_array_type = p_sps->separate_colour_plane_flag ? 0 : p_sps->chroma_format_idc;
+    int crop_unit_x, crop_unit_y;
+    if (chroma_array_type == 0) {
+        crop_unit_x = 1; // (7-19)
+        crop_unit_y = 2 - p_sps->frame_mbs_only_flag; // (7-20)
+    } else {
+        crop_unit_x = sub_width_c; // (7-21)
+        crop_unit_y = sub_height_c * (2 - p_sps->frame_mbs_only_flag); // (7-22)
+    }
+    if (p_sps->frame_cropping_flag) {
+        video_format_params_.display_area.left = crop_unit_x * p_sps->frame_crop_left_offset;
+        video_format_params_.display_area.top = crop_unit_y * p_sps->frame_crop_top_offset;
+        video_format_params_.display_area.right = pic_width_ - (crop_unit_x * p_sps->frame_crop_right_offset);
+        video_format_params_.display_area.bottom = pic_height_ - (crop_unit_y * p_sps->frame_crop_bottom_offset);
+    }  else { // default values
+        video_format_params_.display_area.left = 0;
+        video_format_params_.display_area.top = 0;
+        video_format_params_.display_area.right = pic_width_;
+        video_format_params_.display_area.bottom = pic_height_;
+    }
+
+    video_format_params_.bitrate = 0;
+    if (p_sps->vui_parameters_present_flag) {
+        if (p_sps->vui_seq_parameters.aspect_ratio_info_present_flag) {
+            video_format_params_.display_aspect_ratio.x = p_sps->vui_seq_parameters.sar_width;
+            video_format_params_.display_aspect_ratio.y = p_sps->vui_seq_parameters.sar_height;
+        } else { // default values
+            video_format_params_.display_aspect_ratio.x = 0;
+            video_format_params_.display_aspect_ratio.y = 0;
+        }
+    }
+    if (p_sps->vui_parameters_present_flag) {
+        video_format_params_.video_signal_description.video_format = p_sps->vui_seq_parameters.video_format;
+        video_format_params_.video_signal_description.video_full_range_flag = p_sps->vui_seq_parameters.video_full_range_flag;
+        video_format_params_.video_signal_description.color_primaries = p_sps->vui_seq_parameters.colour_primaries;
+        video_format_params_.video_signal_description.transfer_characteristics = p_sps->vui_seq_parameters.transfer_characteristics;
+        video_format_params_.video_signal_description.matrix_coefficients = p_sps->vui_seq_parameters.matrix_coefficients;
+        video_format_params_.video_signal_description.reserved_zero_bits = 0;
+    }
+    video_format_params_.seqhdr_data_length = 0;
+
+    // callback function with RocdecVideoFormat params filled out
+    if (pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_) == 0) {
+        ERR("Sequence callback function failed.");
+        return PARSER_FAIL;
+    } else {
+        return PARSER_OK;
+    }
 }
 
 AvcNalUnitHeader AvcVideoParser::ParseNalUnitHeader(uint8_t header_byte) {

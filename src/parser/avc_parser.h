@@ -77,6 +77,12 @@ protected:
     // DPB
     DecodedPictureBuffer dpb_buffer_;
 
+    /*! \brief Function to notify decoder about video format change (new SPS) through callback
+     * \param [in] p_sps Pointer to the current active SPS
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult NotifyNewSps(AvcSeqParameterSet *p_sps);
+
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] pic_data_size Size of the input stream
