@@ -1082,10 +1082,10 @@ bool RocVideoDecoder::InitHIP(int device_id) {
 int GetEnvVar(const char *name, int &dev_count) {
     char *v = std::getenv(name);
     if (v) {
-        char * p_tkn = std::strtok(v, ",");
-        while (p_tkn != NULL) {
+        char* p_tkn = std::strtok(v, ",");
+        while (p_tkn != nullptr) {
             dev_count++;
-            p_tkn = strtok(NULL, ",");
+            p_tkn = strtok(nullptr, ",");
         }
     }
     return dev_count;
