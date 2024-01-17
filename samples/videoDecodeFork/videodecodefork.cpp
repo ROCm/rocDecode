@@ -171,9 +171,9 @@ int main(int argc, char **argv) {
                     v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
                 else
                     v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
-        } else {
-            v_device_id[i] = i % hip_vis_dev_count;
-        }
+            } else {
+                v_device_id[i] = i % hip_vis_dev_count;
+            }
 
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
