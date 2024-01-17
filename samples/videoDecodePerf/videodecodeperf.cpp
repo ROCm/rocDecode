@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <vector>
 #include <string>
-#include <cstring>
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -36,18 +35,6 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
-
-static bool GetEnv(const char *name, int &dev_count) {
-    char *v = std::getenv(name);
-    if (v) {
-    	char * p_tkn = std::strtok(v, ",");
-    	while (p_tkn != NULL) {
-		dev_count++;
-		p_tkn = strtok(NULL, ",");
-	}	
-    }
-    return dev_count;
-}
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
@@ -181,13 +168,13 @@ int main(int argc, char **argv) {
         std::vector<int> v_device_id(n_thread);
 
         int hip_vis_dev_count = 0;
-	GetEnv("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
+        GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
 
         for (int i = 0; i < n_thread; i++) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
             if (!hip_vis_dev_count) {
-		if (device_id % 2 == 0)
+                if (device_id % 2 == 0)
                     v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
                 else
                     v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;

@@ -1078,3 +1078,15 @@ bool RocVideoDecoder::InitHIP(int device_id) {
     HIP_API_CALL(hipStreamCreate(&hip_stream_));
     return true;
 }
+
+int GetEnvVar(const char *name, int &dev_count) {
+    char *v = std::getenv(name);
+    if (v) {
+        char * p_tkn = std::strtok(v, ",");
+        while (p_tkn != NULL) {
+            dev_count++;
+            p_tkn = strtok(NULL, ",");
+        }
+    }
+    return dev_count;
+}
