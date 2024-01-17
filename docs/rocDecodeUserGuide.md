@@ -5,7 +5,7 @@
 #### Chapter 1 Overview
     1.1 Supported Codecs
 #### Chapter 2 rocDecode Hardware Capabalities
-#### Chapter 3 Decoder Pipeline
+#### Chapter 3 Video Decoding Pipeline
 #### Chapter 4 Using rocDecode API
     4.1 Video Parser
     4.2 Querying decode capabilities
@@ -57,7 +57,7 @@ Table 1 shows the codec support and capabilities of the VCN for each GPU archite
 
 Table 1: Hardware video decoder capabilities
 
-## Chapter 3 Decoder Pipeline
+## Chapter 3 Video Decoding Pipeline
 
 There are three main components ![Fig. 1](data/VideoDecoderPipeline.PNG)  in the rocDecode: Demuxer, Video Parser APIs, and Video Decode APIs.
 The Demuxer is based on FFMPEG. The demuxer extracts a segment of video data and sends it to the Video Parser. The parser then extracts crucial information such as picture and slice parameters, which is then sent to the Decoder APIs. These APIs submit the information to the hardware for the decoding of a frame. This process repeats in a loop until all frames have been decoded.
