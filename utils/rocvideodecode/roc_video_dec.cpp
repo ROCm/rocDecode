@@ -1073,10 +1073,6 @@ bool RocVideoDecoder::InitHIP(int device_id) {
         std::cerr << "ERROR: didn't find any GPU!" << std::endl;
         return false;
     }
-    if (device_id >= num_devices_) {
-        std::cerr << "ERROR: the requested device_id is not found! " << std::endl;
-        return false;
-    }
     HIP_API_CALL(hipSetDevice(device_id));
     HIP_API_CALL(hipGetDeviceProperties(&hip_dev_prop_, device_id));
     HIP_API_CALL(hipStreamCreate(&hip_stream_));

@@ -135,10 +135,6 @@ rocDecStatus RocDecoder::InitHIP(int device_id) {
         ERR("ERROR: didn't find any GPU!");
         return ROCDEC_DEVICE_INVALID;
     }
-    if (device_id >= num_devices_) {
-        ERR("ERROR: the requested device_id is not found! ");
-        return ROCDEC_DEVICE_INVALID;
-    }
     CHECK_HIP(hipSetDevice(device_id));
     CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop_, device_id));
 
