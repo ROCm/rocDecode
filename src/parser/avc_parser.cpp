@@ -250,9 +250,9 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
             }
         }
     }
-    int disp_width = video_format_params_.display_area.right - video_format_params_.display_area.left;
-    int disp_height = video_format_params_.display_area.bottom - video_format_params_.display_area.top;
-    int gcd = std::__gcd(disp_width * sar.numerator, disp_height * sar.denominator); // greatest common divisor
+    int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left) * sar.numerator;
+    int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top) * sar.denominator;
+    int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
     video_format_params_.display_aspect_ratio.x = disp_width / gcd;
     video_format_params_.display_aspect_ratio.y = disp_height / gcd;
 
