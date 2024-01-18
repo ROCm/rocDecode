@@ -147,14 +147,10 @@ int main(int argc, char **argv) {
             ERR("ERROR: didn't find any GPU!");
             return -1;
         }
-        if (device_id >= num_devices) {
-            ERR("ERROR: the requested device_id is not found! ");
-            return -1;
-        }
 
         hip_status = hipGetDeviceProperties(&hip_dev_prop, device_id);
         if (hip_status != hipSuccess) {
-            ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + TOSTR(hip_status) + ")" );
+            ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + hipGetErrorName(hip_status) + ")" );
             return -1;
         }
 
@@ -171,13 +167,20 @@ int main(int argc, char **argv) {
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         std::vector<int> v_device_id(n_thread);
 
+        int hip_vis_dev_count = 0;
+        GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
+
         for (int i = 0; i < n_thread; i++) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
-            if (device_id % 2 == 0)
-                v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
-            else
-                v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+            if (!hip_vis_dev_count) {
+                if (device_id % 2 == 0)
+                    v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
+                else
+                    v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+            } else {
+                v_device_id[i] = i % hip_vis_dev_count;
+            }
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));

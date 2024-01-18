@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <queue>
 #include <stdexcept>
 #include <exception>
+#include <cstring>
 #include <hip/hip_runtime.h>
 extern "C" {
 #include "libavutil/md5.h"
@@ -148,6 +149,8 @@ typedef struct ReconfigParams_t {
     void *p_reconfig_user_struct;
     uint32_t reconfig_flush_mode;
 } ReconfigParams;
+
+int GetEnvVar(const char *name, int &dev_count);
 
 class RocVideoDecoder {
     public:
