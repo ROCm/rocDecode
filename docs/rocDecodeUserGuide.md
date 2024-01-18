@@ -22,7 +22,7 @@
     5.6 Video Decode RGB
 
 ## Chapter 1 Overview
-AMD GPUs contain one or more hardware decoders as separate engines (VCNs) that provide fully accelerated hardware based video decoding. Hardware decoders consume lower power than CPU based decoders. Dedicated hardware decoders offload decoding tasks from the CPU, boosting overall decoding throughput. And with proper power management, decoding on hardware decoders can lower the overall system power consumption and improve decoding performance.
+AMD GPUs contain one or more media engines (VCNs) that provide fully accelerated hardware based video decoding. Hardware decoders consume lower power than CPU based decoders. Dedicated hardware decoders offload decoding tasks from the CPU, boosting overall decoding throughput. And with proper power management, decoding on hardware decoders can lower the overall system power consumption and improve decoding performance.
 
 This document describes AMD's rocDecode SDK library which provides APIs, utilities and samples, allowing the developers to access the video decoding features of VCNs easily. Further more, it allows interoperability with other compute engines on the GPU using VA-API/HIP interop. rocDecode API facilitates decoding of the compressed video streams and keeps the resulting YUV frames in video memory. With decoded frames in video memory, video post processing can be executed using ROCm HIP, thereby avoiding unnecessary data copies via PCIe bus. The video frames can further be post-processed using scaling/color-conversion and augmentation kernels (on GPU or host) and be in a format for GPU/CPU accelerated inferencing/training.
 
