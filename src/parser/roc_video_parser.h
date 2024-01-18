@@ -68,6 +68,11 @@ typedef enum ParserResult {
     PARSER_CODEC_NOT_SUPPORTED                     ,//codec not supported
 } ParserResult;
 
+typedef struct {
+    uint32_t numerator;
+    uint32_t denominator;
+} Rational;
+
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 
@@ -101,10 +106,7 @@ protected:
     uint32_t pic_height_;
     bool new_sps_activated_;
 
-    struct {
-        uint32_t numerator;
-        uint32_t denominator;
-    } frame_rate_;
+    Rational frame_rate_;
 
     RocdecVideoFormat video_format_params_;
     RocdecSeiMessageInfo sei_message_info_params_;

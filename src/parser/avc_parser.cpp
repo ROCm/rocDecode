@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <algorithm>
 #include "avc_parser.h"
 
 AvcVideoParser::AvcVideoParser() {
@@ -228,15 +229,33 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     }
 
     video_format_params_.bitrate = 0;
+
+    // Dispaly aspect ratio
+    // Table E-1.
+    static const Rational avc_sar[] = {
+        {0, 0}, // unspecified
+        {1, 1}, {12, 11}, {10, 11}, {16, 11}, {40, 33}, {24, 11}, {20, 11}, {32, 11},
+        {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, {4, 3}, {3, 2}, {2, 1},
+    };
+    Rational sar;
+    sar.numerator = 1; // set to square pixel if not present or unspecified
+    sar.denominator = 1; // set to square pixel if not present or unspecified
     if (p_sps->vui_parameters_present_flag) {
         if (p_sps->vui_seq_parameters.aspect_ratio_info_present_flag) {
-            video_format_params_.display_aspect_ratio.x = p_sps->vui_seq_parameters.sar_width;
-            video_format_params_.display_aspect_ratio.y = p_sps->vui_seq_parameters.sar_height;
-        } else { // default values
-            video_format_params_.display_aspect_ratio.x = 0;
-            video_format_params_.display_aspect_ratio.y = 0;
+            if (p_sps->vui_seq_parameters.aspect_ratio_idc == 255 /*Extended_SAR*/) {
+                sar.numerator = p_sps->vui_seq_parameters.sar_width;
+                sar.denominator = p_sps->vui_seq_parameters.sar_height;
+            } else if (p_sps->vui_seq_parameters.aspect_ratio_idc > 0 && p_sps->vui_seq_parameters.aspect_ratio_idc < 17) {
+                sar = avc_sar[p_sps->vui_seq_parameters.aspect_ratio_idc];
+            }
         }
     }
+    int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left) * sar.numerator;
+    int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top) * sar.denominator;
+    int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
+    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+
     if (p_sps->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = p_sps->vui_seq_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = p_sps->vui_seq_parameters.video_full_range_flag;
