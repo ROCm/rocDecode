@@ -79,7 +79,7 @@ RocVideoDecoder::~RocVideoDecoder() {
               if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                   hipError_t hip_status = hipFree(p_frame.frame_ptr);
                   if (hip_status != hipSuccess) {
-                      std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
+                      std::cerr << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
                   }
               }
               else
@@ -92,7 +92,7 @@ RocVideoDecoder::~RocVideoDecoder() {
         hipError_t hip_status = hipSuccess;
         hip_status = hipStreamDestroy(hip_stream_);
         if (hip_status != hipSuccess) {
-            std::cout << "ERROR: hipStream_Destroy failed! (" << hip_status << ")" << std::endl;
+            std::cerr << "ERROR: hipStream_Destroy failed! (" << hip_status << ")" << std::endl;
         }
     }
     if (fp_out_) {
@@ -431,7 +431,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
  */
 bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params) {
     if (!p_reconfig_params) {
-        std::cout << "ERROR: Invalid reconfig struct passed! "<< std::endl;
+        std::cerr << "ERROR: Invalid reconfig struct passed! "<< std::endl;
         return false;
     }
     //save it
@@ -459,7 +459,6 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigure Not supported for bit depth change", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-    std::cout << "Reconfig called" << std::endl;
     bool is_decode_res_changed = !(p_video_format->coded_width == coded_width_ && p_video_format->coded_height == coded_height_);
     bool is_display_rect_changed = !(p_video_format->display_area.bottom == disp_rect_.b &&
                                      p_video_format->display_area.top == disp_rect_.t &&
@@ -485,7 +484,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
             if (p_frame->frame_ptr) {
               if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                   hipError_t hip_status = hipFree(p_frame->frame_ptr);
-                  if (hip_status != hipSuccess) std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
+                  if (hip_status != hipSuccess) std::cerr << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
               }
               else
                   delete [] (p_frame->frame_ptr);
@@ -886,7 +885,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         hipError_t hip_status = hipSuccess;
         hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
         if (hip_status != hipSuccess) {
-            std::cout << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
+            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
             delete [] hst_ptr;
             return;
         }
@@ -995,7 +994,7 @@ void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_
         hipError_t hip_status = hipSuccess;
         hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
         if (hip_status != hipSuccess) {
-            std::cout << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
+            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
             delete [] hst_ptr;
             return;
         }
