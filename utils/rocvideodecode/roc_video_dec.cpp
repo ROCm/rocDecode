@@ -375,7 +375,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     chroma_height_ = (int)(ceil(disp_height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
-    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL)
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)
         GetSurfaceStrideInternal(video_surface_format_, p_video_format->coded_width, p_video_format->coded_height, &surface_stride_, &surface_vstride_);
     else {
         surface_stride_ = videoDecodeCreateInfo.ulTargetWidth * byte_per_pixel_;    // todo:: check if we need pitched memory for faster copy
@@ -396,9 +396,12 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
-    } else {
+    } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED){
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
+    } else {
+        output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_NOT_MAPPED;
     }
 
     disp_rect_.b = videoDecodeCreateInfo.display_area.bottom;
@@ -456,7 +459,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigure Not supported for bit depth change", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-
+    std::cout << "Reconfig called" << std::endl;
     bool is_decode_res_changed = !(p_video_format->coded_width == coded_width_ && p_video_format->coded_height == coded_height_);
     bool is_display_rect_changed = !(p_video_format->display_area.bottom == disp_rect_.b &&
                                      p_video_format->display_area.top == disp_rect_.t &&
@@ -521,7 +524,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     reconfig_params.target_rect.right = p_video_format->display_area.right;
     reconfig_params.target_rect.bottom = p_video_format->display_area.bottom;
 
-    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
         GetSurfaceStrideInternal(video_surface_format_, p_video_format->coded_width, p_video_format->coded_height, &surface_stride_, &surface_vstride_);
     } else {
         surface_stride_ = reconfig_params.ulTargetWidth * byte_per_pixel_;
@@ -545,9 +548,12 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
-    } else {
+    } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
+    } else {
+        output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
+        output_surface_info_.mem_type = OUT_SURFACE_MEM_NOT_MAPPED;
     }
 
     if (roc_decoder_ == nullptr) {
@@ -643,88 +649,97 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             sei_message_display_q_[pDispInfo->picture_index].pSEIMessage = NULL; // to avoid double free
         }
     }
-
-    void * src_dev_ptr[3] = { 0 };
-    uint32_t src_pitch[3] = { 0 };
-    ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
-    RocdecDecodeStatus dec_status;
-    memset(&dec_status, 0, sizeof(dec_status));
-    rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-    if (result == ROCDEC_SUCCESS && (dec_status.decodeStatus == rocDecodeStatus_Error || dec_status.decodeStatus == rocDecodeStatus_Error_Concealed)) {
-        std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-    }
-    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
-        DecFrameBuffer dec_frame = { 0 };
-        dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
-        dec_frame.pts = pDispInfo->pts;
-        dec_frame.picture_index = pDispInfo->picture_index;
-        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        vp_frames_q_.push(dec_frame);
-        decoded_frame_cnt_++;
-    } else {
-        // copy the decoded surface info device or host
-        uint8_t *p_dec_frame = nullptr;
-        {
-            std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-            // if not enough frames in stock, allocate
-            if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size()) {
-                num_alloced_frames_++;
-                DecFrameBuffer dec_frame = { 0 };
-                if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                    // allocate device memory
-                    HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
-                } else {
-                    dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
-                }
-                dec_frame.pts = pDispInfo->pts;
-                dec_frame.picture_index = pDispInfo->picture_index;
-                vp_frames_.push_back(dec_frame);
-            }
-            p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
+    if (out_mem_type_ != OUT_SURFACE_MEM_NOT_MAPPED) {
+        void * src_dev_ptr[3] = { 0 };
+        uint32_t src_pitch[3] = { 0 };
+        ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
+        RocdecDecodeStatus dec_status;
+        memset(&dec_status, 0, sizeof(dec_status));
+        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
+        if (result == ROCDEC_SUCCESS && (dec_status.decodeStatus == rocDecodeStatus_Error || dec_status.decodeStatus == rocDecodeStatus_Error_Concealed)) {
+            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
         }
-        // Copy luma data
-        int dst_pitch = surface_stride_;
-        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-            if (src_pitch[0] == dst_pitch) {
-                int luma_size = src_pitch[0] * coded_height_;
-                HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
-            } else {
-                // use 2d copy to copy an ROI
-                HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToDevice, hip_stream_));
+        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+            DecFrameBuffer dec_frame = { 0 };
+            dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
+            dec_frame.pts = pDispInfo->pts;
+            dec_frame.picture_index = pDispInfo->picture_index;
+            std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+            vp_frames_q_.push(dec_frame);
+            decoded_frame_cnt_++;
+        } else {
+            // copy the decoded surface info device or host
+            uint8_t *p_dec_frame = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+                // if not enough frames in stock, allocate
+                if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size()) {
+                    num_alloced_frames_++;
+                    DecFrameBuffer dec_frame = { 0 };
+                    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                        // allocate device memory
+                        HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
+                    } else {
+                        dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
+                    }
+                    dec_frame.pts = pDispInfo->pts;
+                    dec_frame.picture_index = pDispInfo->picture_index;
+                    vp_frames_.push_back(dec_frame);
+                }
+                p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
             }
-        } else
-            HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, coded_width_ * byte_per_pixel_, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToHost, hip_stream_));
-
-        // Copy chroma plane ( )
-        // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
-        uint8_t *p_frame_uv = p_dec_frame + dst_pitch * coded_height_;
-        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-            if (src_pitch[1] == dst_pitch) {
-                int chroma_size = chroma_height_ * dst_pitch;
-                HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
-            } else {
-                // use 2d copy to copy an ROI
-                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
-            }
-        } else
-            HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
-
-        if (num_chroma_planes_ == 2) {
-            uint8_t *p_frame_uv = p_dec_frame + dst_pitch * (coded_height_ + chroma_height_);
+            // Copy luma data
+            int dst_pitch = surface_stride_;
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                if (src_pitch[2] == dst_pitch) {
-                    int chroma_size = chroma_height_ * dst_pitch;
-                    HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[2], chroma_size, hip_stream_));
+                if (src_pitch[0] == dst_pitch) {
+                    int luma_size = src_pitch[0] * coded_height_;
+                    HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
                 } else {
                     // use 2d copy to copy an ROI
-                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToDevice, hip_stream_));
                 }
             } else
-                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
-        }
+                HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, coded_width_ * byte_per_pixel_, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToHost, hip_stream_));
 
-        HIP_API_CALL(hipStreamSynchronize(hip_stream_));
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, pDispInfo->picture_index));
+            // Copy chroma plane ( )
+            // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
+            uint8_t *p_frame_uv = p_dec_frame + dst_pitch * coded_height_;
+            if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                if (src_pitch[1] == dst_pitch) {
+                    int chroma_size = chroma_height_ * dst_pitch;
+                    HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
+                } else {
+                    // use 2d copy to copy an ROI
+                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                }
+            } else
+                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+
+            if (num_chroma_planes_ == 2) {
+                uint8_t *p_frame_uv = p_dec_frame + dst_pitch * (coded_height_ + chroma_height_);
+                if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                    if (src_pitch[2] == dst_pitch) {
+                        int chroma_size = chroma_height_ * dst_pitch;
+                        HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[2], chroma_size, hip_stream_));
+                    } else {
+                        // use 2d copy to copy an ROI
+                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    }
+                } else
+                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+            }
+
+            HIP_API_CALL(hipStreamSynchronize(hip_stream_));
+            ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, pDispInfo->picture_index));
+        }
+    } else {
+        RocdecDecodeStatus dec_status;
+        memset(&dec_status, 0, sizeof(dec_status));
+        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
+        if (result == ROCDEC_SUCCESS && (dec_status.decodeStatus == rocDecodeStatus_Error || dec_status.decodeStatus == rocDecodeStatus_Error_Concealed)) {
+            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
+        }
+        decoded_frame_cnt_++;
     }
 
     return 1;
@@ -789,7 +804,7 @@ uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
             DecFrameBuffer *fb = &vp_frames_q_.front();
             if (pts) *pts = fb->pts;
             return fb->frame_ptr;
-        } else {
+        } else if (vp_frames_.size() > 0){
             if (pts) *pts = vp_frames_[decoded_frame_cnt_ret_].pts;
             return vp_frames_[decoded_frame_cnt_ret_++].frame_ptr;
         }
@@ -808,6 +823,8 @@ uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
  */
 
 bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
+    if (out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)
+        return true;    // nothing to do
     if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
         if (!b_flushing)  // if not flushing the buffers are re-used, so keep them
             return true;            // nothing to do
@@ -845,7 +862,7 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
  * @return false     - falied
  */
 bool RocVideoDecoder::ReleaseInternalFrames() {
-    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL)
+    if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)
         return true;            // nothing to do
     // only needed when using internal mapped buffer
     while (!vp_frames_q_.empty()) {
