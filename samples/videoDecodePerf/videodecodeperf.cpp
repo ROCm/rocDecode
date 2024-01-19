@@ -46,8 +46,6 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
-        //std::cout << "decode_frame_num: " << n_frame << std::endl;
-        //if (n_frame % 10000 == 0) std::cout << "decode_frame_num: " << n_frame << std::endl;
         n_frame += n_frame_returned;
     } while (n_video_bytes);
 
