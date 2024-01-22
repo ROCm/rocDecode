@@ -11,55 +11,65 @@ rocDecode is a high performance video decode SDK for AMD GPUs. rocDecode API let
 ## Prerequisites
 
 * Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-  + RHEL - `8` / `9`
-  + SLES - `15-SP4`
+    * Ubuntu - `20.04` / `22.04`
+    * RHEL - `8` / `9`
+    * SLES - `15-SP4`
 
 * [ROCm supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
-  + **NOTE:** `gfx908` or higher required
+    * **NOTE:** `gfx908` or higher required
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
-  + **NOTE:** To install rocdecode with minimum requirements follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
+    * **NOTE:** To install rocdecode with minimum requirements follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
 
 ### To build from source
 
 * CMake `3.5` or later
+
 ```shell
 sudo apt install cmake
 ```
 
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
+
 ```shell
 sudo apt install pkg-config
 ```
 
 * [FFMPEG](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
+
 ```shell
 sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
 ```
 
-**NOTE:** 
+**NOTE:**
+
 * All package install shown with `apt` package manager, use appropriate package manager depending on the OS.
 
 * Ubuntu 22.04 - Install `libstdc++-12-dev`
+
 ```shell
 sudo apt install libstdc++-12-dev
 ```
+
 #### Prerequisites setup script for Linux
+
 For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
 
 **Usage:**
+
 ```shell
   python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
                              --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 ```
+
 **NOTE:** This script only needs to be executed once.
 
 ## Build and install instructions
 
 ### Package install
 
-Install rocDecode runtime, development, and test packages. 
+Install rocDecode runtime, development, and test packages.
+
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
 * Test package - `rocdecode-test` provides ctest to verify installation
@@ -67,14 +77,19 @@ Install rocDecode runtime, development, and test packages.
 **NOTE:** Package install will auto install all dependencies.
 
 #### Ubuntu
+
 ```shell
 sudo apt install rocdecode rocdecode-dev rocdecode-test
 ```
+
 #### RHEL
+
 ```shell
 sudo yum install rocdecode rocdecode-devel rocdecode-test
 ```
+
 #### SLES
+
 ```shell
 sudo zypper install rocdecode rocdecode-devel rocdecode-test
 ```
@@ -95,6 +110,7 @@ sudo make install
   ```shell
   make test
   ```
+
   **NOTE:** run tests with verbose option `make test ARGS="-VV"`
 
 * make package
@@ -141,11 +157,13 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 
 * [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
-  * On `Ubuntu`
+    * On `Ubuntu`
+
   ```shell
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  * On `RHEL`/`SLES` - install ffmpeg development packages manually or use `rocDecode-setup.py` script
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use `rocDecode-setup.py` script
 
 ## Docker
 
@@ -156,6 +174,7 @@ Docker files to build rocDecode containers are available [here](docker/)
 Run the steps below to build documentation locally.
 
 * Sphinx
+
 ```shell
 cd docs
 pip3 install -r sphinx/requirements.txt
@@ -163,6 +182,7 @@ python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
 ```
 
 * Doxygen
+
 ```shell
 doxygen .Doxyfile
 ```
@@ -170,11 +190,11 @@ doxygen .Doxyfile
 ## Tested configurations
 
 * Linux distribution
-  * Ubuntu - `20.04` / `22.04`
-  * RHEL - `8` / `9`
-  * SLES - `15-SP4`
+    * Ubuntu - `20.04` / `22.04`
+    * RHEL - `8` / `9`
+    * SLES - `15-SP4`
 * ROCm:
-  * rocm-core - `5.6.1.50601-93`
-  * amdgpu-core - `1:5.6.50601-1649308`
+    * rocm-core - `5.6.1.50601-93`
+    * amdgpu-core - `1:5.6.50601-1649308`
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
