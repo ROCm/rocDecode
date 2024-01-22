@@ -729,6 +729,9 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             }
 
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
+            if(src_dev_ptr[0] != nullptr) {
+                HIP_API_CALL(hipFree(src_dev_ptr[0]));
+            }
             ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, pDispInfo->picture_index));
         }
     } else {
@@ -846,6 +849,9 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
         }
+        if (mapped_frame_ptr != nullptr) {
+            HIP_API_CALL(hipFree(mapped_frame_ptr));
+        }
         ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
@@ -867,6 +873,9 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     while (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         DecFrameBuffer *fb = &vp_frames_q_.front();
+        if (mapped_frame_ptr != nullptr) {
+            HIP_API_CALL(hipFree(mapped_frame_ptr));
+        }
         ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
