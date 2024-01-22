@@ -261,26 +261,27 @@ typedef struct _RocdecReconfigureDecoderInfo {
 } RocdecReconfigureDecoderInfo; 
 
 /*********************************************************/
-//! \struct RocdecH264Picture
+//! \struct RocdecAvcPicture
 //! \ingroup group_amd_rocdecode
-//! H.264 Picture Entry
-//! This structure is used in RocdecH264PicParams structure
+//! AVC/H.264 Picture Entry
+//! This structure is used in RocdecAvcPicParams structure
 /*********************************************************/
-typedef struct _RocdecH264Picture {
-    int PicIdx;                 /**< picture index of reference frame    */
-    int FrameIdx;               /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term)  */
-    uint32_t RefFlags;      /**< See below for definitions  */
-    int TopFieldOrderCnt;       /**< field order count of top field  */
-    int BottomFieldOrderCnt;    /**< field order count of bottom field   */
-} RocdecH264Picture;
+typedef struct _RocdecAvcPicture {
+    int PicIdx;                     /**< picture index of reference frame    */
+    uint32_t FrameIdx;              /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term)  */
+    uint32_t Flags;                 /**< See below for definitions  */
+    int32_t TopFieldOrderCnt;       /**< field order count of top field  */
+    int32_t BottomFieldOrderCnt;    /**< field order count of bottom field   */
+    uint32_t va_reserved[4];
+} RocdecAvcPicture;
 
-/* flags in RocdecH264Picture could be OR of the following */
-#define RocdecH264Picture_FLAGS_INVALID			          0x00000001
-#define RocdecH264Picture_FLAGS_TOP_FIELD		          0x00000002
-#define RocdecH264Picture_FLAGS_BOTTOM_FIELD		      0x00000004
-#define RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE	0x00000008
-#define RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE	  0x00000010
-#define RocdecH264Picture_FLAGS_NON_EXISTING		      0x00000020
+/* flags in RocdecAvcPicture could be OR of the following */
+#define RocdecH264Picture_FLAGS_INVALID                     0x00000001
+#define RocdecH264Picture_FLAGS_TOP_FIELD                   0x00000002
+#define RocdecH264Picture_FLAGS_BOTTOM_FIELD                0x00000004
+#define RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE        0x00000008
+#define RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE         0x00000010
+#define RocdecH264Picture_FLAGS_NON_EXISTING                0x00000020
 
 /*********************************************************/
 //! \struct RocdecHEVCPicture
@@ -403,15 +404,25 @@ typedef struct _RocdecMpeg2PicParams {
 } RocdecMpeg2PicParams;
 
 /***********************************************************/
-//! \struct RocdecH264PicParams placeholder
+//! \struct RocdecVc1PicParams placeholder
 //! \ingroup group_amd_rocdecode
-//! H.264 picture parameters
-//! This structure is used in RocdecH264PicParams structure
-//! This structure is configured similar to VA-API VAPictureParameterBufferH264 structure
+//! JPEG picture parameters
+//! This structure is used in RocdecVc1PicParams structure
 /***********************************************************/
-typedef struct _RocdecH264PicParams {
-    RocdecH264Picture cur_pic;
-    RocdecH264Picture dpb[16];	/* in DPB */
+typedef struct _RocdecVc1PicParams {
+    int Reserved;
+} RocdecVc1PicParams;
+
+/***********************************************************/
+//! \struct RocdecAvcPicParams placeholder
+//! \ingroup group_amd_rocdecode
+//! AVC picture parameters
+//! This structure is used in RocdecAvcPicParams structure
+//! This structure is configured to be the same as VA-API VAPictureParameterBufferH264 structure
+/***********************************************************/
+typedef struct _RocdecAvcPicParams {
+    RocdecAvcPicture curr_pic;
+    RocdecAvcPicture ref_frames[16];	/* in DPB */
     uint16_t picture_width_in_mbs_minus1;
     uint16_t picture_height_in_mbs_minus1;
     uint8_t bit_depth_luma_minus8;
@@ -432,7 +443,16 @@ typedef struct _RocdecH264PicParams {
             uint32_t delta_pic_order_always_zero_flag	: 1;
         } bits;
         uint32_t value;
-    } sps_fields;
+    } seq_fields;
+
+    // FMO/ASO
+    uint8_t num_slice_groups_minus1;
+    uint8_t slice_group_map_type;
+    uint16_t slice_group_change_rate_minus1;
+    int8_t pic_init_qp_minus26;
+    int8_t pic_init_qs_minus26;
+    int8_t chroma_qp_index_offset;
+    int8_t second_chroma_qp_index_offset;
     union {
         struct {
             uint32_t entropy_coding_mode_flag	: 1;
@@ -447,86 +467,79 @@ typedef struct _RocdecH264PicParams {
             uint32_t reference_pic_flag			: 1; /* nal_ref_idc != 0 */
         } bits;
         uint32_t value;
-    } pps_fields;
-
-    // FMO/ASO
-    uint8_t num_slice_groups_minus1;
-    uint8_t slice_group_map_type;
-    uint16_t slice_group_change_rate_minus1;
-    int8_t pic_init_qp_minus26;
-    int8_t pic_init_qs_minus26;
-    int8_t chroma_qp_index_offset;
-    int8_t second_chroma_qp_index_offset;
-
+    } pic_fields;
     uint16_t frame_num;
-    uint8_t num_ref_idx_l0_default_active_minus1;
-    uint8_t num_ref_idx_l1_default_active_minus1;
 
-    // Quantization Matrices (raster-order)
-    uint8_t scaling_list_4x4[6][16];
-    uint8_t scaling_list_8x8[2][64];
-    // SVC/MVC : Not supported in this version
-    // union
-    // {
-    //     ROCDECH264MVCEXT mvcext;
-    //     ROCDECH264SVCEXT svcext;
-    // };
-    uint32_t  Reserved[12];
-} RocdecH264PicParams;
-
+    uint32_t  Reserved[8];
+} RocdecAvcPicParams;
 
 /***********************************************************/
-//! \struct RocdecHevcIQMatrix
+//! \struct RocdecAvcSliceParams placeholder
 //! \ingroup group_amd_rocdecode
-//! HEVC IQMatrix
-//! This structure is sent once per frame,
-//! and only when scaling_list_enabled_flag = 1.
-//! When sps_scaling_list_data_present_flag = 0, app still
-//! needs to send in this structure with default matrix values.
-//! This structure is used in RocdecHevcQMatrix structure
+//! AVC slice parameter buffer
+//! This structure is configured to be the same as VA-API VASliceParameterBufferH264 structure
 /***********************************************************/
-typedef struct _RocdecHevcIQMatrix {
+typedef struct _RocdecAvcSliceParams {
+    uint32_t slice_data_size; // slice size in bytes
+    uint32_t slice_data_offset; // byte offset of the current slice in the slice data buffer
+    uint32_t slice_data_flag; /* see VA_SLICE_DATA_FLAG_XXX defintions */
     /**
-     * \brief 4x4 scaling,
-     * correspongs i = 0, MatrixID is in the range of 0 to 5,
-     * inclusive. And j is in the range of 0 to 15, inclusive.
+     * \brief Bit offset from NAL Header Unit to the begining of slice_data().
+     *
+     * This bit offset is relative to and includes the NAL unit byte
+     * and represents the number of bits parsed in the slice_header()
+     * after the removal of any emulation prevention bytes in
+     * there. However, the slice data buffer passed to the hardware is
+     * the original bitstream, thus including any emulation prevention
+     * bytes.
      */
-    uint8_t                 ScalingList4x4[6][16];
-    /**
-     * \brief 8x8 scaling,
-     * correspongs i = 1, MatrixID is in the range of 0 to 5,
-     * inclusive. And j is in the range of 0 to 63, inclusive.
-     */
-    uint8_t                 ScalingList8x8[6][64];
-    /**
-     * \brief 16x16 scaling,
-     * correspongs i = 2, MatrixID is in the range of 0 to 5,
-     * inclusive. And j is in the range of 0 to 63, inclusive.
-     */
-    uint8_t                 ScalingList16x16[6][64];
-    /**
-     * \brief 32x32 scaling,
-     * correspongs i = 3, MatrixID is in the range of 0 to 1,
-     * inclusive. And j is in the range of 0 to 63, inclusive.
-     */
-    uint8_t                 ScalingList32x32[2][64];
-    /**
-     * \brief DC values of the 16x16 scaling lists,
-     * corresponds to HEVC spec syntax
-     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
-     * with sizeID = 2 and matrixID in the range of 0 to 5, inclusive.
-     */
-    uint8_t                 ScalingListDC16x16[6];
-    /**
-     * \brief DC values of the 32x32 scaling lists,
-     * corresponds to HEVC spec syntax
-     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
-     * with sizeID = 3 and matrixID in the range of 0 to 1, inclusive.
-     */
-    uint8_t                 ScalingListDC32x32[2];
+    uint16_t slice_data_bit_offset;
 
-    uint32_t                reserved[4];
-} RocdecHevcIQMatrix;
+    uint16_t first_mb_in_slice;
+    uint8_t slice_type;
+    uint8_t direct_spatial_mv_pred_flag;
+    uint8_t num_ref_idx_l0_active_minus1;
+    uint8_t num_ref_idx_l1_active_minus1;
+    uint8_t cabac_init_idc;
+    int8_t slice_qp_delta;
+    uint8_t disable_deblocking_filter_idc;
+    int8_t slice_alpha_c0_offset_div2;
+    int8_t slice_beta_offset_div2;
+    RocdecAvcPicture ref_pic_list_0[32];  // 8.2.4.2
+    RocdecAvcPicture ref_pic_list_1[32];  // 8.2.4.2
+    uint8_t luma_log2_weight_denom;
+    uint8_t chroma_log2_weight_denom;
+    uint8_t luma_weight_l0_flag;
+    int16_t luma_weight_l0[32];
+    int16_t luma_offset_l0[32];
+    uint8_t chroma_weight_l0_flag;
+    int16_t chroma_weight_l0[32][2];
+    int16_t chroma_offset_l0[32][2];
+    uint8_t luma_weight_l1_flag;
+    int16_t luma_weight_l1[32];
+    int16_t luma_offset_l1[32];
+    uint8_t chroma_weight_l1_flag;
+    int16_t chroma_weight_l1[32][2];
+    int16_t chroma_offset_l1[32][2];
+
+    uint32_t                va_reserved[4];
+} RocdecAvcSliceParams;
+
+/***********************************************************/
+//! \struct RocdecAvcIQMatrix placeholder
+//! \ingroup group_amd_rocdecode
+//! AVC Inverse Quantization Matrix
+//! This structure is configured to be the same as VA-API VAIQMatrixBufferH264 structure
+/***********************************************************/
+typedef struct _RocdecAvcIQMatrix {
+    /** \brief 4x4 scaling list, in raster scan order. */
+    uint8_t scaling_list_4x4[6][16];
+    /** \brief 8x8 scaling list, in raster scan order. */
+    uint8_t scaling_list_8x8[2][64];
+
+    /** \brief Reserved bytes for future use, must be zero */
+    uint32_t                va_reserved[4];
+} RocdecAvcIQMatrix;
 
 /***********************************************************/
 //! \struct RocdecHevcPicParams
@@ -535,7 +548,7 @@ typedef struct _RocdecHevcIQMatrix {
 //! This structure is used in RocdecHevcPicParams structure
 /***********************************************************/
 typedef struct _RocdecHevcPicParams {
-    RocdecHEVCPicture cur_pic;
+    RocdecHEVCPicture curr_pic;
     RocdecHEVCPicture ref_frames[15];	/* reference frame list in DPB */
     uint16_t picture_width_in_luma_samples;
     uint16_t picture_height_in_luma_samples;
@@ -650,16 +663,6 @@ typedef struct _RocdecHevcPicParams {
 } RocdecHevcPicParams;
 
 /***********************************************************/
-//! \struct RocdecVc1PicParams placeholder
-//! \ingroup group_amd_rocdecode
-//! JPEG picture parameters
-//! This structure is used in RocdecVc1PicParams structure
-/***********************************************************/
-typedef struct _RocdecVc1PicParams {
-    int Reserved;
-} RocdecVc1PicParams;
-
-/***********************************************************/
 //! \struct RocdecHevcSliceParams
 //! \ingroup group_amd_rocdecode
 //! HEVC slice parameters
@@ -746,6 +749,59 @@ typedef struct _RocdecHevcSliceParams {
     uint32_t                reserved[2];
 } RocdecHevcSliceParams;
 
+/***********************************************************/
+//! \struct RocdecHevcIQMatrix
+//! \ingroup group_amd_rocdecode
+//! HEVC IQMatrix
+//! This structure is sent once per frame,
+//! and only when scaling_list_enabled_flag = 1.
+//! When sps_scaling_list_data_present_flag = 0, app still
+//! needs to send in this structure with default matrix values.
+//! This structure is used in RocdecHevcQMatrix structure
+/***********************************************************/
+typedef struct _RocdecHevcIQMatrix {
+    /**
+     * \brief 4x4 scaling,
+     * correspongs i = 0, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 15, inclusive.
+     */
+    uint8_t                 ScalingList4x4[6][16];
+    /**
+     * \brief 8x8 scaling,
+     * correspongs i = 1, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList8x8[6][64];
+    /**
+     * \brief 16x16 scaling,
+     * correspongs i = 2, MatrixID is in the range of 0 to 5,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList16x16[6][64];
+    /**
+     * \brief 32x32 scaling,
+     * correspongs i = 3, MatrixID is in the range of 0 to 1,
+     * inclusive. And j is in the range of 0 to 63, inclusive.
+     */
+    uint8_t                 ScalingList32x32[2][64];
+    /**
+     * \brief DC values of the 16x16 scaling lists,
+     * corresponds to HEVC spec syntax
+     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
+     * with sizeID = 2 and matrixID in the range of 0 to 5, inclusive.
+     */
+    uint8_t                 ScalingListDC16x16[6];
+    /**
+     * \brief DC values of the 32x32 scaling lists,
+     * corresponds to HEVC spec syntax
+     * scaling_list_dc_coef_minus8[ sizeID - 2 ][ matrixID ] + 8
+     * with sizeID = 3 and matrixID in the range of 0 to 1, inclusive.
+     */
+    uint8_t                 ScalingListDC32x32[2];
+
+    uint32_t                reserved[4];
+} RocdecHevcIQMatrix;
+
 /******************************************************************************************/
 //! \struct _RocdecPicParams
 //! \ingroup group_amd_rocdecode
@@ -773,7 +829,7 @@ typedef struct _RocdecPicParams {
     // IN: Codec-specific data
     union {
         RocdecMpeg2PicParams mpeg2;         /**< Also used for MPEG-1 */
-        RocdecH264PicParams  h264;
+        RocdecAvcPicParams   avc;
         RocdecHevcPicParams  hevc;
         RocdecVc1PicParams   vc1;
         RocdecJPEGPicParams  jpeg;
@@ -782,11 +838,13 @@ typedef struct _RocdecPicParams {
 
     union {
         // Todo: Add slice params defines for other codecs.
+        RocdecAvcSliceParams  avc;
         RocdecHevcSliceParams hevc;
     } slice_params;
 
     union {
         // Todo: Added IQ matrix defines for other codecs.
+        RocdecAvcIQMatrix  avc;
         RocdecHevcIQMatrix hevc;
     } iq_matrix;
 } RocdecPicParams;

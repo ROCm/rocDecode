@@ -212,7 +212,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     // Upload data buffers
     switch (decoder_create_info_.CodecType) {
         case rocDecVideoCodec_HEVC: {
-            pPicParams->pic_params.hevc.cur_pic.PicIdx = curr_surface_id;
+            pPicParams->pic_params.hevc.curr_pic.PicIdx = curr_surface_id;
             for (int i = 0; i < 15; i++) {
                 if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx != 0xFF) {
                     if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx >= va_surface_ids_.size() || pPicParams->pic_params.hevc.ref_frames[i].PicIdx < 0) {
@@ -233,9 +233,38 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
 
             slice_params_ptr = (void*)&pPicParams->slice_params.hevc;
             slice_params_size = sizeof(RocdecHevcSliceParams);
+
             if ((pic_params_size != sizeof(VAPictureParameterBufferHEVC)) || (scaling_list_enabled && (iq_matrix_size != sizeof(VAIQMatrixBufferHEVC))) || 
                 (slice_params_size != sizeof(VASliceParameterBufferHEVC))) {
                     ERR("HEVC data_buffer parameter_size not matching vaapi parameter buffer size!");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
+            break;
+        }
+
+        case rocDecVideoCodec_H264: {
+            pPicParams->pic_params.avc.curr_pic.PicIdx = curr_surface_id;
+            for (int i = 0; i < 16; i++) {
+                if (pPicParams->pic_params.avc.ref_frames[i].PicIdx != 0xFF) {
+                    if (pPicParams->pic_params.avc.ref_frames[i].PicIdx >= va_surface_ids_.size() || pPicParams->pic_params.avc.ref_frames[i].PicIdx < 0) {
+                        ERR("Reference frame index exceeded the VAAPI surface pool limit.");
+                        return ROCDEC_INVALID_PARAMETER;
+                    }
+                    pPicParams->pic_params.avc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.avc.ref_frames[i].PicIdx];
+                }
+            }
+            pic_params_ptr = (void*)&pPicParams->pic_params.avc;
+            pic_params_size = sizeof(RocdecAvcPicParams);
+
+            scaling_list_enabled = true;
+            iq_matrix_ptr = (void*)&pPicParams->iq_matrix.avc;
+            iq_matrix_size = sizeof(RocdecAvcIQMatrix);
+
+            slice_params_ptr = (void*)&pPicParams->slice_params.avc;
+            slice_params_size = sizeof(RocdecAvcSliceParams);
+
+            if ((pic_params_size != sizeof(VAPictureParameterBufferH264)) || (iq_matrix_size != sizeof(VAIQMatrixBufferH264)) || (slice_params_size != sizeof(VASliceParameterBufferH264))) {
+                    ERR("AVC data_buffer parameter_size not matching vaapi parameter buffer size!");
                     return ROCDEC_RUNTIME_ERROR;
             }
             break;

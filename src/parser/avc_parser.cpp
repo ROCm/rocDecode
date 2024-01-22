@@ -55,6 +55,13 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             }
             new_sps_activated_ = false;
         }
+
+        // Decode the picture
+        if (SendPicForDecode() != PARSER_OK) {
+            ERR(STR("Failed to decode!"));
+            return ROCDEC_RUNTIME_ERROR;
+        }
+
         pic_count_++;
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
         // If no payload and EOS is not set, treated as invalid.
@@ -274,6 +281,228 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
         return PARSER_OK;
     }
 }
+
+ParserResult AvcVideoParser::SendPicForDecode() {
+    int i, j;
+    AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+    AvcPicParameterSet *p_pps = &pps_list_[active_pps_id_];
+    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    dec_pic_params_ = {0};
+
+    dec_pic_params_.PicWidth = pic_width_;
+    dec_pic_params_.PicHeight = pic_height_;
+    dec_pic_params_.CurrPicIdx = curr_pic_.pic_idx;
+    dec_pic_params_.field_pic_flag = p_slice_header->field_pic_flag;
+    dec_pic_params_.bottom_field_flag = p_slice_header->bottom_field_flag;
+    if (p_slice_header->field_pic_flag) {
+        if (pic_count_ & 1) {
+            dec_pic_params_.second_field = 1;
+        } else {
+            dec_pic_params_.second_field = 0;
+        }
+    } else {
+        dec_pic_params_.second_field = 0;
+    }
+
+    dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
+    dec_pic_params_.pBitstreamData = pic_stream_data_ptr_;
+    dec_pic_params_.nNumSlices = slice_num_;
+    dec_pic_params_.pSliceDataOffsets = nullptr;
+
+    dec_pic_params_.ref_pic_flag = slice_nal_unit_header_.nal_ref_idc;
+    dec_pic_params_.intra_pic_flag = p_slice_header->slice_type == kAvcSliceTypeI || p_slice_header->slice_type == kAvcSliceTypeI_7 || p_slice_header->slice_type == kAvcSliceTypeSI || p_slice_header->slice_type == kAvcSliceTypeSI_9;
+
+    // Set up the picture parameter buffer
+    RocdecAvcPicParams *p_pic_param = &dec_pic_params_.pic_params.avc;
+
+    // Current picture
+    p_pic_param->curr_pic.PicIdx = curr_pic_.pic_idx;
+    if (curr_pic_.is_reference == kUsedForLongTerm) {
+        p_pic_param->curr_pic.FrameIdx = curr_pic_.long_term_pic_num;
+    } else {
+        p_pic_param->curr_pic.FrameIdx = curr_pic_.frame_num;
+    }
+    p_pic_param->curr_pic.Flags = 0;
+    if (curr_pic_.pic_structure != kFrame) {
+        p_pic_param->curr_pic.Flags |= curr_pic_.pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+    }
+    if (curr_pic_.is_reference != kUnusedForReference) {
+        p_pic_param->curr_pic.Flags |= curr_pic_.is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+    }
+    p_pic_param->curr_pic.TopFieldOrderCnt = curr_pic_.top_field_order_cnt;
+    p_pic_param->curr_pic.BottomFieldOrderCnt = curr_pic_.bottom_field_order_cnt;
+
+    // Reference pictures
+    int buf_index = 0;
+    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+        AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+        if (p_ref_pic->is_reference != kUnusedForReference) {
+            p_pic_param->ref_frames[buf_index].PicIdx = p_ref_pic->pic_idx;
+            if ( p_ref_pic->is_reference == kUsedForLongTerm) {
+                p_pic_param->ref_frames[buf_index].FrameIdx = p_ref_pic->long_term_pic_num;
+            } else {
+                p_pic_param->ref_frames[buf_index].FrameIdx = p_ref_pic->frame_num;
+            }
+            p_pic_param->ref_frames[buf_index].Flags = 0;
+            if (p_ref_pic->pic_structure != kFrame) {
+                p_pic_param->ref_frames[buf_index].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+            }
+            p_pic_param->ref_frames[buf_index].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+            buf_index++;
+        }
+    }
+
+    for (i = buf_index; i < AVC_MAX_DPB_FRAMES; i++) {
+        p_pic_param->ref_frames[i].PicIdx = 0xFF;
+    }
+
+    p_pic_param->picture_width_in_mbs_minus1 = p_sps->pic_width_in_mbs_minus1;
+    p_pic_param->picture_height_in_mbs_minus1 = (2 - p_sps->frame_mbs_only_flag) * (p_sps->pic_height_in_map_units_minus1 + 1) - 1;
+    p_pic_param->bit_depth_luma_minus8 = p_sps->bit_depth_luma_minus8;
+    p_pic_param->bit_depth_chroma_minus8 = p_sps->bit_depth_chroma_minus8;
+    p_pic_param->num_ref_frames = p_sps->max_num_ref_frames;
+
+    p_pic_param->seq_fields.bits.chroma_format_idc = p_sps->chroma_format_idc;
+    p_pic_param->seq_fields.bits.residual_colour_transform_flag = p_sps->separate_colour_plane_flag;
+    p_pic_param->seq_fields.bits.gaps_in_frame_num_value_allowed_flag = p_sps->gaps_in_frame_num_value_allowed_flag;
+    p_pic_param->seq_fields.bits.frame_mbs_only_flag = p_sps->frame_mbs_only_flag;
+    p_pic_param->seq_fields.bits.mb_adaptive_frame_field_flag = p_sps->mb_adaptive_frame_field_flag;
+    p_pic_param->seq_fields.bits.direct_8x8_inference_flag = p_sps->direct_8x8_inference_flag;
+    p_pic_param->seq_fields.bits.MinLumaBiPredSize8x8 = p_sps->level_idc >= 31;  // A.3.3.2
+    p_pic_param->seq_fields.bits.log2_max_frame_num_minus4 = p_sps->log2_max_frame_num_minus4;
+    p_pic_param->seq_fields.bits.pic_order_cnt_type = p_sps->pic_order_cnt_type;
+    p_pic_param->seq_fields.bits.log2_max_pic_order_cnt_lsb_minus4 = p_sps->log2_max_pic_order_cnt_lsb_minus4;
+    p_pic_param->seq_fields.bits.delta_pic_order_always_zero_flag = p_sps->delta_pic_order_always_zero_flag;
+
+    p_pic_param->pic_init_qp_minus26 = p_pps->pic_init_qp_minus26;
+    p_pic_param->pic_init_qs_minus26 = p_pps->pic_init_qs_minus26;
+    p_pic_param->chroma_qp_index_offset = p_pps->chroma_qp_index_offset;
+    p_pic_param->second_chroma_qp_index_offset = p_pps->second_chroma_qp_index_offset;
+
+    p_pic_param->pic_fields.bits.entropy_coding_mode_flag = p_pps->entropy_coding_mode_flag;
+    p_pic_param->pic_fields.bits.weighted_pred_flag = p_pps->weighted_pred_flag;
+    p_pic_param->pic_fields.bits.weighted_bipred_idc = p_pps->weighted_bipred_idc;
+    p_pic_param->pic_fields.bits.transform_8x8_mode_flag = p_pps->transform_8x8_mode_flag;
+    p_pic_param->pic_fields.bits.field_pic_flag = p_slice_header->field_pic_flag;
+    p_pic_param->pic_fields.bits.constrained_intra_pred_flag = p_pps->constrained_intra_pred_flag;
+    p_pic_param->pic_fields.bits.pic_order_present_flag = p_pps->bottom_field_pic_order_in_frame_present_flag;
+    p_pic_param->pic_fields.bits.deblocking_filter_control_present_flag = p_pps->deblocking_filter_control_present_flag;
+    p_pic_param->pic_fields.bits.redundant_pic_cnt_present_flag = p_pps->redundant_pic_cnt_present_flag;
+    p_pic_param->pic_fields.bits.reference_pic_flag = slice_nal_unit_header_.nal_ref_idc != 0;
+
+    p_pic_param->frame_num = p_slice_header->frame_num;
+
+    // Set up slice parameters
+    RocdecAvcSliceParams *p_slice_param = &dec_pic_params_.slice_params.avc;
+
+    p_slice_param->slice_data_size = pic_stream_data_size_;
+    p_slice_param->slice_data_offset = 0;
+    p_slice_param->slice_data_flag = 0; // VA_SLICE_DATA_FLAG_ALL;
+    p_slice_param->slice_data_bit_offset = 0;
+    p_slice_param->first_mb_in_slice = p_slice_header->first_mb_in_slice;
+    p_slice_param->slice_type = p_slice_header->slice_type;
+    p_slice_param->direct_spatial_mv_pred_flag = p_slice_header->direct_spatial_mv_pred_flag;
+    p_slice_param->num_ref_idx_l0_active_minus1 = p_slice_header->num_ref_idx_l0_active_minus1;
+    p_slice_param->num_ref_idx_l1_active_minus1 = p_slice_header->num_ref_idx_l1_active_minus1;
+    p_slice_param->cabac_init_idc = p_slice_header->cabac_init_idc;
+    p_slice_param->slice_qp_delta = p_slice_header->slice_qp_delta;
+    p_slice_param->disable_deblocking_filter_idc = p_slice_header->disable_deblocking_filter_idc;
+    p_slice_param->slice_alpha_c0_offset_div2 = p_slice_header->slice_alpha_c0_offset_div2;
+    p_slice_param->slice_beta_offset_div2 = p_slice_header->slice_beta_offset_div2;
+    p_slice_param->luma_log2_weight_denom = p_slice_header->pred_weight_table.luma_log2_weight_denom;
+    p_slice_param->chroma_log2_weight_denom = p_slice_header->pred_weight_table.chroma_log2_weight_denom;
+
+    // Ref lists
+    for (i = 0; i < dpb_buffer_.num_short_term + dpb_buffer_.num_long_term; i++) {
+        AvcPicture *p_ref_pic = &ref_list_0_[i];
+        if (p_ref_pic->is_reference != kUnusedForReference) {
+            p_slice_param->ref_pic_list_0[i].PicIdx = p_ref_pic->pic_idx;
+            if ( p_ref_pic->is_reference == kUsedForLongTerm) {
+                p_slice_param->ref_pic_list_0[i].FrameIdx = p_ref_pic->long_term_pic_num;
+            } else {
+                p_slice_param->ref_pic_list_0[i].FrameIdx = p_ref_pic->frame_num;
+            }
+            p_slice_param->ref_pic_list_0[i].Flags = 0;
+            if (p_ref_pic->pic_structure != kFrame) {
+                p_slice_param->ref_pic_list_0[i].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+            }
+            p_slice_param->ref_pic_list_0[i].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+        }
+    }
+
+    if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
+        AvcPicture *p_ref_pic = &ref_list_1_[i];
+        if (p_ref_pic->is_reference != kUnusedForReference) {
+            p_slice_param->ref_pic_list_1[i].PicIdx = p_ref_pic->pic_idx;
+            if ( p_ref_pic->is_reference == kUsedForLongTerm) {
+                p_slice_param->ref_pic_list_1[i].FrameIdx = p_ref_pic->long_term_pic_num;
+            } else {
+                p_slice_param->ref_pic_list_1[i].FrameIdx = p_ref_pic->frame_num;
+            }
+            p_slice_param->ref_pic_list_1[i].Flags = 0;
+            if (p_ref_pic->pic_structure != kFrame) {
+                p_slice_param->ref_pic_list_1[i].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+            }
+            p_slice_param->ref_pic_list_1[i].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+        }
+    }
+
+    // Prediction weight table
+    // Note luma_weight_l0_flag should be an array. Set it using the first one in the table.
+    p_slice_param->luma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l0_flag;
+    for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
+        p_slice_param->luma_weight_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l0;
+        p_slice_param->luma_offset_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l0;
+    }
+
+    // Note chroma_weight_l0_flag should be an array. Set it using the first one in the table.
+    p_slice_param->chroma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l0_flag;
+    for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
+        for (j = 0; j < 2; j++) {
+            p_slice_param->chroma_weight_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l0[j];
+            p_slice_param->chroma_offset_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l0[j];
+        }
+    }
+    if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
+        // Note luma_weight_l1_flag should be an array. Set it using the first one in the table.
+        p_slice_param->luma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l1_flag;
+        for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
+            p_slice_param->luma_weight_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l1;
+            p_slice_param->luma_offset_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l1;
+        }
+        // Note chroma_weight_l0_flag should be an array. Set it using the first one in the table.
+        p_slice_param->chroma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l1_flag;
+        for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
+            for (j = 0; j < 2; j++) {
+                p_slice_param->chroma_weight_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l1[j];
+                p_slice_param->chroma_offset_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l1[j];
+            }
+        }
+    }
+
+    // Set up scaling lists
+    RocdecAvcIQMatrix *p_iq_matrix = &dec_pic_params_.iq_matrix.avc;
+    for (i = 0; i < 6; i++) {
+        for (j = 0; j < 16; j++) {
+            p_iq_matrix->scaling_list_4x4[i][j] = p_pps->scaling_list_4x4[i][j];
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < 64; j++) {
+            p_iq_matrix->scaling_list_8x8[i][j] = p_pps->scaling_list_8x8[i][j];
+        }
+    }
+
+    if (pfn_decode_picture_cb_(parser_params_.pUserData, &dec_pic_params_) == 0) {
+        ERR("Decode error occurred.");
+        return PARSER_FAIL;
+    } else {
+        return PARSER_OK;
+    }
+
+    return PARSER_OK;
+}
+
 
 AvcNalUnitHeader AvcVideoParser::ParseNalUnitHeader(uint8_t header_byte) {
     size_t bit_offset = 0;
