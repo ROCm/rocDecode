@@ -699,6 +699,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                 }
             } else
                 HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, coded_width_ * byte_per_pixel_, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToHost, hip_stream_));
+
             // Copy chroma plane ( )
             // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
             uint8_t *p_frame_uv = p_dec_frame + dst_pitch * coded_height_;
@@ -726,6 +727,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                 } else
                     HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
             }
+
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
             if(src_dev_ptr[0] != nullptr) {
                 HIP_API_CALL(hipFree(src_dev_ptr[0]));
