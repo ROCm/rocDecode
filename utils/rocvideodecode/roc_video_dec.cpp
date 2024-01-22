@@ -873,6 +873,8 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     while (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         DecFrameBuffer *fb = &vp_frames_q_.front();
+        void *mapped_frame_ptr = fb->frame_ptr;
+
         if (mapped_frame_ptr != nullptr) {
             HIP_API_CALL(hipFree(mapped_frame_ptr));
         }
