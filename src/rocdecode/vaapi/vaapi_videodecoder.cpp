@@ -298,7 +298,6 @@ rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDesc
     if (pic_idx >= va_surface_ids_.size()) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
     CHECK_VAAPI(vaExportSurfaceHandle(va_display_, va_surface_ids_[pic_idx],
                 VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
                 VA_EXPORT_SURFACE_READ_ONLY |
