@@ -90,8 +90,10 @@ rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
     }
     catch(const std::exception& e) {
         roc_parser_handle->CaptureError(e.what());
+        delete roc_parser_handle;
         ERR(e.what())
         return ROCDEC_RUNTIME_ERROR;
     }
+    delete roc_parser_handle;
     return ret;
 }
