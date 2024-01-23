@@ -499,8 +499,6 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     } else {
         return PARSER_OK;
     }
-
-    return PARSER_OK;
 }
 
 
