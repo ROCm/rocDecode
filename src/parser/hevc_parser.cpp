@@ -662,7 +662,7 @@ bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_dat
                         }
 
                         // Get POC. 8.3.1.
-                        CalculateCurrPOC();
+                        CalculateCurrPoc();
 
                         // Decode RPS. 8.3.2.
                         DecodeRps();
@@ -1916,8 +1916,8 @@ bool HevcVideoParser::IsRefPic(HevcNalUnitHeader *nal_header_ptr) {
     }
 }
 
-void HevcVideoParser::CalculateCurrPOC() {
-    // Recode decode order count
+void HevcVideoParser::CalculateCurrPoc() {
+    // Record decode order count
     curr_pic_info_.decode_order_count = pic_count_;
     if (IsIdrPic(&slice_nal_unit_header_)) {
         curr_pic_info_.pic_order_cnt = 0;

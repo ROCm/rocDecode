@@ -24,6 +24,11 @@ THE SOFTWARE.
 #include "avc_parser.h"
 
 AvcVideoParser::AvcVideoParser() {
+    prev_pic_order_cnt_msb_ = 0;
+    prev_pic_order_cnt_lsb_ = 0;
+    prev_top_field_order_cnt_ = 0;
+    prev_frame_num_offset_t = 0;
+    prev_frame_num_ = 0;
     prev_has_mmco_5_ = 0;
     curr_has_mmco_5_ = 0;
     prev_ref_pic_bottom_field_ = 0;
@@ -134,7 +139,20 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         ParseSliceHeader(rbsp_buf_, rbsp_size_, &slice_header_0_);
 
                         // Start decode process
-                        // Todo
+                        // Set current picture properties
+                        CalculateCurrPoc(); // 8.2.1
+                        prev_has_mmco_5_ = curr_has_mmco_5_;
+                        prev_ref_pic_bottom_field_ = curr_ref_pic_bottom_field_;
+                        if (slice_header_0_.field_pic_flag) {
+                            if (slice_header_0_.bottom_field_flag) {
+                                curr_pic_.pic_structure = kBottomField;
+                            } else {
+                                curr_pic_.pic_structure = kTopField;
+                            }
+                        } else {
+                            curr_pic_.pic_structure = kFrame;
+                        }
+                        curr_pic_.frame_num = slice_header_0_.frame_num;
                     }
                     slice_num_++;
                     break;
@@ -714,7 +732,7 @@ void AvcVideoParser::ParseSps(uint8_t *p_stream, size_t size) {
     p_sps->pic_order_cnt_type = Parser::ExpGolomb::ReadUe(p_stream, offset);
     if (p_sps->pic_order_cnt_type == 0 ) {
         p_sps->log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(p_stream, offset);
-        //MaxPicOrderCntLsb = pow(2, p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4);
+        //max_pic_order_cnt_lsb = pow(2, p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4);
     } else if (p_sps->pic_order_cnt_type == 1) {
         p_sps->delta_pic_order_always_zero_flag = Parser::GetBit(p_stream, offset);
         p_sps->offset_for_non_ref_pic = Parser::ExpGolomb::ReadSe(p_stream, offset);
@@ -1377,6 +1395,290 @@ bool AvcVideoParser::MoreRbspData(uint8_t *p_stream, size_t stream_size_in_byte,
     }
     
     return more_rbsp_bits;
+}
+
+// 8.2.1
+void AvcVideoParser::CalculateCurrPoc() {
+    AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    int frame_num_offset; // FrameNumOffset
+
+    int max_pic_order_cnt_lsb = 1 << (p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4); // MaxPicOrderCntLsb
+    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4); // MaxFrameNum
+
+    if (p_sps->pic_order_cnt_type == 0) {
+        if (slice_nal_unit_header_.nal_unit_type == kAvcNalTypeSlice_IDR) {
+            prev_pic_order_cnt_msb_ = 0;
+            prev_pic_order_cnt_lsb_ = 0;
+        } else {
+            if (prev_has_mmco_5_) {
+                if (prev_ref_pic_bottom_field_) {
+                    prev_pic_order_cnt_msb_ = 0;
+                    prev_pic_order_cnt_lsb_ = 0;
+                } else {
+                    prev_pic_order_cnt_msb_ = 0;
+                    prev_pic_order_cnt_lsb_ = prev_top_field_order_cnt_;
+                }
+            } else {
+                /// See the end of this section
+            }
+        }
+
+        int pic_order_cnt_msb;
+		if ( (p_slice_header->pic_order_cnt_lsb < prev_pic_order_cnt_lsb_) && ((prev_pic_order_cnt_lsb_ - p_slice_header->pic_order_cnt_lsb) >= (max_pic_order_cnt_lsb / 2))) {
+			pic_order_cnt_msb = prev_pic_order_cnt_msb_ + max_pic_order_cnt_lsb;
+        } else if ((p_slice_header->pic_order_cnt_lsb > prev_pic_order_cnt_lsb_) && ( (p_slice_header->pic_order_cnt_lsb - prev_pic_order_cnt_lsb_) > (max_pic_order_cnt_lsb / 2))) {
+			pic_order_cnt_msb = prev_pic_order_cnt_msb_ - max_pic_order_cnt_lsb;
+        } else {
+			pic_order_cnt_msb = prev_pic_order_cnt_msb_;
+        }
+
+		if (!p_slice_header->field_pic_flag || !p_slice_header->bottom_field_flag) {
+			curr_pic_.top_field_order_cnt = pic_order_cnt_msb + p_slice_header->pic_order_cnt_lsb;
+        }
+		if (!p_slice_header->field_pic_flag) {
+			curr_pic_.bottom_field_order_cnt = curr_pic_.top_field_order_cnt + p_slice_header->delta_pic_order_cnt_bottom;
+        } else if (p_slice_header->bottom_field_flag) {
+			curr_pic_.bottom_field_order_cnt = pic_order_cnt_msb + p_slice_header->pic_order_cnt_lsb;
+        }
+        if (slice_nal_unit_header_.nal_ref_idc) {
+			prev_pic_order_cnt_msb_ = pic_order_cnt_msb;
+            prev_pic_order_cnt_lsb_ = p_slice_header->pic_order_cnt_lsb;
+            prev_top_field_order_cnt_ = curr_pic_.top_field_order_cnt;
+        }
+    } else if (p_sps->pic_order_cnt_type == 1) {
+        int abs_frame_num; // absFrameNum
+
+		if (slice_nal_unit_header_.nal_unit_type == kAvcNalTypeSlice_IDR){
+			frame_num_offset = 0;
+        } else {
+            if (prev_has_mmco_5_) {
+                prev_frame_num_offset_t = 0;
+                prev_frame_num_ = 0;
+            } else {
+                /// See the end of this section
+            }
+            if (prev_frame_num_ > p_slice_header->frame_num) {
+                frame_num_offset = prev_frame_num_offset_t + max_frame_num;
+            } else {
+                frame_num_offset = prev_frame_num_offset_t;
+            }
+        }
+        
+        if (p_sps->num_ref_frames_in_pic_order_cnt_cycle) {
+            abs_frame_num = frame_num_offset + p_slice_header->frame_num;
+        } else {
+            abs_frame_num = 0;
+        }
+        if ((!slice_nal_unit_header_.nal_ref_idc) && abs_frame_num > 0) {
+            abs_frame_num--;
+        }
+        
+        int expected_delta_per_pic_order_cnt_cycle = 0; // ExpectedDeltaPerPicOrderCntCycle
+        if (p_sps->num_ref_frames_in_pic_order_cnt_cycle) {
+            for (int i = 0; i < p_sps->num_ref_frames_in_pic_order_cnt_cycle; i++) {
+                expected_delta_per_pic_order_cnt_cycle += p_sps->offset_for_ref_frame[i];
+            }
+        }
+        
+        int expected_pic_order_cnt; // expectedPicOrderCnt
+        if( abs_frame_num > 0 ) {
+            int pic_order_cnt_cycle_cnt = (abs_frame_num - 1) / p_sps->num_ref_frames_in_pic_order_cnt_cycle; // picOrderCntCycleCnt
+            int frame_num_in_pic_order_cnt_cycle = (abs_frame_num - 1) % p_sps->num_ref_frames_in_pic_order_cnt_cycle; // frameNumInPicOrderCntCycle
+            expected_pic_order_cnt = pic_order_cnt_cycle_cnt * expected_delta_per_pic_order_cnt_cycle;
+            for (int i = 0; i <= frame_num_in_pic_order_cnt_cycle; i++) {
+                expected_pic_order_cnt += p_sps->offset_for_ref_frame[i];
+            }
+        } else {
+            expected_pic_order_cnt = 0;
+        }
+        if (!slice_nal_unit_header_.nal_ref_idc ) {
+            expected_pic_order_cnt += p_sps->offset_for_non_ref_pic;
+        }
+        
+        if (!p_slice_header->field_pic_flag) {
+            curr_pic_.top_field_order_cnt = expected_pic_order_cnt + p_slice_header->delta_pic_order_cnt[0];
+            curr_pic_.bottom_field_order_cnt = curr_pic_.top_field_order_cnt + p_sps->offset_for_top_to_bottom_field + p_slice_header->delta_pic_order_cnt[1];
+        } else if (p_slice_header->bottom_field_flag) {
+            curr_pic_.bottom_field_order_cnt = expected_pic_order_cnt + p_sps->offset_for_top_to_bottom_field + p_slice_header->delta_pic_order_cnt[0];
+        } else {
+            curr_pic_.top_field_order_cnt = expected_pic_order_cnt + p_slice_header->delta_pic_order_cnt[0];
+        }
+        
+        prev_frame_num_ = p_slice_header->frame_num;
+        prev_frame_num_offset_t = frame_num_offset;
+    } else if (p_sps->pic_order_cnt_type == 2) {
+        if (slice_nal_unit_header_.nal_unit_type == kAvcNalTypeSlice_IDR) {
+            frame_num_offset = 0;
+            curr_pic_.top_field_order_cnt = 0;
+            curr_pic_.bottom_field_order_cnt = 0;
+        } else {
+            if (prev_has_mmco_5_) {
+                prev_frame_num_offset_t = 0;
+            } else {
+                /// See the end of this section
+            }
+            
+            if (prev_frame_num_ > p_slice_header->frame_num) {
+                frame_num_offset = prev_frame_num_offset_t + max_frame_num;
+            } else {
+                frame_num_offset = prev_frame_num_offset_t;
+            }
+            
+            int temp_pic_order_cnt; // tempPicOrderCnt
+            if (slice_nal_unit_header_.nal_ref_idc == 0) {
+                temp_pic_order_cnt = 2 * (frame_num_offset + p_slice_header->frame_num) - 1;
+            } else {
+                temp_pic_order_cnt = 2 * (frame_num_offset + p_slice_header->frame_num);
+            }
+            
+            if (!p_slice_header->field_pic_flag) {
+                curr_pic_.top_field_order_cnt = temp_pic_order_cnt;
+                curr_pic_.bottom_field_order_cnt = temp_pic_order_cnt;
+            } else if (p_slice_header->bottom_field_flag) {
+                curr_pic_.bottom_field_order_cnt = temp_pic_order_cnt;
+            } else {
+                curr_pic_.top_field_order_cnt = temp_pic_order_cnt;
+            }
+        }
+        
+        prev_frame_num_ = p_slice_header->frame_num;
+        prev_frame_num_offset_t = frame_num_offset;
+	}
+
+    if (p_slice_header->field_pic_flag) {
+        curr_pic_.pic_order_cnt = p_slice_header->bottom_field_flag ? curr_pic_.bottom_field_order_cnt : curr_pic_.top_field_order_cnt;
+    } else {
+        curr_pic_.pic_order_cnt = curr_pic_.top_field_order_cnt <= curr_pic_.bottom_field_order_cnt ? curr_pic_.top_field_order_cnt : curr_pic_.bottom_field_order_cnt;
+    }
+}
+
+void AvcVideoParser::SetupReflist() {
+    AvcSeqParameterSet *pSPS = &sps_list_[active_sps_id_];
+    int MaxFrameNum = 1 << (pSPS->log2_max_frame_num_minus4 + 4);
+    AvcSliceHeader *pSliceHeader = &slice_header_list_[0];
+    int i;
+
+    // 8.2.4.1. Calculate picture numbers
+    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
+    {
+        AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
+
+        if (pRefPic->is_reference == kUsedForShortTerm)
+        {
+            pRefPic->FrameNum = pRefPic->frame_num;
+            // Eq. 8-27
+            if (pRefPic->FrameNum > curr_pic_.frame_num)
+            {
+                pRefPic->FrameNumWrap = pRefPic->FrameNum - MaxFrameNum;
+            }
+            else
+            {
+                pRefPic->FrameNumWrap = pRefPic->FrameNum;
+            }
+            // Jefftest
+            //printf("pRefPic->FrameNumWrap = %d ........\n", pRefPic->FrameNumWrap);
+
+            if (curr_pic_.pic_structure == kFrame)
+            {
+                pRefPic->PicNum = pRefPic->FrameNumWrap;  // Eq. 8-28
+            }
+            else if (((curr_pic_.pic_structure == kTopField) && (pRefPic->pic_structure == kTopField)) ||
+            ((curr_pic_.pic_structure == kBottomField) && (pRefPic->pic_structure == kBottomField)))
+            {
+                pRefPic->PicNum = 2 * pRefPic->FrameNumWrap + 1;  // Eq. 8-30
+            }
+            else
+            {
+                pRefPic->PicNum = 2 * pRefPic->FrameNumWrap;  // Eq. 8-31
+            }
+        }
+        else if (pRefPic->is_reference == kUsedForLongTerm)
+        {
+            // Note: Todo: assign LongTermFrameIdx in MarkDecodedRefPic()
+            if (curr_pic_.pic_structure == kFrame)
+            {
+                pRefPic->LongTermPicNum = pRefPic->LongTermFrameIdx;  // Eq. 8-29
+            }
+            else if (((curr_pic_.pic_structure == kTopField) && (pRefPic->pic_structure == kTopField)) ||
+            ((curr_pic_.pic_structure == kBottomField) && (pRefPic->pic_structure == kBottomField)))
+            {
+                pRefPic->LongTermPicNum = 2 * pRefPic->LongTermFrameIdx + 1;  // Eq. 8-32
+            }
+            else
+            {
+                pRefPic->LongTermPicNum = 2 * pRefPic->LongTermFrameIdx;  // Eq. 8-33
+            }
+        }
+    }
+
+    // 8.2.4.2 Initialisation process for reference picture lists
+    if (pSliceHeader->slice_type == kAvcSliceTypeP || pSliceHeader->slice_type == kAvcSliceTypeP_5)
+    {
+        if (curr_pic_.pic_structure == kFrame)
+        {
+            // Group short term ref pictures
+            int refIndex = 0;
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
+            {
+                AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
+
+                if (pRefPic->is_reference == kUsedForShortTerm)
+                {
+                    ref_list_0_[refIndex] = *pRefPic;
+                    refIndex++;
+                }
+            }
+            assert(refIndex == dpb_buffer_.numShortTerm);  // Todo: graceful action
+
+            // Group long term ref pictures
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
+            {
+                AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
+
+                if (pRefPic->is_reference == kUsedForLongTerm)
+                {
+                    ref_list_0_[refIndex] = *pRefPic;
+                    refIndex++;
+                }
+            }
+            assert(refIndex == dpb_buffer_.numShortTerm + dpb_buffer_.numLongTerm);  // Todo: graceful action
+
+            // Sort short term refs with descending order of PicNum
+            if (dpb_buffer_.numShortTerm)
+            {
+                qsort((void*)ref_list_0_, dpb_buffer_.numShortTerm, sizeof(AvcPicture), ComparePicNumDesc);
+            }
+
+            // Sort long term refs with ascending order of LongTermPicNum
+            if (dpb_buffer_.numLongTerm)
+            {
+                qsort((void*)&ref_list_0_[dpb_buffer_.numShortTerm], dpb_buffer_.numLongTerm, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+            }
+        }
+        else
+        {
+            printf("Error! Todo: Add P ref field list init.\n");
+        }
+    }
+    else
+    {
+        printf("Error! Todo: Add B ref list init.\n");
+    }
+
+    // 8.2.4.3 Modification process for reference picture lists
+    if (pSliceHeader->ref_pic_list.ref_pic_list_modification_flag_l0 == 1)
+    {
+        printf("Error! Todo: Added ref list 0 modification support.\n");
+    }
+
+    if (pSliceHeader->slice_type == kAvcSliceTypeB || pSliceHeader->slice_type == kAvcSliceTypeB_6)
+    {
+        if (pSliceHeader->ref_pic_list.ref_pic_list_modification_flag_l1 == 1)
+        {
+            printf("Error! Todo: Added ref list 1 modification support.\n");
+        }
+    }
 }
 
 #if DBGINFO

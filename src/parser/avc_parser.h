@@ -100,6 +100,11 @@ protected:
     AvcNalUnitHeader   slice_nal_unit_header_;
     AvcSliceHeader     slice_header_0_;
 
+    int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
+    int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
+    int prev_top_field_order_cnt_;
+    int prev_frame_num_offset_t; // prevFrameNumOffset
+    int prev_frame_num_; // prevFrameNum
     int prev_has_mmco_5_;
     int curr_has_mmco_5_;
     int prev_ref_pic_bottom_field_;
@@ -181,6 +186,14 @@ protected:
      * \return true/false
     */
     bool MoreRbspData(uint8_t *p_stream, size_t stream_size_in_byte, size_t bit_offset);
+
+    /*! \brief Function to calculate picture order count of the current slice
+     */
+    void CalculateCurrPoc();
+
+    /*! \brief Function to set up the reference picutre lists.
+     */
+    void SetupReflist();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.
