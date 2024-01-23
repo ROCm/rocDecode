@@ -272,7 +272,7 @@ typedef struct _RocdecAvcPicture {
     uint32_t Flags;                 /**< See below for definitions  */
     int32_t TopFieldOrderCnt;       /**< field order count of top field  */
     int32_t BottomFieldOrderCnt;    /**< field order count of bottom field   */
-    uint32_t va_reserved[4];
+    uint32_t reserved[4];
 } RocdecAvcPicture;
 
 /* flags in RocdecAvcPicture could be OR of the following */

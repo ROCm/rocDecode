@@ -301,7 +301,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
             dec_pic_params_.second_field = 0;
         }
     } else {
-        dec_pic_params_.second_field = 0;
+        dec_pic_params_.second_field = 1;
     }
 
     dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
