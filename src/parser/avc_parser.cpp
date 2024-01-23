@@ -295,11 +295,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     dec_pic_params_.field_pic_flag = p_slice_header->field_pic_flag;
     dec_pic_params_.bottom_field_flag = p_slice_header->bottom_field_flag;
     if (p_slice_header->field_pic_flag) {
-        if (pic_count_ & 1) {
-            dec_pic_params_.second_field = 1;
-        } else {
-            dec_pic_params_.second_field = 0;
-        }
+        dec_pic_params_.second_field = (pic_count_ & 1) ? 1 : 0;
     } else {
         dec_pic_params_.second_field = 1;
     }
