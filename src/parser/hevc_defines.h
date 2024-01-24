@@ -319,7 +319,7 @@ typedef struct {
     int32_t     delta_chroma_weight_l0[16][2];              //se(v)
     int32_t     delta_chroma_offset_l0[16][2];              //se(v)
     int32_t     chroma_weight_l0[16][2];                    //ChromaWeightL0[]
-    int32_t     chroma_offset_l0[16][2];                    //chroma_offset_l0[]
+    int32_t     chroma_offset_l0[16][2];                    //ChromaOffsetL0[]
     uint8_t     luma_weight_l1_flag[16];                    //u(1)
     uint8_t     chroma_weight_l1_flag[16];                  //u(1)
     int32_t     delta_luma_weight_l1[16];                   //se(v)
@@ -327,7 +327,7 @@ typedef struct {
     int32_t     delta_chroma_weight_l1[16][2];              //se(v)
     int32_t     delta_chroma_offset_l1[16][2];              //se(v)
     int32_t     chroma_weight_l1[16][2];                    //ChromaWeightL1[]
-    int32_t     chroma_offset_l1[16][2];                    //chroma_offset_l1[]
+    int32_t     chroma_offset_l1[16][2];                    //ChromaOffsetL1[]
 } HevcPredWeightTable;
 
 /*! \brief Structure for Raw Byte Sequence Payload Trialing Bits
