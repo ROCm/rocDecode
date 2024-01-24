@@ -171,7 +171,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 }
 
 ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
-    video_format_params_.codec = rocDecVideoCodec_H264;
+    video_format_params_.codec = rocDecVideoCodec_AVC;
     video_format_params_.frame_rate.numerator = frame_rate_.numerator;
     video_format_params_.frame_rate.denominator = frame_rate_.denominator;
     video_format_params_.bit_depth_luma_minus8 = p_sps->bit_depth_luma_minus8;
@@ -274,7 +274,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    if (pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_) == 0) {
+    if (pfn_sequece_cb_(parser_params_.user_data, &video_format_params_) == 0) {
         ERR("Sequence callback function failed.");
         return PARSER_FAIL;
     } else {
@@ -289,9 +289,9 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     AvcSliceHeader *p_slice_header = &slice_header_0_;
     dec_pic_params_ = {0};
 
-    dec_pic_params_.PicWidth = pic_width_;
-    dec_pic_params_.PicHeight = pic_height_;
-    dec_pic_params_.CurrPicIdx = curr_pic_.pic_idx;
+    dec_pic_params_.pic_width = pic_width_;
+    dec_pic_params_.pic_height = pic_height_;
+    dec_pic_params_.curr_pic_idx = curr_pic_.pic_idx;
     dec_pic_params_.field_pic_flag = p_slice_header->field_pic_flag;
     dec_pic_params_.bottom_field_flag = p_slice_header->bottom_field_flag;
     if (p_slice_header->field_pic_flag) {
@@ -300,10 +300,10 @@ ParserResult AvcVideoParser::SendPicForDecode() {
         dec_pic_params_.second_field = 1;
     }
 
-    dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
-    dec_pic_params_.pBitstreamData = pic_stream_data_ptr_;
-    dec_pic_params_.nNumSlices = slice_num_;
-    dec_pic_params_.pSliceDataOffsets = nullptr;
+    dec_pic_params_.bitstream_data_len = pic_stream_data_size_;
+    dec_pic_params_.bitstream_data = pic_stream_data_ptr_;
+    dec_pic_params_.num_slices = slice_num_;
+    dec_pic_params_.slice_data_offsets = nullptr;
 
     dec_pic_params_.ref_pic_flag = slice_nal_unit_header_.nal_ref_idc;
     dec_pic_params_.intra_pic_flag = p_slice_header->slice_type == kAvcSliceTypeI || p_slice_header->slice_type == kAvcSliceTypeI_7 || p_slice_header->slice_type == kAvcSliceTypeSI || p_slice_header->slice_type == kAvcSliceTypeSI_9;
@@ -312,44 +312,44 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     RocdecAvcPicParams *p_pic_param = &dec_pic_params_.pic_params.avc;
 
     // Current picture
-    p_pic_param->curr_pic.PicIdx = curr_pic_.pic_idx;
+    p_pic_param->curr_pic.pic_idx = curr_pic_.pic_idx;
     if (curr_pic_.is_reference == kUsedForLongTerm) {
-        p_pic_param->curr_pic.FrameIdx = curr_pic_.long_term_pic_num;
+        p_pic_param->curr_pic.frame_idx = curr_pic_.long_term_pic_num;
     } else {
-        p_pic_param->curr_pic.FrameIdx = curr_pic_.frame_num;
+        p_pic_param->curr_pic.frame_idx = curr_pic_.frame_num;
     }
-    p_pic_param->curr_pic.Flags = 0;
+    p_pic_param->curr_pic.flags = 0;
     if (curr_pic_.pic_structure != kFrame) {
-        p_pic_param->curr_pic.Flags |= curr_pic_.pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+        p_pic_param->curr_pic.flags |= curr_pic_.pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
     }
     if (curr_pic_.is_reference != kUnusedForReference) {
-        p_pic_param->curr_pic.Flags |= curr_pic_.is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+        p_pic_param->curr_pic.flags |= curr_pic_.is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
     }
-    p_pic_param->curr_pic.TopFieldOrderCnt = curr_pic_.top_field_order_cnt;
-    p_pic_param->curr_pic.BottomFieldOrderCnt = curr_pic_.bottom_field_order_cnt;
+    p_pic_param->curr_pic.top_field_order_cnt = curr_pic_.top_field_order_cnt;
+    p_pic_param->curr_pic.bottom_field_order_cnt = curr_pic_.bottom_field_order_cnt;
 
     // Reference pictures
     int buf_index = 0;
     for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
         AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
         if (p_ref_pic->is_reference != kUnusedForReference) {
-            p_pic_param->ref_frames[buf_index].PicIdx = p_ref_pic->pic_idx;
+            p_pic_param->ref_frames[buf_index].pic_idx = p_ref_pic->pic_idx;
             if ( p_ref_pic->is_reference == kUsedForLongTerm) {
-                p_pic_param->ref_frames[buf_index].FrameIdx = p_ref_pic->long_term_pic_num;
+                p_pic_param->ref_frames[buf_index].frame_idx = p_ref_pic->long_term_pic_num;
             } else {
-                p_pic_param->ref_frames[buf_index].FrameIdx = p_ref_pic->frame_num;
+                p_pic_param->ref_frames[buf_index].frame_idx = p_ref_pic->frame_num;
             }
-            p_pic_param->ref_frames[buf_index].Flags = 0;
+            p_pic_param->ref_frames[buf_index].flags = 0;
             if (p_ref_pic->pic_structure != kFrame) {
-                p_pic_param->ref_frames[buf_index].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+                p_pic_param->ref_frames[buf_index].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
             }
-            p_pic_param->ref_frames[buf_index].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+            p_pic_param->ref_frames[buf_index].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
             buf_index++;
         }
     }
 
     for (i = buf_index; i < AVC_MAX_DPB_FRAMES; i++) {
-        p_pic_param->ref_frames[i].PicIdx = 0xFF;
+        p_pic_param->ref_frames[i].pic_idx = 0xFF;
     }
 
     p_pic_param->picture_width_in_mbs_minus1 = p_sps->pic_width_in_mbs_minus1;
@@ -412,34 +412,34 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     for (i = 0; i < dpb_buffer_.num_short_term + dpb_buffer_.num_long_term; i++) {
         AvcPicture *p_ref_pic = &ref_list_0_[i];
         if (p_ref_pic->is_reference != kUnusedForReference) {
-            p_slice_param->ref_pic_list_0[i].PicIdx = p_ref_pic->pic_idx;
+            p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->pic_idx;
             if ( p_ref_pic->is_reference == kUsedForLongTerm) {
-                p_slice_param->ref_pic_list_0[i].FrameIdx = p_ref_pic->long_term_pic_num;
+                p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->long_term_pic_num;
             } else {
-                p_slice_param->ref_pic_list_0[i].FrameIdx = p_ref_pic->frame_num;
+                p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->frame_num;
             }
-            p_slice_param->ref_pic_list_0[i].Flags = 0;
+            p_slice_param->ref_pic_list_0[i].flags = 0;
             if (p_ref_pic->pic_structure != kFrame) {
-                p_slice_param->ref_pic_list_0[i].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+                p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
             }
-            p_slice_param->ref_pic_list_0[i].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+            p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
         }
     }
 
     if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
         AvcPicture *p_ref_pic = &ref_list_1_[i];
         if (p_ref_pic->is_reference != kUnusedForReference) {
-            p_slice_param->ref_pic_list_1[i].PicIdx = p_ref_pic->pic_idx;
+            p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->pic_idx;
             if ( p_ref_pic->is_reference == kUsedForLongTerm) {
-                p_slice_param->ref_pic_list_1[i].FrameIdx = p_ref_pic->long_term_pic_num;
+                p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->long_term_pic_num;
             } else {
-                p_slice_param->ref_pic_list_1[i].FrameIdx = p_ref_pic->frame_num;
+                p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->frame_num;
             }
-            p_slice_param->ref_pic_list_1[i].Flags = 0;
+            p_slice_param->ref_pic_list_1[i].flags = 0;
             if (p_ref_pic->pic_structure != kFrame) {
-                p_slice_param->ref_pic_list_1[i].Flags |= p_ref_pic->pic_structure == kBottomField ? RocdecH264Picture_FLAGS_BOTTOM_FIELD : RocdecH264Picture_FLAGS_TOP_FIELD;
+                p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
             }
-            p_slice_param->ref_pic_list_1[i].Flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE : RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE;
+            p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
         }
     }
 
@@ -489,7 +489,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
         }
     }
 
-    if (pfn_decode_picture_cb_(parser_params_.pUserData, &dec_pic_params_) == 0) {
+    if (pfn_decode_picture_cb_(parser_params_.user_data, &dec_pic_params_) == 0) {
         ERR("Decode error occurred.");
         return PARSER_FAIL;
     } else {
