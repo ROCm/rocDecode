@@ -63,8 +63,8 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
 
     //Before initializing the VAAPI, first check to see if the requested codec config is supported
     RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
-    if (!vcn_codec_spec.IsCodecConfigSupported(gcn_arch_name, decoder_create_info_.CodecType, decoder_create_info_.ChromaFormat,
-        decoder_create_info_.bitDepthMinus8, decoder_create_info_.OutputFormat)) {
+    if (!vcn_codec_spec.IsCodecConfigSupported(gcn_arch_name, decoder_create_info_.codec_type, decoder_create_info_.chroma_format,
+        decoder_create_info_.bit_depth_minus_8, decoder_create_info_.output_format)) {
         ERR("ERROR: the codec config combination is not supported!");
         return ROCDEC_NOT_SUPPORTED;
     }
@@ -76,7 +76,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     int num_render_cards_per_device = ((gcn_arch_name_base.compare("gfx940") == 0) ||
                                        (gcn_arch_name_base.compare("gfx941") == 0) ||
                                        (gcn_arch_name_base.compare("gfx942") == 0)) ? 8 : 1;
-    std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.deviceid * num_render_cards_per_device);
+    std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to initilize the VAAPI!" + TOSTR(rocdec_status));
@@ -118,11 +118,11 @@ rocDecStatus VaapiVideoDecoder::InitVAAPI(std::string drm_node) {
 }
 
 rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
-    switch (decoder_create_info_.CodecType) {
+    switch (decoder_create_info_.codec_type) {
         case rocDecVideoCodec_HEVC:
-            if (decoder_create_info_.bitDepthMinus8 == 0) {
+            if (decoder_create_info_.bit_depth_minus_8 == 0) {
                 va_profile_ = VAProfileHEVCMain;
-            } else if (decoder_create_info_.bitDepthMinus8 == 2) {
+            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
                 va_profile_ = VAProfileHEVCMain10;
             }
             break;
@@ -140,13 +140,13 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
 }
 
 rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
-    if (decoder_create_info_.ulNumDecodeSurfaces < 1) {
+    if (decoder_create_info_.num_decode_surfaces < 1) {
         ERR("ERROR: invalid number of decode surfaces ");
         return ROCDEC_INVALID_PARAMETER;
     }
-    va_surface_ids_.resize(decoder_create_info_.ulNumDecodeSurfaces);
+    va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
     uint8_t surface_format;
-    switch (decoder_create_info_.ChromaFormat) {
+    switch (decoder_create_info_.chroma_format) {
         case rocDecVideoChromaFormat_Monochrome:
             surface_format = VA_RT_FORMAT_YUV400;
             break;
@@ -164,14 +164,14 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
             return ROCDEC_NOT_SUPPORTED;
     }
 
-    CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.ulWidth,
-        decoder_create_info_.ulHeight, va_surface_ids_.data(), va_surface_ids_.size(), nullptr, 0));
+    CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.width,
+        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), nullptr, 0));
 
     return ROCDEC_SUCCESS;
 }
 
 rocDecStatus VaapiVideoDecoder::CreateContext() {
-    CHECK_VAAPI(vaCreateContext(va_display_, va_config_id_, decoder_create_info_.ulWidth, decoder_create_info_.ulHeight,
+    CHECK_VAAPI(vaCreateContext(va_display_, va_config_id_, decoder_create_info_.width, decoder_create_info_.height,
         VA_PROGRESSIVE, va_surface_ids_.data(), va_surface_ids_.size(), &va_context_id_));
     return ROCDEC_SUCCESS;
 }
@@ -203,23 +203,23 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     VASurfaceID curr_surface_id;
 
     // Get the surface id for the current picture, assuming 1:1 mapping between DPB and VAAPI decoded surfaces.
-    if (pPicParams->CurrPicIdx >= va_surface_ids_.size() || pPicParams->CurrPicIdx < 0) {
-        ERR("CurrPicIdx exceeded the VAAPI surface pool limit.");
+    if (pPicParams->curr_pic_idx >= va_surface_ids_.size() || pPicParams->curr_pic_idx < 0) {
+        ERR("curr_pic_idx exceeded the VAAPI surface pool limit.");
         return ROCDEC_INVALID_PARAMETER;
     }
-    curr_surface_id = va_surface_ids_[pPicParams->CurrPicIdx];
+    curr_surface_id = va_surface_ids_[pPicParams->curr_pic_idx];
 
     // Upload data buffers
-    switch (decoder_create_info_.CodecType) {
+    switch (decoder_create_info_.codec_type) {
         case rocDecVideoCodec_HEVC: {
-            pPicParams->pic_params.hevc.curr_pic.PicIdx = curr_surface_id;
+            pPicParams->pic_params.hevc.curr_pic.pic_idx = curr_surface_id;
             for (int i = 0; i < 15; i++) {
-                if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx != 0xFF) {
-                    if (pPicParams->pic_params.hevc.ref_frames[i].PicIdx >= va_surface_ids_.size() || pPicParams->pic_params.hevc.ref_frames[i].PicIdx < 0) {
+                if (pPicParams->pic_params.hevc.ref_frames[i].pic_idx != 0xFF) {
+                    if (pPicParams->pic_params.hevc.ref_frames[i].pic_idx >= va_surface_ids_.size() || pPicParams->pic_params.hevc.ref_frames[i].pic_idx < 0) {
                         ERR("Reference frame index exceeded the VAAPI surface pool limit.");
                         return ROCDEC_INVALID_PARAMETER;
                     }
-                    pPicParams->pic_params.hevc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.hevc.ref_frames[i].PicIdx];
+                    pPicParams->pic_params.hevc.ref_frames[i].pic_idx = va_surface_ids_[pPicParams->pic_params.hevc.ref_frames[i].pic_idx];
                 }
             }
             pic_params_ptr = (void*)&pPicParams->pic_params.hevc;
@@ -243,14 +243,14 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         }
 
         case rocDecVideoCodec_H264: {
-            pPicParams->pic_params.avc.curr_pic.PicIdx = curr_surface_id;
+            pPicParams->pic_params.avc.curr_pic.pic_idx = curr_surface_id;
             for (int i = 0; i < 16; i++) {
-                if (pPicParams->pic_params.avc.ref_frames[i].PicIdx != 0xFF) {
-                    if (pPicParams->pic_params.avc.ref_frames[i].PicIdx >= va_surface_ids_.size() || pPicParams->pic_params.avc.ref_frames[i].PicIdx < 0) {
+                if (pPicParams->pic_params.avc.ref_frames[i].pic_idx != 0xFF) {
+                    if (pPicParams->pic_params.avc.ref_frames[i].pic_idx >= va_surface_ids_.size() || pPicParams->pic_params.avc.ref_frames[i].pic_idx < 0) {
                         ERR("Reference frame index exceeded the VAAPI surface pool limit.");
                         return ROCDEC_INVALID_PARAMETER;
                     }
-                    pPicParams->pic_params.avc.ref_frames[i].PicIdx = va_surface_ids_[pPicParams->pic_params.avc.ref_frames[i].PicIdx];
+                    pPicParams->pic_params.avc.ref_frames[i].pic_idx = va_surface_ids_[pPicParams->pic_params.avc.ref_frames[i].pic_idx];
                 }
             }
             pic_params_ptr = (void*)&pPicParams->pic_params.avc;
@@ -286,7 +286,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAIQMatrixBufferType, iq_matrix_size, 1, iq_matrix_ptr, &iq_matrix_buf_id_));
     }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, slice_params_size, 1, slice_params_ptr, &slice_params_buf_id_));
-    CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->nBitstreamDataLen, 1, (void*)pPicParams->pBitstreamData, &slice_data_buf_id_));
+    CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->bitstream_data_len, 1, (void*)pPicParams->bitstream_data, &slice_data_buf_id_));
 
     // Sumbmit buffers to VAAPI driver
     CHECK_VAAPI(vaBeginPicture(va_display_, va_context_id_, curr_surface_id));
@@ -309,16 +309,16 @@ rocDecStatus VaapiVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus 
     CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &va_surface_status));
     switch (va_surface_status) {
         case VASurfaceRendering:
-            decode_status->decodeStatus = rocDecodeStatus_InProgress;
+            decode_status->decode_status = rocDecodeStatus_InProgress;
             break;
         case VASurfaceReady:
-            decode_status->decodeStatus = rocDecodeStatus_Success;
+            decode_status->decode_status = rocDecodeStatus_Success;
             break;
         case VASurfaceDisplaying:
-            decode_status->decodeStatus = rocDecodeStatus_Displaying;
+            decode_status->decode_status = rocDecodeStatus_Displaying;
             break;
         default:
-           decode_status->decodeStatus = rocDecodeStatus_Invalid;
+           decode_status->decode_status = rocDecodeStatus_Invalid;
     }
     return ROCDEC_SUCCESS;
 }
@@ -348,11 +348,11 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
     CHECK_VAAPI(vaDestroyContext(va_display_, va_context_id_));
 
     va_surface_ids_.clear();
-    decoder_create_info_.ulWidth = reconfig_params->ulWidth;
-    decoder_create_info_.ulHeight = reconfig_params->ulHeight;
-    decoder_create_info_.ulNumDecodeSurfaces = reconfig_params->ulNumDecodeSurfaces;
-    decoder_create_info_.ulTargetHeight = reconfig_params->ulTargetHeight;
-    decoder_create_info_.ulTargetWidth = reconfig_params->ulTargetWidth;
+    decoder_create_info_.width = reconfig_params->width;
+    decoder_create_info_.height = reconfig_params->height;
+    decoder_create_info_.num_decode_surfaces = reconfig_params->num_decode_surfaces;
+    decoder_create_info_.target_height = reconfig_params->target_height;
+    decoder_create_info_.target_width = reconfig_params->target_width;
 
     rocDecStatus rocdec_status = CreateSurfaces();
     if (rocdec_status != ROCDEC_SUCCESS) {

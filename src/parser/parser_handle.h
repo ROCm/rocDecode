@@ -42,7 +42,7 @@ private:
     std::shared_ptr<RocVideoParser> roc_parser_ = nullptr;
     void ClearErrors() { error_ = ""; }
     void CreateParser(RocdecParserParams *params) {
-        switch(params->CodecType) {
+        switch(params->codec_type) {
             case rocDecVideoCodec_H264:
                 roc_parser_ = std::make_shared<AvcVideoParser>();
                 break;
@@ -50,7 +50,7 @@ private:
                 roc_parser_ = std::make_shared<HevcVideoParser>();
                 break;
             default:
-                THROW("Unsupported parser type "+ TOSTR(params->CodecType));
+                THROW("Unsupported parser type "+ TOSTR(params->codec_type));
                 break;
         }
 

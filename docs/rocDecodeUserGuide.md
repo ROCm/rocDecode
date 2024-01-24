@@ -79,11 +79,11 @@ The samples use the `RocVideoDecoder` user class provided in `roc_video_dec.h` u
 Video Parser is needed to required to extract and decode headers from the bitstream to organize the data into a structured format required for the hardware decoder. Parser plays an important role in the video decoding as it controls the decoding and display of the individual frames/fields of a bitstream.
 The parser object in rocparser.h has 3 main apis as described below
 #### 4.1.1 Creating Parser Object using rocDecCreateVideoParser()
-This API creates a video parser object for the Codec specified by the user. The api takes "ulMaxNumDecodeSurfaces" which determines the DPB (Decoded Picture Buffer) size for decoding. When creating a parser object, application must register certain callback functions with the driver which will be called from the parser during the decode. 
-- pfnSequenceCallback will be called when the parser encounters a new sequence header. The parser informs the user with the minimum number of surfaces needed by parser's DPB for successful decoding of the bitstream. In addition, the caller can set additional parameters like "ulMaxDisplayDelay" to control the decoding and displaying of the frames.
-- "pfnDecodePicture" callback function will be triggered when a picture is ready to be decoded.
-- "pfnDisplayPicture" callback function will be triggered when a frame in display order is ready to be consumed by the caller. 
-- "pfnGetSEIMsg" callback function will be triggered when a user SEI message is parsed by the parser and send back to the caller.
+This API creates a video parser object for the Codec specified by the user. The api takes "max_num_decode_surfaces" which determines the DPB (Decoded Picture Buffer) size for decoding. When creating a parser object, application must register certain callback functions with the driver which will be called from the parser during the decode. 
+- pfn_sequence_callback will be called when the parser encounters a new sequence header. The parser informs the user with the minimum number of surfaces needed by parser's DPB for successful decoding of the bitstream. In addition, the caller can set additional parameters like "max_display_delay" to control the decoding and displaying of the frames.
+- "pfn_decode_picture" callback function will be triggered when a picture is ready to be decoded.
+- "pfn_display_picture" callback function will be triggered when a frame in display order is ready to be consumed by the caller. 
+- "pfn_get_sei_msg" callback function will be triggered when a user SEI message is parsed by the parser and send back to the caller.
 #### 4.1.2 Parsing video data using rocDecParseVideoData()
 Elementary stream video packets extracted from the demultiplexer are fed into the parser using the "rocDecParseVideoData()" API. During this call, the parser triggers the above callbacks as it encounters a new sequence header, got a compressed frame/field data ready to be decoded, or when it is ready to display a frame. If any of the callbacks returns failure, it will be propagated back to the application so the decoding can be termiated gracefully.
 #### 4.1.3 Destroying the parser using rocDecDestroyVideoParser()
@@ -96,24 +96,24 @@ The following pseudo-code illustrates the use of this API. If any of the decoder
 
     RocdecDecodeCaps decode_caps;
     memset(&decode_caps, 0, sizeof(decode_caps));
-    decode_caps.eCodecType = p_video_format->codec;
-    decode_caps.eChromaFormat = p_video_format->chroma_format;
-    decode_caps.nBitDepthMinus8 = p_video_format->bit_depth_luma_minus8;
+    decode_caps.codec_type = p_video_format->codec;
+    decode_caps.chroma_format = p_video_format->chroma_format;
+    decode_caps.bit_depth_minus_8 = p_video_format->bit_depth_luma_minus8;
 
     ROCDEC_API_CALL(rocDecGetDecoderCaps(&decode_caps));
 
-    if(!decode_caps.bIsSupported) {
+    if(!decode_caps.is_supported) {
         ROCDEC_THROW("Rocdec:: Codec not supported on this GPU: ", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
 
-    if ((p_video_format->coded_width > decode_caps.nMaxWidth) ||
-        (p_video_format->coded_height > decode_caps.nMaxHeight)) {
+    if ((p_video_format->coded_width > decode_caps.max_width) ||
+        (p_video_format->coded_height > decode_caps.max_height)) {
 
         std::ostringstream errorString;
         errorString << std::endl
                     << "Resolution          : " << p_video_format->coded_width << "x" << p_video_format->coded_height << std::endl
-                    << "Max Supported (wxh) : " << decode_caps.nMaxWidth << "x" << decode_caps.nMaxHeight << std::endl
+                    << "Max Supported (wxh) : " << decode_caps.max_width << "x" << decode_caps.max_height << std::endl
                     << "Resolution not supported on this GPU ";
 
         const std::string cErr = errorString.str();
@@ -122,7 +122,7 @@ The following pseudo-code illustrates the use of this API. If any of the decoder
     }
 
 ### 4.3 Creating a Decoder using rocDecCreateDecoder() [api](../../api)
-Creates an instance of the hardware video decoder object and gives a handle to the user on successful creation. Refer to RocDecoderCreateInfo [structure](../../api/rocdecode.h) for information about parameters which are passed for creating the decoder. For e.g. RocDecoderCreateInfo::CodecType  represents the codec type of the video. The decoder handle returned by the rocDecCreateDecoder() must be retained for the entire session of the decode because the handle is passed along with the other decoding apis. In addition, user can inform display or crop dimensions along with this API. 
+Creates an instance of the hardware video decoder object and gives a handle to the user on successful creation. Refer to RocDecoderCreateInfo [structure](../../api/rocdecode.h) for information about parameters which are passed for creating the decoder. For e.g. RocDecoderCreateInfo::codec_type  represents the codec type of the video. The decoder handle returned by the rocDecCreateDecoder() must be retained for the entire session of the decode because the handle is passed along with the other decoding apis. In addition, user can inform display or crop dimensions along with this API. 
 
 ### 4.4 Decoding the frame using rocDecDecodeFrame() [api](../../api)
 After de-muxing and parsing, the next step is to decode bitstream data contaiing a frame/field using hardware. rocDecDecodeFrame()API is to submit a new frame for hardware decoding. Underneath the driver VA-API is used to submit compressed picture data to the driver. The parser extracts all the necessary information from the bitstream and fill "RocdecPicParams" struct which is appropriate for the codec used. The high level [RocVideoDecoder](../utils/rocvideodecode/) class connects the parser and decoder which is used for all the sample applications.
@@ -162,9 +162,9 @@ The `rocDecReconfigureDecoder()` can be called to reuse a single decoder for mul
 
 The inputs to the API are:
 * decoder_handle: A rocdec decoder handler `rocDecDecoderHandle`.
-* reconfig_params: The user needs to specify the parameters for the changes in `RocdecReconfigureDecoderInfo`. The ulWidth and ulHeight used for reconfiguration cannot exceed the values set for ulMaxWidth and ulMaxHeight defined at RocDecoderCreateInfo. If these values need to be changed, the session needs to be destroyed and recreated.
+* reconfig_params: The user needs to specify the parameters for the changes in `RocdecReconfigureDecoderInfo`. The width and height used for reconfiguration cannot exceed the values set for max_width and max_height defined at RocDecoderCreateInfo. If these values need to be changed, the session needs to be destroyed and recreated.
 
-The call to the `rocDecReconfigureDecoder()` must be called during `RocdecParserParams::pfnSequenceCallback`.
+The call to the `rocDecReconfigureDecoder()` must be called during `RocdecParserParams::pfn_sequence_callback`.
 
 ### 4.8 Destroying the decoder
 The user needs to call the `rocDecDestroyDecoder()` to destroy the session and free up resources.

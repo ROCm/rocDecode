@@ -50,10 +50,10 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
 //! \fn rocParserStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet)
 //! Parse the video data from source data packet in packet
 //! Extracts parameter sets like SPS, PPS, bitstream etc. from packet and
-//! calls back pfnDecodePicture with RocdecPicParams data for kicking of HW decoding
-//! calls back pfnSequenceCallback with RocdecVideoFormat data for initial sequence header or when
+//! calls back pfn_decode_picture with RocdecPicParams data for kicking of HW decoding
+//! calls back pfn_sequence_callback with RocdecVideoFormat data for initial sequence header or when
 //! the decoder encounters a video format change
-//! calls back pfnDisplayPicture with ROCDECPARSERDISPINFO data to display a video frame
+//! calls back pfn_display_picture with ROCDECPARSERDISPINFO data to display a video frame
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
 rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet) {

@@ -61,19 +61,19 @@ public:
         auto it = vcn_spec_table.find(gcn_arch_name_base);
         if (it != vcn_spec_table.end()) {
             const VcnCodecsSpec& vcn_spec = it->second;
-            auto it1 = vcn_spec.codecs_spec.find(pdc->eCodecType);
+            auto it1 = vcn_spec.codecs_spec.find(pdc->codec_type);
             if (it1 != vcn_spec.codecs_spec.end()) {
                 const CodecSpec& codec_spec = it1->second;
-                auto it_chroma_format = std::find(codec_spec.chroma_format.begin(), codec_spec.chroma_format.end(), pdc->eChromaFormat);
-                auto it_bitdepth_minus8 = std::find(codec_spec.bitdepth_minus8.begin(), codec_spec.bitdepth_minus8.end(), pdc->nBitDepthMinus8);
+                auto it_chroma_format = std::find(codec_spec.chroma_format.begin(), codec_spec.chroma_format.end(), pdc->chroma_format);
+                auto it_bitdepth_minus8 = std::find(codec_spec.bitdepth_minus8.begin(), codec_spec.bitdepth_minus8.end(), pdc->bit_depth_minus_8);
                 if (it_chroma_format != codec_spec.chroma_format.end() && it_bitdepth_minus8 != codec_spec.bitdepth_minus8.end()) {
-                    pdc->bIsSupported = 1;
-                    pdc->nNumDecoders = vcn_spec.num_decoders;
-                    pdc->nOutputFormatMask = codec_spec.output_format_mask;
-                    pdc->nMaxWidth = codec_spec.max_width;
-                    pdc->nMaxHeight = codec_spec.max_height;
-                    pdc->nMinWidth = codec_spec.min_width;
-                    pdc->nMinHeight = codec_spec.min_height;
+                    pdc->is_supported = 1;
+                    pdc->num_decoders = vcn_spec.num_decoders;
+                    pdc->output_format_mask = codec_spec.output_format_mask;
+                    pdc->max_width = codec_spec.max_width;
+                    pdc->max_height = codec_spec.max_height;
+                    pdc->min_width = codec_spec.min_width;
+                    pdc->min_height = codec_spec.min_height;
                     return ROCDEC_SUCCESS;
                 } else {
                     return ROCDEC_NOT_SUPPORTED;
