@@ -159,6 +159,8 @@ int main(int argc, char **argv) {
     }
 
     try {
+        std::size_t found_file = input_file_path.find_last_of('/');
+        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
@@ -166,8 +168,6 @@ int main(int argc, char **argv) {
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
-        std::size_t found_file = input_file_path.find_last_of('/');
-        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
         viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
         std::cout << "info: Using GPU device " << device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
         std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
@@ -211,9 +211,7 @@ int main(int argc, char **argv) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
             n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            total_dec_time += time_per_frame;
+            
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
@@ -229,6 +227,9 @@ int main(int argc, char **argv) {
                 // release frame
                 viddec.ReleaseFrame(pts);
             }
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            total_dec_time += time_per_frame;
             n_frame += n_frame_returned;
         } while (n_video_bytes);
         
