@@ -287,8 +287,8 @@ int HevcVideoParser::SendPicForDecode() {
     RocdecHevcPicParams *pic_param_ptr = &dec_pic_params_.pic_params.hevc;
 
     // Current picture
-    pic_param_ptr->cur_pic.PicIdx = curr_pic_info_.pic_idx;
-    pic_param_ptr->cur_pic.POC = curr_pic_info_.pic_order_cnt;
+    pic_param_ptr->curr_pic.PicIdx = curr_pic_info_.pic_idx;
+    pic_param_ptr->curr_pic.POC = curr_pic_info_.pic_order_cnt;
 
     // Reference pictures
     ref_idx = 0;

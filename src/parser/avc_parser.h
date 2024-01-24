@@ -54,10 +54,41 @@ public:
 
 
 protected:    
+    enum PictureStructure {
+        kFrame,
+        kTopField,
+        kBottomField
+    };
+
+    enum AvcRefMarking {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
+
+    typedef struct {
+        int      pic_idx;  // picture index or id
+        PictureStructure pic_structure;
+
+        int32_t  pic_order_cnt;
+        int32_t  top_field_order_cnt;
+        int32_t  bottom_field_order_cnt;
+        int32_t  frame_num;
+        int32_t  frame_num_wrap; // FrameNumWrap
+        int32_t  pic_num; // PicNum
+        int32_t  long_term_pic_num; // LongTermPicNum
+        uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
+
+        uint32_t is_reference;
+    } AvcPicture;
+
     /*! \brief Decoded picture buffer
      */
     typedef struct{
         uint32_t dpb_size;  // DPB buffer size in number of frames
+        uint32_t num_short_term; // numShortTerm;
+        uint32_t num_long_term; // numLongTerm;
+        AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
     } DecodedPictureBuffer;
 
     AvcNalUnitHeader nal_unit_header_;
@@ -75,13 +106,21 @@ protected:
     int curr_ref_pic_bottom_field_;
 
     // DPB
+    AvcPicture curr_pic_;
     DecodedPictureBuffer dpb_buffer_;
+    AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
+    AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
 
     /*! \brief Function to notify decoder about video format change (new SPS) through callback
      * \param [in] p_sps Pointer to the current active SPS
      * \return <tt>ParserResult</tt>
      */
     ParserResult NotifyNewSps(AvcSeqParameterSet *p_sps);
+
+    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult SendPicForDecode();
 
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
