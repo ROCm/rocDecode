@@ -297,7 +297,7 @@ int HevcVideoParser::SendPicForDecode() {
         pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
         pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
         pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHEVCPicture_RPS_ST_CURR_BEFORE;
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_RPS_ST_CURR_BEFORE;
         ref_idx++;
     }
 
@@ -306,7 +306,7 @@ int HevcVideoParser::SendPicForDecode() {
         pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
         pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
         pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHEVCPicture_RPS_ST_CURR_AFTER;
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_RPS_ST_CURR_AFTER;
         ref_idx++;
     }
 
@@ -315,7 +315,7 @@ int HevcVideoParser::SendPicForDecode() {
         pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
         pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
         pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHEVCPicture_LONG_TERM_REFERENCE | RocdecHEVCPicture_RPS_LT_CURR;
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_LONG_TERM_REFERENCE | RocdecHevcPicture_RPS_LT_CURR;
         ref_idx++;
     }
 

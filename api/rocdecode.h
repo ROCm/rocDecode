@@ -58,15 +58,15 @@ typedef void *rocDecDecoderHandle;
 //! These enums are used in all API calls to rocDecoder
 /*********************************************************************************/
 typedef enum rocDecStatus_enum{
-    ROCDEC_DEVICE_INVALID = -1,
-    ROCDEC_CONTEXT_INVALID = -2,
-    ROCDEC_RUNTIME_ERROR  = -3,
-    ROCDEC_OUTOF_MEMORY = -4,
-    ROCDEC_INVALID_PARAMETER = -5,
-    ROCDEC_NOT_IMPLEMENTED = -6,
-    ROCDEC_NOT_INITIALIZED = -7,
-    ROCDEC_NOT_SUPPORTED = -8,
-    ROCDEC_SUCCESS = 0,
+    ROCDEC_DEVICE_INVALID       = -1,
+    ROCDEC_CONTEXT_INVALID      = -2,
+    ROCDEC_RUNTIME_ERROR        = -3,
+    ROCDEC_OUTOF_MEMORY         = -4,
+    ROCDEC_INVALID_PARAMETER    = -5,
+    ROCDEC_NOT_IMPLEMENTED      = -6,
+    ROCDEC_NOT_INITIALIZED      = -7,
+    ROCDEC_NOT_SUPPORTED        = -8,
+    ROCDEC_SUCCESS              = 0,
 }rocDecStatus;
 
 /*********************************************************************************/
@@ -79,7 +79,7 @@ typedef enum rocDecVideoCodec_enum {
     rocDecVideoCodec_MPEG1 = 0,                                       /**<  MPEG1             */
     rocDecVideoCodec_MPEG2,                                           /**<  MPEG2             */
     rocDecVideoCodec_MPEG4,                                           /**<  MPEG4             */
-    rocDecVideoCodec_H264,                                            /**<  H264              */
+    rocDecVideoCodec_AVC,                                             /**<  AVC/H264          */
     rocDecVideoCodec_HEVC,                                            /**<  HEVC              */
     rocDecVideoCodec_AV1,                                             /**<  AV1               */
     rocDecVideoCodec_VP8,                                             /**<  VP8               */
@@ -176,7 +176,7 @@ typedef struct _RocDecoderCreateInfo {
     uint32_t                    bit_depth_minus_8;         /**< IN: The value "BitDepth minus 8"                                               */
     uint32_t                    intra_decode_only;      /**< IN: Set 1 only if video has all intra frames (default value is 0). This will
                                              optimize video memory for Intra frames only decoding. The support is limited
-                                             to specific codecs - H264, HEVC, VP9, the flag will be ignored for codecs which
+                                             to specific codecs - AVC/H264, HEVC, VP9, the flag will be ignored for codecs which
                                              are not supported. However decoding might fail if the flag is enabled in case
                                              of supported codecs for regular bit streams having P and/or B frames.          */
     uint32_t                    max_width;             /**< IN: Coded sequence max width in pixels used with reconfigure Decoder           */
@@ -263,29 +263,29 @@ typedef struct _RocdecReconfigureDecoderInfo {
 //! This structure is used in RocdecAvcPicParams structure
 /*********************************************************/
 typedef struct _RocdecAvcPicture {
-    int         pic_idx;                     /**< picture index of reference frame    */
-    uint32_t    frame_idx;              /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term)  */
-    uint32_t    flags;                 /**< See below for definitions  */
-    int32_t     top_field_order_cnt;       /**< field order count of top field  */
-    int32_t     bottom_field_order_cnt;    /**< field order count of bottom field   */
+    int         pic_idx;                    /**< picture index of reference frame    */
+    uint32_t    frame_idx;                  /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term)  */
+    uint32_t    flags;                      /**< See below for definitions  */
+    int32_t     top_field_order_cnt;        /**< field order count of top field  */
+    int32_t     bottom_field_order_cnt;     /**< field order count of bottom field   */
     uint32_t    reserved[4];
 } RocdecAvcPicture;
 
 /* flags in RocdecAvcPicture could be OR of the following */
-#define RocdecH264Picture_FLAGS_INVALID                     0x00000001
-#define RocdecH264Picture_FLAGS_TOP_FIELD                   0x00000002
-#define RocdecH264Picture_FLAGS_BOTTOM_FIELD                0x00000004
-#define RocdecH264Picture_FLAGS_SHORT_TERM_REFERENCE        0x00000008
-#define RocdecH264Picture_FLAGS_LONG_TERM_REFERENCE         0x00000010
-#define RocdecH264Picture_FLAGS_NON_EXISTING                0x00000020
+#define RocdecAvcPicture_FLAGS_INVALID                     0x00000001
+#define RocdecAvcPicture_FLAGS_TOP_FIELD                   0x00000002
+#define RocdecAvcPicture_FLAGS_BOTTOM_FIELD                0x00000004
+#define RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE        0x00000008
+#define RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE         0x00000010
+#define RocdecAvcPicture_FLAGS_NON_EXISTING                0x00000020
 
 /*********************************************************/
-//! \struct RocdecHEVCPicture
+//! \struct RocdecHevcPicture
 //! \ingroup group_amd_rocdecode
 //! HEVC Picture Entry
 //! This structure is used in RocdecHevcPicParams structure
 /*********************************************************/
-typedef struct _RocdecHEVCPicture {
+typedef struct _RocdecHevcPicture {
     int pic_idx;                 /**< reconstructed picture surface ID    */
     /** \brief picture order count.
     //! \ingroup group_amd_rocdecode
@@ -295,24 +295,24 @@ typedef struct _RocdecHEVCPicture {
     int poc;
     uint32_t flags;              /**< See below for definitions  */
     uint32_t reserved[4];        /**< reserved for future; must be zero  */
-} RocdecHEVCPicture;
+} RocdecHevcPicture;
 
-/* flags in RocdecHEVCPicture could be OR of the following */
-#define RocdecHEVCPicture_INVALID                 0x00000001
+/* flags in RocdecHevcPicture could be OR of the following */
+#define RocdecHevcPicture_INVALID                 0x00000001
 /** \brief indication of interlace scan picture.
  * should take same value for all the pictures in sequence.
  */
-#define RocdecHEVCPicture_FIELD_PIC               0x00000002
+#define RocdecHevcPicture_FIELD_PIC               0x00000002
 /** \brief polarity of the field picture.
  * top field takes even lines of buffer surface.
  * bottom field takes odd lines of buffer surface.
  */
-#define RocdecHEVCPicture_BOTTOM_FIELD            0x00000004
+#define RocdecHevcPicture_BOTTOM_FIELD            0x00000004
 /** \brief Long term reference picture */
-#define RocdecHEVCPicture_LONG_TERM_REFERENCE     0x00000008
+#define RocdecHevcPicture_LONG_TERM_REFERENCE     0x00000008
 /**
- * RocdecHEVCPicture_ST_CURR_BEFORE, RocdecHEVCPicture_RPS_ST_CURR_AFTER
- * and RocdecHEVCPicture_RPS_LT_CURR of any picture in ReferenceFrames[] should
+ * RocdecHevcPicture_ST_CURR_BEFORE, RocdecHevcPicture_RPS_ST_CURR_AFTER
+ * and RocdecHevcPicture_RPS_LT_CURR of any picture in ReferenceFrames[] should
  * be exclusive. No more than one of them can be set for any picture.
  * Sum of NumPocStCurrBefore, NumPocStCurrAfter and NumPocLtCurr
  * equals NumPocTotalCurr, which should be equal to or smaller than 8.
@@ -324,17 +324,17 @@ typedef struct _RocdecHEVCPicture {
  * Number of ReferenceFrames[] entries with this bit set equals
  * NumPocStCurrBefore.
  */
-#define RocdecHEVCPicture_RPS_ST_CURR_BEFORE      0x00000010
+#define RocdecHevcPicture_RPS_ST_CURR_BEFORE      0x00000010
 /** \brief RefPicSetStCurrAfter of HEVC spec variable
  * Number of ReferenceFrames[] entries with this bit set equals
  * NumPocStCurrAfter.
  */
-#define RocdecHEVCPicture_RPS_ST_CURR_AFTER       0x00000020
+#define RocdecHevcPicture_RPS_ST_CURR_AFTER       0x00000020
 /** \brief RefPicSetLtCurr of HEVC spec variable
  * Number of ReferenceFrames[] entries with this bit set equals
  * NumPocLtCurr.
  */
-#define RocdecHEVCPicture_RPS_LT_CURR             0x00000040
+#define RocdecHevcPicture_RPS_LT_CURR             0x00000040
 
 /***********************************************************/
 //! \struct RocdecJPEGPicParams placeholder
@@ -543,8 +543,8 @@ typedef struct _RocdecAvcIQMatrix {
 //! This structure is used in RocdecHevcPicParams structure
 /***********************************************************/
 typedef struct _RocdecHevcPicParams {
-    RocdecHEVCPicture       curr_pic;
-    RocdecHEVCPicture       ref_frames[15];	/* reference frame list in DPB */
+    RocdecHevcPicture       curr_pic;
+    RocdecHevcPicture       ref_frames[15];	/* reference frame list in DPB */
     uint16_t                picture_width_in_luma_samples;
     uint16_t                picture_height_in_luma_samples;
     union {
@@ -928,7 +928,7 @@ extern rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_hand
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
 //! \ingroup group_amd_rocdecode
 //! Get the decode status for frame corresponding to nPicIdx
-//! API is currently supported for HEVC, H264 and JPEG codecs.
+//! API is currently supported for HEVC, AVC/H264 and JPEG codecs.
 //! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);

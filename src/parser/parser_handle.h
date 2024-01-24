@@ -43,7 +43,7 @@ private:
     void ClearErrors() { error_ = ""; }
     void CreateParser(RocdecParserParams *params) {
         switch(params->codec_type) {
-            case rocDecVideoCodec_H264:
+            case rocDecVideoCodec_AVC:
                 roc_parser_ = std::make_shared<AvcVideoParser>();
                 break;
             case rocDecVideoCodec_HEVC:

@@ -126,7 +126,7 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
                 va_profile_ = VAProfileHEVCMain10;
             }
             break;
-        case rocDecVideoCodec_H264:
+        case rocDecVideoCodec_AVC:
             va_profile_ = VAProfileH264Main;
             break;
         default:
@@ -242,7 +242,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             break;
         }
 
-        case rocDecVideoCodec_H264: {
+        case rocDecVideoCodec_AVC: {
             pPicParams->pic_params.avc.curr_pic.pic_idx = curr_surface_id;
             for (int i = 0; i < 16; i++) {
                 if (pPicParams->pic_params.avc.ref_frames[i].pic_idx != 0xFF) {

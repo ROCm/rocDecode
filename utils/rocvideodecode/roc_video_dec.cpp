@@ -110,7 +110,7 @@ static const char * GetVideoCodecString(rocDecVideoCodec e_codec) {
         { rocDecVideoCodec_MPEG1,     "MPEG-1"       },
         { rocDecVideoCodec_MPEG2,     "MPEG-2"       },
         { rocDecVideoCodec_MPEG4,     "MPEG-4 (ASP)" },
-        { rocDecVideoCodec_H264,      "AVC/H.264"    },
+        { rocDecVideoCodec_AVC,      "AVC/H.264"    },
         { rocDecVideoCodec_HEVC,      "H.265/HEVC"   },
         { rocDecVideoCodec_AV1,       "AV1"          },
         { rocDecVideoCodec_VP8,       "VP8"          },
@@ -624,7 +624,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             RocdecSeiMessage *sei_message = sei_message_display_q_[pDispInfo->picture_index].sei_message;
             if (fp_sei_) {
                 for (uint32_t i = 0; i < sei_num_messages; i++) {
-                    if (codec_id_ == rocDecVideoCodec_H264 || rocDecVideoCodec_HEVC) {
+                    if (codec_id_ == rocDecVideoCodec_AVC || rocDecVideoCodec_HEVC) {
                         switch (sei_message[i].sei_message_type) {
                             case SEI_TYPE_TIME_CODE: {
                                 //todo:: check if we need to write timecode
