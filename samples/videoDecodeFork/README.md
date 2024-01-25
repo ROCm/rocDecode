@@ -1,35 +1,34 @@
-# Video Decode Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library. 
+# Video decode fork sample
 
-This sample uses fork() to create multiple processes to decode the same input video parallely.
+The video decode fork sample creates multiple processes which demux and decode the same video in parallel. The demuxer uses FFMPEG to get the individual frames which are then sent to the decoder APIs. The sample uses shared memory to keep count of the number of frames decoded in the different processes. Each child process needs to exit successfully for the sample to complete successfully.
+
+This sample shows scaling in performance for `N` VCN engines as per GPU architecture.
 
 ## Prerequisites:
 
-* Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-
-* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
-
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
-
-* rocDecode
-
-* CMake `3.5` or later
+* Install [rocDecode](../../README.md#build-and-install-instructions)
 
 * [FFMPEG](https://ffmpeg.org/about.html)
+
+    * On `Ubuntu`
+
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  sudo apt install ffmpeg
-  ```
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script
 
 ## Build
-```
-mkdir build
-cd build
+
+```shell
+mkdir video_decode_fork_sample && cd video_decode_fork_sample
 cmake ../
 make -j
 ```
-# Run 
-```
+
+## Run
+
+```shell
 ./videodecodefork -i <input video file [required]> 
                   -f <Number of forks ( >= 1) [optional; default:4]>
                   -d <Device ID (>= 0) [optional - default:0]>
