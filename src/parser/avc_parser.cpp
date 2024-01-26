@@ -1404,7 +1404,7 @@ void AvcVideoParser::CalculateCurrPoc() {
     int frame_num_offset; // FrameNumOffset
 
     int max_pic_order_cnt_lsb = 1 << (p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4); // MaxPicOrderCntLsb
-    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4); // MaxFrameNum
+    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4); // max_frame_num
 
     if (p_sps->pic_order_cnt_type == 0) {
         if (slice_nal_unit_header_.nal_unit_type == kAvcNalTypeSlice_IDR) {
@@ -1553,130 +1553,116 @@ void AvcVideoParser::CalculateCurrPoc() {
     }
 }
 
+// 8.2.4
+static inline int ComparePicNumDesc(const void *p_pic_info_1, const void *p_pic_info_2) {
+    int pic_num_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_num;
+    int pic_num_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_num;
+
+    if (pic_num_1 < pic_num_2) {
+        return 1;
+    }
+    if (pic_num_1 > pic_num_2) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void *p_pic_info_2) {
+    int long_term_pic_num_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->long_term_pic_num;
+    int long_term_pic_num_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->long_term_pic_num;
+
+    if (long_term_pic_num_1 < long_term_pic_num_2) {
+        return -1;
+    }
+    if (long_term_pic_num_1 > long_term_pic_num_2) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 void AvcVideoParser::SetupReflist() {
-    AvcSeqParameterSet *pSPS = &sps_list_[active_sps_id_];
-    int MaxFrameNum = 1 << (pSPS->log2_max_frame_num_minus4 + 4);
-    AvcSliceHeader *pSliceHeader = &slice_header_list_[0];
+    AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4);
+    AvcSliceHeader *p_slice_header = &slice_header_0_;
     int i;
 
     // 8.2.4.1. Calculate picture numbers
-    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
-    {
-        AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
+    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+        AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
 
-        if (pRefPic->is_reference == kUsedForShortTerm)
-        {
-            pRefPic->FrameNum = pRefPic->frame_num;
+        if (p_ref_pic->is_reference == kUsedForShortTerm) {
+            p_ref_pic->frame_num = p_ref_pic->frame_num;
             // Eq. 8-27
-            if (pRefPic->FrameNum > curr_pic_.frame_num)
-            {
-                pRefPic->FrameNumWrap = pRefPic->FrameNum - MaxFrameNum;
+            if (p_ref_pic->frame_num > curr_pic_.frame_num) {
+                p_ref_pic->frame_num_wrap = p_ref_pic->frame_num - max_frame_num;
+            } else {
+                p_ref_pic->frame_num_wrap = p_ref_pic->frame_num;
             }
-            else
-            {
-                pRefPic->FrameNumWrap = pRefPic->FrameNum;
-            }
-            // Jefftest
-            //printf("pRefPic->FrameNumWrap = %d ........\n", pRefPic->FrameNumWrap);
 
-            if (curr_pic_.pic_structure == kFrame)
-            {
-                pRefPic->PicNum = pRefPic->FrameNumWrap;  // Eq. 8-28
+            if (curr_pic_.pic_structure == kFrame) {
+                p_ref_pic->pic_num = p_ref_pic->frame_num_wrap;  // Eq. 8-28
+            } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
+                p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap + 1;  // Eq. 8-30
+            } else {
+                p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap;  // Eq. 8-31
             }
-            else if (((curr_pic_.pic_structure == kTopField) && (pRefPic->pic_structure == kTopField)) ||
-            ((curr_pic_.pic_structure == kBottomField) && (pRefPic->pic_structure == kBottomField)))
-            {
-                pRefPic->PicNum = 2 * pRefPic->FrameNumWrap + 1;  // Eq. 8-30
-            }
-            else
-            {
-                pRefPic->PicNum = 2 * pRefPic->FrameNumWrap;  // Eq. 8-31
-            }
-        }
-        else if (pRefPic->is_reference == kUsedForLongTerm)
-        {
-            // Note: Todo: assign LongTermFrameIdx in MarkDecodedRefPic()
-            if (curr_pic_.pic_structure == kFrame)
-            {
-                pRefPic->LongTermPicNum = pRefPic->LongTermFrameIdx;  // Eq. 8-29
-            }
-            else if (((curr_pic_.pic_structure == kTopField) && (pRefPic->pic_structure == kTopField)) ||
-            ((curr_pic_.pic_structure == kBottomField) && (pRefPic->pic_structure == kBottomField)))
-            {
-                pRefPic->LongTermPicNum = 2 * pRefPic->LongTermFrameIdx + 1;  // Eq. 8-32
-            }
-            else
-            {
-                pRefPic->LongTermPicNum = 2 * pRefPic->LongTermFrameIdx;  // Eq. 8-33
+        } else if (p_ref_pic->is_reference == kUsedForLongTerm) {
+            // Note: Todo: assign long_term_frame_idx in MarkDecodedRefPic()
+            if (curr_pic_.pic_structure == kFrame) {
+                p_ref_pic->long_term_pic_num = p_ref_pic->long_term_frame_idx;  // Eq. 8-29
+            } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
+                p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx + 1;  // Eq. 8-32
+            } else {
+                p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx;  // Eq. 8-33
             }
         }
     }
 
     // 8.2.4.2 Initialisation process for reference picture lists
-    if (pSliceHeader->slice_type == kAvcSliceTypeP || pSliceHeader->slice_type == kAvcSliceTypeP_5)
-    {
-        if (curr_pic_.pic_structure == kFrame)
-        {
+    if (p_slice_header->slice_type == kAvcSliceTypeP || p_slice_header->slice_type == kAvcSliceTypeP_5) {
+        if (curr_pic_.pic_structure == kFrame) {
             // Group short term ref pictures
-            int refIndex = 0;
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
-            {
-                AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
-
-                if (pRefPic->is_reference == kUsedForShortTerm)
-                {
-                    ref_list_0_[refIndex] = *pRefPic;
-                    refIndex++;
+            int ref_index = 0;
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForShortTerm) {
+                    ref_list_0_[ref_index] = *p_ref_pic;
+                    ref_index++;
                 }
             }
-            assert(refIndex == dpb_buffer_.numShortTerm);  // Todo: graceful action
-
             // Group long term ref pictures
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++)
-            {
-                AvcPicture *pRefPic = &dpb_buffer_.frame_buffer_list[i].frame_pic;
-
-                if (pRefPic->is_reference == kUsedForLongTerm)
-                {
-                    ref_list_0_[refIndex] = *pRefPic;
-                    refIndex++;
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForLongTerm) {
+                    ref_list_0_[ref_index] = *p_ref_pic;
+                    ref_index++;
                 }
             }
-            assert(refIndex == dpb_buffer_.numShortTerm + dpb_buffer_.numLongTerm);  // Todo: graceful action
-
-            // Sort short term refs with descending order of PicNum
-            if (dpb_buffer_.numShortTerm)
-            {
-                qsort((void*)ref_list_0_, dpb_buffer_.numShortTerm, sizeof(AvcPicture), ComparePicNumDesc);
+            // Sort short term refs with descending order of pic_num
+            if (dpb_buffer_.num_short_term) {
+                qsort((void*)ref_list_0_, dpb_buffer_.num_short_term, sizeof(AvcPicture), ComparePicNumDesc);
             }
-
-            // Sort long term refs with ascending order of LongTermPicNum
-            if (dpb_buffer_.numLongTerm)
-            {
-                qsort((void*)&ref_list_0_[dpb_buffer_.numShortTerm], dpb_buffer_.numLongTerm, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+            // Sort long term refs with ascending order of long_term_pic_num
+            if (dpb_buffer_.num_long_term) {
+                qsort((void*)&ref_list_0_[dpb_buffer_.num_short_term], dpb_buffer_.num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
+        } else {
+            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add P ref field list init." << std::endl;
         }
-        else
-        {
-            printf("Error! Todo: Add P ref field list init.\n");
-        }
-    }
-    else
-    {
-        printf("Error! Todo: Add B ref list init.\n");
+    } else {
+        std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add B ref list init." << std::endl;
     }
 
     // 8.2.4.3 Modification process for reference picture lists
-    if (pSliceHeader->ref_pic_list.ref_pic_list_modification_flag_l0 == 1)
-    {
-        printf("Error! Todo: Added ref list 0 modification support.\n");
+    if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l0 == 1) {
+        std::cout << "Error! Todo: Added ref list 0 modification support." << std::endl;
     }
 
-    if (pSliceHeader->slice_type == kAvcSliceTypeB || pSliceHeader->slice_type == kAvcSliceTypeB_6)
-    {
-        if (pSliceHeader->ref_pic_list.ref_pic_list_modification_flag_l1 == 1)
-        {
-            printf("Error! Todo: Added ref list 1 modification support.\n");
+    if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6) {
+        if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l1 == 1) {
+            std::cout << "Error! Todo: Added ref list 1 modification support." << std::endl;
         }
     }
 }

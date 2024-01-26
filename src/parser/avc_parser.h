@@ -52,18 +52,10 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method
 
-
-protected:    
     enum PictureStructure {
         kFrame,
         kTopField,
         kBottomField
-    };
-
-    enum AvcRefMarking {
-        kUnusedForReference = 0,
-        kUsedForShortTerm = 1,
-        kUsedForLongTerm = 2
     };
 
     typedef struct {
@@ -81,6 +73,13 @@ protected:
 
         uint32_t is_reference;
     } AvcPicture;
+
+protected:
+    enum AvcRefMarking {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
 
     /*! \brief Decoded picture buffer
      */
