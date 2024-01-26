@@ -61,7 +61,6 @@ public:
     typedef struct {
         int      pic_idx;  // picture index or id
         PictureStructure pic_structure;
-
         int32_t  pic_order_cnt;
         int32_t  top_field_order_cnt;
         int32_t  bottom_field_order_cnt;
@@ -70,8 +69,8 @@ public:
         int32_t  pic_num; // PicNum
         int32_t  long_term_pic_num; // LongTermPicNum
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
-
         uint32_t is_reference;
+        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
     } AvcPicture;
 
 protected:
@@ -193,6 +192,10 @@ protected:
     /*! \brief Function to set up the reference picutre lists.
      */
     void SetupReflist();
+
+    /*! \brief Function to mark reference pictures in DPB
+     */
+    ParserResult MarkDecodedRefPic();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.

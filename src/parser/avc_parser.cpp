@@ -153,6 +153,14 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                             curr_pic_.pic_structure = kFrame;
                         }
                         curr_pic_.frame_num = slice_header_0_.frame_num;
+
+                        // Set up reference picture list
+                        if (slice_header_0_.slice_type != kAvcSliceTypeI && slice_header_0_.slice_type != kAvcSliceTypeSI && slice_header_0_.slice_type != kAvcSliceTypeI_7 && slice_header_0_.slice_type != kAvcSliceTypeSI_9) {
+                            SetupReflist();
+                        }
+
+                        // Decoded reference picture marking
+                        MarkDecodedRefPic();
                     }
                     slice_num_++;
                     break;
@@ -1657,9 +1665,95 @@ void AvcVideoParser::SetupReflist() {
 
     if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6) {
         if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l1 == 1) {
-            std::cout << "Error! Todo: Added ref list 1 modification support." << std::endl;
+            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Added ref list 1 modification support." << std::endl;
         }
     }
+}
+
+ParserResult AvcVideoParser::MarkDecodedRefPic() {
+    AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    int i;
+
+    if (slice_nal_unit_header_.nal_ref_idc == 0) {
+        return PARSER_OK;
+    }
+
+    if (slice_nal_unit_header_.nal_unit_type == kAvcNalTypeSlice_IDR) {  // 8.2.5.1: 1. & 2.
+        // Mark all reference pictures as "unused for reference
+        for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
+        }
+        if (p_slice_header->dec_ref_pic_marking.long_term_reference_flag) {
+            curr_pic_.is_reference = kUsedForLongTerm;
+            curr_pic_.long_term_frame_idx = 0;
+            dpb_buffer_.num_long_term = 0;
+        } else {
+            curr_pic_.is_reference = kUsedForShortTerm;
+            dpb_buffer_.num_short_term = 0;
+        }
+    } else {
+        if (p_slice_header->dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag == 1) {
+            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: 8.2.5.4 ............" << std::endl;
+        } else { // 8.2.5.3
+            curr_pic_.is_reference = kUsedForShortTerm;  // 8.2.5.1: 3.
+
+            if (dpb_buffer_.num_short_term + dpb_buffer_.num_long_term == p_sps->max_num_ref_frames) {
+                int32_t min_frame_num_wrap = 0xFFFFFF; // more than the largest possible value of FrameNumWrap (2 ^ 16)
+                int min_index = AVC_MAX_DPB_FRAMES;
+                for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                    if (dpb_buffer_.frame_buffer_list[i].is_reference == kUsedForShortTerm) {
+                        if (dpb_buffer_.frame_buffer_list[i].frame_num_wrap < min_frame_num_wrap) {
+                            min_frame_num_wrap = dpb_buffer_.frame_buffer_list[i].frame_num_wrap;
+                            min_index = i;
+                        }
+                    }
+                }
+                if (min_index < AVC_MAX_DPB_FRAMES) {
+                    dpb_buffer_.frame_buffer_list[min_index].is_reference = kUnusedForReference;
+                    // Todo: implement output policy
+                    dpb_buffer_.frame_buffer_list[min_index].use_status = 0;
+                } else {
+                    ERR("Could not find any short term ref picture.");
+                    return PARSER_FAIL;
+                }
+                dpb_buffer_.num_short_term--;
+            }
+        }
+    }
+
+    // Look for an empty frame buffer in DPB and add the current ref picture to DPB
+    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+        if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
+            break;
+        }
+    }
+    if (i < AVC_MAX_DPB_FRAMES)
+    {
+        AvcPicture *frame_buf = &dpb_buffer_.frame_buffer_list[i];
+        *frame_buf = curr_pic_;
+        if (curr_pic_.pic_structure == kFrame) {
+            frame_buf->use_status = 3;
+        } else if (curr_pic_.pic_structure == kTopField) {
+            frame_buf->use_status = 1;
+        } else {
+            frame_buf->use_status = 2;
+        }
+        if (curr_pic_.is_reference == kUsedForShortTerm) {
+            dpb_buffer_.num_short_term++;
+        } else if (curr_pic_.is_reference == kUsedForLongTerm)
+        {
+            dpb_buffer_.num_long_term++;
+        } else {
+            ERR("Incorrect ref type.");
+            return PARSER_FAIL;
+        }
+    } else {
+        ERR("Could not find any free frame buffer in DPB.");
+        return PARSER_FAIL;
+    }
+
+    return PARSER_OK;
 }
 
 #if DBGINFO
