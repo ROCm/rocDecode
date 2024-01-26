@@ -44,7 +44,6 @@ extern "C" {
 /*********************************************************************************/
 
 typedef void *RocdecVideoParser;
-
 typedef uint64_t RocdecTimeStamp;
 
 /**
@@ -67,14 +66,14 @@ typedef struct {
     uint8_t bit_depth_luma_minus8;    /**< OUT: high bit depth luma. E.g, 2 for 10-bitdepth, 4 for 12-bitdepth   */
     uint8_t bit_depth_chroma_minus8;  /**< OUT: high bit depth chroma. E.g, 2 for 10-bitdepth, 4 for 12-bitdepth */
     uint8_t min_num_decode_surfaces;  /**< OUT: Minimum number of decode surfaces to be allocated for correct
-                                                      decoding. The client can send this value in ulNumDecodeSurfaces.
+                                                      decoding. The client can send this value in num_decode_surfaces.
                                                       This guarantees correct functionality and optimal video memory
                                                       usage but not necessarily the best performance, which depends on
                                                       the design of the overall application. The optimal number of
                                                       decode surfaces (in terms of performance and memory utilization)
                                                       should be decided by experimentation for each application, but it
                                                       cannot go below min_num_decode_surfaces.
-                                                      If this value is used for ulNumDecodeSurfaces then it must be
+                                                      If this value is used for num_decode_surfaces then it must be
                                                       returned to parser during sequence callback.                     */
     uint32_t coded_width;               /**< OUT: coded frame width in pixels                                      */
     uint32_t coded_height;              /**< OUT: coded frame height in pixels                                     */
@@ -85,14 +84,14 @@ typedef struct {
     * display_area = { 0,0,1920,1080 }
     */
     struct {
-        int left;                           /**< OUT: left position of display rect    */
-        int top;                            /**< OUT: top position of display rect     */
-        int right;                          /**< OUT: right position of display rect   */
-        int bottom;                         /**< OUT: bottom position of display rect  */
+        int left;                               /**< OUT: left position of display rect    */
+        int top;                                /**< OUT: top position of display rect     */
+        int right;                              /**< OUT: right position of display rect   */
+        int bottom;                             /**< OUT: bottom position of display rect  */
     } display_area;
     
-    rocDecVideoChromaFormat chroma_format;    /**< OUT:  Chroma format                   */
-    uint32_t bitrate;                   /**< OUT: video bitrate (bps, 0=unknown)   */
+    rocDecVideoChromaFormat chroma_format;      /**< OUT:  Chroma format                   */
+    uint32_t bitrate;                           /**< OUT: video bitrate (bps, 0=unknown)   */
    /**
     * OUT: Display Aspect Ratio = x:y (4:3, 16:9, etc)
     */
@@ -112,7 +111,7 @@ typedef struct {
         uint8_t transfer_characteristics;  /**< OUT: opto-electronic transfer characteristic of the source picture */
         uint8_t matrix_coefficients;       /**< OUT: used in deriving luma and chroma signals from RGB primaries   */
     } video_signal_description;
-    uint32_t seqhdr_data_length;             /**< OUT: Additional bytes following (RocdecVideoFormatEx)                  */
+    uint32_t seqhdr_data_length;           /**< OUT: Additional bytes following (RocdecVideoFormatEx)                  */
 } RocdecVideoFormat;
 
 /****************************************************************/
@@ -122,10 +121,10 @@ typedef struct {
 //! Used in rocDecCreateVideoParser API
 /****************************************************************/
 typedef struct {
-    RocdecVideoFormat format;                 /**< OUT: RocdecVideoFormat structure */
+    RocdecVideoFormat format;               /**< OUT: RocdecVideoFormat structure */
     uint32_t max_width;
     uint32_t max_height;
-    uint8_t raw_seqhdr_data[1024];  /**< OUT: Sequence header data    */
+    uint8_t  raw_seqhdr_data[1024];         /**< OUT: Sequence header data    */
 } RocdecVideoFormatEx;
 
 /***************************************************************/
@@ -151,28 +150,25 @@ typedef enum {
 //! IN for rocDecParseVideoData
 /*****************************************************************************/
 typedef struct _RocdecSourceDataPacket {
-    uint32_t flags;            /**< IN: Combination of ROCDEC_PKT_XXX flags                              */
+    uint32_t flags;            /**< IN: Combination of ROCDEC_PKT_XXX flags                             */
     uint32_t payload_size;     /**< IN: number of bytes in the payload (may be zero if EOS flag is set) */
-    const uint8_t *payload;   /**< IN: Pointer to packet payload data (may be NULL if EOS flag is set) */
-    RocdecTimeStamp pts;                   /**< IN: Presentation time stamp (10MHz clock), only valid if
-                                             ROCDEC_PKT_TIMESTAMP flag is set                                 */
+    const uint8_t *payload;    /**< IN: Pointer to packet payload data (may be NULL if EOS flag is set) */
+    RocdecTimeStamp pts;       /**< IN: Presentation time stamp (10MHz clock), only valid if ROCDEC_PKT_TIMESTAMP flag is set */
 } RocdecSourceDataPacket;
-
 
 /**********************************************************************************/
 /*! \brief Timing Info struct
  * \ingroup group_rocdec_struct
  * \struct RocdecParserDispInfo
- * \Used in rocdecParseVideoData API with PFNVIDDISPLAYCALLBACK pfnDisplayPicture
+ * \Used in rocdecParseVideoData API with PFNVIDDISPLAYCALLBACK pfn_display_picture
  */
 /**********************************************************************************/
 typedef struct _RocdecParserDispInfo {
     int picture_index;          /**< OUT: Index of the current picture                                                         */
     int progressive_frame;      /**< OUT: 1 if progressive frame; 0 otherwise                                                  */
     int top_field_first;        /**< OUT: 1 if top field is displayed first; 0 otherwise                                       */
-    int repeat_first_field;     /**< OUT: Number of additional fields (1=ivtc, 2=frame doubling, 4=frame tripling, 
-                                     -1=unpaired field)                                                                        */
-    RocdecTimeStamp pts;                /**< OUT: Presentation time stamp                                                              */
+    int repeat_first_field;     /**< OUT: Number of additional fields (1=ivtc, 2=frame doubling, 4=frame tripling, -1=unpaired field) */
+    RocdecTimeStamp pts;        /**< OUT: Presentation time stamp                                                              */
 } RocdecParserDispInfo;
 
 /**
@@ -188,10 +184,9 @@ typedef struct _RocdecOperatingPointInfo {
             uint8_t  reserved24_bits[3];
             uint16_t operating_points_idc[32];
         } av1;
-        uint8_t CodecReserved[1024];
+        uint8_t codec_reserved[1024];
     };
 } RocdecOperatingPointInfo;
-
 
 /**********************************************************************************/
 //! \ingroup group_rocdec_struct
@@ -199,22 +194,21 @@ typedef struct _RocdecOperatingPointInfo {
 //! Used in RocdecSeiMessageInfo structure
 /**********************************************************************************/
 typedef struct _RocdecSeiMessage {
-    uint8_t sei_message_type; /**< OUT: SEI Message Type      */
+    uint8_t sei_message_type;   /**< OUT: SEI Message Type      */
     uint8_t reserved[3];
     uint32_t sei_message_size;  /**< OUT: SEI Message Size      */
 } RocdecSeiMessage;
 
-
 /**********************************************************************************/
 //! \ingroup group_rocdec_struct
 //! \struct RocdecSeiMessageInfo
-//! Used in rocDecParseVideoData API with PFNVIDSEIMSGCALLBACK pfnGetSEIMsg
+//! Used in rocDecParseVideoData API with PFNVIDSEIMSGCALLBACK pfn_get_sei_msg
 /**********************************************************************************/
 typedef struct _RocdecSeiMessageInfo {
-    void *pSEIData;                 /**< OUT: SEI Message Data      */
-    RocdecSeiMessage *pSEIMessage;      /**< OUT: SEI Message Info      */
-    uint32_t sei_message_count; /**< OUT: SEI Message Count     */
-    uint32_t picIdx;            /**< OUT: SEI Message Pic Index */
+    void *sei_data;                     /**< OUT: SEI Message Data      */
+    RocdecSeiMessage *sei_message;      /**< OUT: SEI Message Info      */
+    uint32_t sei_message_count;         /**< OUT: SEI Message Count     */
+    uint32_t picIdx;                    /**< OUT: SEI Message Pic Index */
 } RocdecSeiMessageInfo;
 
 /**
@@ -225,7 +219,7 @@ typedef struct _RocdecSeiMessageInfo {
  * \ rocDecParseVideoData() to the application.
  * \ Parser picks default operating point as 0 and outputAllLayers flag as 0 if PFNVIDOPPOINTCALLBACK is not set or return value is 
  * \ -1 or invalid operating point.
- * \ PFNVIDSEQUENCECALLBACK : 0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::ulMaxNumDecodeSurfaces
+ * \ PFNVIDSEQUENCECALLBACK : 0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::max_num_decode_surfaces
  * \ while creating parser)
  * \ PFNVIDDECODECALLBACK   : 0: fail, >=1: succeeded
  * \ PFNVIDDISPLAYCALLBACK  : 0: fail, >=1: succeeded
@@ -244,23 +238,21 @@ typedef int (ROCDECAPI *PFNVIDSEIMSGCALLBACK) (void *, RocdecSeiMessageInfo *);
  * \Used in rocDecCreateVideoParser API
 */
 typedef struct _RocdecParserParams {
-    rocDecVideoCodec CodecType;                   /**< IN: rocDecVideoCodec_XXX                                                  */
-    uint32_t ulMaxNumDecodeSurfaces;        /**< IN: Max # of decode surfaces (parser will cycle through these)          */
-    uint32_t ulClockRate;                   /**< IN: Timestamp units in Hz (0=default=10000000Hz)                        */
-    uint32_t ulErrorThreshold;              /**< IN: % Error threshold (0-100) for calling pfnDecodePicture (100=always 
-                                                     IN: call pfnDecodePicture even if picture bitstream is fully corrupted) */
-    uint32_t ulMaxDisplayDelay;             /**< IN: Max display queue delay (improves pipelining of decode with display)
-                                                         0=no delay (recommended values: 2..4)                               */
-    uint32_t bAnnexb : 1;                   /**< IN: AV1 annexB stream                                                   */
-    uint32_t uReserved : 31;                /**< Reserved for future use - set to zero                                   */
-    uint32_t uReserved1[4];                 /**< IN: Reserved for future use - set to 0                                  */
-    void *pUserData;                            /**< IN: User data for callbacks                                             */
-    PFNVIDSEQUENCECALLBACK pfnSequenceCallback; /**< IN: Called before decoding frames and/or whenever there is a fmt change */
-    PFNVIDDECODECALLBACK pfnDecodePicture;      /**< IN: Called when a picture is ready to be decoded (decode order)         */
-    PFNVIDDISPLAYCALLBACK pfnDisplayPicture;    /**< IN: Called whenever a picture is ready to be displayed (display order)  */
-    PFNVIDSEIMSGCALLBACK pfnGetSEIMsg;          /**< IN: Called when all SEI messages are parsed for particular frame        */
-    void *pvReserved2[5];                       /**< Reserved for future use - set to NULL                                   */
-    RocdecVideoFormatEx *pExtVideoInfo;             /**< IN: [Optional] sequence header data from system layer                   */
+    rocDecVideoCodec        codec_type;                     /**< IN: rocDecVideoCodec_XXX                                                */
+    uint32_t                max_num_decode_surfaces;        /**< IN: Max # of decode surfaces (parser will cycle through these)          */
+    uint32_t                clock_rate;                     /**< IN: Timestamp units in Hz (0=default=10000000Hz)                        */
+    uint32_t                error_threshold;                /**< IN: % Error threshold (0-100) for calling pfn_decode_picture (100=always IN: call pfn_decode_picture even if picture bitstream is fully corrupted) */
+    uint32_t                max_display_delay;              /**< IN: Max display queue delay (improves pipelining of decode with display) 0 = no delay (recommended values: 2..4) */
+    uint32_t                annex_b : 1;                    /**< IN: AV1 annexB stream                                                   */
+    uint32_t                reserved : 31;                  /**< Reserved for future use - set to zero                                   */
+    uint32_t                reserved_1[4];                  /**< IN: Reserved for future use - set to 0                                  */
+    void                    *user_data;                     /**< IN: User data for callbacks                                             */
+    PFNVIDSEQUENCECALLBACK  pfn_sequence_callback;          /**< IN: Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDDECODECALLBACK    pfn_decode_picture;             /**< IN: Called when a picture is ready to be decoded (decode order)         */
+    PFNVIDDISPLAYCALLBACK   pfn_display_picture;            /**< IN: Called whenever a picture is ready to be displayed (display order)  */
+    PFNVIDSEIMSGCALLBACK    pfn_get_sei_msg;               /**< IN: Called when all SEI messages are parsed for particular frame        */
+    void                    *reserved_2[5];                 /**< Reserved for future use - set to NULL                                   */
+    RocdecVideoFormatEx     *ext_video_info;                /**< IN: [Optional] sequence header data from system layer                   */
 } RocdecParserParams;
 
 /************************************************************************************************/
@@ -275,10 +267,10 @@ extern rocDecStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_
 //! \fn rocDecodeStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet)
 //! Parse the video data from source data packet in pPacket 
 //! Extracts parameter sets like SPS, PPS, bitstream etc. from pPacket and 
-//! calls back pfnDecodePicture with RocdecPicParams data for kicking of HW decoding
-//! calls back pfnSequenceCallback with RocdecVideoFormat data for initial sequence header or when
+//! calls back pfn_decode_picture with RocdecPicParams data for kicking of HW decoding
+//! calls back pfn_sequence_callback with RocdecVideoFormat data for initial sequence header or when
 //! the decoder encounters a video format change
-//! calls back pfnDisplayPicture with RocdecParserDispInfo data to display a video frame
+//! calls back pfn_display_picture with RocdecParserDispInfo data to display a video frame
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *packet);
 

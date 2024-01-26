@@ -62,8 +62,8 @@ rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle) {
 
 /**********************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(rocDecDecoderHandle decoder_handle, RocdecDecodeCaps *pdc)
-//! Queries decode capabilities of AMD's VCN decoder based on CodecType, ChromaFormat and BitDepthMinus8 parameters.
-//! 1. Application fills IN parameters CodecType, ChromaFormat and BitDepthMinus8 of RocdecDecodeCaps structure
+//! Queries decode capabilities of AMD's VCN decoder based on codec type, chroma_format and BitDepthMinus8 parameters.
+//! 1. Application fills IN parameters codec_type, chroma_format and BitDepthMinus8 of RocdecDecodeCaps structure
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
 /**********************************************************************************************************************/
@@ -84,13 +84,13 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
         ERR("ERROR: didn't find any GPU!");
         return ROCDEC_DEVICE_INVALID;
     }
-    if (pdc->deviceid >= num_devices) {
+    if (pdc->device_id >= num_devices) {
         ERR("ERROR: the requested device_id is not found! ");
         return ROCDEC_DEVICE_INVALID;
     }
-    hip_status = hipGetDeviceProperties(&hip_dev_prop, pdc->deviceid);
+    hip_status = hipGetDeviceProperties(&hip_dev_prop, pdc->device_id);
     if (hip_status != hipSuccess) {
-        ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(pdc->deviceid) + " ) failed! (" + TOSTR(hip_status) + ")" );
+        ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(pdc->device_id) + " ) failed! (" + TOSTR(hip_status) + ")" );
         return ROCDEC_DEVICE_INVALID;
     }
 
@@ -148,7 +148,7 @@ rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDec
 /*********************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params)
 //! Used to reuse single decoder for multiple clips. Currently supports resolution change, resize params
-//! params, target area params change for same codec. Must be called during RocdecParserParams::pfnSequenceCallback
+//! params, target area params change for same codec. Must be called during RocdecParserParams::pfn_sequence_callback
 /*********************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params) {

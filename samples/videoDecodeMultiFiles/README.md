@@ -1,38 +1,41 @@
-# Video Decode Multi Files Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
+# Video decode multi files sample
 
-This sample takes multiple files as a list and decodes each of them one after the other.
+The video decode multiple files sample illustrates the use of providing a list of files as input to showcase the reconfigure option in rocDecode library. The input video files have to be of the same codec type to use the reconfigure option but can have different resolution or resize parameters.
+
+The reconfigure option can be disabled by the user if needed. The input file is parsed line by line and data is stored in a queue. The individual video files are demuxed and decoded one after the other in a loop. Outpuot for each individual input file can also be stored if needed.
 
 ## Prerequisites:
 
-* Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-
-* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
-
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
-
-* rocDecode
-
-* CMake `3.5` or later
+* Install [rocDecode](../../README.md#build-and-install-instructions)
 
 * [FFMPEG](https://ffmpeg.org/about.html)
+
+    * On `Ubuntu`
+
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  sudo apt install ffmpeg
-  ```
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script
 
 ## Build
-```
-mkdir build
-cd build
+
+```shell
+mkdir video_decode_multi_files_sample && cd video_decode_multi_files_sample
 cmake ../
 make -j
 ```
-# Run
 
-* Example input file list - example.txt
+## Run
 
+```shell
+./videodecodemultifiles -i <input file list[required - example.txt]>
+                        -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
+                        -use_reconfigure <flag (bool - 0/1) [optional - default: 1] set 0 to disable reconfigure api for decoding multiple files. Only resolution changes between files are supported when reconfigure is enabled. The codec, bit_depth, and the chroma_format must be the same between files>
 ```
+### Note: Example input file list - example.txt
+
+```shell
 infile input1.[mp4/mov...] [required]
 outfile output1.yuv [optional]
 z 0 [optional]
@@ -43,11 +46,4 @@ infile input2.[mp4/mov...] [optional]
 outfile output2.yuv [optional]
 ...
 ...
-```
-
-```
-./videodecodemultifiles -i <input file list[required - example.txt]>
-              -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
-              -use_reconfigure <flag (bool - 0/1) [optional - default: 1] set 0 to disable reconfigure api for decoding multiple files. Only resolution changes between files are supported when reconfigure is enabled.
-                                The codec, bit_depth, and the chroma_format must be the same between files.>
 ```

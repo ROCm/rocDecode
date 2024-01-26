@@ -53,15 +53,16 @@ extern "C" {
 #define MAX_FRAME_NUM     16
 typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 
-typedef enum SeiH264HevcPayloadType_enum {
+typedef enum SeiAvcHevcPayloadType_enum {
     SEI_TYPE_TIME_CODE = 136,
     SEI_TYPE_USER_DATA_UNREGISTERED = 5
-} SeiH264HevcPayloadType;
+} SeiAvcHevcPayloadType;
 
 typedef enum OutputSurfaceMemoryType_enum {
     OUT_SURFACE_MEM_DEV_INTERNAL = 0,      /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
     OUT_SURFACE_MEM_DEV_COPIED = 1,        /**<  decoded output will be copied to a separate device memory (the user doesn't need to call release) **/
-    OUT_SURFACE_MEM_HOST_COPIED = 2        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
+    OUT_SURFACE_MEM_HOST_COPIED = 2,        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
+    OUT_SURFACE_MEM_NOT_MAPPED  = 3         /**< <  decoded output is not available (interop won't be used): useful for decode only performance app*/
 } OutputSurfaceMemoryType;
 
 #define TOSTR(X) std::to_string(static_cast<int>(X))
