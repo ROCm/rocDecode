@@ -4,10 +4,10 @@ root: doxygen/html/index
 subtrees:
 - caption: rocDecode User Guide
   entries:
-  - file: docs/rocDecodeUserGuide.md
+  - file: rocDecodeUserGuide.md
 - caption: rocDecode samples
   entries:
-  - file: samples/README.md
+  - file: ../samples/README.md
 - caption: About
   entries:
   - file: license
