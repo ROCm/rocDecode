@@ -2,6 +2,12 @@
 # These comments will also be removed.
 root: doxygen/html/index
 subtrees:
+- caption: rocDecode User Guide
+  entries:
+  - file: docs/rocDecodeUserGuide.md
+- caption: rocDecode samples
+  entries:
+  - file: samples/README.md
 - caption: About
   entries:
   - file: license
