@@ -1,33 +1,32 @@
-# Video Decode Sample
-This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
+# Video decode sample
+
+The video decode sample illustrates decoding a single packetized video stream using FFMPEG demuxer, video parser, and rocDecoder to get the individual decoded frames in YUV format. This sample cab ne configured with a device ID and optionally able to dump the output to a file. This sample uses the high level RocVideoDecoder class which connects both the video parser and Rocdecoder. This process repeats in a loop until all frames have been decoded.
 
 ## Prerequisites:
 
-* Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-
-* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
-
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
-
-* rocDecode
-
-* CMake `3.5` or later
+* Install [rocDecode](../../README.md#build-and-install-instructions)
 
 * [FFMPEG](https://ffmpeg.org/about.html)
+
+    * On `Ubuntu`
+
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  sudo apt install ffmpeg
-  ```
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script
 
 ## Build
-```
-mkdir build
-cd build
+
+```shell
+mkdir video_decode_sample && cd video_decode_sample
 cmake ../
 make -j
 ```
-# Run 
-```
+
+## Run
+
+```shell
 ./videodecode -i <input video file [required]> 
               -o <output path to save decoded YUV frames [optional]> 
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
