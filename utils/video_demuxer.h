@@ -233,7 +233,7 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(StreamProvider *stream_provi
         return nullptr;
     }
     uint8_t *avioc_buffer = nullptr;
-    int avioc_buffer_size = 10 * 1024 * 1024;
+    int avioc_buffer_size = 100 * 1024 * 1024;
     avioc_buffer = (uint8_t *)av_malloc(avioc_buffer_size);
     if (!avioc_buffer) {
         std::cerr << "ERROR: av_malloc failed!" << std::endl;
