@@ -42,9 +42,17 @@ public:
     FileStreamProvider(const char *input_file_path) {
         fp_in_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
         if (!fp_in_) {
-            std::cout << "Unable to open input file: " << input_file_path << std::endl;
-            return;
+            std::cerr << "Unable to open input file: " << input_file_path << std::endl;
+            exit(-1);
         }
+        fp_in_.seekg (0, fp_in_.end);
+        int length = fp_in_.tellg();
+        fp_in_.seekg (0, fp_in_.beg);
+        if (length > (100 * 1024 * 1024)) { // avioc_buffer_size = 100 * 1024 * 1024 in video_demuxer.h
+            std::cerr << "This app supports only file sizes upto 100MB! Please use a smaller file." << std::endl;
+            exit(-1);
+        }
+
     }
     ~FileStreamProvider() {
         fp_in_.close();

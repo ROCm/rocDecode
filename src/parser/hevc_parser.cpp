@@ -36,12 +36,10 @@ inline T *AllocStruct(const int max_cnt) {
 }
 
 HevcVideoParser::HevcVideoParser() {
-    pic_count_ = 0;
     first_pic_after_eos_nal_unit_ = 0;
     m_active_vps_id_ = -1; 
     m_active_sps_id_ = -1;
     m_active_pps_id_ = -1;
-    b_new_picture_ = false;
     // allocate all fixed size structors here
     m_vps_ = AllocStruct<HevcVideoParamSet>(MAX_VPS_COUNT);
     m_sps_ = AllocStruct<HevcSeqParamSet>(MAX_SPS_COUNT);
@@ -60,11 +58,7 @@ HevcVideoParser::HevcVideoParser() {
 }
 
 rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
-    ParserResult status = Init();
-    if (status)
-        return ROCDEC_RUNTIME_ERROR;
-    RocVideoParser::Initialize(p_params);
-    return ROCDEC_SUCCESS;
+    return RocVideoParser::Initialize(p_params);
 }
 
 /**
@@ -83,7 +77,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
 
-        bool status = ParseFrameData(p_data->payload, p_data->payload_size);
+        bool status = ParsePictureData(p_data->payload, p_data->payload_size);
         if (!status) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
@@ -154,11 +148,6 @@ HevcVideoParser::~HevcVideoParser() {
     }
 }
 
-ParserResult HevcVideoParser::Init() {
-    b_new_picture_ = false;
-    return PARSER_OK;
-}
-
 int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     video_format_params_.codec = rocDecVideoCodec_HEVC;
     video_format_params_.frame_rate.numerator = frame_rate_.numerator;
@@ -214,15 +203,33 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     }
     
     video_format_params_.bitrate = 0;
+
+    // Dispaly aspect ratio
+    // Table E-1.
+    static const Rational hevc_sar[] = {
+        {0, 0}, // unspecified
+        {1, 1}, {12, 11}, {10, 11}, {16, 11}, {40, 33}, {24, 11}, {20, 11}, {32, 11},
+        {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, {4, 3}, {3, 2}, {2, 1},
+    };
+    Rational sar;
+    sar.numerator = 1; // set to square pixel if not present or unspecified
+    sar.denominator = 1; // set to square pixel if not present or unspecified
     if (sps_data->vui_parameters_present_flag) {
         if (sps_data->vui_parameters.aspect_ratio_info_present_flag) {
-            video_format_params_.display_aspect_ratio.x = sps_data->vui_parameters.sar_width;
-            video_format_params_.display_aspect_ratio.y = sps_data->vui_parameters.sar_height;
-        } else { // default values
-            video_format_params_.display_aspect_ratio.x = 0;
-            video_format_params_.display_aspect_ratio.y = 0;
+            if (sps_data->vui_parameters.aspect_ratio_idc == 255 /*Extended_SAR*/) {
+                sar.numerator = sps_data->vui_parameters.sar_width;
+                sar.denominator = sps_data->vui_parameters.sar_height;
+            } else if (sps_data->vui_parameters.aspect_ratio_idc > 0 && sps_data->vui_parameters.aspect_ratio_idc < 17) {
+                sar = hevc_sar[sps_data->vui_parameters.aspect_ratio_idc];
+            }
         }
     }
+    int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left) * sar.numerator;
+    int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top) * sar.denominator;
+    int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
+    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+
     if (sps_data->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = sps_data->vui_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = sps_data->vui_parameters.video_full_range_flag;
@@ -234,7 +241,7 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    if (pfn_sequece_cb_(parser_params_.pUserData, &video_format_params_) == 0) {
+    if (pfn_sequece_cb_(parser_params_.user_data, &video_format_params_) == 0) {
         ERR("Sequence callback function failed.");
         return PARSER_FAIL;
     } else {
@@ -244,12 +251,12 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
 
 void HevcVideoParser::FillSeiMessageCallbackFn() {
     sei_message_info_params_.sei_message_count = sei_message_count_;
-    sei_message_info_params_.pSEIMessage = sei_message_list_.data();
-    sei_message_info_params_.pSEIData = (void*)sei_payload_buf_;
+    sei_message_info_params_.sei_message = sei_message_list_.data();
+    sei_message_info_params_.sei_data = (void*)sei_payload_buf_;
     sei_message_info_params_.picIdx = curr_pic_info_.pic_idx;
 
     // callback function with RocdecSeiMessageInfo params filled out
-    if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.pUserData, &sei_message_info_params_);
+    if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.user_data, &sei_message_info_params_);
 }
 
 int HevcVideoParser::SendPicForDecode() {
@@ -258,17 +265,17 @@ int HevcVideoParser::SendPicForDecode() {
     HevcPicParamSet *pps_ptr = &m_pps_[m_active_pps_id_];
     dec_pic_params_ = {0};
 
-    dec_pic_params_.PicWidth = sps_ptr->pic_width_in_luma_samples;
-    dec_pic_params_.PicHeight = sps_ptr->pic_height_in_luma_samples;
-    dec_pic_params_.CurrPicIdx = curr_pic_info_.pic_idx;
+    dec_pic_params_.pic_width = sps_ptr->pic_width_in_luma_samples;
+    dec_pic_params_.pic_height = sps_ptr->pic_height_in_luma_samples;
+    dec_pic_params_.curr_pic_idx = curr_pic_info_.pic_idx;
     dec_pic_params_.field_pic_flag = sps_ptr->profile_tier_level.general_interlaced_source_flag;
     dec_pic_params_.bottom_field_flag = 0; // For now. Need to parse VUI/SEI pic_timing()
     dec_pic_params_.second_field = 0; // For now. Need to parse VUI/SEI pic_timing()
 
-    dec_pic_params_.nBitstreamDataLen = pic_stream_data_size_;
-    dec_pic_params_.pBitstreamData = pic_stream_data_ptr_;
-    dec_pic_params_.nNumSlices = slice_num_;
-    dec_pic_params_.pSliceDataOffsets = nullptr; // Todo: do we need this? Remove if not.
+    dec_pic_params_.bitstream_data_len = pic_stream_data_size_;
+    dec_pic_params_.bitstream_data = pic_stream_data_ptr_;
+    dec_pic_params_.num_slices = slice_num_;
+    dec_pic_params_.slice_data_offsets = nullptr; // Todo: do we need this? Remove if not.
 
     dec_pic_params_.ref_pic_flag = 1;  // HEVC decoded picture is always marked as short term at first.
     dec_pic_params_.intra_pic_flag = m_sh_->slice_type == HEVC_SLICE_TYPE_I ? 1 : 0;
@@ -280,56 +287,56 @@ int HevcVideoParser::SendPicForDecode() {
     RocdecHevcPicParams *pic_param_ptr = &dec_pic_params_.pic_params.hevc;
 
     // Current picture
-    pic_param_ptr->cur_pic.PicIdx = curr_pic_info_.pic_idx;
-    pic_param_ptr->cur_pic.POC = curr_pic_info_.pic_order_cnt;
+    pic_param_ptr->curr_pic.pic_idx = curr_pic_info_.pic_idx;
+    pic_param_ptr->curr_pic.poc = curr_pic_info_.pic_order_cnt;
 
     // Reference pictures
     ref_idx = 0;
     for (i = 0; i < num_poc_st_curr_before_; i++) {
         buf_idx = ref_pic_set_st_curr_before_[i];  // buffer index in DPB
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
-        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
-        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].Flags |= RocdecHEVCPicture_RPS_ST_CURR_BEFORE;
+        pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_RPS_ST_CURR_BEFORE;
         ref_idx++;
     }
 
     for (i = 0; i < num_poc_st_curr_after_; i++) {
         buf_idx = ref_pic_set_st_curr_after_[i]; // buffer index in DPB
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
-        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
-        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].Flags |= RocdecHEVCPicture_RPS_ST_CURR_AFTER;
+        pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_RPS_ST_CURR_AFTER;
         ref_idx++;
     }
 
     for (i = 0; i < num_poc_lt_curr_; i++) {
         buf_idx = ref_pic_set_lt_curr_[i]; // buffer index in DPB
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
-        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
-        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
-        pic_param_ptr->ref_frames[ref_idx].Flags |= RocdecHEVCPicture_LONG_TERM_REFERENCE | RocdecHEVCPicture_RPS_LT_CURR;
+        pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
+        pic_param_ptr->ref_frames[ref_idx].flags |= RocdecHevcPicture_LONG_TERM_REFERENCE | RocdecHevcPicture_RPS_LT_CURR;
         ref_idx++;
     }
 
     for (i = 0; i < num_poc_st_foll_; i++) {
         buf_idx = ref_pic_set_st_foll_[i]; // buffer index in DPB
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
-        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
-        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
         ref_idx++;
     }
 
     for (i = 0; i < num_poc_lt_foll_; i++) {
         buf_idx = ref_pic_set_lt_foll_[i]; // buffer index in DPB
-        pic_param_ptr->ref_frames[ref_idx].PicIdx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
-        pic_param_ptr->ref_frames[ref_idx].POC = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
-        pic_param_ptr->ref_frames[ref_idx].Flags = 0; // assume frame picture for now
+        pic_param_ptr->ref_frames[ref_idx].pic_idx = dpb_buffer_.frame_buffer_list[buf_idx].pic_idx;
+        pic_param_ptr->ref_frames[ref_idx].poc = dpb_buffer_.frame_buffer_list[buf_idx].pic_order_cnt;
+        pic_param_ptr->ref_frames[ref_idx].flags = 0; // assume frame picture for now
         ref_idx++;
     }
 
     for (i = ref_idx; i < 15; i++) {
-        pic_param_ptr->ref_frames[i].PicIdx = 0xFF;
+        pic_param_ptr->ref_frames[i].pic_idx = 0xFF;
     }
 
     pic_param_ptr->picture_width_in_luma_samples = sps_ptr->pic_width_in_luma_samples;
@@ -353,8 +360,8 @@ int HevcVideoParser::SendPicForDecode() {
     pic_param_ptr->pic_fields.bits.pps_loop_filter_across_slices_enabled_flag = pps_ptr->pps_loop_filter_across_slices_enabled_flag;
     pic_param_ptr->pic_fields.bits.loop_filter_across_tiles_enabled_flag = pps_ptr->loop_filter_across_tiles_enabled_flag;
     pic_param_ptr->pic_fields.bits.pcm_loop_filter_disabled_flag = sps_ptr->pcm_loop_filter_disabled_flag;
-    pic_param_ptr->pic_fields.bits.NoPicReorderingFlag = sps_ptr->sps_max_num_reorder_pics[0] ? 0 : 1;
-    pic_param_ptr->pic_fields.bits.NoBiPredFlag = m_sh_->slice_type == HEVC_SLICE_TYPE_B ? 0 : 1;
+    pic_param_ptr->pic_fields.bits.no_pic_reordering_flag = sps_ptr->sps_max_num_reorder_pics[0] ? 0 : 1;
+    pic_param_ptr->pic_fields.bits.no_bi_pred_flag = m_sh_->slice_type == HEVC_SLICE_TYPE_B ? 0 : 1;
 
     pic_param_ptr->sps_max_dec_pic_buffering_minus1 = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1];  // HighestTid
     pic_param_ptr->bit_depth_luma_minus8 = sps_ptr->bit_depth_luma_minus8;
@@ -397,9 +404,9 @@ int HevcVideoParser::SendPicForDecode() {
     pic_param_ptr->slice_parsing_fields.bits.deblocking_filter_override_enabled_flag = pps_ptr->deblocking_filter_override_enabled_flag;
     pic_param_ptr->slice_parsing_fields.bits.pps_disable_deblocking_filter_flag = pps_ptr->pps_deblocking_filter_disabled_flag;
     pic_param_ptr->slice_parsing_fields.bits.slice_segment_header_extension_present_flag = pps_ptr->slice_segment_header_extension_present_flag;
-    pic_param_ptr->slice_parsing_fields.bits.RapPicFlag = IsIrapPic(&slice_nal_unit_header_) ? 1 : 0;
-    pic_param_ptr->slice_parsing_fields.bits.IdrPicFlag = IsIdrPic(&slice_nal_unit_header_) ? 1 : 0;
-    pic_param_ptr->slice_parsing_fields.bits.IntraPicFlag = m_sh_->slice_type == HEVC_SLICE_TYPE_I ? 1 : 0;
+    pic_param_ptr->slice_parsing_fields.bits.rap_pic_flag = IsIrapPic(&slice_nal_unit_header_) ? 1 : 0;
+    pic_param_ptr->slice_parsing_fields.bits.idr_pic_flag = IsIdrPic(&slice_nal_unit_header_) ? 1 : 0;
+    pic_param_ptr->slice_parsing_fields.bits.intra_pic_flag = m_sh_->slice_type == HEVC_SLICE_TYPE_I ? 1 : 0;
 
     pic_param_ptr->log2_max_pic_order_cnt_lsb_minus4 = sps_ptr->log2_max_pic_order_cnt_lsb_minus4;
     pic_param_ptr->num_short_term_ref_pic_sets = sps_ptr->num_short_term_ref_pic_sets;
@@ -423,12 +430,12 @@ int HevcVideoParser::SendPicForDecode() {
     slice_params_ptr->slice_segment_address = m_sh_->slice_segment_address;
 
     // Ref lists
-    memset(slice_params_ptr->RefPicList, 0xFF, sizeof(slice_params_ptr->RefPicList));
+    memset(slice_params_ptr->ref_pic_list, 0xFF, sizeof(slice_params_ptr->ref_pic_list));
     if (m_sh_->slice_type != HEVC_SLICE_TYPE_I) {
         for (i = 0; i <= m_sh_->num_ref_idx_l0_active_minus1; i++) {
             int idx = ref_pic_list_0_[i]; // pic_idx of the ref pic
             for (j = 0; j < 15; j++) {
-                if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
+                if (pic_param_ptr->ref_frames[j].pic_idx == idx) {
                     break;
                 }
             }
@@ -436,7 +443,7 @@ int HevcVideoParser::SendPicForDecode() {
                 ERR("Could not find matching pic in ref_frames list. The slice type is P/B, and the idx from the ref_pic_list_0_ is: " + TOSTR(idx));
                 return PARSER_FAIL;
             } else {
-                slice_params_ptr->RefPicList[0][i] = j;
+                slice_params_ptr->ref_pic_list[0][i] = j;
             }
         }
 
@@ -444,7 +451,7 @@ int HevcVideoParser::SendPicForDecode() {
             for (i = 0; i <= m_sh_->num_ref_idx_l1_active_minus1; i++) {
                 int idx = ref_pic_list_1_[i]; // pic_idx of the ref pic
                 for (j = 0; j < 15; j++) {
-                    if (pic_param_ptr->ref_frames[j].PicIdx == idx) {
+                    if (pic_param_ptr->ref_frames[j].pic_idx == idx) {
                         break;
                     }
                 }
@@ -452,24 +459,24 @@ int HevcVideoParser::SendPicForDecode() {
                     ERR("Could not find matching pic in ref_frames list. The slice type is B, and the idx from the ref_pic_list_1_ is: " + TOSTR(idx));
                     return PARSER_FAIL;
                 } else {
-                    slice_params_ptr->RefPicList[1][i] = j;
+                    slice_params_ptr->ref_pic_list[1][i] = j;
                 }
             }
         }
     }
 
-    slice_params_ptr->LongSliceFlags.fields.LastSliceOfPic = 1;
-    slice_params_ptr->LongSliceFlags.fields.dependent_slice_segment_flag = m_sh_->dependent_slice_segment_flag;
-    slice_params_ptr->LongSliceFlags.fields.slice_type = m_sh_->slice_type;
-    slice_params_ptr->LongSliceFlags.fields.color_plane_id = m_sh_->colour_plane_id;
-    slice_params_ptr->LongSliceFlags.fields.slice_sao_luma_flag = m_sh_->slice_sao_luma_flag;
-    slice_params_ptr->LongSliceFlags.fields.slice_sao_chroma_flag = m_sh_->slice_sao_chroma_flag;
-    slice_params_ptr->LongSliceFlags.fields.mvd_l1_zero_flag = m_sh_->mvd_l1_zero_flag;
-    slice_params_ptr->LongSliceFlags.fields.cabac_init_flag = m_sh_->cabac_init_flag;
-    slice_params_ptr->LongSliceFlags.fields.slice_temporal_mvp_enabled_flag = m_sh_->slice_temporal_mvp_enabled_flag;
-    slice_params_ptr->LongSliceFlags.fields.slice_deblocking_filter_disabled_flag = m_sh_->slice_deblocking_filter_disabled_flag;
-    slice_params_ptr->LongSliceFlags.fields.collocated_from_l0_flag = m_sh_->collocated_from_l0_flag;
-    slice_params_ptr->LongSliceFlags.fields.slice_loop_filter_across_slices_enabled_flag = m_sh_->slice_loop_filter_across_slices_enabled_flag;
+    slice_params_ptr->long_slice_flags.fields.last_slice_of_pic = 1;
+    slice_params_ptr->long_slice_flags.fields.dependent_slice_segment_flag = m_sh_->dependent_slice_segment_flag;
+    slice_params_ptr->long_slice_flags.fields.slice_type = m_sh_->slice_type;
+    slice_params_ptr->long_slice_flags.fields.color_plane_id = m_sh_->colour_plane_id;
+    slice_params_ptr->long_slice_flags.fields.slice_sao_luma_flag = m_sh_->slice_sao_luma_flag;
+    slice_params_ptr->long_slice_flags.fields.slice_sao_chroma_flag = m_sh_->slice_sao_chroma_flag;
+    slice_params_ptr->long_slice_flags.fields.mvd_l1_zero_flag = m_sh_->mvd_l1_zero_flag;
+    slice_params_ptr->long_slice_flags.fields.cabac_init_flag = m_sh_->cabac_init_flag;
+    slice_params_ptr->long_slice_flags.fields.slice_temporal_mvp_enabled_flag = m_sh_->slice_temporal_mvp_enabled_flag;
+    slice_params_ptr->long_slice_flags.fields.slice_deblocking_filter_disabled_flag = m_sh_->slice_deblocking_filter_disabled_flag;
+    slice_params_ptr->long_slice_flags.fields.collocated_from_l0_flag = m_sh_->collocated_from_l0_flag;
+    slice_params_ptr->long_slice_flags.fields.slice_loop_filter_across_slices_enabled_flag = m_sh_->slice_loop_filter_across_slices_enabled_flag;
 
     slice_params_ptr->collocated_ref_idx = m_sh_->collocated_ref_idx;
     slice_params_ptr->num_ref_idx_l0_active_minus1 = m_sh_->num_ref_idx_l0_active_minus1;
@@ -488,8 +495,8 @@ int HevcVideoParser::SendPicForDecode() {
             slice_params_ptr->luma_offset_l0[i] = m_sh_->pred_weight_table.luma_offset_l0[i];
             slice_params_ptr->delta_chroma_weight_l0[i][0] = m_sh_->pred_weight_table.delta_chroma_weight_l0[i][0];
             slice_params_ptr->delta_chroma_weight_l0[i][1] = m_sh_->pred_weight_table.delta_chroma_weight_l0[i][1];
-            slice_params_ptr->ChromaOffsetL0[i][0] = m_sh_->pred_weight_table.chroma_offset_l0[i][0];
-            slice_params_ptr->ChromaOffsetL0[i][1] = m_sh_->pred_weight_table.chroma_offset_l0[i][1];
+            slice_params_ptr->chroma_offset_l0[i][0] = m_sh_->pred_weight_table.chroma_offset_l0[i][0];
+            slice_params_ptr->chroma_offset_l0[i][1] = m_sh_->pred_weight_table.chroma_offset_l0[i][1];
         }
 
         if (m_sh_->slice_type == HEVC_SLICE_TYPE_B) {
@@ -498,8 +505,8 @@ int HevcVideoParser::SendPicForDecode() {
                 slice_params_ptr->luma_offset_l1[i] = m_sh_->pred_weight_table.luma_offset_l1[i];
                 slice_params_ptr->delta_chroma_weight_l1[i][0] = m_sh_->pred_weight_table.delta_chroma_weight_l1[i][0];
                 slice_params_ptr->delta_chroma_weight_l1[i][1] = m_sh_->pred_weight_table.delta_chroma_weight_l1[i][1];
-                slice_params_ptr->ChromaOffsetL1[i][0] = m_sh_->pred_weight_table.chroma_offset_l1[i][0];
-                slice_params_ptr->ChromaOffsetL1[i][1] = m_sh_->pred_weight_table.chroma_offset_l1[i][1];
+                slice_params_ptr->chroma_offset_l1[i][0] = m_sh_->pred_weight_table.chroma_offset_l1[i][0];
+                slice_params_ptr->chroma_offset_l1[i][1] = m_sh_->pred_weight_table.chroma_offset_l1[i][1];
             }
         }
     }
@@ -515,25 +522,25 @@ int HevcVideoParser::SendPicForDecode() {
         HevcScalingListData *scaling_list_data_ptr = &pps_ptr->scaling_list_data;
         for (i = 0; i < 6; i++) {
             for (j = 0; j < 16; j++) {
-                    iq_matrix_ptr->ScalingList4x4[i][j] = scaling_list_data_ptr->scaling_list[0][i][j];
+                    iq_matrix_ptr->scaling_list_4x4[i][j] = scaling_list_data_ptr->scaling_list[0][i][j];
             }
 
             for (j = 0; j < 64; j++) {
-                iq_matrix_ptr->ScalingList8x8[i][j] = scaling_list_data_ptr->scaling_list[1][i][j];
-                iq_matrix_ptr->ScalingList16x16[i][j] = scaling_list_data_ptr->scaling_list[2][i][j];
+                iq_matrix_ptr->scaling_list_8x8[i][j] = scaling_list_data_ptr->scaling_list[1][i][j];
+                iq_matrix_ptr->scaling_list_16x16[i][j] = scaling_list_data_ptr->scaling_list[2][i][j];
                 if (i < 2) {
-                    iq_matrix_ptr->ScalingList32x32[i][j] = scaling_list_data_ptr->scaling_list[3][i * 3][j];
+                    iq_matrix_ptr->scaling_list_32x32[i][j] = scaling_list_data_ptr->scaling_list[3][i * 3][j];
                 }
             }
 
-            iq_matrix_ptr->ScalingListDC16x16[i] = scaling_list_data_ptr->scaling_list_dc_coef[0][i];
+            iq_matrix_ptr->scaling_list_dc_16x16[i] = scaling_list_data_ptr->scaling_list_dc_coef[0][i];
             if (i < 2) {
-                iq_matrix_ptr->ScalingListDC32x32[i] = scaling_list_data_ptr->scaling_list_dc_coef[1][i * 3];
+                iq_matrix_ptr->scaling_list_dc_32x32[i] = scaling_list_data_ptr->scaling_list_dc_coef[1][i * 3];
             }
         }
     }
 
-    if (pfn_decode_picture_cb_(parser_params_.pUserData, &dec_pic_params_) == 0) {
+    if (pfn_decode_picture_cb_(parser_params_.user_data, &dec_pic_params_) == 0) {
         ERR("Decode error occurred.");
         return PARSER_FAIL;
     } else {
@@ -548,18 +555,18 @@ int HevcVideoParser::OutputDecodedPictures() {
 
     for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
         disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
-        pfn_display_picture_cb_(parser_params_.pUserData, &disp_info);
+        pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
     }
 
     dpb_buffer_.num_output_pics = 0;
     return PARSER_OK;
 }
 
-bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size) {
+bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
     int ret = PARSER_OK;
 
-    frame_data_buffer_ptr_ = (uint8_t*)p_stream;
-    frame_data_size_ = frame_data_size;
+    pic_data_buffer_ptr_ = (uint8_t*)p_stream;
+    pic_data_size_ = pic_data_size;
     curr_byte_offset_ = 0;
     start_code_num_ = 0;
     curr_start_code_offset_ = 0;
@@ -571,7 +578,6 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
 
     do {
         ret = GetNalUnit();
-
         if (ret == PARSER_NOT_FOUND) {
             ERR(STR("Error: no start code found in the frame data."));
             return false;
@@ -582,26 +588,26 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
             // start code + NAL unit header = 5 bytes
             int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
-            nal_unit_header_ = ParseNalUnitHeader(&frame_data_buffer_ptr_[curr_start_code_offset_ + 3]);
+            nal_unit_header_ = ParseNalUnitHeader(&pic_data_buffer_ptr_[curr_start_code_offset_ + 3]);
             switch (nal_unit_header_.nal_unit_type) {
                 case NAL_UNIT_VPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseVps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParseVps(rbsp_buf_, rbsp_size_);
                     break;
                 }
 
                 case NAL_UNIT_SPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParseSps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParseSps(rbsp_buf_, rbsp_size_);
                     break;
                 }
 
                 case NAL_UNIT_PPS: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
-                    ParsePps(m_rbsp_buf_, m_rbsp_size_);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
+                    ParsePps(rbsp_buf_, rbsp_size_);
                     break;
                 }
                 
@@ -621,20 +627,20 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                 case NAL_UNIT_CODED_SLICE_RADL_R:
                 case NAL_UNIT_CODED_SLICE_RASL_N:
                 case NAL_UNIT_CODED_SLICE_RASL_R: {
-                    memcpy(m_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
-                    m_rbsp_size_ = EBSPtoRBSP(m_rbsp_buf_, 0, ebsp_size);
+                    memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
+                    rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
                     if (slice_num_ == 0) {
                         // Save slice NAL unit header
                         slice_nal_unit_header_ = nal_unit_header_;
 
                         // Use the data directly from demuxer without copying
-                        pic_stream_data_ptr_ = frame_data_buffer_ptr_ + curr_start_code_offset_;
+                        pic_stream_data_ptr_ = pic_data_buffer_ptr_ + curr_start_code_offset_;
                         // Picture stream data size is calculated as the diff between the frame end and the first slice offset.
                         // This is to consider the possibility of non-slice NAL units between slices.
-                        pic_stream_data_size_ = frame_data_size - curr_start_code_offset_;
+                        pic_stream_data_size_ = pic_data_size - curr_start_code_offset_;
 
-                        ParseSliceHeader(m_rbsp_buf_, m_rbsp_size_);
+                        ParseSliceHeader(rbsp_buf_, rbsp_size_);
 
                         // Start decode process
                         if (IsIrapPic(&slice_nal_unit_header_)) {
@@ -656,7 +662,7 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                         }
 
                         // Get POC. 8.3.1.
-                        CalculateCurrPOC();
+                        CalculateCurrPoc();
 
                         // Decode RPS. 8.3.2.
                         DecodeRps();
@@ -694,9 +700,9 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
                             sei_rbsp_buf_size_ = sei_ebsp_size > INIT_SEI_PAYLOAD_BUF_SIZE ? sei_ebsp_size : INIT_SEI_PAYLOAD_BUF_SIZE;
                             sei_rbsp_buf_ = new uint8_t [sei_rbsp_buf_size_];
                         }
-                        memcpy(sei_rbsp_buf_, (frame_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
-                        m_rbsp_size_ = EBSPtoRBSP(sei_rbsp_buf_, 0, sei_ebsp_size);
-                        ParseSeiMessage(sei_rbsp_buf_, m_rbsp_size_);
+                        memcpy(sei_rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), sei_ebsp_size);
+                        rbsp_size_ = EbspToRbsp(sei_rbsp_buf_, 0, sei_ebsp_size);
+                        ParseSeiMessage(sei_rbsp_buf_, rbsp_size_);
                     }
                     break;
                 }
@@ -723,47 +729,6 @@ bool HevcVideoParser::ParseFrameData(const uint8_t* p_stream, uint32_t frame_dat
     } while (1);
 
     return true;
-}
-
-int HevcVideoParser::GetNalUnit() {
-    bool start_code_found = false;
-
-    nal_unit_size_ = 0;
-    curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
-
-    // Search for the next start code
-    while (curr_byte_offset_ < frame_data_size_ - 2) {
-        if (frame_data_buffer_ptr_[curr_byte_offset_] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 1] == 0 && frame_data_buffer_ptr_[curr_byte_offset_ + 2] == 0x01) {
-            curr_start_code_offset_ = next_start_code_offset_;  // save the current start code offset
-
-            start_code_found = true;
-            start_code_num_++;
-            next_start_code_offset_ = curr_byte_offset_;
-            // Move the pointer 3 bytes forward
-            curr_byte_offset_ += 3;
-
-            // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
-                start_code_found = false;
-                curr_start_code_offset_ = next_start_code_offset_;
-                continue;
-            } else {
-                break;
-            }
-        }
-        curr_byte_offset_++;
-    }    
-    if (start_code_num_ == 0) {
-        // No NAL unit in the frame data
-        return PARSER_NOT_FOUND;
-    }
-    if (start_code_found) {
-        nal_unit_size_ = next_start_code_offset_ - curr_start_code_offset_;
-        return PARSER_OK;
-    } else {
-        nal_unit_size_ = frame_data_size_ - curr_start_code_offset_;
-        return PARSER_EOF;
-    }        
 }
 
 void HevcVideoParser::ParsePtl(HevcProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
@@ -1951,8 +1916,8 @@ bool HevcVideoParser::IsRefPic(HevcNalUnitHeader *nal_header_ptr) {
     }
 }
 
-void HevcVideoParser::CalculateCurrPOC() {
-    // Recode decode order count
+void HevcVideoParser::CalculateCurrPoc() {
+    // Record decode order count
     curr_pic_info_.decode_order_count = pic_count_;
     if (IsIdrPic(&slice_nal_unit_header_)) {
         curr_pic_info_.pic_order_cnt = 0;
@@ -2393,48 +2358,8 @@ int HevcVideoParser::BumpPicFromDpb() {
     return PARSER_OK;
 }
 
-size_t HevcVideoParser::EBSPtoRBSP(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {
-    int count = 0;
-    if (end_bytepos < begin_bytepos) {
-        return end_bytepos;
-    }
-    uint8_t *streamBuffer_i = streamBuffer + begin_bytepos;
-    uint8_t *streamBuffer_end = streamBuffer + end_bytepos;
-    int reduce_count = 0;
-    for (; streamBuffer_i != streamBuffer_end; ) { 
-        //starting from begin_bytepos to avoid header information
-        //in NAL unit, 0x000000, 0x000001 or 0x000002 shall not occur at any uint8_t-aligned position
-        uint8_t tmp =* streamBuffer_i;
-        if (count == ZEROBYTES_SHORTSTARTCODE) {
-            if (tmp == 0x03) {
-                //check the 4th uint8_t after 0x000003, except when cabac_zero_word is used, in which case the last three bytes of this NAL unit must be 0x000003
-                if ((streamBuffer_i + 1 != streamBuffer_end) && (streamBuffer_i[1] > 0x03)) {
-                    return static_cast<size_t>(-1);
-                }
-                //if cabac_zero_word is used, the final uint8_t of this NAL unit(0x03) is discarded, and the last two bytes of RBSP must be 0x0000
-                if (streamBuffer_i + 1 == streamBuffer_end) {
-                    break;
-                }
-                memmove(streamBuffer_i, streamBuffer_i + 1, streamBuffer_end-streamBuffer_i - 1);
-                streamBuffer_end--;
-                reduce_count++;
-                count = 0;
-                tmp = *streamBuffer_i;
-            } else if (tmp < 0x03) {
-            }
-        }
-        if (tmp == 0x00) {
-            count++;
-        } else {
-            count = 0;
-        }
-        streamBuffer_i++;
-    }
-    return end_bytepos - begin_bytepos + reduce_count;
-}
-
 #if DBGINFO
-void HevcVideoParser::PrintVps(HevcVideoParser::HevcVideoParamSet *vps_ptr) {
+void HevcVideoParser::PrintVps(HevcVideoParamSet *vps_ptr) {
     MSG("=== hevc_video_parameter_set_t ===");
     MSG("vps_video_parameter_set_id               = " <<  vps_ptr->vps_video_parameter_set_id);
     MSG("vps_base_layer_internal_flag             = " <<  vps_ptr->vps_base_layer_internal_flag);
@@ -2485,7 +2410,7 @@ void HevcVideoParser::PrintVps(HevcVideoParser::HevcVideoParamSet *vps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintSps(HevcVideoParser::HevcSeqParamSet *sps_ptr) {
+void HevcVideoParser::PrintSps(HevcSeqParamSet *sps_ptr) {
     MSG("=== hevc_sequence_parameter_set_t ===");
     MSG("sps_video_parameter_set_id                = " <<  sps_ptr->sps_video_parameter_set_id);
     MSG("sps_max_sub_layers_minus1                 = " <<  sps_ptr->sps_max_sub_layers_minus1);
@@ -2597,7 +2522,7 @@ void HevcVideoParser::PrintSps(HevcVideoParser::HevcSeqParamSet *sps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintPps(HevcVideoParser::HevcPicParamSet *pps_ptr) {
+void HevcVideoParser::PrintPps(HevcPicParamSet *pps_ptr) {
     MSG("=== hevc_picture_parameter_set_t ===");
     MSG("pps_pic_parameter_set_id                    = " <<  pps_ptr->pps_pic_parameter_set_id);
     MSG("pps_seq_parameter_set_id                    = " <<  pps_ptr->pps_seq_parameter_set_id);
@@ -2747,7 +2672,7 @@ void HevcVideoParser::PrintSliceSegHeader(HevcSliceSegHeader *slice_header_ptr) 
     MSG("");
 }
 
-void HevcVideoParser::PrintStRps(HevcVideoParser::HevcShortTermRps *rps_ptr) {
+void HevcVideoParser::PrintStRps(HevcShortTermRps *rps_ptr) {
     MSG("==== Short-term reference picture set =====")
     MSG("inter_ref_pic_set_prediction_flag           = " <<  rps_ptr->inter_ref_pic_set_prediction_flag);
     MSG("delta_idx_minus1                            = " <<  rps_ptr->delta_idx_minus1);
@@ -2810,7 +2735,7 @@ void HevcVideoParser::PrintStRps(HevcVideoParser::HevcShortTermRps *rps_ptr) {
     MSG("");
 }
 
-void HevcVideoParser::PrintLtRefInfo(HevcVideoParser::HevcLongTermRps *lt_info_ptr) {
+void HevcVideoParser::PrintLtRefInfo(HevcLongTermRps *lt_info_ptr) {
     MSG("==== Long-term reference picture info =====");
     MSG("num_of_pics                 = " <<  lt_info_ptr->num_of_pics);
     MSG_NO_NEWLINE("pocs[]:");

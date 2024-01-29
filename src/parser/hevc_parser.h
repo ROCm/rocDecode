@@ -26,10 +26,7 @@ THE SOFTWARE.
 #include "hevc_defines.h"
 
 #include <map>
-#include <vector>
 #include <algorithm>
-
-#define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 
 //size_id = 0
 extern int scaling_list_default_0[1][6][16];
@@ -116,18 +113,7 @@ protected:
         uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
-    /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
-     * 
-     * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
-     * \param [in] begin_bytepos Start position in the EBSP buffer to convert
-     * \param [in] end_bytepos End position in the EBSP buffer to convert, generally it's size.
-     * \return Returns the size of the converted buffer in <tt>size_t</tt>
-     */
-    size_t EBSPtoRBSP(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
-
     // Data members of HEVC class
-    uint32_t            pic_count_;  // decoded picture count for the current bitstream
-
     HevcNalUnitHeader   nal_unit_header_;
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
@@ -140,22 +126,6 @@ protected:
 
     HevcNalUnitHeader   slice_nal_unit_header_;
     HevcPicInfo         curr_pic_info_;
-    bool                b_new_picture_;
-    int                 m_packet_count_;
-    int                 m_rbsp_size_;
-    uint8_t             m_rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
-
-    uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
-    uint32_t            sei_rbsp_buf_size_;
-    std::vector<RocdecSeiMessage> sei_message_list_;
-    int                 sei_message_count_;  // total SEI playload message count of the current frame.
-    uint8_t             *sei_payload_buf_;  // buffer to store SEI playload. Allocated at run time.
-    uint32_t            sei_payload_buf_size_;
-    uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
-
-    int                 slice_num_;
-    uint8_t*            pic_stream_data_ptr_;
-    int                 pic_stream_data_size_;
 
     int first_pic_after_eos_nal_unit_; // to flag the first picture after EOS
     int no_rasl_output_flag_; // NoRaslOutputFlag
@@ -190,17 +160,6 @@ protected:
 
     uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
     uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
-
-    // Frame bit stream info
-    uint8_t *frame_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
-    int frame_data_size_;             // bit stream size of the current frame
-    int curr_byte_offset_;            // current parsing byte offset
-
-    // NAL unit info
-    int start_code_num_;              // number of start codes found so far
-    int curr_start_code_offset_;
-    int next_start_code_offset_;
-    int nal_unit_size_;
 
     /*! \brief Function to parse Video Parameter Set 
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -319,7 +278,7 @@ protected:
 
     /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
      */
-    void CalculateCurrPOC();
+    void CalculateCurrPoc();
 
     /*! \brief Function to perform decoding process for reference picture set (8.3.2)
      */
@@ -358,17 +317,12 @@ protected:
      */
     int BumpPicFromDpb();
 
-    /*! \brief Function to parse the data received from the demuxer.
+    /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
-     * \param [in] frame_data_size Size of the input stream
+     * \param [in] pic_data_size Size of the input stream
      * \return True is successful, else false
      */
-    bool ParseFrameData(const uint8_t* p_stream, uint32_t frame_data_size);
-
-    /*! \brief Function to get the NAL Unit data
-     * \return Returns OK if successful, else error code
-     */
-    int GetNalUnit();
+    bool ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size);
 
 #if DBGINFO
     void PrintVps(HevcVideoParamSet *vps_ptr);
@@ -380,11 +334,6 @@ protected:
 #endif // DBGINFO
 
 private:
-    /*! \brief Function to initialize the HEVC parser members
-     * \return Returns OK in <tt>ParserResult</tt> if successful, else error code
-     */
-    ParserResult     Init();
-
     // functions to fill structures for callback functions
     int FillSeqCallbackFn(HevcSeqParamSet* sps_data);
     void FillSeiMessageCallbackFn();

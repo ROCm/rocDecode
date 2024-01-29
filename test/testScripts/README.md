@@ -1,18 +1,31 @@
+# rocDecode Test Scripts
+
 ## Pre-requisites to run python script
-* Python3
-* ```python3 -m pip install pandas```
-* ```python3 -m pip install tabulate```
+* Install [rocDecode](../../README.md#build-and-install-instructions)
 
-## Script to run rocDecode
+* [FFMPEG](https://ffmpeg.org/about.html)
 
+    * On `Ubuntu`
+
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+  ```
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script
+
+* Python3 and pip packages - `pandas`, & ` tabulate`
+  
+```shell
+python3 -m pip install pandas tabulate
 ```
-python3 run_rocDecode_tests.py --help
-```
 
+## Scripts
 
-usage:
+**Usage:**
 
-```
+* **run_rocDecodeSamples.py**
+
+```shell
 usage: run_rocDecodeSamples.py [--rocDecode_directory ROCDECODE_DIRECTORY] 
                                [--gpu_device_id GPU_DEVICE_ID]
                                [--files_directory FILES_DIRECTORY]
@@ -33,7 +46,9 @@ optional arguments:
                         The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:4)
 ```
 
-```
+* **run_rocDecode_Conformance.py**
+
+```shell
 usage: run_rocDecode_Conformance.py [--rocDecode_directory ROCDECODE_DIRECTORY] 
                                     [--gpu_device_id GPU_DEVICE_ID]
                                     [--files_directory FILES_DIRECTORY]

@@ -233,7 +233,7 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(StreamProvider *stream_provi
         return nullptr;
     }
     uint8_t *avioc_buffer = nullptr;
-    int avioc_buffer_size = 10 * 1024 * 1024;
+    int avioc_buffer_size = 100 * 1024 * 1024;
     avioc_buffer = (uint8_t *)av_malloc(avioc_buffer_size);
     if (!avioc_buffer) {
         std::cerr << "ERROR: av_malloc failed!" << std::endl;
@@ -273,7 +273,7 @@ static inline rocDecVideoCodec AVCodec2RocDecVideoCodec(AVCodecID av_codec) {
     case AV_CODEC_ID_MPEG1VIDEO : return rocDecVideoCodec_MPEG1;
     case AV_CODEC_ID_MPEG2VIDEO : return rocDecVideoCodec_MPEG2;
     case AV_CODEC_ID_MPEG4      : return rocDecVideoCodec_MPEG4;
-    case AV_CODEC_ID_H264       : return rocDecVideoCodec_H264;
+    case AV_CODEC_ID_H264       : return rocDecVideoCodec_AVC;
     case AV_CODEC_ID_HEVC       : return rocDecVideoCodec_HEVC;
     case AV_CODEC_ID_VP8        : return rocDecVideoCodec_VP8;
     case AV_CODEC_ID_VP9        : return rocDecVideoCodec_VP9;

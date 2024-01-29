@@ -1,38 +1,39 @@
-# Video Decode Sample
-This sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which are then decoded on AMD hardware using rocDecode library.
+# Video decode memory sample
+
+The video decode memory sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which are then decoded on AMD hardware using rocDecode library.
+
+The sample provides a user class `FileStreamProvider` derived from the existing `VideoDemuxer::StreamProvider` to read a video file and fill the buffer owned by the demuxer. It then takes frames from this buffer for further parsing and decoding.
 
 ## Prerequisites:
 
-* Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-
-* [ROCm supported hardware](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
-
-* Install [ROCm 5.5 or later](https://rocmdocs.amd.com/en/latest/deploy/linux/installer/install.html) with `--usecase=graphics,rocm --no-32`
-
-* rocDecode
-
-* CMake `3.5` or later
+* Install [rocDecode](../../README.md#build-and-install-instructions)
 
 * [FFMPEG](https://ffmpeg.org/about.html)
+
+    * On `Ubuntu`
+
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  sudo apt install ffmpeg
-  ```
+  
+    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script
 
 ## Build
-```
-mkdir build
-cd build
+
+```shell
+mkdir video_decode_mem_sample && cd video_decode_mem_sample
 cmake ../
 make -j
 ```
-# Run 
-```
-./videodecodemem -i <input video file [required]> 
-              -o <output path to save decoded YUV frames [optional]> 
-              -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
-              -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
-              -sei <extract SEI messages [optional]>
-              -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
-              -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
+
+## Run
+
+```shell
+./videodecodemem  -i <input video file [required]> 
+                  -o <output path to save decoded YUV frames [optional]> 
+                  -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
+                  -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
+                  -sei <extract SEI messages [optional]>
+                  -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
+                  -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]>
 ```

@@ -23,54 +23,9 @@ THE SOFTWARE.
 
 #include <memory>
 #include <string>
+#include <vector>
 #include "rocparser.h"
 #include "../commons.h"
-
-/**
- * @brief Base class for video parsing
- * 
- */
-class RocVideoParser {
-public:
-    RocVideoParser();    // default constructor
-    RocVideoParser(RocdecParserParams *pParams) : parser_params_(*pParams) {};
-    virtual ~RocVideoParser() = default ;
-    virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
-    RocdecParserParams *GetParserParams() {return &parser_params_;};
-    virtual rocDecStatus Initialize(RocdecParserParams *pParams);
-    virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
-    virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
-
-protected:
-    RocdecParserParams parser_params_ = {};
-    /**
-     * @brief callback function pointers for the parser
-     * 
-     */
-    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_;             /**< Called before decoding frames and/or whenever there is a fmt change */
-    PFNVIDDECODECALLBACK pfn_decode_picture_cb_;        /**< Called when a picture is ready to be decoded (decode order)         */
-    PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_;      /**< Called whenever a picture is ready to be displayed (display order)  */
-    PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_;       /**< Called when all SEI messages are parsed for particular frame        */
-
-    uint32_t pic_width_;
-    uint32_t pic_height_;
-    bool new_sps_activated_;
-
-    struct {
-        uint32_t numerator;
-        uint32_t denominator;
-    } frame_rate_;
-
-    RocdecVideoFormat video_format_params_;
-    RocdecSeiMessageInfo sei_message_info_params_;
-    RocdecPicParams dec_pic_params_;
-};
-
-enum ParserSeekOrigin {
-    PARSER_SEEK_BEGIN          = 0,
-    PARSER_SEEK_CURRENT        = 1,
-    PARSER_SEEK_END            = 2,
-};
 
 typedef enum ParserResult {
     PARSER_OK                                   = 0,
@@ -112,6 +67,91 @@ typedef enum ParserResult {
     PARSER_INVALID_RESOLUTION                      ,//invalid resolution (width or height)
     PARSER_CODEC_NOT_SUPPORTED                     ,//codec not supported
 } ParserResult;
+
+typedef struct {
+    uint32_t numerator;
+    uint32_t denominator;
+} Rational;
+
+#define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
+#define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+
+/**
+ * @brief Base class for video parsing
+ * 
+ */
+class RocVideoParser {
+public:
+    RocVideoParser();    // default constructor
+    RocVideoParser(RocdecParserParams *pParams) : parser_params_(*pParams) {};
+    virtual ~RocVideoParser() = default ;
+    virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
+    RocdecParserParams *GetParserParams() {return &parser_params_;};
+    virtual rocDecStatus Initialize(RocdecParserParams *pParams);
+    virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
+    virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
+
+protected:
+    RocdecParserParams parser_params_ = {};
+
+    /*! \brief callback function pointers for the parser
+     */
+    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_;             /**< Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDDECODECALLBACK pfn_decode_picture_cb_;        /**< Called when a picture is ready to be decoded (decode order)         */
+    PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_;      /**< Called whenever a picture is ready to be displayed (display order)  */
+    PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_;       /**< Called when all SEI messages are parsed for particular frame        */
+
+    uint32_t pic_count_;  // decoded picture count for the current bitstream
+    uint32_t pic_width_;
+    uint32_t pic_height_;
+    bool new_sps_activated_;
+
+    Rational frame_rate_;
+
+    RocdecVideoFormat video_format_params_;
+    RocdecSeiMessageInfo sei_message_info_params_;
+    RocdecPicParams dec_pic_params_;
+
+    // Picture bit stream info
+    uint8_t *pic_data_buffer_ptr_;  // bit stream buffer pointer of the current frame from the demuxer
+    int pic_data_size_;             // bit stream size of the current frame
+    int curr_byte_offset_;            // current parsing byte offset
+
+    // NAL unit info
+    int start_code_num_;              // number of start codes found so far
+    int curr_start_code_offset_;
+    int next_start_code_offset_;
+    int nal_unit_size_;
+
+    int                 rbsp_size_;
+    uint8_t             rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
+
+    int                 slice_num_;
+    uint8_t*            pic_stream_data_ptr_;
+    int                 pic_stream_data_size_;
+
+    uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
+    uint32_t            sei_rbsp_buf_size_;
+    std::vector<RocdecSeiMessage> sei_message_list_;
+    int                 sei_message_count_;  // total SEI playload message count of the current frame.
+    uint8_t             *sei_payload_buf_;  // buffer to store SEI playload. Allocated at run time.
+    uint32_t            sei_payload_buf_size_;
+    uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
+
+    /*! \brief Function to get the NAL Unit data
+     * \return Returns OK if successful, else error code
+     */
+    ParserResult GetNalUnit();
+
+    /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
+     * 
+     * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
+     * \param [in] begin_bytepos Start position in the EBSP buffer to convert
+     * \param [in] end_bytepos End position in the EBSP buffer to convert, generally it's size.
+     * \return Returns the size of the converted buffer in <tt>size_t</tt>
+     */
+    size_t EbspToRbsp(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
+};
 
 // helpers
 namespace Parser {

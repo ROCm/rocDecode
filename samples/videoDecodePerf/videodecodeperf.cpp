@@ -50,10 +50,10 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     } while (n_video_bytes);
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
     // Calculate average decoding time
-    total_dec_time = time_per_frame;
+    total_dec_time = time_per_decode;
     double average_decoding_time = total_dec_time / n_frame;
     double n_fps = 1000 / average_decoding_time;
     *pn_fps = n_fps;
@@ -65,9 +65,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-t Number of threads (>= 1) - optional; default: 4" << std::endl
     << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
-    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
-    << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
+    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
     exit(0);
 }
 
@@ -77,7 +75,7 @@ int main(int argc, char **argv) {
     int device_id = 0;
     int n_thread = 4;
     Rect *p_crop_rect = nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
     bool b_force_zero_latency = false;
     // Parse command-line arguments
     if(argc <= 1) {
@@ -121,13 +119,6 @@ int main(int argc, char **argv) {
             b_force_zero_latency = true;
             continue;
         }
-        if (!strcmp(argv[i], "-m")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-m");
-            }
-            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
-            continue;
-        }
         ShowHelpAndExit(argv[i]);
     }
     
@@ -147,14 +138,10 @@ int main(int argc, char **argv) {
             ERR("ERROR: didn't find any GPU!");
             return -1;
         }
-        if (device_id >= num_devices) {
-            ERR("ERROR: the requested device_id is not found! ");
-            return -1;
-        }
 
         hip_status = hipGetDeviceProperties(&hip_dev_prop, device_id);
         if (hip_status != hipSuccess) {
-            ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + TOSTR(hip_status) + ")" );
+            ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(device_id) + " ) failed! (" + hipGetErrorName(hip_status) + ")" );
             return -1;
         }
 
@@ -171,10 +158,24 @@ int main(int argc, char **argv) {
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         std::vector<int> v_device_id(n_thread);
 
+        int hip_vis_dev_count = 0;
+        GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
+
+        std::size_t found_file = input_file_path.find_last_of('/');
+        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        std::cout << "info: Number of threads: " << n_thread << std::endl;
+
         for (int i = 0; i < n_thread; i++) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
             rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
-            v_device_id[i] = (i % 2 == 0) ? 0 : sd;
+            if (!hip_vis_dev_count) {
+                if (device_id % 2 == 0)
+                    v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
+                else
+                    v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+            } else {
+                v_device_id[i] = i % hip_vis_dev_count;
+            }
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));
@@ -192,9 +193,6 @@ int main(int argc, char **argv) {
         std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
-        std::size_t found_file = input_file_path.find_last_of('/');
-        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
-        std::cout << "info: Number of threads: " << n_thread << std::endl;
         for (int i = 0; i < n_thread; i++) {
             v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
             std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
