@@ -735,7 +735,6 @@ void AvcVideoParser::ParseSps(uint8_t *p_stream, size_t size) {
     p_sps->pic_order_cnt_type = Parser::ExpGolomb::ReadUe(p_stream, offset);
     if (p_sps->pic_order_cnt_type == 0 ) {
         p_sps->log2_max_pic_order_cnt_lsb_minus4 = Parser::ExpGolomb::ReadUe(p_stream, offset);
-        //max_pic_order_cnt_lsb = pow(2, p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4);
     } else if (p_sps->pic_order_cnt_type == 1) {
         p_sps->delta_pic_order_always_zero_flag = Parser::GetBit(p_stream, offset);
         p_sps->offset_for_non_ref_pic = Parser::ExpGolomb::ReadSe(p_stream, offset);
@@ -1422,8 +1421,6 @@ void AvcVideoParser::CalculateCurrPoc() {
                     prev_pic_order_cnt_msb_ = 0;
                     prev_pic_order_cnt_lsb_ = prev_top_field_order_cnt_;
                 }
-            } else {
-                /// See the end of this section
             }
         }
 
@@ -1458,8 +1455,6 @@ void AvcVideoParser::CalculateCurrPoc() {
             if (prev_has_mmco_5_) {
                 prev_frame_num_offset_t = 0;
                 prev_frame_num_ = 0;
-            } else {
-                /// See the end of this section
             }
             if (prev_frame_num_ > p_slice_header->frame_num) {
                 frame_num_offset = prev_frame_num_offset_t + max_frame_num;
@@ -1518,8 +1513,6 @@ void AvcVideoParser::CalculateCurrPoc() {
         } else {
             if (prev_has_mmco_5_) {
                 prev_frame_num_offset_t = 0;
-            } else {
-                /// See the end of this section
             }
             
             if (prev_frame_num_ > p_slice_header->frame_num) {
@@ -1728,8 +1721,7 @@ ParserResult AvcVideoParser::MarkDecodedRefPic() {
             break;
         }
     }
-    if (i < AVC_MAX_DPB_FRAMES)
-    {
+    if (i < AVC_MAX_DPB_FRAMES) {
         AvcPicture *frame_buf = &dpb_buffer_.frame_buffer_list[i];
         *frame_buf = curr_pic_;
         if (curr_pic_.pic_structure == kFrame) {
@@ -1741,8 +1733,7 @@ ParserResult AvcVideoParser::MarkDecodedRefPic() {
         }
         if (curr_pic_.is_reference == kUsedForShortTerm) {
             dpb_buffer_.num_short_term++;
-        } else if (curr_pic_.is_reference == kUsedForLongTerm)
-        {
+        } else if (curr_pic_.is_reference == kUsedForLongTerm) {
             dpb_buffer_.num_long_term++;
         } else {
             ERR("Incorrect ref type.");

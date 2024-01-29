@@ -193,7 +193,7 @@ protected:
      */
     void SetupReflist();
 
-    /*! \brief Function to mark reference pictures in DPB
+    /*! \brief Function to mark decoded reference picture in DPB
      */
     ParserResult MarkDecodedRefPic();
 
