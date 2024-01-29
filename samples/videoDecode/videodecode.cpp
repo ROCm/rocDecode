@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
                 viddec.ReleaseFrame(pts);
             }
             auto end_time = std::chrono::high_resolution_clock::now();
-            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            total_dec_time += time_per_frame;
+            auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            total_dec_time += time_per_decode;
             n_frame += n_frame_returned;
         } while (n_video_bytes);
         
