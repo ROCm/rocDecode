@@ -1,19 +1,19 @@
 # Anywhere {branch} is used, the branch name will be substituted.
 # These comments will also be removed.
-root: README.md
+root: quickstart
 subtrees:
 - caption: Quick-start
   entries:
-  - file: README.md
+  - file: quickstart
 - caption: User Guide
   entries:
-  - file: docs/rocDecodeUserGuide.md
+  - file: rocDecodeUserGuide
 - caption: API reference
   entries:
   - file: doxygen/html/index
 - caption: Samples
   entries:
-  - file: samples/README.md
+  - file: samples/README
 - caption: About
   entries:
   - file: license
