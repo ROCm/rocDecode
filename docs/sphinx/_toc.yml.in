@@ -1,13 +1,19 @@
 # Anywhere {branch} is used, the branch name will be substituted.
 # These comments will also be removed.
-root: doxygen/html/index
+root: README.md
 subtrees:
-- caption: rocDecode User Guide
+- caption: Quick-start
   entries:
-  - file: rocDecodeUserGuide.md
-- caption: rocDecode samples
+  - file: README.md
+- caption: User Guide
   entries:
-  - file: ../samples/README.md
+  - file: docs/rocDecodeUserGuide.md
+- caption: API reference
+  entries:
+  - file: doxygen/html/index
+- caption: Samples
+  entries:
+  - file: samples/README.md
 - caption: About
   entries:
   - file: license
