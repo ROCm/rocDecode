@@ -336,7 +336,7 @@ rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDesc
          * various reasons, we treat it as non-fatal and contiue waiting.
          */
         if (va_status != VA_STATUS_SUCCESS) {
-            if (va_status == VA_STATUS_ERROR_TIMEDOUT) {
+            if (va_status == 0x26 /*VA_STATUS_ERROR_TIMEDOUT*/) {
                 CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
             } else {
                 std::cout << "VAAPI failure: vaSyncSurface() failed with error code: " << va_status << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
