@@ -26,22 +26,11 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import os
 import re
 
 from rocm_docs import ROCmDocs
 
 external_projects_current_project = "rocdecode"
-
-os.system('find ../ -name "*.md" > "docfiles.txt"')
-doc_files = open("docfiles.txt", "r")
-lines = doc_files.readlines()
-for file_path in lines:
-    file_dir, _ = os.path.split(file_path)
-    print(f"mkdir -p {file_dir[1:]}")
-    os.system(f"mkdir -p {file_dir[1:]}")
-    print(f"cp {file_path[:-1]} {file_path[1:]}")
-    os.system(f"cp {file_path[:-1]} {file_path[1:]}")
 
 with open('../CMakeLists.txt', encoding='utf-8') as f:
     match = re.search(r'.*\bset\(VERSION\s+\"?([0-9.]+)[^0-9.]+', f.read())
