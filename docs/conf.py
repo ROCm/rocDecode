@@ -30,8 +30,6 @@ import re
 
 from rocm_docs import ROCmDocs
 
-external_projects_current_project = "rocdecode"
-
 with open('../CMakeLists.txt', encoding='utf-8') as f:
     match = re.search(r'.*\bset\(VERSION\s+\"?([0-9.]+)[^0-9.]+', f.read())
     if not match:
@@ -52,6 +50,8 @@ docs_core = ROCmDocs(left_nav_title)
 docs_core.run_doxygen(doxygen_root="doxygen", doxygen_path="doxygen/xml")
 docs_core.enable_api_reference()
 docs_core.setup()
+
+external_projects_current_project = "rocdecode"
 
 for sphinx_var in ROCmDocs.SPHINX_VARS:
     globals()[sphinx_var] = getattr(docs_core, sphinx_var)
