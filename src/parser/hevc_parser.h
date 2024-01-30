@@ -278,7 +278,7 @@ protected:
 
     /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
      */
-    void CalculateCurrPOC();
+    void CalculateCurrPoc();
 
     /*! \brief Function to perform decoding process for reference picture set (8.3.2)
      */

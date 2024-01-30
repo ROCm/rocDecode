@@ -52,24 +52,15 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method
 
-
-protected:    
     enum PictureStructure {
         kFrame,
         kTopField,
         kBottomField
     };
 
-    enum AvcRefMarking {
-        kUnusedForReference = 0,
-        kUsedForShortTerm = 1,
-        kUsedForLongTerm = 2
-    };
-
     typedef struct {
         int      pic_idx;  // picture index or id
         PictureStructure pic_structure;
-
         int32_t  pic_order_cnt;
         int32_t  top_field_order_cnt;
         int32_t  bottom_field_order_cnt;
@@ -78,9 +69,16 @@ protected:
         int32_t  pic_num; // PicNum
         int32_t  long_term_pic_num; // LongTermPicNum
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
-
         uint32_t is_reference;
+        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
     } AvcPicture;
+
+protected:
+    enum AvcRefMarking {
+        kUnusedForReference = 0,
+        kUsedForShortTerm = 1,
+        kUsedForLongTerm = 2
+    };
 
     /*! \brief Decoded picture buffer
      */
@@ -100,6 +98,11 @@ protected:
     AvcNalUnitHeader   slice_nal_unit_header_;
     AvcSliceHeader     slice_header_0_;
 
+    int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
+    int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
+    int prev_top_field_order_cnt_;
+    int prev_frame_num_offset_t; // prevFrameNumOffset
+    int prev_frame_num_; // prevFrameNum
     int prev_has_mmco_5_;
     int curr_has_mmco_5_;
     int prev_ref_pic_bottom_field_;
@@ -181,6 +184,18 @@ protected:
      * \return true/false
     */
     bool MoreRbspData(uint8_t *p_stream, size_t stream_size_in_byte, size_t bit_offset);
+
+    /*! \brief Function to calculate picture order count of the current slice
+     */
+    void CalculateCurrPoc();
+
+    /*! \brief Function to set up the reference picutre lists.
+     */
+    void SetupReflist();
+
+    /*! \brief Function to mark decoded reference picture in DPB
+     */
+    ParserResult MarkDecodedRefPic();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.
