@@ -2,6 +2,15 @@
 # These comments will also be removed.
 root: doxygen/html/index
 subtrees:
+- caption: Quick-start
+  entries:
+  - file: quickStart
+- caption: API reference
+  entries:
+  - file: doxygen/html/files
+- caption: Tutorials
+  entries:
+  - file: rocDecodeUserGuide
 - caption: About
   entries:
   - file: license
