@@ -185,17 +185,26 @@ protected:
     */
     bool MoreRbspData(uint8_t *p_stream, size_t stream_size_in_byte, size_t bit_offset);
 
-    /*! \brief Function to calculate picture order count of the current slice
+    /*! \brief Function to initialize DPB buffer.
+     */
+    void InitDpb();
+
+    /*! \brief Function to calculate picture order count of the current slice. 8.2.1.
      */
     void CalculateCurrPoc();
 
-    /*! \brief Function to set up the reference picutre lists.
+    /*! \brief Function to set up the reference picutre lists. 8.2.4.
      */
     void SetupReflist();
 
-    /*! \brief Function to mark decoded reference picture in DPB
+    /*! \brief Function to find a free buffer in DPB for the current picture
      */
-    ParserResult MarkDecodedRefPic();
+    ParserResult FindFreeBufInDpb();
+
+    /*! \brief Function to mark decoded reference picture in DPB. 8.2.5. This step is 
+     * performed after the current picture is decoded.
+     */
+    ParserResult MarkDecodedRefPics();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.
@@ -209,5 +218,13 @@ protected:
     /*! \brief Function to log out parsed slice header content for debug.
     */
     void PrintSliceHeader(AvcSliceHeader *p_slice_header);
+
+    /*! \brief Function to log out decoded picture buffer content
+     */
+    void PrintDpb();
+
+    /*! \brief Function to log out buffer info in VAAPI decode params
+     */
+    void PrintVappiBufInfo();
 #endif // DBGINFO
 };
