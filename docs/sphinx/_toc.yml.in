@@ -4,13 +4,13 @@ root: doxygen/html/index
 subtrees:
 - caption: Quick-start
   entries:
-  - file: quickStart.md
+  - file: quickStart
 - caption: API reference
   entries:
-  - file: doxygen/html/files.html
+  - file: doxygen/html/files
 - caption: Tutorials
   entries:
-  - file: rocDecodeUserGuide.md
+  - file: rocDecodeUserGuide
 - caption: About
   entries:
   - file: license
