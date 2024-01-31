@@ -5,7 +5,10 @@ subtrees:
 - caption: Quick-start
   entries:
   - file: quickStart.md
-- caption: User Guide
+- caption: API reference
+  entries:
+  - file: doxygen/html/files.html
+- caption: Tutorials
   entries:
   - file: rocDecodeUserGuide.md
 - caption: About
