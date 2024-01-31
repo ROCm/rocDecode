@@ -27,6 +27,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import re
+import shutil
 
 from rocm_docs import ROCmDocs
 
@@ -36,6 +37,8 @@ with open('../CMakeLists.txt', encoding='utf-8') as f:
         raise ValueError("VERSION not found!")
     version_number = match[1]
 left_nav_title = f"rocDecode {version_number} Documentation"
+
+shutil.copy2('../README.md','./quickStart.md')
 
 # for PDF output on Read the Docs
 project = "rocDecode Documentation"
