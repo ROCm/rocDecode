@@ -1580,9 +1580,34 @@ static inline int ComparePicNumDesc(const void *p_pic_info_1, const void *p_pic_
 
     if (pic_num_1 < pic_num_2) {
         return 1;
-    }
-    if (pic_num_1 > pic_num_2) {
+    } else if (pic_num_1 > pic_num_2) {
         return -1;
+    } else {
+        return 0;
+    }
+}
+
+static inline int ComparePocDesc(const void *p_pic_info_1, const void *p_pic_info_2) {
+    int poc_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_order_cnt;
+    int poc_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_order_cnt;
+
+    if (poc_1 < poc_2) {
+        return 1;
+    } else if (poc_1 > poc_2) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static inline int ComparePocAsc(const void *p_pic_info_1, const void *p_pic_info_2) {
+    int poc_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_order_cnt;
+    int poc_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_order_cnt;
+
+    if (poc_1 < poc_2) {
+        return -1;
+    } else if (poc_1 > poc_2) {
+        return 1;
     } else {
         return 0;
     }
@@ -1594,8 +1619,7 @@ static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void 
 
     if (long_term_pic_num_1 < long_term_pic_num_2) {
         return -1;
-    }
-    if (long_term_pic_num_1 > long_term_pic_num_2) {
+    } else if (long_term_pic_num_1 > long_term_pic_num_2) {
         return 1;
     } else {
         return 0;
@@ -1607,6 +1631,9 @@ void AvcVideoParser::SetupReflist() {
     int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4);
     AvcSliceHeader *p_slice_header = &slice_header_0_;
     int i;
+
+    memset(ref_list_0_, 0, sizeof(ref_list_0_));
+    memset(ref_list_1_, 0, sizeof(ref_list_1_));
 
     // 8.2.4.1. Calculate picture numbers
     for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
@@ -1641,7 +1668,7 @@ void AvcVideoParser::SetupReflist() {
 
     // 8.2.4.2 Initialisation process for reference picture lists
     if (p_slice_header->slice_type == kAvcSliceTypeP || p_slice_header->slice_type == kAvcSliceTypeP_5) {
-        if (curr_pic_.pic_structure == kFrame) {
+        if (curr_pic_.pic_structure == kFrame) { // 8.2.4.2.1
             // Group short term ref pictures
             int ref_index = 0;
             for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
@@ -1660,23 +1687,120 @@ void AvcVideoParser::SetupReflist() {
                 }
             }
             // Sort short term refs with descending order of pic_num
-            if (dpb_buffer_.num_short_term) {
+            if (dpb_buffer_.num_short_term > 1) {
                 qsort((void*)ref_list_0_, dpb_buffer_.num_short_term, sizeof(AvcPicture), ComparePicNumDesc);
             }
             // Sort long term refs with ascending order of long_term_pic_num
-            if (dpb_buffer_.num_long_term) {
+            if (dpb_buffer_.num_long_term > 1) {
                 qsort((void*)&ref_list_0_[dpb_buffer_.num_short_term], dpb_buffer_.num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
-        } else {
+        } else { // 8.2.4.2.2
             std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add P ref field list init." << std::endl;
         }
     } else {
-        std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add B ref list init." << std::endl;
+        if (curr_pic_.pic_structure == kFrame) { // 8.2.4.2.3
+            // RefPicList0
+            int num_short_term_smaller = 0;
+            int num_short_term_greater = 0;
+            int num_long_term = 0;
+            int ref_index = 0;
+            // Group short term ref pictures that have smaller POC than the current picture
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt < curr_pic_.pic_order_cnt) {
+                    ref_list_0_[ref_index] = *p_ref_pic;
+                    num_short_term_smaller++;
+                    ref_index++;
+                }
+            }
+            // Sort in descending order of POC
+            if (num_short_term_smaller > 1) {
+                qsort((void*)ref_list_0_, num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
+            }
+
+            // Group short term ref pictures that have greater POC than the current picture
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt > curr_pic_.pic_order_cnt) {
+                    ref_list_0_[ref_index] = *p_ref_pic;
+                    num_short_term_greater++;
+                    ref_index++;
+                }
+            }
+            // Sort in ascending order of POC
+            if (num_short_term_greater > 1) {
+                qsort((void*)&ref_list_0_[num_short_term_smaller], num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
+            }
+
+            // Group long term ref pictures
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForLongTerm) {
+                    ref_list_0_[ref_index] = *p_ref_pic;
+                    num_long_term++;
+                    ref_index++;
+                }
+            }
+            // Sort long term refs with ascending order of long_term_pic_num
+            if (num_long_term > 1) {
+                qsort((void*)&ref_list_0_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+            }
+
+            // RefPicList1
+            num_short_term_smaller = 0;
+            num_short_term_greater = 0;
+            num_long_term = 0;
+            ref_index = 0;
+
+            // Group short term ref pictures that have greater POC than the current picture
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt > curr_pic_.pic_order_cnt) {
+                    ref_list_1_[ref_index] = *p_ref_pic;
+                    num_short_term_greater++;
+                    ref_index++;
+                }
+            }
+            // Sort in ascending order of POC
+            if (num_short_term_greater > 1) {
+                qsort((void*)ref_list_1_, num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
+            }
+
+            // Group short term ref pictures that have smaller POC than the current picture
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt < curr_pic_.pic_order_cnt) {
+                    ref_list_1_[ref_index] = *p_ref_pic;
+                    num_short_term_smaller++;
+                    ref_index++;
+                }
+            }
+            // Sort in descending order of POC
+            if (num_short_term_smaller > 1) {
+                qsort((void*)&ref_list_1_[num_short_term_greater], num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
+            }
+ 
+            // Group long term ref pictures
+            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+                if (p_ref_pic->is_reference == kUsedForLongTerm) {
+                    ref_list_1_[ref_index] = *p_ref_pic;
+                    num_long_term++;
+                    ref_index++;
+                }
+            }
+            // Sort long term refs with ascending order of long_term_pic_num
+            if (num_long_term > 1) {
+                qsort((void*)&ref_list_1_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+            }
+        } else { // 8.2.4.2.4
+            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add B ref field list init." << std::endl;
+        }
     }
 
     // 8.2.4.3 Modification process for reference picture lists
     if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l0 == 1) {
-        std::cout << "Error! Todo: Added ref list 0 modification support." << std::endl;
+        std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Added ref list 0 modification support." << std::endl;
     }
 
     if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6) {
