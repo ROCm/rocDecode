@@ -67,4 +67,5 @@ void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_
  * @param src_height - source height
  * @param b_resize_uv - to resize UV plance or not
  */
-void ResizeYUVHipKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, int src_width, int src_height, bool b_resize_uv = false);
+void ResizeYUVHipKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
+                                    int src_width, int src_height, bool b_resize_uv = false);
