@@ -48,7 +48,7 @@ endif()
 
 if(NOT ROCDECODE_FOUND)
     message("-- ${Yellow}${PROJECT_NAME} requires rocDecode. Install rocDecode before running CTests")
-else()
+endif()
 
 # videoDecode
 add_test(
