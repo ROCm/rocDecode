@@ -42,6 +42,14 @@ THE SOFTWARE.
     }\
 }
 
+struct HipInteropDeviceMem {
+    hipExternalMemory_t hip_ext_mem; // interface to the vaapi-hip interop
+    uint8_t* hip_mapped_device_mem; // mapped device memory for the YUV plane
+    uint32_t offset[3]; // offset of each plane
+    uint32_t pitch[3]; // pitch of each plane
+    uint32_t num_layers; // number of layers making up the surface
+};
+
 class RocDecoder {
 public:
     RocDecoder(RocDecoderCreateInfo &decoder_create_info);
@@ -59,5 +67,5 @@ private:
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
     hipDeviceProp_t hip_dev_prop_;
-    std::vector<hipExternalMemory_t> hip_ext_mem_;
+    std::vector<HipInteropDeviceMem> hip_interop_;
 };
