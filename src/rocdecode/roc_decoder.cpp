@@ -90,7 +90,15 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     if (reconfig_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    rocDecStatus rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
+    rocDecStatus rocdec_status;
+    for (int pic_idx = 0; pic_idx < hip_interop_.size(); pic_idx++) {
+        rocdec_status = UnMapVideoFrame(pic_idx);
+        if (rocdec_status != ROCDEC_SUCCESS) {
+            ERR("ERROR: Unmapping the video frame for picture idx " + TOSTR(pic_idx) + " failed during reconfiguration!");
+            return rocdec_status;
+        }
+    }
+    rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Reconfiguration of the decoder failed with rocDecStatus# " + TOSTR(rocdec_status));
         return rocdec_status;
