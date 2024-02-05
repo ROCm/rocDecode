@@ -179,8 +179,10 @@ rocDecStatus RocDecoder::UnMapVideoFrame(int pic_idx) {
         return ROCDEC_INVALID_PARAMETER;
     }
 
-    CHECK_HIP(hipFree(hip_interop_[pic_idx].hip_mapped_device_mem));
-    CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
+    if (hip_interop_[pic_idx].hip_mapped_device_mem != nullptr)
+        CHECK_HIP(hipFree(hip_interop_[pic_idx].hip_mapped_device_mem));
+    if (hip_interop_[pic_idx].hip_ext_mem != nullptr)
+        CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
 
     memset((void *)&hip_interop_[pic_idx], 0, sizeof(hip_interop_[pic_idx]));
 
