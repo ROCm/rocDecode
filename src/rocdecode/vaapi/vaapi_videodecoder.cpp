@@ -327,25 +327,6 @@ rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDesc
     if (pic_idx >= va_surface_ids_.size()) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    VASurfaceStatus surface_status;
-    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-    while (surface_status != VASurfaceReady) {
-        VAStatus va_status = vaSyncSurface(va_display_, va_surface_ids_[pic_idx]);
-        /* Current implementation of vaSyncSurface() does not block indefinitely (contrary to VA-API spec), it returns
-         * VA_STATUS_ERROR_TIMEDOUT error when it blocks for a certain amount of time. Although time out can come from
-         * various reasons, we treat it as non-fatal and contiue waiting.
-         */
-        if (va_status != VA_STATUS_SUCCESS) {
-            if (va_status == 0x26 /*VA_STATUS_ERROR_TIMEDOUT*/) {
-                CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-            } else {
-                std::cout << "VAAPI failure: vaSyncSurface() failed with error code: " << va_status << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
-                return ROCDEC_RUNTIME_ERROR;
-            }
-        } else {
-            break;
-        }
-    }
     CHECK_VAAPI(vaExportSurfaceHandle(va_display_, va_surface_ids_[pic_idx],
                 VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
                 VA_EXPORT_SURFACE_READ_ONLY |
@@ -384,4 +365,30 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
         return rocdec_status;
     }
     return rocdec_status;
+}
+
+rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
+    if (pic_idx >= va_surface_ids_.size()) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    VASurfaceStatus surface_status;
+    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
+    while (surface_status != VASurfaceReady) {
+        VAStatus va_status = vaSyncSurface(va_display_, va_surface_ids_[pic_idx]);
+        /* Current implementation of vaSyncSurface() does not block indefinitely (contrary to VA-API spec), it returns
+         * VA_STATUS_ERROR_TIMEDOUT error when it blocks for a certain amount of time. Although time out can come from
+         * various reasons, we treat it as non-fatal and contiue waiting.
+         */
+        if (va_status != VA_STATUS_SUCCESS) {
+            if (va_status == 0x26 /*VA_STATUS_ERROR_TIMEDOUT*/) {
+                CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
+            } else {
+                std::cout << "VAAPI failure: vaSyncSurface() failed with error code: " << va_status << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
+                return ROCDEC_RUNTIME_ERROR;
+            }
+        } else {
+            break;
+        }
+    }
+    return ROCDEC_SUCCESS;
 }
