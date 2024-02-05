@@ -57,6 +57,9 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
         return ROCDEC_INVALID_PARAMETER;
     }
     hip_interop_.resize(decoder_create_info_.num_decode_surfaces);
+    for (auto i = 0; i < hip_interop_.size(); i++) {
+        memset((void *)&hip_interop_[i], 0, sizeof(hip_interop_[i]));
+    }
 
     rocdec_status = va_video_decoder_.InitializeDecoder(hip_dev_prop_.gcnArchName);
     if (rocdec_status != ROCDEC_SUCCESS) {
@@ -140,6 +143,9 @@ rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
         external_mem_buffer_desc.size = va_drm_prime_surface_desc.objects[0].size;
         CHECK_HIP(hipExternalMemoryGetMappedBuffer((void**)&hip_interop_[pic_idx].hip_mapped_device_mem, hip_interop_[pic_idx].hip_ext_mem, &external_mem_buffer_desc));
 
+        hip_interop_[pic_idx].width = va_drm_prime_surface_desc.width;
+        hip_interop_[pic_idx].height = va_drm_prime_surface_desc.height;
+
         hip_interop_[pic_idx].offset[0] = va_drm_prime_surface_desc.layers[0].offset[0];
         hip_interop_[pic_idx].offset[1] = va_drm_prime_surface_desc.layers[1].offset[0];
         hip_interop_[pic_idx].offset[2] = va_drm_prime_surface_desc.layers[2].offset[0];
@@ -173,14 +179,10 @@ rocDecStatus RocDecoder::UnMapVideoFrame(int pic_idx) {
         return ROCDEC_INVALID_PARAMETER;
     }
 
-    CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
     CHECK_HIP(hipFree(hip_interop_[pic_idx].hip_mapped_device_mem));
+    CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
 
-    hip_interop_[pic_idx].hip_ext_mem = nullptr;
-    hip_interop_[pic_idx].hip_mapped_device_mem = nullptr;
-    hip_interop_[pic_idx].num_layers = 0;
-    hip_interop_[pic_idx].offset[0] = hip_interop_[pic_idx].offset[1] = hip_interop_[pic_idx].offset[2] = 0;
-    hip_interop_[pic_idx].pitch[0] = hip_interop_[pic_idx].pitch[1] = hip_interop_[pic_idx].pitch[2] = 0;
+    memset((void *)&hip_interop_[pic_idx], 0, sizeof(hip_interop_[pic_idx]));
 
     return ROCDEC_SUCCESS;
 }
