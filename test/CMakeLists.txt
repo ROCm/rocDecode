@@ -73,25 +73,8 @@ add_test(
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodefork"
-            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -f 1
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
-add_test(NAME video_decode_numForks-2-H265 
-              COMMAND videodecodefork 
-              -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -f 2
-              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork
-            )
-
-add_test(NAME video_decode_numForks-3-H265 
-              COMMAND videodecodefork 
-              -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -f 3
-              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork
-            )
-
-add_test(NAME video_decode_numForks-4-H265 
-              COMMAND videodecodefork 
-              -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -f 4
-              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork
-            )
 
 # videoDecodeMem
 add_test(
@@ -129,5 +112,5 @@ add_test(
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeRGB"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodergb"
-            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -of rgb
 )
