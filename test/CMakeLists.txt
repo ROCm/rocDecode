@@ -66,7 +66,7 @@ add_test(
 # videoDecodeFork
 add_test(
   NAME
-    video_decode_numForks-1-H265
+    video_decodeFork-H265
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeFork"
