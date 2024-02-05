@@ -864,10 +864,6 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     // only needed when using internal mapped buffer
     while (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        DecFrameBuffer *fb = &vp_frames_q_.front();
-        void *mapped_frame_ptr = fb->frame_ptr;
-
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
     }
