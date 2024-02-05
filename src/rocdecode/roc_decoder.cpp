@@ -31,13 +31,13 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
         if (hip_interop_[i].hip_mapped_device_mem != nullptr) {
             hipError_t hip_status = hipFree(hip_interop_[i].hip_mapped_device_mem);
             if (hip_status != hipSuccess) {
-                std::cout << "HIP failure: hipFree failed with 'status: " << hipGetErrorName(hip_status) << std::endl;
+                ERR("ERROR: hipFree failed for picture id " + TOSTR(i));
             }
         }
         if (hip_interop_[i].hip_ext_mem != nullptr) {
             hipError_t hip_status = hipDestroyExternalMemory(hip_interop_[i].hip_ext_mem);
             if (hip_status != hipSuccess) {
-                std::cout << "HIP failure: hipDestroyExternalMemory failed with 'status: " << hipGetErrorName(hip_status) << std::endl;
+                ERR("ERROR: hipDestroyExternalMemory failed for picture id " + TOSTR(i));
             }
         }
     }
