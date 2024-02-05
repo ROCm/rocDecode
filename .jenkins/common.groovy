@@ -6,21 +6,11 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String installDKMS = 'sudo apt -y install amdgpu-dkms'
-
-    if (platform.jenkinsLabel.contains('rhel')) {
-        installDKMS = 'sudo yum -y install amdgpu-dkms'
-    }
-    else if (platform.jenkinsLabel.contains('sles')) {
-        installDKMS = 'echo amdgpu-dkms not available'
-    }
-
+    
     def command = """#!/usr/bin/env bash
                 set -x
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
-                ${installDKMS}
-                python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
                 cmake ${buildTypeArg} ../..
                 make -j\$(nproc)
