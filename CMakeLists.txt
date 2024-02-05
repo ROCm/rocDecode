@@ -161,7 +161,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # make test with CTest
   enable_testing()
   include(CTest)
-  add_subdirectory(sample)
+  add_subdirectory(samples)
 
   # set package information
   set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
