@@ -26,22 +26,20 @@ THE SOFTWARE.
 RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_decoder_{decoder_create_info}, decoder_create_info_{decoder_create_info} {}
 
  RocDecoder::~RocDecoder() {
+    // clean up the VA-API/HIP interop memories
     for(auto i = 0; i < hip_interop_.size(); i++) {
-
-        if (hip_interop_[i].hip_ext_mem != nullptr) {
-            hipError_t hip_status = hipDestroyExternalMemory(hip_interop_[i].hip_ext_mem);
-            if (hip_status != hipSuccess) {
-                std::cout << "HIP failure: hipDestroyExternalMemory failed with 'status: " << hipGetErrorName(hip_status) << std::endl;
-            }
-        }
-
         if (hip_interop_[i].hip_mapped_device_mem != nullptr) {
             hipError_t hip_status = hipFree(hip_interop_[i].hip_mapped_device_mem);
             if (hip_status != hipSuccess) {
                 std::cout << "HIP failure: hipFree failed with 'status: " << hipGetErrorName(hip_status) << std::endl;
             }
         }
-
+        if (hip_interop_[i].hip_ext_mem != nullptr) {
+            hipError_t hip_status = hipDestroyExternalMemory(hip_interop_[i].hip_ext_mem);
+            if (hip_status != hipSuccess) {
+                std::cout << "HIP failure: hipDestroyExternalMemory failed with 'status: " << hipGetErrorName(hip_status) << std::endl;
+            }
+        }
     }
  }
 
@@ -115,14 +113,14 @@ rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
     }
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
-    // wait on current surface to make sure that it is ready for the export
+    // wait on current surface to make sure that it is ready for the HIP interop
     rocdec_status = va_video_decoder_.SyncSurface(pic_idx);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("ERROR: Failed to export surface for picture id = " + TOSTR(pic_idx));
         return rocdec_status;
     }
 
-    // for each surface, we need to do the VA-API/HIP interop once and save the interop for reusing
+    // do the VA-API/HIP interop once per surface and save it for reusing
     if (hip_interop_[pic_idx].hip_mapped_device_mem == nullptr) {
         hipExternalMemoryHandleDesc external_mem_handle_desc = {};
         hipExternalMemoryBufferDesc external_mem_buffer_desc = {};
