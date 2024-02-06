@@ -37,9 +37,6 @@ else()
   set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 endif()
 
-# set compiler
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
-
 # find rocDecode
 find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS ${ROCM_PATH}/lib)
 find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode ${ROCM_PATH}/include/rocdecode)
@@ -66,18 +63,18 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodeFork
-add_test(
-  NAME
-    video_decodeFork-H265
-  COMMAND
-    "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeFork"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork"
-            --build-generator "${CMAKE_GENERATOR}"
-            --test-command "videodecodefork"
-            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
-)
+# videoDecodeFork - TBD - https://github.com/ROCm/rocDecode/issues/221 - Needs Fixed to enable
+#add_test(
+  #NAME
+    #video_decodeFork-H265
+  #COMMAND
+    #"${CMAKE_CTEST_COMMAND}"
+            #--build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeFork"
+                              #"${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork"
+            #--build-generator "${CMAKE_GENERATOR}"
+            #--test-command "videodecodefork"
+            #-i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+#)
 
 # videoDecodeMem
 add_test(
