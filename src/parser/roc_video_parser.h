@@ -126,7 +126,7 @@ protected:
     int                 rbsp_size_;
     uint8_t             rbsp_buf_[RBSP_BUF_SIZE]; // to store parameter set or slice header RBSP
 
-    int                 slice_num_;
+    int                 num_slices_;
     uint8_t*            pic_stream_data_ptr_;
     int                 pic_stream_data_size_;
 

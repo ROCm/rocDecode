@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
-    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_params_buf_id_{0}, slice_data_buf_id_{0} {};
+    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_params_buf_id_{{}}, slice_data_buf_id_{0} {};
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
     if (drm_fd_ != -1) {
@@ -185,9 +185,11 @@ rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
         iq_matrix_buf_id_ = 0;
     }
-    if (slice_params_buf_id_) {
-        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_));
-        slice_params_buf_id_ = 0;
+    for (int i = 0; i < num_slices_; i++) {
+        if (slice_params_buf_id_[i]) {
+            CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_[i]));
+            slice_params_buf_id_[i] = 0;
+        }
     }
     if (slice_data_buf_id_) {
         CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
@@ -208,6 +210,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         return ROCDEC_INVALID_PARAMETER;
     }
     curr_surface_id = va_surface_ids_[pPicParams->curr_pic_idx];
+    num_slices_ = pPicParams->num_slices;
 
     // Upload data buffers
     switch (decoder_create_info_.codec_type) {
@@ -231,7 +234,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
                 iq_matrix_size = sizeof(RocdecHevcIQMatrix);
             }
 
-            slice_params_ptr = (void*)&pPicParams->slice_params.hevc;
+            slice_params_ptr = (void*)&pPicParams->slice_params[0].hevc;
             slice_params_size = sizeof(RocdecHevcSliceParams);
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferHEVC)) || (scaling_list_enabled && (iq_matrix_size != sizeof(VAIQMatrixBufferHEVC))) || 
@@ -260,7 +263,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             iq_matrix_ptr = (void*)&pPicParams->iq_matrix.avc;
             iq_matrix_size = sizeof(RocdecAvcIQMatrix);
 
-            slice_params_ptr = (void*)&pPicParams->slice_params.avc;
+            slice_params_ptr = (void*)&pPicParams->slice_params[0].avc;
             slice_params_size = sizeof(RocdecAvcSliceParams);
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferH264)) || (iq_matrix_size != sizeof(VAIQMatrixBufferH264)) || (slice_params_size != sizeof(VASliceParameterBufferH264))) {
@@ -285,7 +288,10 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     if (scaling_list_enabled) {
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAIQMatrixBufferType, iq_matrix_size, 1, iq_matrix_ptr, &iq_matrix_buf_id_));
     }
-    CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, slice_params_size, 1, slice_params_ptr, &slice_params_buf_id_));
+    for (int i = 0; i < num_slices_; i++) {
+        CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, slice_params_size, 1, slice_params_ptr, &slice_params_buf_id_[i]));
+        slice_params_ptr = (void*)((uint8_t*)slice_params_ptr + sizeof(pPicParams->slice_params[0]));
+    }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->bitstream_data_len, 1, (void*)pPicParams->bitstream_data, &slice_data_buf_id_));
 
     // Sumbmit buffers to VAAPI driver
@@ -294,7 +300,9 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     if (scaling_list_enabled) {
         CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &iq_matrix_buf_id_, 1));
     }
-    CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_params_buf_id_, 1));
+    for (int i = 0; i < num_slices_; i++) {
+        CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_params_buf_id_[i], 1));
+    }
     CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_data_buf_id_, 1));
     CHECK_VAAPI(vaEndPicture(va_display_, va_context_id_));
 
