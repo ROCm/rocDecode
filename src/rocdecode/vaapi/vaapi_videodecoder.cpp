@@ -34,26 +34,26 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
         rocDecStatus rocdec_status = ROCDEC_SUCCESS;
         rocdec_status = DestroyDataBuffers();
         if (rocdec_status != ROCDEC_SUCCESS) {
-            ERR("ERROR: DestroyDataBuffers failed with status " + TOSTR(rocdec_status));
+            ERR("DestroyDataBuffers failed");
         }
         VAStatus va_status = VA_STATUS_SUCCESS;
         va_status = vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size());
         if (va_status != VA_STATUS_SUCCESS) {
-            ERR("ERROR: vaDestroySurfaces failed with status " + TOSTR(va_status));
+            ERR("vaDestroySurfaces failed");
         }
         if (va_context_id_)
             va_status = vaDestroyContext(va_display_, va_context_id_);
             if (va_status != VA_STATUS_SUCCESS) {
-                ERR("ERROR: vaDestroyContext failed with status " + TOSTR(va_status));
+                ERR("vaDestroyContext failed");
             }
         if (va_config_id_)
             va_status = vaDestroyConfig(va_display_, va_config_id_);
             if (va_status != VA_STATUS_SUCCESS) {
-                ERR("ERROR: vaDestroyConfig failed with status " + TOSTR(va_status));
+                ERR("vaDestroyConfig failed");
             }
         va_status = vaTerminate(va_display_);
         if (va_status != VA_STATUS_SUCCESS) {
-            ERR("ERROR: vaTerminate failed with status " + TOSTR(va_status));
+            ERR("vaTerminate failed");
         }
     }
 }
@@ -65,7 +65,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
     if (!vcn_codec_spec.IsCodecConfigSupported(gcn_arch_name, decoder_create_info_.codec_type, decoder_create_info_.chroma_format,
         decoder_create_info_.bit_depth_minus_8, decoder_create_info_.output_format)) {
-        ERR("ERROR: the codec config combination is not supported!");
+        ERR("The codec config combination is not supported.");
         return ROCDEC_NOT_SUPPORTED;
     }
 
@@ -79,22 +79,22 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to initilize the VAAPI!" + TOSTR(rocdec_status));
+        ERR("Failed to initilize the VAAPI.");
         return rocdec_status;
     }
     rocdec_status = CreateDecoderConfig();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create a VAAPI decoder configuration" + TOSTR(rocdec_status));
+        ERR("Failed to create a VAAPI decoder configuration.");
         return rocdec_status;
     }
     rocdec_status = CreateSurfaces();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create VAAPI surfaces " + TOSTR(rocdec_status));
+        ERR("Failed to create VAAPI surfaces.");
         return rocdec_status;
     }
     rocdec_status = CreateContext();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create a VAAPI context " + TOSTR(rocdec_status));
+        ERR("Failed to create a VAAPI context.");
         return rocdec_status;
     }
     return rocdec_status;
@@ -103,12 +103,12 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
 rocDecStatus VaapiVideoDecoder::InitVAAPI(std::string drm_node) {
     drm_fd_ = open(drm_node.c_str(), O_RDWR);
     if (drm_fd_ < 0) {
-        ERR("ERROR: failed to open drm node " + drm_node);
+        ERR("Failed to open drm node." + drm_node);
         return ROCDEC_NOT_INITIALIZED;
     }
     va_display_ = vaGetDisplayDRM(drm_fd_);
     if (!va_display_) {
-        ERR("ERROR: failed to create va_display ");
+        ERR("Failed to create va_display.");
         return ROCDEC_NOT_INITIALIZED;
     }
     vaSetInfoCallback(va_display_, NULL, NULL);
@@ -130,7 +130,7 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
             va_profile_ = VAProfileH264Main;
             break;
         default:
-            ERR("ERROR: the codec type is not supported!");
+            ERR("The codec type is not supported.");
             return ROCDEC_NOT_SUPPORTED;
     }
     va_config_attrib_.type = VAConfigAttribRTFormat;
@@ -141,7 +141,7 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
 
 rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
     if (decoder_create_info_.num_decode_surfaces < 1) {
-        ERR("ERROR: invalid number of decode surfaces ");
+        ERR("Invalid number of decode surfaces.");
         return ROCDEC_INVALID_PARAMETER;
     }
     va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
@@ -160,7 +160,7 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
             surface_format = VA_RT_FORMAT_YUV444;
             break;
         default:
-            ERR("ERROR: the surface type is not supported!");
+            ERR("The surface type is not supported");
             return ROCDEC_NOT_SUPPORTED;
     }
 
@@ -236,7 +236,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferHEVC)) || (scaling_list_enabled && (iq_matrix_size != sizeof(VAIQMatrixBufferHEVC))) || 
                 (slice_params_size != sizeof(VASliceParameterBufferHEVC))) {
-                    ERR("HEVC data_buffer parameter_size not matching vaapi parameter buffer size!");
+                    ERR("HEVC data_buffer parameter_size not matching vaapi parameter buffer size.");
                     return ROCDEC_RUNTIME_ERROR;
             }
             break;
@@ -264,21 +264,21 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             slice_params_size = sizeof(RocdecAvcSliceParams);
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferH264)) || (iq_matrix_size != sizeof(VAIQMatrixBufferH264)) || (slice_params_size != sizeof(VASliceParameterBufferH264))) {
-                    ERR("AVC data_buffer parameter_size not matching vaapi parameter buffer size!");
+                    ERR("AVC data_buffer parameter_size not matching vaapi parameter buffer size.");
                     return ROCDEC_RUNTIME_ERROR;
             }
             break;
         }
 
         default: {
-            ERR("ERROR: the codec type is not supported!");
+            ERR("The codec type is not supported.");
             return ROCDEC_NOT_SUPPORTED;
         }
     }
 
     rocDecStatus rocdec_status = DestroyDataBuffers();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Error: Failed to destroy VAAPI buffer");
+        ERR("Failed to destroy VAAPI buffer.");
         return rocdec_status;
     }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAPictureParameterBufferType, pic_params_size, 1, pic_params_ptr, &pic_params_buf_id_));
@@ -341,7 +341,7 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
         return ROCDEC_INVALID_PARAMETER;
     }
     if (va_display_ == 0) {
-        ERR("ERROR: VAAPI decoder has not been initialized but reconfiguration of the decoder has been requested!");
+        ERR("VAAPI decoder has not been initialized but reconfiguration of the decoder has been requested.");
         return ROCDEC_NOT_SUPPORTED;
     }
     CHECK_VAAPI(vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size()));
@@ -356,12 +356,12 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
 
     rocDecStatus rocdec_status = CreateSurfaces();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create VAAPI surfaces during the decoder reconfiguration " + TOSTR(rocdec_status));
+        ERR("Failed to create VAAPI surfaces during the decoder reconfiguration.");
         return rocdec_status;
     }
     rocdec_status = CreateContext();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ERROR: Failed to create a VAAPI context during the decoder reconfiguration " + TOSTR(rocdec_status));
+        ERR("Failed to create a VAAPI context during the decoder reconfiguration.");
         return rocdec_status;
     }
     return rocdec_status;
@@ -383,7 +383,7 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
             if (va_status == 0x26 /*VA_STATUS_ERROR_TIMEDOUT*/) {
                 CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
             } else {
-                std::cout << "VAAPI failure: vaSyncSurface() failed with error code: " << va_status << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
+                std::cout << "vaSyncSurface() failed with error code: 0x" << std::hex << va_status << std::dec << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
                 return ROCDEC_RUNTIME_ERROR;
             }
         } else {
