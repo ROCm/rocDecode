@@ -333,7 +333,6 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     videoDecodeCreateInfo.chroma_format = p_video_format->chroma_format;
     videoDecodeCreateInfo.output_format = video_surface_format_;
     videoDecodeCreateInfo.bit_depth_minus_8 = p_video_format->bit_depth_luma_minus8;
-    videoDecodeCreateInfo.num_output_surfaces = 2;
     videoDecodeCreateInfo.num_decode_surfaces = num_decode_surfaces;
     videoDecodeCreateInfo.width = p_video_format->coded_width;
     videoDecodeCreateInfo.height = p_video_format->coded_height;
@@ -614,7 +613,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     RocdecProcParams video_proc_params = {};
     video_proc_params.progressive_frame = pDispInfo->progressive_frame;
     video_proc_params.top_field_first = pDispInfo->top_field_first;
-    video_proc_params.output_hipstream = hip_stream_;
 
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
@@ -651,7 +649,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     if (out_mem_type_ != OUT_SURFACE_MEM_NOT_MAPPED) {
         void * src_dev_ptr[3] = { 0 };
         uint32_t src_pitch[3] = { 0 };
-        ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
+        ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
         RocdecDecodeStatus dec_status;
         memset(&dec_status, 0, sizeof(dec_status));
         rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
