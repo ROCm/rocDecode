@@ -76,16 +76,16 @@ typedef enum rocDecStatus_enum{
 //! These enums are used in ROCDECODECREATEINFO and ROCDECODEVIDDECODECAPS structures
 /*********************************************************************************/
 typedef enum rocDecVideoCodec_enum {
-    rocDecVideoCodec_MPEG1 = 0,                                       /**<  MPEG1             */
-    rocDecVideoCodec_MPEG2,                                           /**<  MPEG2             */
-    rocDecVideoCodec_MPEG4,                                           /**<  MPEG4             */
-    rocDecVideoCodec_AVC,                                             /**<  AVC/H264          */
-    rocDecVideoCodec_HEVC,                                            /**<  HEVC              */
-    rocDecVideoCodec_AV1,                                             /**<  AV1               */
-    rocDecVideoCodec_VP8,                                             /**<  VP8               */
-    rocDecVideoCodec_VP9,                                             /**<  VP9               */
-    rocDecVideoCodec_JPEG,                                            /**<  JPEG              */
-    rocDecVideoCodec_NumCodecs,                                       /**<  Max codecs        */
+    rocDecVideoCodec_MPEG1 = 0,                                       /**<  MPEG1 */
+    rocDecVideoCodec_MPEG2,                                           /**<  MPEG2 */
+    rocDecVideoCodec_MPEG4,                                           /**<  MPEG4 */
+    rocDecVideoCodec_AVC,                                             /**<  AVC/H264 */
+    rocDecVideoCodec_HEVC,                                            /**<  HEVC */
+    rocDecVideoCodec_AV1,                                             /**<  AV1 */
+    rocDecVideoCodec_VP8,                                             /**<  VP8 */
+    rocDecVideoCodec_VP9,                                             /**<  VP9 */
+    rocDecVideoCodec_JPEG,                                            /**<  JPEG */
+    rocDecVideoCodec_NumCodecs,                                       /**<  Max codecs */
     // Uncompressed YUV
     rocDecVideoCodec_YUV420 = (('I'<<24)|('Y'<<16)|('U'<<8)|('V')),   /**< Y,U,V (4:2:0)      */
     rocDecVideoCodec_YV12   = (('Y'<<24)|('V'<<16)|('1'<<8)|('2')),   /**< Y,V,U (4:2:0)      */
@@ -101,12 +101,12 @@ typedef enum rocDecVideoCodec_enum {
 //! These enums are used in RocDecoderCreateInfo structure
 /*********************************************************************************/
 typedef enum rocDecVideoSurfaceFormat_enum {
-    rocDecVideoSurfaceFormat_NV12 = 0,          /**< Semi-Planar YUV [Y plane followed by interleaved UV plane]     */
+    rocDecVideoSurfaceFormat_NV12 = 0,          /**< Semi-Planar YUV [Y plane followed by interleaved UV plane] */
     rocDecVideoSurfaceFormat_P016 = 1,          /**< 16 bit Semi-Planar YUV [Y plane followed by interleaved UV plane].
-                                                 Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0)      */
-    rocDecVideoSurfaceFormat_YUV444 = 2,        /**< Planar YUV [Y plane followed by U and V planes]           */
+                                                 Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0) */
+    rocDecVideoSurfaceFormat_YUV444 = 2,        /**< Planar YUV [Y plane followed by U and V planes] */
     rocDecVideoSurfaceFormat_YUV444_16Bit = 3,  /**< 16 bit Planar YUV [Y plane followed by U and V planes]. 
-                                                 Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0)      */
+                                                 Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0) */
 } rocDecVideoSurfaceFormat;
 
 /**************************************************************************************************************/
@@ -145,19 +145,19 @@ typedef enum rocDecodeStatus_enum {
 //! This structure is used in rocDecGetDecoderCaps API
 /**************************************************************************************************************/
 typedef struct _RocdecDecodeCaps {
-    uint8_t                     device_id;                   /**< IN: the device id for which query the decode capability 0 for the first device, 1 for the second device on the system, etc.*/
-    rocDecVideoCodec            codec_type;                 /**< IN: rocDecVideoCodec_XXX                                             */
-    rocDecVideoChromaFormat     chroma_format;              /**< IN: rocDecVideoChromaFormat_XXX                                      */
-    uint32_t                    bit_depth_minus_8;            /**< IN: The Value "BitDepth minus 8"                                   */
-    uint32_t                    reserved_1[3];               /**< Reserved for future use - set to zero                              */
-    uint8_t                     is_supported;               /**< OUT: 1 if codec supported, 0 if not supported                      */
-    uint8_t                     num_decoders;                 /**< OUT: Number of Decoders that can support IN params                   */
-    uint16_t                    output_format_mask;          /**< OUT: each bit represents corresponding rocDecVideoSurfaceFormat enum */
-    uint32_t                    max_width;                  /**< OUT: Max supported coded width in pixels                           */
-    uint32_t                    max_height;                 /**< OUT: Max supported coded height in pixels                          */
-    uint16_t                    min_width;                  /**< OUT: Min supported coded width in pixels                           */
-    uint16_t                    min_height;                 /**< OUT: Min supported coded height in pixels                          */
-    uint32_t                    reserved_2[6];              /**< Reserved for future use - set to zero                              */
+    uint8_t                     device_id;                  /**< IN: the device id for which query the decode capability 0 for the first device, 1 for the second device on the system, etc.*/
+    rocDecVideoCodec            codec_type;                 /**< IN: rocDecVideoCodec_XXX */
+    rocDecVideoChromaFormat     chroma_format;              /**< IN: rocDecVideoChromaFormat_XXX */
+    uint32_t                    bit_depth_minus_8;          /**< IN: The Value "BitDepth minus 8" */
+    uint32_t                    reserved_1[3];              /**< Reserved for future use - set to zero */
+    uint8_t                     is_supported;               /**< OUT: 1 if codec supported, 0 if not supported */
+    uint8_t                     num_decoders;               /**< OUT: Number of Decoders that can support IN params */
+    uint16_t                    output_format_mask;         /**< OUT: each bit represents corresponding rocDecVideoSurfaceFormat enum */
+    uint32_t                    max_width;                  /**< OUT: Max supported coded width in pixels */
+    uint32_t                    max_height;                 /**< OUT: Max supported coded height in pixels */
+    uint16_t                    min_width;                  /**< OUT: Min supported coded width in pixels */
+    uint16_t                    min_height;                 /**< OUT: Min supported coded height in pixels */
+    uint32_t                    reserved_2[6];              /**< Reserved for future use - set to zero */
 } RocdecDecodeCaps;
 
 /**************************************************************************************************************/
@@ -166,48 +166,39 @@ typedef struct _RocdecDecodeCaps {
 //! This structure is used in rocDecCreateDecoder API
 /**************************************************************************************************************/
 typedef struct _RocDecoderCreateInfo {
-    uint8_t                     device_id;                /**< IN: the device id for which a decoder should be created
-                                                 0 for the first device, 1 for the second device on the system, etc.*/
-    uint32_t                    width;                /**< IN: Coded sequence width in pixels                                             */
-    uint32_t                    height;               /**< IN: Coded sequence height in pixels                                            */
-    uint32_t                    num_decode_surfaces;    /**< IN: Maximum number of internal decode surfaces                                 */
-    rocDecVideoCodec            codec_type;           /**< IN: rocDecVideoCodec_XXX                                                         */
-    rocDecVideoChromaFormat     chroma_format; /**< IN: rocDecVideoChromaFormat_XXX                                                  */
-    uint32_t                    bit_depth_minus_8;         /**< IN: The value "BitDepth minus 8"                                               */
+    uint8_t                     device_id;              /**< IN: the device id for which a decoder should be created
+                                                          0 for the first device, 1 for the second device on the system, etc.*/
+    uint32_t                    width;                  /**< IN: Coded sequence width in pixels */
+    uint32_t                    height;                 /**< IN: Coded sequence height in pixels */
+    uint32_t                    num_decode_surfaces;    /**< IN: Maximum number of internal decode surfaces */
+    rocDecVideoCodec            codec_type;             /**< IN: rocDecVideoCodec_XXX */
+    rocDecVideoChromaFormat     chroma_format;          /**< IN: rocDecVideoChromaFormat_XXX */
+    uint32_t                    bit_depth_minus_8;      /**< IN: The value "BitDepth minus 8" */
     uint32_t                    intra_decode_only;      /**< IN: Set 1 only if video has all intra frames (default value is 0). This will
-                                             optimize video memory for Intra frames only decoding. The support is limited
-                                             to specific codecs - AVC/H264, HEVC, VP9, the flag will be ignored for codecs which
-                                             are not supported. However decoding might fail if the flag is enabled in case
-                                             of supported codecs for regular bit streams having P and/or B frames.          */
-    uint32_t                    max_width;             /**< IN: Coded sequence max width in pixels used with reconfigure Decoder           */
-    uint32_t                    max_height;            /**< IN: Coded sequence max height in pixels used with reconfigure Decoder          */                                           
-    /**
-    * IN: area of the frame that should be displayed
-    */
+                                                                 optimize video memory for Intra frames only decoding. The support is limited
+                                                                to specific codecs - AVC/H264, HEVC, VP9, the flag will be ignored for codecs which
+                                                                are not supported. However decoding might fail if the flag is enabled in case
+                                                                of supported codecs for regular bit streams having P and/or B frames. */
+    uint32_t                    max_width;             /**< IN: Coded sequence max width in pixels used with reconfigure Decoder */
+    uint32_t                    max_height;            /**< IN: Coded sequence max height in pixels used with reconfigure Decoder */
     struct {
         int16_t left;
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } display_area;
-
-    rocDecVideoSurfaceFormat    output_format;       /**< IN: rocDecVideoSurfaceFormat_XXX                                     */
-    uint32_t                    target_width;               /**< IN: Post-processed output width (Should be aligned to 2)           */
-    uint32_t                    target_height;              /**< IN: Post-processed output height (Should be aligned to 2)          */
-    uint32_t                    num_output_surfaces;         /**< IN: Maximum number of output surfaces simultaneously mapped        */
-
-    /**
-    * IN: target rectangle in the output frame (for aspect ratio conversion)
-    * if a null rectangle is specified, {0,0,target_width,target_height} will be used
-    */
+    } display_area;                                    /**< IN: area of the frame that should be displayed */
+    rocDecVideoSurfaceFormat    output_format;         /**< IN: rocDecVideoSurfaceFormat_XXX */
+    uint32_t                    target_width;          /**< IN: Post-processed output width (Should be aligned to 2) */
+    uint32_t                    target_height;         /**< IN: Post-processed output height (Should be aligned to 2) */
+    uint32_t                    num_output_surfaces;   /**< IN: Maximum number of output surfaces simultaneously mapped */
     struct {
         int16_t left;
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } target_rect;
-
-    uint32_t                    reserved_2[4];                /**< Reserved for future use - set to zero */
+    } target_rect;                                     /**< IN: target rectangle in the output frame (for aspect ratio conversion)
+                                                                if a null rectangle is specified, {0,0,target_width,target_height} will be used*/
+    uint32_t                    reserved_2[4];         /**< Reserved for future use - set to zero */
 } RocDecoderCreateInfo;
 
 /*********************************************************************************************************/
@@ -229,12 +220,12 @@ typedef struct _RocdecDecodeStatus {
 //! This structure is used in rocDecReconfigureDecoder() API
 /****************************************************/
 typedef struct _RocdecReconfigureDecoderInfo {
-    uint32_t width;             /**< IN: Coded sequence width in pixels, MUST be < = max_width defined at RocDecoderCreateInfo  */
-    uint32_t height;            /**< IN: Coded sequence height in pixels, MUST be < = max_height defined at RocDecoderCreateInfo  */
-    uint32_t target_width;       /**< IN: Post processed output width */
-    uint32_t target_height;      /**< IN: Post Processed output height */
-    uint32_t num_decode_surfaces; /**< IN: Maximum number of internal decode surfaces */
-    uint32_t reserved_1[12];       /**< Reserved for future use. Set to Zero */
+    uint32_t width;                 /**< IN: Coded sequence width in pixels, MUST be < = max_width defined at RocDecoderCreateInfo */
+    uint32_t height;                /**< IN: Coded sequence height in pixels, MUST be < = max_height defined at RocDecoderCreateInfo */
+    uint32_t target_width;          /**< IN: Post processed output width */
+    uint32_t target_height;         /**< IN: Post Processed output height */
+    uint32_t num_decode_surfaces;   /**< IN: Maximum number of internal decode surfaces */
+    uint32_t reserved_1[12];        /**< Reserved for future use. Set to Zero */
     /**
     * IN: Area of frame to be displayed. Use-case : Source Cropping
     */
@@ -263,11 +254,11 @@ typedef struct _RocdecReconfigureDecoderInfo {
 //! This structure is used in RocdecAvcPicParams structure
 /*********************************************************/
 typedef struct _RocdecAvcPicture {
-    int         pic_idx;                    /**< picture index of reference frame    */
-    uint32_t    frame_idx;                  /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term)  */
-    uint32_t    flags;                      /**< See below for definitions  */
-    int32_t     top_field_order_cnt;        /**< field order count of top field  */
-    int32_t     bottom_field_order_cnt;     /**< field order count of bottom field   */
+    int         pic_idx;                    /**< picture index of reference frame */
+    uint32_t    frame_idx;                  /**< frame_num(int16_t-term) or LongTermFrameIdx(long-term) */
+    uint32_t    flags;                      /**< See below for definitions */
+    int32_t     top_field_order_cnt;        /**< field order count of top field */
+    int32_t     bottom_field_order_cnt;     /**< field order count of bottom field */
     uint32_t    reserved[4];
 } RocdecAvcPicture;
 
@@ -286,15 +277,15 @@ typedef struct _RocdecAvcPicture {
 //! This structure is used in RocdecHevcPicParams structure
 /*********************************************************/
 typedef struct _RocdecHevcPicture {
-    int pic_idx;                 /**< reconstructed picture surface ID    */
+    int pic_idx;                 /**< reconstructed picture surface ID */
     /** \brief picture order count.
     //! \ingroup group_amd_rocdecode
      * in HEVC, POCs for top and bottom fields of same picture should
      * take different values.
      */
     int poc;
-    uint32_t flags;              /**< See below for definitions  */
-    uint32_t reserved[4];        /**< reserved for future; must be zero  */
+    uint32_t flags;              /**< See below for definitions */
+    uint32_t reserved[4];        /**< reserved for future; must be zero */
 } RocdecHevcPicture;
 
 /* flags in RocdecHevcPicture could be OR of the following */
@@ -373,23 +364,23 @@ typedef struct _RocdecMpeg2PicParams {
     uint16_t horizontal_size;
     uint16_t vertical_size;
     uint32_t forward_reference_pic;       // surface_id for forward reference
-    uint32_t backward_reference_picture;       // surface_id for backward reference
+    uint32_t backward_reference_picture;  // surface_id for backward reference
     /* meanings of the following fields are the same as in the standard */
     int32_t picture_coding_type;
     int32_t f_code; /* pack all four fcode into this */
     union {
         struct {
-            uint32_t intra_dc_precision     : 2;
-            uint32_t picture_structure      : 2;
-            uint32_t top_field_first        : 1;
-            uint32_t frame_pred_frame_dct       : 1;
+            uint32_t intra_dc_precision : 2;
+            uint32_t picture_structure : 2;
+            uint32_t top_field_first : 1;
+            uint32_t frame_pred_frame_dct : 1;
             uint32_t concealment_motion_vectors : 1;
-            uint32_t q_scale_type           : 1;
-            uint32_t intra_vlc_format       : 1;
-            uint32_t alternate_scan         : 1;
-            uint32_t repeat_first_field     : 1;
-            uint32_t progressive_frame      : 1;
-            uint32_t is_first_field         : 1; // indicate whether the current field is the first field for field picture
+            uint32_t q_scale_type : 1;
+            uint32_t intra_vlc_format : 1;
+            uint32_t alternate_scan : 1;
+            uint32_t repeat_first_field : 1;
+            uint32_t progressive_frame : 1;
+            uint32_t is_first_field : 1;  // indicate whether the current field is the first field for field picture
         } bits;
         uint32_t value;
     } picture_coding_extension;
@@ -417,7 +408,7 @@ typedef struct _RocdecVc1PicParams {
 /***********************************************************/
 typedef struct _RocdecAvcPicParams {
     RocdecAvcPicture curr_pic;
-    RocdecAvcPicture ref_frames[16];	/* in DPB */
+    RocdecAvcPicture ref_frames[16];    /* in DPB */
     uint16_t picture_width_in_mbs_minus1;
     uint16_t picture_height_in_mbs_minus1;
     uint8_t bit_depth_luma_minus8;
@@ -425,17 +416,17 @@ typedef struct _RocdecAvcPicParams {
     uint8_t num_ref_frames;
     union {
         struct {
-            uint32_t chroma_format_idc			: 2;
-            uint32_t residual_colour_transform_flag		: 1;
-            uint32_t gaps_in_frame_num_value_allowed_flag	: 1;
-            uint32_t frame_mbs_only_flag			: 1;
-            uint32_t mb_adaptive_frame_field_flag		: 1; 
-            uint32_t direct_8x8_inference_flag		: 1;
-            uint32_t MinLumaBiPredSize8x8			: 1; /* see A.3.3.2 */
-            uint32_t log2_max_frame_num_minus4		: 4;
-            uint32_t pic_order_cnt_type			: 2;
-            uint32_t log2_max_pic_order_cnt_lsb_minus4	: 4;
-            uint32_t delta_pic_order_always_zero_flag	: 1;
+            uint32_t chroma_format_idc : 2;
+            uint32_t residual_colour_transform_flag : 1;
+            uint32_t gaps_in_frame_num_value_allowed_flag : 1;
+            uint32_t frame_mbs_only_flag : 1;
+            uint32_t mb_adaptive_frame_field_flag : 1;
+            uint32_t direct_8x8_inference_flag : 1;
+            uint32_t MinLumaBiPredSize8x8 : 1; /* see A.3.3.2 */
+            uint32_t log2_max_frame_num_minus4 : 4;
+            uint32_t pic_order_cnt_type : 2;
+            uint32_t log2_max_pic_order_cnt_lsb_minus4 : 4;
+            uint32_t delta_pic_order_always_zero_flag : 1;
         } bits;
         uint32_t value;
     } seq_fields;
@@ -450,16 +441,16 @@ typedef struct _RocdecAvcPicParams {
     int8_t second_chroma_qp_index_offset;
     union {
         struct {
-            uint32_t entropy_coding_mode_flag	: 1;
-            uint32_t weighted_pred_flag		: 1;
-            uint32_t weighted_bipred_idc		: 2;
-            uint32_t transform_8x8_mode_flag	: 1;
-            uint32_t field_pic_flag			: 1;
-            uint32_t constrained_intra_pred_flag	: 1;
-            uint32_t pic_order_present_flag			: 1;
+            uint32_t entropy_coding_mode_flag : 1;
+            uint32_t weighted_pred_flag : 1;
+            uint32_t weighted_bipred_idc : 2;
+            uint32_t transform_8x8_mode_flag : 1;
+            uint32_t field_pic_flag : 1;
+            uint32_t constrained_intra_pred_flag : 1;
+            uint32_t pic_order_present_flag : 1;
             uint32_t deblocking_filter_control_present_flag : 1;
-            uint32_t redundant_pic_cnt_present_flag		: 1;
-            uint32_t reference_pic_flag			: 1; /* nal_ref_idc != 0 */
+            uint32_t redundant_pic_cnt_present_flag : 1;
+            uint32_t reference_pic_flag : 1; /* nal_ref_idc != 0 */
         } bits;
         uint32_t value;
     } pic_fields;
@@ -804,25 +795,25 @@ typedef struct _RocdecHevcIQMatrix {
 //! IN  for rocDecDecodePicture
 /******************************************************************************************/
 typedef struct _RocdecPicParams {
-    int             pic_width;                         /**< IN: Coded frame width                                        */
-    int             pic_height;                        /**< IN: Coded frame height                                       */
-    int             curr_pic_idx;                        /**< IN: Output index of the current picture                       */
-    int             field_pic_flag;                    /**< IN: 0=frame picture, 1=field picture                          */
+    int             pic_width;                         /**< IN: Coded frame width */
+    int             pic_height;                        /**< IN: Coded frame height */
+    int             curr_pic_idx;                      /**< IN: Output index of the current picture */
+    int             field_pic_flag;                    /**< IN: 0=frame picture, 1=field picture */
     int             bottom_field_flag;                 /**< IN: 0=top field, 1=bottom field (ignored if field_pic_flag=0) */
-    int             second_field;                      /**< IN: Second field of a complementary field pair                */
+    int             second_field;                      /**< IN: Second field of a complementary field pair */
     // Bitstream data
-    uint32_t        bitstream_data_len;        /**< IN: Number of bytes in bitstream data buffer                  */
-    const uint8_t   *bitstream_data;   /**< IN: Ptr to bitstream data for this picture (slice-layer)      */
-    uint32_t        num_slices;               /**< IN: Number of slices in this picture                          */
-    const uint32_t  *slice_data_offsets; /**< IN: num_slices entries, contains offset of each slice within 
-                                                        the bitstream data buffer                             */
-    int             ref_pic_flag;                      /**< IN: This picture is a reference picture                       */
-    int             intra_pic_flag;                    /**< IN: This picture is entirely intra coded                      */
-    uint32_t        reserved[30];             /**< Reserved for future use                                       */
+    uint32_t        bitstream_data_len;                /**< IN: Number of bytes in bitstream data buffer */
+    const uint8_t   *bitstream_data;                   /**< IN: Ptr to bitstream data for this picture (slice-layer) */
+    uint32_t        num_slices;                        /**< IN: Number of slices in this picture */
+    const uint32_t  *slice_data_offsets;               /**< IN: num_slices entries, contains offset of each slice within
+                                                        the bitstream data buffer */
+    int             ref_pic_flag;                      /**< IN: This picture is a reference picture */
+    int             intra_pic_flag;                    /**< IN: This picture is entirely intra coded */
+    uint32_t        reserved[30];                      /**< Reserved for future use */
 
     // IN: Codec-specific data
     union {
-        RocdecMpeg2PicParams    mpeg2;         /**< Also used for MPEG-1 */
+        RocdecMpeg2PicParams    mpeg2;                 /**< Also used for MPEG-1 */
         RocdecAvcPicParams      avc;
         RocdecHevcPicParams     hevc;
         RocdecVc1PicParams      vc1;
@@ -847,50 +838,23 @@ typedef struct _RocdecPicParams {
 //! \struct RocdecProcParams
 //! \ingroup group_amd_rocdecode
 //! Picture parameters for postprocessing
-//! This structure is used in rocDecMapVideoFrame API
+//! This structure is used in rocDecGetVideoFrame API
 /******************************************************/
 typedef struct _RocdecProcParams
 {
-    int         progressive_frame;                        /**< IN: Input is progressive (deinterlace_mode will be ignored)                */
-    int         top_field_first;                          /**< IN: Input frame is top field first (1st field is top, 2nd field is bottom) */
-    uint32_t    reserved_flags[2];                  /**< Reserved for future use (set to zero)                                      */
+    int         progressive_frame;               /**< IN: Input is progressive (deinterlace_mode will be ignored) */
+    int         top_field_first;                 /**< IN: Input frame is top field first (1st field is top, 2nd field is bottom) */
+    uint32_t    reserved_flags[2];               /**< Reserved for future use (set to zero) */
 
     // The fields below are used for raw YUV input
-    uint64_t    raw_input_dptr;                  /**< IN: Input HIP device ptr for raw YUV extensions                               */
-    uint32_t    raw_input_pitch;                 /**< IN: pitch in bytes of raw YUV input (should be aligned appropriately)      */
-    uint32_t    raw_input_format;                /**< IN: Input YUV format (rocDecVideoCodec_enum)                                 */
-    uint64_t    raw_output_dptr;                 /**< IN: Output HIP device mem ptr for raw YUV extensions                              */
-    uint32_t    raw_output_pitch;                /**< IN: pitch in bytes of raw YUV output (should be aligned appropriately)     */
-    uint32_t    raw_output_format;               /**< IN: Output YUV format (rocDecVideoCodec_enum)                                 */
-    hipStream_t output_hipstream;               /**< IN: stream object used by rocDecMapVideoFrame                               */
-    uint32_t    reserved[16];                    /**< Reserved for future use (set to zero)                                      */
+    uint64_t    raw_input_dptr;                  /**< IN: Input HIP device ptr for raw YUV extensions */
+    uint32_t    raw_input_pitch;                 /**< IN: pitch in bytes of raw YUV input (should be aligned appropriately) */
+    uint32_t    raw_input_format;                /**< IN: Input YUV format (rocDecVideoCodec_enum) */
+    uint64_t    raw_output_dptr;                 /**< IN: Output HIP device mem ptr for raw YUV extensions */
+    uint32_t    raw_output_pitch;                /**< IN: pitch in bytes of raw YUV output (should be aligned appropriately) */
+    uint32_t    raw_output_format;               /**< IN: Output YUV format (rocDecVideoCodec_enum) */
+    uint32_t    reserved[16];                    /**< Reserved for future use (set to zero) */
 } RocdecProcParams;
-
-
-/***********************************************************************************************************/
-//! ROCVIDEO_DECODER
-//!
-//! In order to minimize decode latencies, there should be always at least enough pictures (min 2) in the decode
-//! queue at any time, in order to make sure that all VCN decode engines are always busy.
-//!
-//! Overall data flow:
-//!  - rocdecGetDecoderCaps(...)
-//!  - rocdecCreateDecoder(...)
-//!  - For each picture:
-//!    + rocdecDecodePicture(N)        /* N is determined based on available HW decode engines in the system */
-//!    + rocdecMapVideoFrame(N-4)
-//!    + do some processing in HIP
-//!    + rocdecUnmapVideoFrame(N-4)
-//!    + rocdecDecodePicture(N+1)
-//!    + rocdecMapVideoFrame(N-3)
-//!    + ...
-//!  - rocdecDestroyDecoder(...)
-//!
-//! NOTE:
-//! - There is a limit to how many pictures can be mapped simultaneously (num_output_surfaces)
-//! - rocdecDecodePicture may block the calling thread if there are too many pictures pending
-//!   in the decode queue
-/***********************************************************************************************************/
 
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *decoder_create_info)
@@ -942,23 +906,16 @@ extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_
 extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params);
 
 /************************************************************************************************************************/
-//! \fn extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
+//! \fn extern rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
 //!                                           uint32_t *dev_mem_ptr, uint32_t *horizontal_pitch,
 //!                                           RocdecProcParams *vid_postproc_params);
 //! \ingroup group_amd_rocdecode
-//! Post-process and map video frame corresponding to nPicIdx for use in HIP. Returns HIP device pointer and associated
+//! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
+extern rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
                                            void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3],
                                            RocdecProcParams *vid_postproc_params);
-
-/*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx)
-//! \ingroup group_amd_rocdecode
-//! Unmap a previously mapped video frame with the associated nPicIdx
-/*****************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx);
 
 /*****************************************************************************************************/
 //! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)

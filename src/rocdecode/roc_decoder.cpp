@@ -93,7 +93,7 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     }
     rocDecStatus rocdec_status;
     for (int pic_idx = 0; pic_idx < hip_interop_.size(); pic_idx++) {
-        rocdec_status = UnMapVideoFrame(pic_idx);
+        rocdec_status = ReleaseVideoFrame(pic_idx);
         if (rocdec_status != ROCDEC_SUCCESS) {
             ERR("ERROR: Unmapping the video frame for picture idx " + TOSTR(pic_idx) + " failed during reconfiguration!");
             return rocdec_status;
@@ -107,7 +107,7 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {
+rocDecStatus RocDecoder::GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params) {
     if (pic_idx >= hip_interop_.size() || &dev_mem_ptr[0] == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
@@ -172,7 +172,7 @@ rocDecStatus RocDecoder::MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::UnMapVideoFrame(int pic_idx) {
+rocDecStatus RocDecoder::ReleaseVideoFrame(int pic_idx) {
     if (pic_idx >= hip_interop_.size()) {
         return ROCDEC_INVALID_PARAMETER;
     }
