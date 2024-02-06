@@ -82,8 +82,8 @@ public:
                 return ROCDEC_NOT_SUPPORTED;
             }
         } else {
-            ERR("ERROR: Didn't find the decoder capability for " + gcn_arch_name + " GPU!");
-            return ROCDEC_DEVICE_INVALID;
+            ERR("Didn't find the decoder capability for " + gcn_arch_name + " GPU!");
+            return ROCDEC_NOT_IMPLEMENTED;
         }
     }
     bool IsCodecConfigSupported(std::string gcn_arch_name, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
