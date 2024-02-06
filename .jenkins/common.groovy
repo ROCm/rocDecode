@@ -43,6 +43,9 @@ def runTestCommand (platform, project) {
                 cmake /opt/rocm/share/rocdecode/samples/videoDecode/
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+                cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
+                cmake /opt/rocm/share/rocdecode/test/
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
                 """
 
     platform.runCommand(this, command)

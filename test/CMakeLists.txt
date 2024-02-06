@@ -30,11 +30,24 @@ include(CTest)
 
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 elseif(ROCM_PATH)
-  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
+  message("-- ${White}${PROJECT_NAME} :ROCM_PATH Set -- ${ROCM_PATH}${ColourReset}")
 else()
-  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
+  set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+endif()
+
+# find rocDecode
+find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS ${ROCM_PATH}/lib)
+find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode ${ROCM_PATH}/include/rocdecode)
+
+if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
+    set(ROCDECODE_FOUND TRUE)
+    message("-- ${White}Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
+endif()
+
+if(NOT ROCDECODE_FOUND)
+    message("-- ${Yellow}${PROJECT_NAME} requires rocDecode. Install rocDecode before running CTests")
 endif()
 
 # videoDecode
@@ -48,4 +61,56 @@ add_test(
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+)
+
+# videoDecodeFork - TBD - https://github.com/ROCm/rocDecode/issues/221 - Needs Fixed to enable
+#add_test(
+  #NAME
+    #video_decodeFork-H265
+  #COMMAND
+    #"${CMAKE_CTEST_COMMAND}"
+            #--build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeFork"
+                              #"${CMAKE_CURRENT_BINARY_DIR}/videoDecodeFork"
+            #--build-generator "${CMAKE_GENERATOR}"
+            #--test-command "videodecodefork"
+            #-i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+#)
+
+# videoDecodeMem
+add_test(
+  NAME
+    video_decodeMem-H265
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeMem"
+                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeMem"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "videodecodemem"
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+)
+
+# videoDecodeMem
+add_test(
+  NAME
+    video_decodePerf-H265
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodePerf"
+                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodePerf"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "videodecodeperf"
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+)
+
+# videoDecodeRGB
+add_test(
+  NAME
+    video_decodeRGB-H265
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeRGB"
+                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeRGB"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "videodecodergb"
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -of rgb
 )
