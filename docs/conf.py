@@ -39,13 +39,13 @@ with open('../CMakeLists.txt', encoding='utf-8') as f:
 left_nav_title = f"rocDecode {version_number} Documentation"
 
 shutil.copy2('../README.md','./quickStart.md')
-shutil.copy2('../samples/README.md','./samples/README.md')
-shutil.copy2('../samples/videoDecode/README.md','./samples/videoDecode/README.md')
-shutil.copy2('../samples/videoDecodeFork/README.md','./samples/videoDecodeFork/README.md')
-shutil.copy2('../samples/videoDecodeMem/README.md','./samples/videoDecodeMem/README.md')
-shutil.copy2('../samples/videoDecodeMultiFiles/README.md','./samples/videoDecodeMultiFiles/README.md')
-shutil.copy2('../samples/videoDecodePerf/README.md','./samples/videoDecodePerf/README.md')
-shutil.copy2('../samples/videoDecodeRGB/README.md','./samples/videoDecodeRGB/README.md')
+shutil.copy2('../samples/README.md','./samples.md')
+shutil.copy2('../samples/videoDecode/README.md','./videoDecode.md')
+shutil.copy2('../samples/videoDecodeFork/README.md','./videoDecodeFork.md')
+shutil.copy2('../samples/videoDecodeMem/README.md','./videoDecodeMem.md')
+shutil.copy2('../samples/videoDecodeMultiFiles/README.md','./videoDecodeMultiFiles.md')
+shutil.copy2('../samples/videoDecodePerf/README.md','./videoDecodePerf.md')
+shutil.copy2('../samples/videoDecodeRGB/README.md','./videoDecodeRGB.md')
 
 # for PDF output on Read the Docs
 project = "rocDecode Documentation"

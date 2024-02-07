@@ -18,13 +18,13 @@ subtrees:
   - file: tutorial/usingAPI
 - caption: Samples
   entries:
-  - file: samples/README
-  - file: samples/videoDecode/README
-  - file: samples/videoDecodeFork/README
-  - file: samples/videoDecodeMem/README
-  - file: samples/videoDecodeMultiFiles/README
-  - file: samples/videoDecodePerf/README
-  - file: samples/videoDecodeRGB/README
+  - file: samples
+  - file: videoDecode
+  - file: videoDecodeFork
+  - file: videoDecodeMem
+  - file: videoDecodeMultiFiles
+  - file: videoDecodePerf
+  - file: videoDecodeRGB
 - caption: About
   entries:
   - file: license
