@@ -4,7 +4,7 @@ root: doxygen/html/index
 subtrees:
   - caption: Quick-start
     entries:
-      - file: tutorial/overview
+      - file: quick_overview
         subtrees:
           - entries:
             - file: quickStart
