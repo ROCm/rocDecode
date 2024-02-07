@@ -5,12 +5,26 @@ subtrees:
 - caption: Quick-start
   entries:
   - file: quickStart
+- caption: Hardware requirements
+  entries:
+  - file: tutorial/hardwareCapabilities
 - caption: API reference
   entries:
   - file: doxygen/html/files
 - caption: Tutorials
   entries:
-  - file: rocDecodeUserGuide
+  - file: tutorial/overview
+  - file: tutorial/decodingPipeline
+  - file: tutorial/usingAPI
+- caption: Samples
+  entries:
+  - file: sample/README
+  - file: samples/videoDecode/README
+  - file: samples/videoDecodeFork/README
+  - file: samples/videoDecodeMem/README
+  - file: samples/videoDecodeMultiFiles/README
+  - file: samples/videoDecodePerf/README
+  - file: samples/videoDecodeRGB/README
 - caption: About
   entries:
   - file: license
