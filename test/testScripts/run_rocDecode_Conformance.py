@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--rocDecode_directory',   type=str, default='',
                     help='The rocDecode Directory - required')
 parser.add_argument('--videodecode_exe',   type=str, default='',
-                    help='The rocDecode Directory - optional')
+                    help='Video decode sample app exe - optional')
 parser.add_argument('--gpu_device_id',      type=int, default=0,
                     help='The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N-1] N = total number of available GPUs on a machine)')
 parser.add_argument('--files_directory',    type=str, default='',
