@@ -2,36 +2,37 @@
 # These comments will also be removed.
 root: doxygen/html/index
 subtrees:
-- caption: Quick-start
-  entries:
-  - file: tutorial/overview
-    subtrees:
-      - entries:
-        - file: quickStart
-- caption: Hardware requirements
-  entries:
-  - file: tutorial/hardwareCapabilities
-- caption: API reference
-  entries:
-  - file: doxygen/html/files
-- caption: Tutorials
-  entries:
-  - file: tutorial/overview
-    subtrees:
-      - entries:
-        - file: tutorial/decodingPipeline
-        - file: tutorial/usingAPI
-- caption: Samples
-  entries:
-  - file: samples
-    subtrees:
-      - entries:
-        - file: videoDecode
-        - file: videoDecodeFork
-        - file: videoDecodeMem
-        - file: videoDecodeMultiFiles
-        - file: videoDecodePerf
-        - file: videoDecodeRGB
-- caption: About
-  entries:
-  - file: license
+  - numbered: False
+  - caption: Quick-start
+    entries:
+      - file: tutorial/overview
+        subtrees:
+          - entries:
+            - file: quickStart
+  - caption: Hardware requirements
+    entries:
+      - file: tutorial/hardwareCapabilities
+  - caption: API reference
+    entries:
+      - file: doxygen/html/files
+  - caption: Tutorials
+    entries:
+      - file: tutorial/overview
+        subtrees:
+          - entries:
+            - file: tutorial/decodingPipeline
+            - file: tutorial/usingAPI
+  - caption: Samples
+    entries:
+      - file: samples
+        subtrees:
+          - entries:
+            - file: videoDecode
+            - file: videoDecodeFork
+            - file: videoDecodeMem
+            - file: videoDecodeMultiFiles
+            - file: videoDecodePerf
+            - file: videoDecodeRGB
+  - caption: About
+    entries:
+      - file: license
