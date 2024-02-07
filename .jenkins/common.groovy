@@ -50,7 +50,7 @@ def runTestCommand (platform, project) {
                 pip3 install pandas
                 wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
                 unzip HevcConformance.zip
-                python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode ----files_directory ./HevcConformance --results_directory .
+                python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
                 """
 
     platform.runCommand(this, command)
