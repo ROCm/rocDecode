@@ -132,7 +132,7 @@ protected:
     HevcSeqParamSet*    m_sps_ = nullptr;
     HevcPicParamSet*    m_pps_ = nullptr;
     HevcSliceSegHeader* m_sh_copy_ = nullptr;
-    HevcSliceInfo       slice_info_list_[256]; // todo: make it dynamic
+    std::vector<HevcSliceInfo> slice_info_list_;
 
     HevcNalUnitHeader   slice_nal_unit_header_;
     HevcPicInfo         curr_pic_info_;

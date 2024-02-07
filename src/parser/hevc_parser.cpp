@@ -45,6 +45,7 @@ HevcVideoParser::HevcVideoParser() {
     m_sps_ = AllocStruct<HevcSeqParamSet>(MAX_SPS_COUNT);
     m_pps_ = AllocStruct<HevcPicParamSet>(MAX_PPS_COUNT);
     m_sh_copy_ = AllocStruct<HevcSliceSegHeader>(1);
+    slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
 
     sei_rbsp_buf_ = nullptr;
     sei_rbsp_buf_size_ = 0;
@@ -415,8 +416,12 @@ int HevcVideoParser::SendPicForDecode() {
     pic_param_ptr->st_rps_bits = slice_info_list_[0].slice_header.short_term_ref_pic_set_size;
 
     /// Fill slice parameters
+    // Resize if needed
+    if (num_slices_ > slice_param_list_.size()) {
+        slice_param_list_.resize(num_slices_, {0});
+    }
     for (int slice_index = 0; slice_index < num_slices_; slice_index++) {
-        RocdecHevcSliceParams *slice_params_ptr = &dec_pic_params_.slice_params[slice_index].hevc;
+        RocdecHevcSliceParams *slice_params_ptr = &slice_param_list_[slice_index].hevc;
         HevcSliceInfo *p_slice_info = &slice_info_list_[slice_index];
         HevcSliceSegHeader *p_slice_header = &p_slice_info->slice_header;
 
@@ -514,6 +519,7 @@ int HevcVideoParser::SendPicForDecode() {
         slice_params_ptr->entry_offset_to_subset_array = 0; // don't care
         slice_params_ptr->slice_data_num_emu_prevn_bytes = 0; // don't care
     }
+    dec_pic_params_.slice_params = slice_param_list_.data();
 
     /// Fill scaling lists
     if (sps_ptr->scaling_list_enabled_flag) {
@@ -628,6 +634,11 @@ bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_dat
                 case NAL_UNIT_CODED_SLICE_RASL_R: {
                     // Save slice NAL unit header
                     slice_nal_unit_header_ = nal_unit_header_;
+
+                    // Resize slice info list if needed
+                    if ((num_slices_ + 1) > slice_info_list_.size()) {
+                        slice_info_list_.resize(num_slices_ + 1, {0});
+                    }
 
                     slice_info_list_[num_slices_].slice_data_offset = curr_start_code_offset_;
                     slice_info_list_[num_slices_].slice_data_size = nal_unit_size_;

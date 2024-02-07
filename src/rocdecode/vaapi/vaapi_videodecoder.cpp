@@ -24,7 +24,10 @@ THE SOFTWARE.
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
-    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_params_buf_id_{{}}, slice_data_buf_id_{0} {};
+    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_data_buf_id_{0} {
+    num_slices_ = 0;
+    slice_params_buf_id_.assign(INIT_SLICE_PARAM_LIST_NUM, {0});
+};
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
     if (drm_fd_ != -1) {
@@ -210,7 +213,6 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         return ROCDEC_INVALID_PARAMETER;
     }
     curr_surface_id = va_surface_ids_[pPicParams->curr_pic_idx];
-    num_slices_ = pPicParams->num_slices;
 
     // Upload data buffers
     switch (decoder_create_info_.codec_type) {
@@ -279,18 +281,25 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
         }
     }
 
+    // Destroy the data buffers of the previous frame
     rocDecStatus rocdec_status = DestroyDataBuffers();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to destroy VAAPI buffer.");
         return rocdec_status;
     }
+
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAPictureParameterBufferType, pic_params_size, 1, pic_params_ptr, &pic_params_buf_id_));
     if (scaling_list_enabled) {
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VAIQMatrixBufferType, iq_matrix_size, 1, iq_matrix_ptr, &iq_matrix_buf_id_));
     }
+    // Resize if needed
+    num_slices_ = pPicParams->num_slices;
+    if (num_slices_ > slice_params_buf_id_.size()) {
+        slice_params_buf_id_.resize(num_slices_, {0});
+    }
     for (int i = 0; i < num_slices_; i++) {
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, slice_params_size, 1, slice_params_ptr, &slice_params_buf_id_[i]));
-        slice_params_ptr = (void*)((uint8_t*)slice_params_ptr + sizeof(pPicParams->slice_params[0]));
+        slice_params_ptr = (void*)((uint8_t*)slice_params_ptr + sizeof(RocdecSliceParams));
     }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->bitstream_data_len, 1, (void*)pPicParams->bitstream_data, &slice_data_buf_id_));
 
@@ -300,9 +309,10 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     if (scaling_list_enabled) {
         CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &iq_matrix_buf_id_, 1));
     }
-    for (int i = 0; i < num_slices_; i++) {
+    /*for (int i = 0; i < num_slices_; i++) {
         CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_params_buf_id_[i], 1));
-    }
+    }*/
+    CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, slice_params_buf_id_.data(), num_slices_));
     CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_data_buf_id_, 1));
     CHECK_VAAPI(vaEndPicture(va_display_, va_context_id_));
 

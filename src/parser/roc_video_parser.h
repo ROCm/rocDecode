@@ -75,6 +75,7 @@ typedef struct {
 
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
+#define INIT_SLICE_LIST_NUM 16 // initial slice information/parameter struct list size
 
 /**
  * @brief Base class for video parsing
@@ -129,6 +130,7 @@ protected:
     int                 num_slices_;
     uint8_t*            pic_stream_data_ptr_;
     int                 pic_stream_data_size_;
+    std::vector<RocdecSliceParams> slice_param_list_;
 
     uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
     uint32_t            sei_rbsp_buf_size_;

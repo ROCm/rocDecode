@@ -42,6 +42,8 @@ THE SOFTWARE.
     }\
 }
 
+#define INIT_SLICE_PARAM_LIST_NUM 256 // initial slice parameter buffer list size
+
 class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
@@ -64,7 +66,7 @@ private:
 
     VABufferID pic_params_buf_id_;
     VABufferID iq_matrix_buf_id_;
-    VABufferID slice_params_buf_id_[256]; // todo: change to dynamic
+    std::vector<VABufferID> slice_params_buf_id_;
     uint32_t num_slices_;
     VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;

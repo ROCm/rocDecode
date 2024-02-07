@@ -29,6 +29,7 @@ RocVideoParser::RocVideoParser() {
     new_sps_activated_ = false;
     frame_rate_.numerator = 0;
     frame_rate_.denominator = 0;
+    slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
 }
 
 /**
