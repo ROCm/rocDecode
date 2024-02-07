@@ -826,7 +826,7 @@ typedef struct _RocdecPicParams {
         uint32_t                codec_reserved[256];
     } pic_params;
 
-    /*! \brief Variable size array. The user should allocate one SliceParams for each slice.
+    /*! \brief Variable size array. The user should allocate one RocdecPicParams struct for each slice.
      */
     RocdecSliceParams *slice_params;
 

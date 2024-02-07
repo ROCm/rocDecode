@@ -309,9 +309,6 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     if (scaling_list_enabled) {
         CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &iq_matrix_buf_id_, 1));
     }
-    /*for (int i = 0; i < num_slices_; i++) {
-        CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_params_buf_id_[i], 1));
-    }*/
     CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, slice_params_buf_id_.data(), num_slices_));
     CHECK_VAAPI(vaRenderPicture(va_display_, va_context_id_, &slice_data_buf_id_, 1));
     CHECK_VAAPI(vaEndPicture(va_display_, va_context_id_));
