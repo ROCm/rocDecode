@@ -39,7 +39,7 @@ with open('../CMakeLists.txt', encoding='utf-8') as f:
 left_nav_title = f"rocDecode {version_number} Documentation"
 
 shutil.copy2('../README.md','./quickStart.md')
-shutil.copy2('../sample/README.md','./sample/README.md')
+shutil.copy2('../samples/README.md','./samples/README.md')
 shutil.copy2('../samples/videoDecode/README.md','./samples/videoDecode/README.md')
 shutil.copy2('../samples/videoDecodeFork/README.md','./samples/videoDecodeFork/README.md')
 shutil.copy2('../samples/videoDecodeMem/README.md','./samples/videoDecodeMem/README.md')

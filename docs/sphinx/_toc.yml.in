@@ -18,7 +18,7 @@ subtrees:
   - file: tutorial/usingAPI
 - caption: Samples
   entries:
-  - file: sample/README
+  - file: samples/README
   - file: samples/videoDecode/README
   - file: samples/videoDecodeFork/README
   - file: samples/videoDecodeMem/README
