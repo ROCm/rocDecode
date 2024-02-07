@@ -154,6 +154,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-test COMPONENT test)
   # install test cmake
   install(FILES test/CMakeLists.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
+  install(DIRECTORY test/testScripts DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")

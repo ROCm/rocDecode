@@ -37,23 +37,36 @@ __status__ = "Shipping"
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocDecode_directory',   type=str, default='',
                     help='The rocDecode Directory - required')
+parser.add_argument('--videodecode_exe',   type=str, default='',
+                    help='The rocDecode Directory - optional')
 parser.add_argument('--gpu_device_id',      type=int, default=0,
                     help='The GPU device ID that will be used to run the test on it - optional (default:0 [range:0 - N-1] N = total number of available GPUs on a machine)')
 parser.add_argument('--files_directory',    type=str, default='',
                     help='The path to a dirctory containing one or more supported files for decoding (e.g., mp4, mov, etc.) and their corresponding reference MD5 digests - required')
+parser.add_argument('--results_directory',    type=str, default='',
+                    help='The path to a dirctory to store results - optional')
 
 args = parser.parse_args()
 
 rocDecodeDirectory = args.rocDecode_directory
 gpuDeviceID = args.gpu_device_id
 filesDir = args.files_directory
+videoDecodeEXE = args.videodecode_exe
+resultsDir = args.results_directory
 
 print("\nrunrocDecodeTests V"+__version__+"\n")
 
 # rocDecode Application
 scriptPath = os.path.dirname(os.path.realpath(__file__))
-rocDecode_exe = rocDecodeDirectory+'/samples/videoDecode/build/videodecode'
-resultsPath = scriptPath+'/rocDecode_videoDecode_results'
+if videoDecodeEXE == '':
+    rocDecode_exe = rocDecodeDirectory+'/samples/videoDecode/build/videodecode'
+else:
+    rocDecode_exe = videoDecodeEXE
+if resultsDir == '':
+    resultsPath = scriptPath+'/rocDecode_videoDecode_results'
+else:
+    resultsPath = resultsDir+'/rocDecode_videoDecode_results'
+
 run_rocDecode_app = os.path.abspath(rocDecode_exe)
 os.system('(mkdir -p ' +  resultsPath + ')')
 if(os.path.isfile(run_rocDecode_app)):
