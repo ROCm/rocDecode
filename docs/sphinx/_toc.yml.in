@@ -4,7 +4,10 @@ root: doxygen/html/index
 subtrees:
 - caption: Quick-start
   entries:
-  - file: quickStart
+  - file: tutorial/overview
+    subtrees:
+      - entries:
+        - file: quickStart
 - caption: Hardware requirements
   entries:
   - file: tutorial/hardwareCapabilities
@@ -14,17 +17,21 @@ subtrees:
 - caption: Tutorials
   entries:
   - file: tutorial/overview
-  - file: tutorial/decodingPipeline
-  - file: tutorial/usingAPI
+    subtrees:
+      - entries:
+        - file: tutorial/decodingPipeline
+        - file: tutorial/usingAPI
 - caption: Samples
   entries:
   - file: samples
-  - file: videoDecode
-  - file: videoDecodeFork
-  - file: videoDecodeMem
-  - file: videoDecodeMultiFiles
-  - file: videoDecodePerf
-  - file: videoDecodeRGB
+    subtrees:
+      - entries:
+        - file: videoDecode
+        - file: videoDecodeFork
+        - file: videoDecodeMem
+        - file: videoDecodeMultiFiles
+        - file: videoDecodePerf
+        - file: videoDecodeRGB
 - caption: About
   entries:
   - file: license
