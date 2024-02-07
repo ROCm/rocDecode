@@ -42,7 +42,7 @@ THE SOFTWARE.
     }\
 }
 
-#define INIT_SLICE_PARAM_LIST_NUM 256 // initial slice parameter buffer list size
+#define INIT_SLICE_PARAM_LIST_NUM 16 // initial slice parameter buffer list size
 
 class VaapiVideoDecoder {
 public:
