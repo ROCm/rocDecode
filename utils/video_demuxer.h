@@ -46,7 +46,19 @@ class VideoDemuxer {
                 virtual ~StreamProvider() {}
                 virtual int GetData(uint8_t *buf, int buf_size) = 0;
         };
-        AVCodecID GetCodecID() { return av_video_codec_id_; };
+        AVCodecID GetCodecID() { return av_video_codec_id_; }
+        AVPixelFormat GetChromaFormat() { return chroma_format_; }
+        void GetCodedDims(int *width, int *height) {
+            *width = coded_width_;
+            *height = coded_height_;
+        }
+        int GetBitDepth() {
+            return bit_depth_;
+        }
+        int GetFrameSize() {
+            return coded_width_ * (coded_height_ + chroma_height_) * bytes_per_pixel_;
+        }
+
         VideoDemuxer(const char *input_file_path) : VideoDemuxer(CreateFmtContextUtil(input_file_path)) {}
         VideoDemuxer(StreamProvider *stream_provider) : VideoDemuxer(CreateFmtContextUtil(stream_provider)) {av_io_ctx_ = av_fmt_input_ctx_->pb;}
         ~VideoDemuxer();
@@ -62,6 +74,9 @@ class VideoDemuxer {
         AVPacket* packet_filtered_ = nullptr;
         AVBSFContext *av_bsf_ctx_ = nullptr;
         AVCodecID av_video_codec_id_;
+        AVPixelFormat chroma_format_;
+        int coded_width_, coded_height_, chroma_height_;
+        int bit_depth_, bytes_per_pixel_;
         uint8_t *data_with_header_ = nullptr;
         int av_stream_ = 0;
         bool is_h264_ = false; 
@@ -175,8 +190,56 @@ VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx
         return;
     }
     av_video_codec_id_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->codec_id;
+    coded_width_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->width;
+    coded_height_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->height;
+    chroma_format_ = (AVPixelFormat)av_fmt_input_ctx_->streams[av_stream_]->codecpar->format;
     AVRational time_base = av_fmt_input_ctx_->streams[av_stream_]->time_base;
     time_base_ = av_q2d(time_base);
+    // Set bit depth, chroma height, bits per pixel based on chroma_format_ of input
+    switch (chroma_format_)
+    {
+    case AV_PIX_FMT_YUV420P10LE:
+    case AV_PIX_FMT_GRAY10LE:   // monochrome is treated as 420 with chroma filled with 0x0
+        bit_depth_ = 10;
+        chroma_height_ = (coded_height_ + 1) >> 1;
+        bytes_per_pixel_ = 2;
+        break;
+    case AV_PIX_FMT_YUV420P12LE:
+        bit_depth_ = 12;
+        chroma_height_ = (coded_height_ + 1) >> 1;
+        bytes_per_pixel_ = 2;
+        break;
+    case AV_PIX_FMT_YUV444P10LE:
+        bit_depth_ = 10;
+        chroma_height_ = coded_height_ << 1;
+        bytes_per_pixel_ = 2;
+        break;
+    case AV_PIX_FMT_YUV444P12LE:
+        bit_depth_ = 12;
+        chroma_height_ = coded_height_ << 1;
+        bytes_per_pixel_ = 2;
+        break;
+    case AV_PIX_FMT_YUV444P:
+        bit_depth_ = 8;
+        chroma_height_ = coded_height_ << 1;
+        bytes_per_pixel_ = 1;
+        break;
+    case AV_PIX_FMT_YUV420P:
+    case AV_PIX_FMT_YUVJ420P:
+    case AV_PIX_FMT_YUVJ422P:   // jpeg decoder output is subsampled to NV12 for 422/444 so treat it as 420
+    case AV_PIX_FMT_YUVJ444P:   // jpeg decoder output is subsampled to NV12 for 422/444 so treat it as 420
+    case AV_PIX_FMT_GRAY8:      // monochrome is treated as 420 with chroma filled with 0x0
+        bit_depth_ = 8;
+        chroma_height_ = (coded_height_ + 1) >> 1;
+        bytes_per_pixel_ = 1;
+        break;
+    default:
+        std::cerr << "Warning: ChromaFormat not recognized. Assuming 420" << std::endl;
+        chroma_format_ = AV_PIX_FMT_YUV420P;
+        bit_depth_ = 8;
+        chroma_height_ = (coded_height_ + 1) >> 1;
+        bytes_per_pixel_ = 1;
+    }
 
     is_h264_ = av_video_codec_id_ == AV_CODEC_ID_H264 && (!strcmp(av_fmt_input_ctx_->iformat->long_name, "QuickTime / MOV") 
                 || !strcmp(av_fmt_input_ctx_->iformat->long_name, "FLV (Flash Video)") 

@@ -24,6 +24,38 @@ THE SOFTWARE.
 #include <stdint.h>
 #include <hip/hip_runtime.h>
 
+#define HIP_CALL(call) check(call, __LINE__, __FILE__)
+
+/**
+ * @brief Function to resize both planes of an NV12 image
+ * 
+ * 
+ * @param p_dst_nv12 - destination pointer Y plane
+ * @param dst_pitch - destination pitch
+ * @param dst_width - destination width
+ * @param dst_height - destination height
+ * @param p_src_nv12 - source pointer
+ * @param src_pitch - source pitch
+ * @param src_width - source width
+ * @param src_height - source height
+ * @param p_src_nv12_uv - source pointer of UV plane
+ */
+void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_nv12, int src_pitch, int src_width, int src_height, unsigned char* p_src_nv12_uv);
+
+/**
+ * @brief 
+ * 
+ * @param p_dst_p016 
+ * @param dst_pitch 
+ * @param dst_width 
+ * @param dst_height 
+ * @param p_src_p016 
+ * @param src_pitch 
+ * @param src_width 
+ * @param src_height 
+ * @param p_src_p016_uv 
+ */
+void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016, int src_pitch, int src_width, int src_height, unsigned char* p_src_p016_uv);
 
 /**
  * @brief Function to resize 420 YUV image
@@ -33,26 +65,20 @@ THE SOFTWARE.
  * @param p_dst_V  - Destination V plane pointer
  * @param dst_pitch_Y   - Destination Pitch Y
  * @param dst_pitch_UV  - Destination Pitch UV
- * @param dst_width     
- * @param dst_height    
- * @param p_src_Y       
- * @param p_src_U       
- * @param p_src_V 
- * @param dst_pitch_Y 
- * @param dst_pitch_UV 
- * @param src_width 
- * @param dst_width 
- * @param b_nv12 
+ * @param dst_width     - Destination Width
+ * @param dst_height    - Destination Height
+ * @param p_src_Y       - Src Y plane pointer
+ * @param p_src_U       - Src U plane pointer
+ * @param p_src_V       - Src V plane pointer
+ * @param src_pitch_Y   - Src Pitch Y
+ * @param src_pitch_UV  - Src Pitch UV
+ * @param src_width     - Src Width
+ * @param src_height    - Src Height
+ * @param b_nv12        - Is uv interleaved?                   
  */
-void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_pitch_Y, int dst_pitch_UV, int dst_width, int dst_height,
-                uint8_t *p_src_Y,
-                uint8_t* p_src_U,
-                uint8_t* p_src_V, 
-                int dst_pitch_Y,
-                int dst_pitch_UV,
-                int src_width,
-                int dst_width,
-                bool b_nv12);
+void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_pitch_Y, int dst_pitch_UV, 
+                int dst_width, int dst_height, uint8_t *p_src_Y, uint8_t* p_src_U, uint8_t* p_src_V,
+                int src_pitch_Y, int src_pitch_UV, int src_width, int src_height, bool b_nv12);
 
 /**
  * @brief The function to launch ResizeYUV HIP kernel

@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 #include "colorspace_kernels.h"
+#include "resize_kernels.h"
 
 FILE *fpOut = nullptr;
 enum OutputFormatEnum {
@@ -159,11 +160,14 @@ std::queue<uint8_t*> frame_queue[frame_buffers_size];
 std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
 
-void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, OutputSurfaceInfo **surf_info, OutputFormatEnum e_output_format,
-    uint8_t *p_rgb_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
-    size_t rgb_image_size;
+void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputFormatEnum e_output_format,
+    uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
+    size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
     int current_frame_index = 0;
+    OutputSurfaceInfo *resize_surf_info = new OutputSurfaceInfo;
+    memcpy(resize_surf_info, *surf_info, sizeof(OutputSurfaceInfo));
+    OutputSurfaceInfo *p_surf_info = *surf_info;
     uint8_t *frame;
 
     while (continue_processing || !frame_queue[current_frame_index].empty()) {
@@ -177,31 +181,59 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
             frame = frame_queue[current_frame_index].front();
             frame_queue[current_frame_index].pop();
         }
+        if (p_resize_dim->w && p_resize_dim->h) {
+            // check if the resize dims are different from output dims
+            // resize is needed since output dims are different from resize dims
+            if (((*surf_info)->output_width != p_resize_dim->w) || ((*surf_info)->output_height != p_resize_dim->h)) {
+                resize_image_size = p_resize_dim->w * (p_resize_dim->h + (p_resize_dim->h >> 1)) * (*surf_info)->bytes_per_pixel;
+                if (p_resize_dev_mem != nullptr && resize_image_size > 0) {
+                    hip_status = hipMalloc(&p_resize_dev_mem, resize_image_size);
+                    if (hip_status != hipSuccess) {
+                        std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
+                        return;
+                    }
+                 }
+                 // call resize kernel
+                 if ((*surf_info)->bytes_per_pixel == 2)
+                    ResizeP016(p_resize_dev_mem, p_resize_dim->w*2, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, 
+                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch));
+                 else                                
+                    ResizeNv12(p_resize_dev_mem, p_resize_dim->w, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, 
+                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch));
+                resize_surf_info->output_width = p_resize_dim->w;
+                resize_surf_info->output_height = p_resize_dim->h;
+                resize_surf_info->output_pitch = p_resize_dim->w * (*surf_info)->bytes_per_pixel;
+                resize_surf_info->output_vstride = p_resize_dim->h;
+                resize_surf_info->output_surface_size_in_bytes = resize_surf_info->output_pitch * (p_resize_dim->h + (p_resize_dim->h >> 1));
+                resize_surf_info->mem_type = OUT_SURFACE_MEM_DEV_COPIED;
+                p_surf_info = resize_surf_info;
+            }
+        }
 
         if (convert_to_rgb) {
             int rgb_width;
-            if ((*surf_info)->bit_depth == 8) {
-                rgb_width = ((*surf_info)->output_width + 1) & ~1; // has to be a multiple of 2 for hip colorconvert kernels
-                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * (*surf_info)->output_height * 3 : rgb_width * (*surf_info)->output_height * 4;
+            if (p_surf_info->bit_depth == 8) {
+                rgb_width = (p_surf_info->output_width + 1) & ~1; // has to be a multiple of 2 for hip colorconvert kernels
+                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * p_surf_info->output_height * 3 : rgb_width * p_surf_info->output_height * 4;
             } else {
-                rgb_width = ((*surf_info)->output_width + 1) & ~1;
-                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * (*surf_info)->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
-                                                        rgb_width * (*surf_info)->output_height * 6 : rgb_width * (*surf_info)->output_height * 8;
+                rgb_width = (p_surf_info->output_width + 1) & ~1;
+                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * p_surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
+                                                        rgb_width * p_surf_info->output_height * 6 : rgb_width * p_surf_info->output_height * 8;
             }
-            if (p_rgb_dev_mem == nullptr) {
+            if (p_rgb_dev_mem == nullptr) {                
                 hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
                 if (hip_status != hipSuccess) {
                     std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
                     return;
                 }
             }
-            ColorConvertYUV2RGB(frame, *surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
+            ColorConvertYUV2RGB(frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
         }
         if (dump_output_frames) {
             if (convert_to_rgb)
-                DumpRGBImage(output_file_path, p_rgb_dev_mem, *surf_info, rgb_image_size);
+                DumpRGBImage(output_file_path, p_rgb_dev_mem, p_surf_info, rgb_image_size);
             else
-                viddec.SaveFrameToFile(output_file_path, frame, *surf_info);
+                viddec.SaveFrameToFile(output_file_path, frame, p_surf_info);
         }
 
         //current_frame_index = 1 - current_frame_index;
@@ -216,13 +248,17 @@ int main(int argc, char **argv) {
     std::string input_file_path, output_file_path;
     bool dump_output_frames = false;
     bool convert_to_rgb = false;
+    bool resize_yuv  = false;
     int device_id = 0;
     Rect crop_rect = {};
+    Dim resize_dim = {};
+    Dim coded_dims = {};
     Rect *p_crop_rect = nullptr;
     size_t rgb_image_size;
     uint32_t rgb_image_stride;
     hipError_t hip_status = hipSuccess;
     uint8_t *p_rgb_dev_mem = nullptr;
+    uint8_t *p_resize_dev_mem = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     OutputFormatEnum e_output_format = native; 
     int rgb_width;
@@ -277,6 +313,16 @@ int main(int argc, char **argv) {
             p_crop_rect = &crop_rect;
             continue;
         }
+        if (!strcmp(argv[i], "-resize")) {
+            if (++i == argc || 2 != sscanf(argv[i], "%dx%d", &resize_dim.w, &resize_dim.h)) {
+                ShowHelpAndExit("-resize");
+            }
+            if (resize_dim.w % 2 == 1 || resize_dim.h % 2 == 1) {
+                std::cout << "Resizing dimensions must have width and height of even numbers" << std::endl;
+                exit(1);
+            }
+            continue;
+        }
         if (!strcmp(argv[i], "-of")) {
             if (++i == argc) {
                 ShowHelpAndExit("-of");
@@ -295,6 +341,7 @@ int main(int argc, char **argv) {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect);
+        demuxer.GetCodedDims(&coded_dims.w, &coded_dims.h);
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
@@ -314,10 +361,13 @@ int main(int argc, char **argv) {
         uint32_t width, height;
         double total_dec_time = 0;
         convert_to_rgb = e_output_format != native;
-
+        if (resize_dim.w && resize_dim.h) {
+            resize_yuv = true;
+        }
+        
         std::atomic<bool> continue_processing(true);
-        std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
+        std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, std::ref(e_output_format),
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
