@@ -6,21 +6,11 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-    String installDKMS = 'sudo apt -y install amdgpu-dkms'
-
-    if (platform.jenkinsLabel.contains('rhel')) {
-        installDKMS = 'sudo yum -y install amdgpu-dkms'
-    }
-    else if (platform.jenkinsLabel.contains('sles')) {
-        installDKMS = 'echo amdgpu-dkms not available'
-    }
-
+    
     def command = """#!/usr/bin/env bash
                 set -x
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
-                ${installDKMS}
-                python rocDecode-setup.py
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
                 cmake ${buildTypeArg} ../..
                 make -j\$(nproc)
@@ -53,6 +43,9 @@ def runTestCommand (platform, project) {
                 cmake /opt/rocm/share/rocdecode/samples/videoDecode/
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+                cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
+                cmake /opt/rocm/share/rocdecode/test/
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
                 """
 
     platform.runCommand(this, command)

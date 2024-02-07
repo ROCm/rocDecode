@@ -37,7 +37,7 @@ THE SOFTWARE.
 #define CHECK_VAAPI(call) {\
     VAStatus va_status = call;\
     if (va_status != VA_STATUS_SUCCESS) {\
-        std::cout << "VAAPI failure: " << #call << " failed with 'status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        std::cout << "VAAPI failure: " << #call << " failed with status: " << std::hex << "0x" << va_status << std::dec << " = '" << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
         return ROCDEC_RUNTIME_ERROR;\
     }\
 }
@@ -50,6 +50,7 @@ public:
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
+    rocDecStatus SyncSurface(int pic_idx);
     rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
 private:
     RocDecoderCreateInfo decoder_create_info_;

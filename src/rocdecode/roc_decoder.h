@@ -42,6 +42,16 @@ THE SOFTWARE.
     }\
 }
 
+struct HipInteropDeviceMem {
+    hipExternalMemory_t hip_ext_mem; // Interface to the vaapi-hip interop
+    uint8_t* hip_mapped_device_mem; // Mapped device memory for the YUV plane
+    uint32_t width; // Width of the surface in pixels.
+    uint32_t height; // Height of the surface in pixels.
+    uint32_t offset[3]; // Offset of each plane
+    uint32_t pitch[3]; // Pitch of each plane
+    uint32_t num_layers; // Number of layers making up the surface
+};
+
 class RocDecoder {
 public:
     RocDecoder(RocDecoderCreateInfo &decoder_create_info);
@@ -50,14 +60,14 @@ public:
     rocDecStatus DecodeFrame(RocdecPicParams *pic_params);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
-    rocDecStatus MapVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
-    rocDecStatus UnMapVideoFrame(int pic_idx);
+    rocDecStatus GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
 
 private:
     rocDecStatus InitHIP(int device_id);
+    rocDecStatus ReleaseVideoFrame(int pic_idx);
     int num_devices_;
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
     hipDeviceProp_t hip_dev_prop_;
-    std::vector<hipExternalMemory_t> hip_ext_mem_;
+    std::vector<HipInteropDeviceMem> hip_interop_;
 };

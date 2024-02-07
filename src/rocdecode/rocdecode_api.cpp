@@ -169,13 +169,13 @@ rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDe
 }
 
 /************************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, unsigned int *dev_mem_ptr,
+//! \fn rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, unsigned int *dev_mem_ptr,
 //!         unsigned int *horizontal_pitch, RocdecProcParams *vid_postproc_params);
 //! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
-rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
+rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
                     void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params) {
     if (decoder_handle == nullptr || dev_mem_ptr == nullptr || horizontal_pitch == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
@@ -183,29 +183,7 @@ rocDecMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
     auto handle = static_cast<DecHandle *>(decoder_handle);
     rocDecStatus ret;
     try {
-        ret = handle->roc_decoder_->MapVideoFrame(pic_idx, dev_mem_ptr, horizontal_pitch, vid_postproc_params);
-    }
-    catch(const std::exception& e) {
-        handle->CaptureError(e.what());
-        ERR(e.what())
-        return ROCDEC_RUNTIME_ERROR;
-    }
-    return ret;
-}
-
-/*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx)
-//! Unmap a previously mapped video frame with the associated pic_idx
-/*****************************************************************************************************/
-rocDecStatus ROCDECAPI 
-rocDecUnMapVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx) {
-    if (decoder_handle == nullptr) {
-        return ROCDEC_INVALID_PARAMETER;
-    }
-    auto handle = static_cast<DecHandle *>(decoder_handle);
-    rocDecStatus ret;
-    try {
-        ret = handle->roc_decoder_->UnMapVideoFrame(pic_idx);
+        ret = handle->roc_decoder_->GetVideoFrame(pic_idx, dev_mem_ptr, horizontal_pitch, vid_postproc_params);
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());

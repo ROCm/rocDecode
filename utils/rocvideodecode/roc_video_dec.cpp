@@ -333,7 +333,6 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     videoDecodeCreateInfo.chroma_format = p_video_format->chroma_format;
     videoDecodeCreateInfo.output_format = video_surface_format_;
     videoDecodeCreateInfo.bit_depth_minus_8 = p_video_format->bit_depth_luma_minus8;
-    videoDecodeCreateInfo.num_output_surfaces = 2;
     videoDecodeCreateInfo.num_decode_surfaces = num_decode_surfaces;
     videoDecodeCreateInfo.width = p_video_format->coded_width;
     videoDecodeCreateInfo.height = p_video_format->coded_height;
@@ -614,7 +613,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     RocdecProcParams video_proc_params = {};
     video_proc_params.progressive_frame = pDispInfo->progressive_frame;
     video_proc_params.top_field_first = pDispInfo->top_field_first;
-    video_proc_params.output_hipstream = hip_stream_;
 
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
@@ -651,7 +649,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     if (out_mem_type_ != OUT_SURFACE_MEM_NOT_MAPPED) {
         void * src_dev_ptr[3] = { 0 };
         uint32_t src_pitch[3] = { 0 };
-        ROCDEC_API_CALL(rocDecMapVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
+        ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
         RocdecDecodeStatus dec_status;
         memset(&dec_status, 0, sizeof(dec_status));
         rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
@@ -729,10 +727,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             }
 
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
-            if(src_dev_ptr[0] != nullptr) {
-                HIP_API_CALL(hipFree(src_dev_ptr[0]));
-            }
-            ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, pDispInfo->picture_index));
         }
     } else {
         RocdecDecodeStatus dec_status;
@@ -849,10 +843,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
         }
-        if (mapped_frame_ptr != nullptr) {
-            HIP_API_CALL(hipFree(mapped_frame_ptr));
-        }
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
     }
@@ -872,13 +862,6 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     // only needed when using internal mapped buffer
     while (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        DecFrameBuffer *fb = &vp_frames_q_.front();
-        void *mapped_frame_ptr = fb->frame_ptr;
-
-        if (mapped_frame_ptr != nullptr) {
-            HIP_API_CALL(hipFree(mapped_frame_ptr));
-        }
-        ROCDEC_API_CALL(rocDecUnMapVideoFrame(roc_decoder_, fb->picture_index));
         // pop decoded frame
         vp_frames_q_.pop();
     }
@@ -896,7 +879,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         hipError_t hip_status = hipSuccess;
         hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
         if (hip_status != hipSuccess) {
-            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
+            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hipGetErrorName(hip_status) << ")" << std::endl;
             delete [] hst_ptr;
             return;
         }

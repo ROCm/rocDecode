@@ -137,12 +137,13 @@ After de-muxing and parsing, the next step is to decode bitstream data contaiing
 The rocDecDecodeFrame() call takes decoder handle and the pointer to RocdecPicParams structure and kicks off video decoding using VA-API.
 
 ### 4.5: Preparing the decoded frame for further processing
-The decoded frames can be used further postprocessing using the rocDecMapVideoFrame() and rocDecUnMapVideoFrame() API calls. The successful completion of rocDecMapVideoFrame() indicates that the decoding process is completed and the device memory pointer is interopped to ROCm HIP address space for further processing of the decoded frame in device memory. The caller will get all the necessary information of the output surface like YUV format, dimensions, pitch etc. from this call. In the high level [RocVideoDecoder](../utils/rocvideodecode/) class, we provide 3 different surface tppe modes for the mapped surface as specified in OutputSurfaceMemoryType as explained below.
+The decoded frames can be used further postprocessing using the rocDecGetVideoFrame() API call. The successful completion of rocDecGetVideoFrame() indicates that the decoding process is completed and the device memory pointer is interopped to ROCm HIP address space for further processing of the decoded frame in device memory. The caller will get all the necessary information of the output surface like YUV format, dimensions, pitch etc. from this call. In the high level [RocVideoDecoder](../utils/rocvideodecode/) class, we provide 4 different surface type modes for the mapped surface as specified in OutputSurfaceMemoryType as explained below.
 
     typedef enum OutputSurfaceMemoryType_enum {
         OUT_SURFACE_MEM_DEV_INTERNAL = 0,      /**<  Internal interopped decoded surface memory **/
         OUT_SURFACE_MEM_DEV_COPIED = 1,        /**<  decoded output will be copied to a separate device memory **/
         OUT_SURFACE_MEM_HOST_COPIED = 2        /**<  decoded output will be copied to a separate host memory **/
+        OUT_SURFACE_MEM_NOT_MAPPED = 3         /**<  decoded output is not available (interop won't be used): useful for decode only performance app*/
     } OutputSurfaceMemoryType;
 
 If the mapped surface type is "OUT_SURFACE_MEM_DEV_INTERNAL", the direct pointer to the decoded surface is given to the user. The user is supposed to trigger rocDecUnMapVideoFrame() using "ReleaseFrame()" call of RocVideoDecoder class. If the requested surface type OUT_SURFACE_MEM_DEV_COPIED or OUT_SURFACE_MEM_HOST_COPIED, the internal decoded frame will be copied to another buffer either in device memory or host memory. After that it is immediately unmapped for re-use by the RocVideoDecoder class.
