@@ -133,6 +133,7 @@ protected:
     HevcPicParamSet*    m_pps_ = nullptr;
     HevcSliceSegHeader* m_sh_copy_ = nullptr;
     std::vector<HevcSliceInfo> slice_info_list_;
+    std::vector<RocdecHevcSliceParams> slice_param_list_;
 
     HevcNalUnitHeader   slice_nal_unit_header_;
     HevcPicInfo         curr_pic_info_;

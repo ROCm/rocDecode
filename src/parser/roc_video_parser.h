@@ -130,7 +130,6 @@ protected:
     int                 num_slices_;
     uint8_t*            pic_stream_data_ptr_;
     int                 pic_stream_data_size_;
-    std::vector<RocdecSliceParams> slice_param_list_;
 
     uint8_t             *sei_rbsp_buf_; // buffer to store SEI RBSP. Allocated at run time.
     uint32_t            sei_rbsp_buf_size_;

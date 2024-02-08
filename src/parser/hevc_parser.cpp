@@ -46,6 +46,7 @@ HevcVideoParser::HevcVideoParser() {
     m_pps_ = AllocStruct<HevcPicParamSet>(MAX_PPS_COUNT);
     m_sh_copy_ = AllocStruct<HevcSliceSegHeader>(1);
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
+    slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
 
     sei_rbsp_buf_ = nullptr;
     sei_rbsp_buf_size_ = 0;
@@ -421,7 +422,7 @@ int HevcVideoParser::SendPicForDecode() {
         slice_param_list_.resize(num_slices_, {0});
     }
     for (int slice_index = 0; slice_index < num_slices_; slice_index++) {
-        RocdecHevcSliceParams *slice_params_ptr = &slice_param_list_[slice_index].hevc;
+        RocdecHevcSliceParams *slice_params_ptr = &slice_param_list_[slice_index];
         HevcSliceInfo *p_slice_info = &slice_info_list_[slice_index];
         HevcSliceSegHeader *p_slice_header = &p_slice_info->slice_header;
 
@@ -519,7 +520,7 @@ int HevcVideoParser::SendPicForDecode() {
         slice_params_ptr->entry_offset_to_subset_array = 0; // don't care
         slice_params_ptr->slice_data_num_emu_prevn_bytes = 0; // don't care
     }
-    dec_pic_params_.slice_params = slice_param_list_.data();
+    dec_pic_params_.slice_params.hevc = slice_param_list_.data();
 
     /// Fill scaling lists
     if (sps_ptr->scaling_list_enabled_flag) {

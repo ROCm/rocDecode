@@ -422,7 +422,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     p_pic_param->frame_num = p_slice_header->frame_num;
 
     // Set up slice parameters
-    RocdecAvcSliceParams *p_slice_param = &dec_pic_params_.slice_params[0].avc; // Todo
+    RocdecAvcSliceParams *p_slice_param = dec_pic_params_.slice_params.avc; // Todo
 
     p_slice_param->slice_data_size = pic_stream_data_size_;
     p_slice_param->slice_data_offset = 0;

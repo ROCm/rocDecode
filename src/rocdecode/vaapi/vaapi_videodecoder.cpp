@@ -24,8 +24,7 @@ THE SOFTWARE.
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
-    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, slice_data_buf_id_{0} {
-    num_slices_ = 0;
+    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, num_slices_{0}, slice_data_buf_id_{0} {
     slice_params_buf_id_.assign(INIT_SLICE_PARAM_LIST_NUM, {0});
 };
 
@@ -236,7 +235,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
                 iq_matrix_size = sizeof(RocdecHevcIQMatrix);
             }
 
-            slice_params_ptr = (void*)&pPicParams->slice_params[0].hevc;
+            slice_params_ptr = (void*)pPicParams->slice_params.hevc;
             slice_params_size = sizeof(RocdecHevcSliceParams);
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferHEVC)) || (scaling_list_enabled && (iq_matrix_size != sizeof(VAIQMatrixBufferHEVC))) || 
@@ -265,7 +264,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             iq_matrix_ptr = (void*)&pPicParams->iq_matrix.avc;
             iq_matrix_size = sizeof(RocdecAvcIQMatrix);
 
-            slice_params_ptr = (void*)&pPicParams->slice_params[0].avc;
+            slice_params_ptr = (void*)pPicParams->slice_params.avc;
             slice_params_size = sizeof(RocdecAvcSliceParams);
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferH264)) || (iq_matrix_size != sizeof(VAIQMatrixBufferH264)) || (slice_params_size != sizeof(VASliceParameterBufferH264))) {
@@ -299,7 +298,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
     }
     for (int i = 0; i < num_slices_; i++) {
         CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceParameterBufferType, slice_params_size, 1, slice_params_ptr, &slice_params_buf_id_[i]));
-        slice_params_ptr = (void*)((uint8_t*)slice_params_ptr + sizeof(RocdecSliceParams));
+        slice_params_ptr = (void*)((uint8_t*)slice_params_ptr + slice_params_size);
     }
     CHECK_VAAPI(vaCreateBuffer(va_display_, va_context_id_, VASliceDataBufferType, pPicParams->bitstream_data_len, 1, (void*)pPicParams->bitstream_data, &slice_data_buf_id_));
 

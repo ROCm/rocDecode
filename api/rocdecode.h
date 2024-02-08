@@ -787,12 +787,6 @@ typedef struct _RocdecHevcIQMatrix {
     uint32_t                reserved[4];
 } RocdecHevcIQMatrix;
 
-typedef union _RocdecSliceParams {
-    // Todo: Add slice params defines for other codecs.
-    RocdecAvcSliceParams    avc;
-    RocdecHevcSliceParams   hevc;
-} RocdecSliceParams;
-
 /******************************************************************************************/
 //! \struct _RocdecPicParams
 //! \ingroup group_amd_rocdecode
@@ -826,9 +820,13 @@ typedef struct _RocdecPicParams {
         uint32_t                codec_reserved[256];
     } pic_params;
 
-    /*! \brief Variable size array. The user should allocate one RocdecPicParams struct for each slice.
+    /*! \brief Variable size array. The user should allocate one slice param struct for each slice.
      */
-    RocdecSliceParams *slice_params;
+    union {
+        // Todo: Add slice params defines for other codecs.
+        RocdecAvcSliceParams    *avc;
+        RocdecHevcSliceParams   *hevc;
+    } slice_params;
 
     union {
         // Todo: Added IQ matrix defines for other codecs.
