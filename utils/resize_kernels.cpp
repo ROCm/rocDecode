@@ -52,8 +52,8 @@ static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t te
 }
 
 template <typename YuvUnitx2>
-static void Resize(unsigned char *p_dst, unsigned char* dp_dst_uv, int dst_pitch, int dst_width, int dst_height, 
-                    unsigned char *p_src, int src_pitch, int src_width, int src_height) {
+static void Resize(unsigned char *p_dst, unsigned char* p_dst_uv, int dst_pitch, int dst_width, int dst_height, 
+                    unsigned char *p_src, int src_pitch, int src_width, int src_height, hipStream_t hip_stream) {
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = p_src;
@@ -67,33 +67,35 @@ static void Resize(unsigned char *p_dst, unsigned char* dp_dst_uv, int dst_pitch
     tex_desc.readMode = hipReadModeNormalizedFloat;
 
     hipTextureObject_t tex_y=0;
-    HIP_CALL(hipCreateTextureObject(&tex_y, &res_desc, &tex_desc, NULL));
+    HIP_API_CALL(hipCreateTextureObject(&tex_y, &res_desc, &tex_desc, NULL));
 
     res_desc.res.pitch2D.desc = hipCreateChannelDesc<YuvUnitx2>();
     res_desc.res.pitch2D.width = src_width >> 1;
     res_desc.res.pitch2D.height = src_height * 3 / 2;
 
-    hipTextureObject_t tex_uv=0;
-    HIP_CALL(hipCreateTextureObject(&tex_uv, &res_desc, &tex_desc, NULL));
+    hipTextureObject_t tex_uv=0;git
+    HIP_API_CALL(hipCreateTextureObject(&tex_uv, &res_desc, &tex_desc, NULL));
 
-    ResizeHip<YuvUnitx2> << <dim3((dst_width + 31) / 32, (dst_height + 31) / 32), dim3(16, 16) >> >(tex_y, tex_uv, p_dst, dp_dst_uv,
+    ResizeHip<YuvUnitx2> << <dim3((dst_width + 31) / 32, (dst_height + 31) / 32), dim3(16, 16), 0, hip_stream >> >(tex_y, tex_uv, p_dst, p_dst_uv,
         dst_pitch, dst_width, dst_height, 1.0f * dst_width / src_width, 1.0f * dst_height / src_height);
 
-    HIP_CALL(hipDestroyTextureObject(tex_y));
-    HIP_CALL(hipDestroyTextureObject(tex_uv));
+    HIP_API_CALL(hipDestroyTextureObject(tex_y));
+    HIP_API_CALL(hipDestroyTextureObject(tex_uv));
 }
 
-void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_dst_nv12, int src_pitch, int src_width, int src_height, unsigned char* p_dst_nv12_uv)
+void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_dst_nv12, 
+                int src_pitch, int src_width, int src_height, unsigned char* p_dst_nv12_uv, hipStream_t hip_stream)
 {
-    unsigned char* dp_dst_uv = p_dst_nv12_uv ? p_dst_nv12_uv : p_dst_nv12 + (dst_pitch*dst_height);
-    return Resize<uchar2>(p_dst_nv12, dp_dst_uv, dst_pitch, dst_width, dst_height, p_src_nv12, src_pitch, src_width, src_height);
+    unsigned char* p_dst_uv = p_dst_nv12_uv ? p_dst_nv12_uv : p_dst_nv12 + (dst_pitch*dst_height);
+    return Resize<uchar2>(p_dst_nv12, p_dst_uv, dst_pitch, dst_width, dst_height, p_src_nv12, src_pitch, src_width, src_height, hip_stream);
 }
 
 
-void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016, int src_pitch, int src_width, int src_height, unsigned char* p_src_p016_uv)
+void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016,
+               int src_pitch, int src_width, int src_height, unsigned char* p_src_p016_uv, hipStream_t hip_stream)
 {
-    unsigned char* dp_dst_uv = p_src_p016_uv ? p_src_p016_uv : p_dst_p016 + (dst_pitch*dst_height);
-    return Resize<ushort2>(p_dst_p016, dp_dst_uv, dst_pitch, dst_width, dst_height, p_src_p016, src_pitch, src_width, src_height);
+    unsigned char* p_dst_uv = p_src_p016_uv ? p_src_p016_uv : p_dst_p016 + (dst_pitch*dst_height);
+    return Resize<ushort2>(p_dst_p016, p_dst_uv, dst_pitch, dst_width, dst_height, p_src_p016, src_pitch, src_width, src_height, hip_stream);
 }
 
 static __global__ void Scale(hipTextureObject_t tex_src, uint8_t *p_dst, int pitch, int width, 
@@ -127,7 +129,7 @@ static __global__ void ScaleUV(hipTextureObject_t tex_src, uint8_t *p_dst, int p
 
 
 void ResizeHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
-                                    int src_width, int src_height, bool b_resize_uv = false) {
+                                    int src_width, int src_height, bool b_resize_uv, hipStream_t hip_stream) {
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = dp_src;
@@ -145,24 +147,24 @@ void ResizeHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int ds
     tex_desc.addressMode[2] = hipAddressModeClamp;
 
     hipTextureObject_t tex_src = 0;
-    HIP_CALL(hipCreateTextureObject(&tex_src, &res_desc, &tex_desc, NULL));
+    HIP_API_CALL(hipCreateTextureObject(&tex_src, &res_desc, &tex_desc, NULL));
 
     dim3 blockSize(16, 16, 1);
     dim3 gridSize(((uint32_t)dst_width + blockSize.x - 1) / blockSize.x, ((uint32_t)dst_height + blockSize.y - 1) / blockSize.y, 1);
 
     if (bUVPlane)
     {
-        Scale_uv << <gridSize, blockSize >> >(tex_src, dp_dst,
+        Scale_uv << <gridSize, blockSize, 0, hip_stream >> >(tex_src, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
     else
     {
-        Scale << <gridSize, blockSize >> >(tex_src, dp_dst,
+        Scale << <gridSize, blockSize, 0, hip_stream >> >(tex_src, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
 
-    HIP_CALL(hipGetLastError());
-    HIP_CALL(hipDestroyTextureObject(tex_src));
+    HIP_API_CALL(hipGetLastError());
+    HIP_API_CALL(hipDestroyTextureObject(tex_src));
 
 }
 
@@ -180,7 +182,8 @@ void ResizeYUV420(uint8_t *p_dst_Y,
                 int src_pitch_UV,
                 int src_width,
                 int src_height,
-                bool b_nv12) {
+                bool b_nv12,
+                hipStream_t hip_stream) {
 
     int uv_width_dst = (dst_width + 1) >> 1;
     int uv_height_dst = (dst_width + 1) >> 1;

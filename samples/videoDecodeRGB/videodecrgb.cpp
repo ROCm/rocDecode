@@ -196,10 +196,10 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                  // call resize kernel
                  if ((*surf_info)->bytes_per_pixel == 2)
                     ResizeP016(p_resize_dev_mem, p_resize_dim->w*2, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, 
-                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch));
+                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch), viddec.GetStream());
                  else                                
                     ResizeNv12(p_resize_dev_mem, p_resize_dim->w, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, 
-                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch));
+                                (*surf_info)->output_width, (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch), viddec.GetStream());
                 resize_surf_info->output_width = p_resize_dim->w;
                 resize_surf_info->output_height = p_resize_dim->h;
                 resize_surf_info->output_pitch = p_resize_dim->w * (*surf_info)->bytes_per_pixel;
