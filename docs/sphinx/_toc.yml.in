@@ -2,12 +2,12 @@
 # These comments will also be removed.
 root: doxygen/html/index
 subtrees:
-  - caption: Quick-start
+  - caption: What is rocDecode?
     entries:
       - file: quick_overview
-        subtrees:
-          - entries:
-            - file: quickStart
+  - caption: Quick-start
+    entries:
+      - file: quickStart
   - caption: Hardware requirements
     entries:
       - file: tutorial/hardwareCapabilities
@@ -17,10 +17,8 @@ subtrees:
   - caption: Tutorials
     entries:
       - file: tutorial/overview
-        subtrees:
-          - entries:
-            - file: tutorial/decodingPipeline
-            - file: tutorial/usingAPI
+      - file: tutorial/decodingPipeline
+      - file: tutorial/usingAPI
   - caption: Samples
     entries:
       - file: samples
