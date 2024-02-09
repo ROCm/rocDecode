@@ -66,7 +66,7 @@ private:
 
     VABufferID pic_params_buf_id_;
     VABufferID iq_matrix_buf_id_;
-    std::vector<VABufferID> slice_params_buf_id_;
+    std::vector<VABufferID> slice_params_buf_id_ = std::vector<VABufferID>(INIT_SLICE_PARAM_LIST_NUM, 0);
     uint32_t num_slices_;
     VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;

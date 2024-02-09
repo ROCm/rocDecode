@@ -25,7 +25,6 @@ THE SOFTWARE.
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
     pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, num_slices_{0}, slice_data_buf_id_{0} {
-    slice_params_buf_id_.assign(INIT_SLICE_PARAM_LIST_NUM, {0});
 };
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
