@@ -1,8 +1,6 @@
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 
-<p align="center"><img width="70%" src="docs/data/AMD_rocDecode_Logo.png" /></p>
-
 rocDecode is a high-performance video decode SDK for AMD GPUs. rocDecode API lets developers access the video decoding features available on the GPU.
 
 ## Supported codecs
