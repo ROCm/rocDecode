@@ -92,7 +92,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     curr_start_code_offset_ = 0;
     next_start_code_offset_ = 0;
 
-    slice_num_ = 0;
+    num_slices_ = 0;
     sei_message_count_ = 0;
     sei_payload_size_ = 0;
 
@@ -132,7 +132,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     // For each picture, only parse the first slice header
-                    if (slice_num_ == 0) {
+                    if (num_slices_ == 0) {
                         // Save slice NAL unit header
                         slice_nal_unit_header_ = nal_unit_header_;
 
@@ -168,7 +168,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         // Find a free buffer in DPB for the current picture
                         FindFreeBufInDpb();
                     }
-                    slice_num_++;
+                    num_slices_++;
                     break;
                 }
 
@@ -334,8 +334,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
 
     dec_pic_params_.bitstream_data_len = pic_stream_data_size_;
     dec_pic_params_.bitstream_data = pic_stream_data_ptr_;
-    dec_pic_params_.num_slices = slice_num_;
-    dec_pic_params_.slice_data_offsets = nullptr;
+    dec_pic_params_.num_slices = num_slices_;
 
     dec_pic_params_.ref_pic_flag = slice_nal_unit_header_.nal_ref_idc;
     dec_pic_params_.intra_pic_flag = p_slice_header->slice_type == kAvcSliceTypeI || p_slice_header->slice_type == kAvcSliceTypeI_7 || p_slice_header->slice_type == kAvcSliceTypeSI || p_slice_header->slice_type == kAvcSliceTypeSI_9;
@@ -423,7 +422,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     p_pic_param->frame_num = p_slice_header->frame_num;
 
     // Set up slice parameters
-    RocdecAvcSliceParams *p_slice_param = &dec_pic_params_.slice_params.avc;
+    RocdecAvcSliceParams *p_slice_param = dec_pic_params_.slice_params.avc; // Todo
 
     p_slice_param->slice_data_size = pic_stream_data_size_;
     p_slice_param->slice_data_offset = 0;
