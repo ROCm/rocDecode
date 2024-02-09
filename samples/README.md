@@ -6,12 +6,6 @@ rocDecode samples
 
 The video decode sample illustrates decoding a single packetized video stream using FFMPEG demuxer, video parser, and rocDecoder to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample uses the high-level RocVideoDecoder class which connects both the video parser and Rocdecoder. This process repeats in a loop until all frames have been decoded.
 
-## [Video decode fork](videoDecodeFork)
-
-The video decode fork sample creates multiple processes that demux and decode the same video in parallel. The demuxer uses FFMPEG to get the individual frames which are then sent to the decoder APIs. The sample uses shared memory to keep count of the number of frames decoded in the different processes. Each child process needs to exit successfully for the sample to complete successfully.
-
-This sample shows scaling in performance for `N` VCN engines as per GPU architecture.
-
 ## [Video decode memory](videoDecodeMem)
 
 The video decode memory sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which is then decoded on AMD hardware using rocDecode library.
