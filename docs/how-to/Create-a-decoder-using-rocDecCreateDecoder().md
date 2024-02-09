@@ -1,0 +1,3 @@
+## Creating a Decoder using rocDecCreateDecoder()
+
+Creates an instance of the hardware video decoder object and gives a handle to the user on successful creation. Refer to `RocDecoderCreateInfo` structure for information about parameters that are passed for creating the decoder. E.g. `RocDecoderCreateInfo::codec_type`  represents the codec type of the video. The decoder handle returned by the `rocDecCreateDecoder()` must be retained for the entire session of the decode because the handle is passed along with the other decoding APIs. In addition, users can inform display or crop dimensions along with this API. 
