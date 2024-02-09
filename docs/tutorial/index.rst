@@ -9,7 +9,6 @@
  Tutorials
 ***********************
 
-:ref:`install`
-
-:ref:`how-to`
+* :ref:`install`
+* :ref:`how-to`
 
