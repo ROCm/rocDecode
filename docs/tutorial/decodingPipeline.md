@@ -12,7 +12,7 @@ Steps in decoding video content for applications (available in rocDecode Toolkit
 3. Decode compressed video frames into YUV frames using rocDecode API.
 4. Wait for the decoding to finish.
 5. Map the decoded YUV frame from amd-gpu context to HIP (using VAAPI-HIP under ROCm)
-6. Execute HIP kernels in the mapped YUV frame (e.g., format conversion, scaling, object detection, classification etc.)
+6. Execute HIP kernels in the mapped YUV frame (e.g., format conversion, scaling, object detection, classification, etc.)
 7. Un-map decoded HIP YUV frame.
 
-The above steps are demonstrated in the [sample applications](../samples/README.md) included in the repository.
+The above steps are demonstrated in the sample applications included in the repository.

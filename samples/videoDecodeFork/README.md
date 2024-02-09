@@ -1,6 +1,6 @@
 # Video decode fork sample
 
-The video decode fork sample creates multiple processes which demux and decode the same video in parallel. The demuxer uses FFMPEG to get the individual frames which are then sent to the decoder APIs. The sample uses shared memory to keep count of the number of frames decoded in the different processes. Each child process needs to exit successfully for the sample to complete successfully.
+The video decode fork sample creates multiple processes that demux and decode the same video in parallel. The demuxer uses FFMPEG to get the individual frames which are then sent to the decoder APIs. The sample uses shared memory to keep count of the number of frames decoded in the different processes. Each child process needs to exit successfully for the sample to complete successfully.
 
 This sample shows scaling in performance for `N` VCN engines as per GPU architecture.
 

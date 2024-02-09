@@ -2,7 +2,7 @@
 
 This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded on AMD hardware using rocDecode library.
 
-This sample uses multiple threads to decode the same input video parallely.
+This sample uses multiple threads to decode the same input video parallelly.
 
 ## Prerequisites:
 

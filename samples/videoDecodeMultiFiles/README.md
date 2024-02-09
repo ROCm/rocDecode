@@ -1,8 +1,8 @@
 # Video decode multi files sample
 
-The video decode multiple files sample illustrates the use of providing a list of files as input to showcase the reconfigure option in rocDecode library. The input video files have to be of the same codec type to use the reconfigure option but can have different resolution or resize parameters.
+The video decodes multiple files sample illustrates the use of providing a list of files as input to showcase the reconfigure option in the rocDecode library. The input video files have to be of the same codec type to use the reconfigure option but can have different resolutions or resize parameters.
 
-The reconfigure option can be disabled by the user if needed. The input file is parsed line by line and data is stored in a queue. The individual video files are demuxed and decoded one after the other in a loop. Outpuot for each individual input file can also be stored if needed.
+The reconfigure option can be disabled by the user if needed. The input file is parsed line by line and data is stored in a queue. The individual video files are demuxed and decoded one after the other in a loop. Output for each input file can also be stored if needed.
 
 ## Prerequisites:
 
