@@ -28,3 +28,4 @@ subtrees:
             - file: api/rocdecode.h
             - file: api/rocparser.h 
         - file: license.rst
+          titlez: License
