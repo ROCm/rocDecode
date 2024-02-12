@@ -41,7 +41,7 @@ outfile output1.yuv [optional]
 z 0 [optional]
 sei 0 [optional]
 crop l,t,r,b [optional]
-m  0 [optional] [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]
+m  0 [optional] [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]
 infile input2.[mp4/mov...] [optional]
 outfile output2.yuv [optional]
 ...
