@@ -16,3 +16,5 @@ Steps in decoding video content for applications (available in rocDecode Toolkit
 7. Un-map decoded HIP YUV frame.
 
 The above steps are demonstrated in the sample applications included in the repository.
+
+For samples, refer to the samples directory. 
