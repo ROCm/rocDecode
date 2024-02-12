@@ -238,6 +238,12 @@ int main(int argc, char **argv) {
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        } else {
+            if (mem_type == 3) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                std::cout << "info: saved frames into " << output_file_path << std::endl;
+            }
         }
         if (b_generate_md5) {
             uint8_t *digest;

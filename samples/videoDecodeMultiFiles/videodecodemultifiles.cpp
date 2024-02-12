@@ -244,6 +244,13 @@ int main(int argc, char **argv) {
             if (!file_data.dump_output_frames) {
                 std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
                 std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+            } else {
+            if (file_data.mem_type == 3) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                std::cout << "info: saved frames into " << file_data.out_file << std::endl;
+            }
+
             }
             if (!use_reconfigure) {
                 delete viddec;
