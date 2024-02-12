@@ -4,7 +4,7 @@
 root: index
 subtrees:
   - entries
-    - file: what-is-rocDecode?
+    - file: what-is-rocDecode.md?
       title: What is rocDecode?
      - file: how-to/index.rst
        title: How To 
