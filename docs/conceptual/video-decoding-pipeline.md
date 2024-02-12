@@ -10,8 +10,8 @@ There are three main components in rocDecode, as shown below,
 
 The workflow is as follows,
 
-1. Demuxer extracts a segment of the video data and sends it to the Video Parser.
-2. The Video parser then extracts crucial information, such as picture and slice parameters, sent to Decoder APIs.
+1. Demuxer extracts a segment of the video data and sends it to the Video parser.
+2. The Video parser extracts crucial information, such as picture and slice parameters, sent to Decoder APIs.
 3. The APIs, then, submit the information to the hardware to decode a frame.
 
 This process repeats in a loop until all frames have been decoded.
