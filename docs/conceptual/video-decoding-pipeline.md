@@ -8,11 +8,15 @@ There are three main components in rocDecode, as shown below,
 
 <p align="center"><img width="70%" src="../data/VideoDecoderPipeline.PNG" /></p>
 
-Demuxer is based on FFmpeg, a leading multimedia framework. For more information, refer to https://ffmpeg.org/about.html.
+The workflow is as follows,
 
-Demuxer extracts a segment of the video data and sends it to the Video Parser. The parser then extracts crucial information, such as picture and slice parameters, sent to the Decoder APIs. The APIs, then, submit the information to the hardware to decode a frame. This process repeats in a loop until all frames have been decoded.
+1. Demuxer extracts a segment of the video data and sends it to the Video Parser.
+2. The Video parser then extracts crucial information, such as picture and slice parameters, sent to Decoder APIs.
+3. The APIs, then, submit the information to the hardware to decode a frame.
 
-Steps in decoding video content for applications (available in rocDecode Toolkit)
+This process repeats in a loop until all frames have been decoded.
+
+Steps in decoding video content for applications (available in the rocDecode Toolkit)
 
 1. Demultiplex the content into elementary stream packets (FFmpeg)
 2. Parse the demultiplexed packets into video frames for the decoder provided by rocDecode API.
