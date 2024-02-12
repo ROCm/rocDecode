@@ -25,7 +25,6 @@ subtrees:
         subtrees:
           - entries:
             - file: videoDecode
-            - file: videoDecodeFork
             - file: videoDecodeMem
             - file: videoDecodeMultiFiles
             - file: videoDecodePerf
