@@ -17,4 +17,4 @@ Steps in decoding video content for applications (available in rocDecode Toolkit
 
 The above steps are demonstrated in the sample applications included in the repository.
 
-For samples, refer to the samples directory. 
+For samples, refer to the [samples](https://github.com/Rmalavally/rocDecode/tree/rocDecode_reorg/samples) directory. 
