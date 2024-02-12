@@ -2,8 +2,13 @@
 
 <p align="center"><img width="70%" src="../data/VideoDecoderPipeline.PNG" /></p>
 
-There are three main components in the rocDecode shown in the figure above: Demuxer, Video Parser APIs, and Video Decode APIs.
-The Demuxer is based on FFMPEG. The demuxer extracts a segment of video data and sends it to the Video Parser. The parser then extracts crucial information such as picture and slice parameters, which is then sent to the Decoder APIs. These APIs submit the information to the hardware for the decoding of a frame. This process repeats in a loop until all frames have been decoded.
+There are three main components in rocDecode, as shown in the figure above, 
+
+- Demuxer
+- Video Parser APIs
+- Video Decode APIs
+
+Demuxer is based on FFMPEG. The demuxer extracts a segment of video data and sends it to the Video Parser. The parser then extracts crucial information such as picture and slice parameters, which is then sent to the Decoder APIs. These APIs submit the information to the hardware for the decoding of a frame. This process repeats in a loop until all frames have been decoded.
 
 Steps in decoding video content for applications (available in rocDecode Toolkit)
 
