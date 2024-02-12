@@ -34,6 +34,8 @@ AvcVideoParser::AvcVideoParser() {
     prev_ref_pic_bottom_field_ = 0;
     curr_ref_pic_bottom_field_ = 0;
 
+    slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
+    slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_, 0, sizeof(AvcPicture));
     InitDpb();
 }
@@ -129,28 +131,37 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 case kAvcNalTypeSlice_Data_Partition_A:
                 case kAvcNalTypeSlice_Data_Partition_B:
                 case kAvcNalTypeSlice_Data_Partition_C: {
+                    // Save slice NAL unit header
+                    slice_nal_unit_header_ = nal_unit_header_;
+
+                    // Resize slice info list if needed
+                    if ((num_slices_ + 1) > slice_info_list_.size()) {
+                        slice_info_list_.resize(num_slices_ + 1, {0});
+                    }
+
+                    slice_info_list_[num_slices_].slice_data_offset = curr_start_code_offset_;
+                    slice_info_list_[num_slices_].slice_data_size = nal_unit_size_;
+
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
-                    // For each picture, only parse the first slice header
-                    if (num_slices_ == 0) {
-                        // Save slice NAL unit header
-                        slice_nal_unit_header_ = nal_unit_header_;
+                    AvcSliceHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
+                    ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header);
 
+                    // Start decode process
+                    if (num_slices_ == 0) {
                         // Use the data directly from demuxer without copying
                         pic_stream_data_ptr_ = pic_data_buffer_ptr_ + curr_start_code_offset_;
                         // Picture stream data size is calculated as the diff between the frame end and the first slice offset.
                         // This is to consider the possibility of non-slice NAL units between slices.
                         pic_stream_data_size_ = pic_data_size - curr_start_code_offset_;
 
-                        ParseSliceHeader(rbsp_buf_, rbsp_size_, &slice_header_0_);
 
-                        // Start decode process
                         // Set current picture properties
                         CalculateCurrPoc(); // 8.2.1
                         prev_has_mmco_5_ = curr_has_mmco_5_;
                         prev_ref_pic_bottom_field_ = curr_ref_pic_bottom_field_;
-                        if (slice_header_0_.field_pic_flag) {
-                            if (slice_header_0_.bottom_field_flag) {
+                        if (p_slice_header->field_pic_flag) {
+                            if (p_slice_header->bottom_field_flag) {
                                 curr_pic_.pic_structure = kBottomField;
                             } else {
                                 curr_pic_.pic_structure = kTopField;
@@ -158,14 +169,18 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         } else {
                             curr_pic_.pic_structure = kFrame;
                         }
-                        curr_pic_.frame_num = slice_header_0_.frame_num;
+                        curr_pic_.frame_num = p_slice_header->frame_num;
+                    }
 
-                        // Set up reference picture list
-                        if (slice_header_0_.slice_type != kAvcSliceTypeI && slice_header_0_.slice_type != kAvcSliceTypeSI && slice_header_0_.slice_type != kAvcSliceTypeI_7 && slice_header_0_.slice_type != kAvcSliceTypeSI_9) {
-                            SetupReflist();
-                        }
+                    // Set up reference picture list
+                    if (p_slice_header->slice_type != kAvcSliceTypeI && p_slice_header->slice_type != kAvcSliceTypeSI && p_slice_header->slice_type != kAvcSliceTypeI_7 && p_slice_header->slice_type != kAvcSliceTypeSI_9) {
+                        SetupReflist(&slice_info_list_[num_slices_]);
+                    }
 
-                        // Find a free buffer in DPB for the current picture
+                    if (num_slices_ == 0) {
+                        // Find a free buffer in DPB for the current picture. Due to the current 1-1 mapping of DPB and 
+                        // decoded buffer pool at VAAP level, we need to get a surface from DPB for the current picture to be 
+                        // decoded into.
                         FindFreeBufInDpb();
                     }
                     num_slices_++;
@@ -318,7 +333,7 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     int i, j;
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
     AvcPicParameterSet *p_pps = &pps_list_[active_pps_id_];
-    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    AvcSliceHeader *p_slice_header = &slice_info_list_[0].slice_header;
     dec_pic_params_ = {0};
 
     dec_pic_params_.pic_width = pic_width_;
@@ -422,92 +437,101 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     p_pic_param->frame_num = p_slice_header->frame_num;
 
     // Set up slice parameters
-    RocdecAvcSliceParams *p_slice_param = dec_pic_params_.slice_params.avc; // Todo
-
-    p_slice_param->slice_data_size = pic_stream_data_size_;
-    p_slice_param->slice_data_offset = 0;
-    p_slice_param->slice_data_flag = 0; // VA_SLICE_DATA_FLAG_ALL;
-    p_slice_param->slice_data_bit_offset = 0;
-    p_slice_param->first_mb_in_slice = p_slice_header->first_mb_in_slice;
-    p_slice_param->slice_type = p_slice_header->slice_type;
-    p_slice_param->direct_spatial_mv_pred_flag = p_slice_header->direct_spatial_mv_pred_flag;
-    p_slice_param->num_ref_idx_l0_active_minus1 = p_slice_header->num_ref_idx_l0_active_minus1;
-    p_slice_param->num_ref_idx_l1_active_minus1 = p_slice_header->num_ref_idx_l1_active_minus1;
-    p_slice_param->cabac_init_idc = p_slice_header->cabac_init_idc;
-    p_slice_param->slice_qp_delta = p_slice_header->slice_qp_delta;
-    p_slice_param->disable_deblocking_filter_idc = p_slice_header->disable_deblocking_filter_idc;
-    p_slice_param->slice_alpha_c0_offset_div2 = p_slice_header->slice_alpha_c0_offset_div2;
-    p_slice_param->slice_beta_offset_div2 = p_slice_header->slice_beta_offset_div2;
-    p_slice_param->luma_log2_weight_denom = p_slice_header->pred_weight_table.luma_log2_weight_denom;
-    p_slice_param->chroma_log2_weight_denom = p_slice_header->pred_weight_table.chroma_log2_weight_denom;
-
-    // Ref lists
-    for (i = 0; i < dpb_buffer_.num_short_term + dpb_buffer_.num_long_term; i++) {
-        AvcPicture *p_ref_pic = &ref_list_0_[i];
-        if (p_ref_pic->is_reference != kUnusedForReference) {
-            p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->pic_idx;
-            if ( p_ref_pic->is_reference == kUsedForLongTerm) {
-                p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->long_term_pic_num;
-            } else {
-                p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->frame_num;
-            }
-            p_slice_param->ref_pic_list_0[i].flags = 0;
-            if (p_ref_pic->pic_structure != kFrame) {
-                p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
-            }
-            p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
-        }
+    // Resize if needed
+    if (num_slices_ > slice_param_list_.size()) {
+        slice_param_list_.resize(num_slices_, {0});
     }
+    for (int slice_index = 0; slice_index < num_slices_; slice_index++) {
+        RocdecAvcSliceParams *p_slice_param = &slice_param_list_[slice_index];
+        AvcSliceInfo *p_slice_info = &slice_info_list_[slice_index];
+        AvcSliceHeader *p_slice_header = &p_slice_info->slice_header;
 
-    if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
-        AvcPicture *p_ref_pic = &ref_list_1_[i];
-        if (p_ref_pic->is_reference != kUnusedForReference) {
-            p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->pic_idx;
-            if ( p_ref_pic->is_reference == kUsedForLongTerm) {
-                p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->long_term_pic_num;
-            } else {
-                p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->frame_num;
+        p_slice_param->slice_data_size = p_slice_info->slice_data_size;
+        p_slice_param->slice_data_offset = p_slice_info->slice_data_offset;
+        p_slice_param->slice_data_flag = 0; // VA_SLICE_DATA_FLAG_ALL;
+        p_slice_param->slice_data_bit_offset = 0;
+        p_slice_param->first_mb_in_slice = p_slice_header->first_mb_in_slice;
+        p_slice_param->slice_type = p_slice_header->slice_type;
+        p_slice_param->direct_spatial_mv_pred_flag = p_slice_header->direct_spatial_mv_pred_flag;
+        p_slice_param->num_ref_idx_l0_active_minus1 = p_slice_header->num_ref_idx_l0_active_minus1;
+        p_slice_param->num_ref_idx_l1_active_minus1 = p_slice_header->num_ref_idx_l1_active_minus1;
+        p_slice_param->cabac_init_idc = p_slice_header->cabac_init_idc;
+        p_slice_param->slice_qp_delta = p_slice_header->slice_qp_delta;
+        p_slice_param->disable_deblocking_filter_idc = p_slice_header->disable_deblocking_filter_idc;
+        p_slice_param->slice_alpha_c0_offset_div2 = p_slice_header->slice_alpha_c0_offset_div2;
+        p_slice_param->slice_beta_offset_div2 = p_slice_header->slice_beta_offset_div2;
+        p_slice_param->luma_log2_weight_denom = p_slice_header->pred_weight_table.luma_log2_weight_denom;
+        p_slice_param->chroma_log2_weight_denom = p_slice_header->pred_weight_table.chroma_log2_weight_denom;
+
+        // Ref lists
+        for (i = 0; i < dpb_buffer_.num_short_term + dpb_buffer_.num_long_term; i++) {
+            AvcPicture *p_ref_pic = &p_slice_info->ref_list_0_[i];
+            if (p_ref_pic->is_reference != kUnusedForReference) {
+                p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->pic_idx;
+                if ( p_ref_pic->is_reference == kUsedForLongTerm) {
+                    p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->long_term_pic_num;
+                } else {
+                    p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->frame_num;
+                }
+                p_slice_param->ref_pic_list_0[i].flags = 0;
+                if (p_ref_pic->pic_structure != kFrame) {
+                    p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
+                }
+                p_slice_param->ref_pic_list_0[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
             }
-            p_slice_param->ref_pic_list_1[i].flags = 0;
-            if (p_ref_pic->pic_structure != kFrame) {
-                p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
+        }
+
+        if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
+            AvcPicture *p_ref_pic = &p_slice_info->ref_list_1_[i];
+            if (p_ref_pic->is_reference != kUnusedForReference) {
+                p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->pic_idx;
+                if ( p_ref_pic->is_reference == kUsedForLongTerm) {
+                    p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->long_term_pic_num;
+                } else {
+                    p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->frame_num;
+                }
+                p_slice_param->ref_pic_list_1[i].flags = 0;
+                if (p_ref_pic->pic_structure != kFrame) {
+                    p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
+                }
+                p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
             }
-            p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->is_reference == kUsedForShortTerm ? RocdecAvcPicture_FLAGS_SHORT_TERM_REFERENCE : RocdecAvcPicture_FLAGS_LONG_TERM_REFERENCE;
         }
-    }
 
-    // Prediction weight table
-    // Note luma_weight_l0_flag should be an array. Set it using the first one in the table.
-    p_slice_param->luma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l0_flag;
-    for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
-        p_slice_param->luma_weight_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l0;
-        p_slice_param->luma_offset_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l0;
-    }
+        // Prediction weight table
+        // Note luma_weight_l0_flag should be an array. Set it using the first one in the table.
+        p_slice_param->luma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l0_flag;
+        for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
+            p_slice_param->luma_weight_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l0;
+            p_slice_param->luma_offset_l0[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l0;
+        }
 
-    // Note chroma_weight_l0_flag should be an array. Set it using the first one in the table.
-    p_slice_param->chroma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l0_flag;
-    for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
-        for (j = 0; j < 2; j++) {
-            p_slice_param->chroma_weight_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l0[j];
-            p_slice_param->chroma_offset_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l0[j];
-        }
-    }
-    if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
-        // Note luma_weight_l1_flag should be an array. Set it using the first one in the table.
-        p_slice_param->luma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l1_flag;
-        for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
-            p_slice_param->luma_weight_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l1;
-            p_slice_param->luma_offset_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l1;
-        }
         // Note chroma_weight_l0_flag should be an array. Set it using the first one in the table.
-        p_slice_param->chroma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l1_flag;
-        for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
+        p_slice_param->chroma_weight_l0_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l0_flag;
+        for (i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
             for (j = 0; j < 2; j++) {
-                p_slice_param->chroma_weight_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l1[j];
-                p_slice_param->chroma_offset_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l1[j];
+                p_slice_param->chroma_weight_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l0[j];
+                p_slice_param->chroma_offset_l0[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l0[j];
+            }
+        }
+        if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6 ) {
+            // Note luma_weight_l1_flag should be an array. Set it using the first one in the table.
+            p_slice_param->luma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].luma_weight_l1_flag;
+            for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
+                p_slice_param->luma_weight_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_weight_l1;
+                p_slice_param->luma_offset_l1[i] = p_slice_header->pred_weight_table.weight_factor[i].luma_offset_l1;
+            }
+            // Note chroma_weight_l0_flag should be an array. Set it using the first one in the table.
+            p_slice_param->chroma_weight_l1_flag = p_slice_header->pred_weight_table.weight_factor[0].chroma_weight_l1_flag;
+            for (i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
+                for (j = 0; j < 2; j++) {
+                    p_slice_param->chroma_weight_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_weight_l1[j];
+                    p_slice_param->chroma_offset_l1[i][j] = p_slice_header->pred_weight_table.weight_factor[i].chroma_offset_l1[j];
+                }
             }
         }
     }
+    dec_pic_params_.slice_params.avc = slice_param_list_.data();
 
     // Set up scaling lists
     RocdecAvcIQMatrix *p_iq_matrix = &dec_pic_params_.iq_matrix.avc;
@@ -1425,7 +1449,7 @@ void AvcVideoParser::InitDpb() {
 // 8.2.1
 void AvcVideoParser::CalculateCurrPoc() {
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
-    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    AvcSliceHeader *p_slice_header = &slice_info_list_[0].slice_header;
     int frame_num_offset; // FrameNumOffset
 
     int max_pic_order_cnt_lsb = 1 << (p_sps->log2_max_pic_order_cnt_lsb_minus4 + 4); // MaxPicOrderCntLsb
@@ -1625,42 +1649,44 @@ static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void 
     }
 }
 
-void AvcVideoParser::SetupReflist() {
+void AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
     int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4);
-    AvcSliceHeader *p_slice_header = &slice_header_0_;
     int i;
+    AvcSliceHeader *p_slice_header = &p_slice_info->slice_header;
 
-    memset(ref_list_0_, 0, sizeof(ref_list_0_));
-    memset(ref_list_1_, 0, sizeof(ref_list_1_));
+    memset(p_slice_info->ref_list_0_, 0, sizeof(p_slice_info->ref_list_0_));
+    memset(p_slice_info->ref_list_1_, 0, sizeof(p_slice_info->ref_list_1_));
 
-    // 8.2.4.1. Calculate picture numbers
-    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
-        AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
+    // 8.2.4.1. Calculate picture numbers. Only do it once.
+    if (num_slices_ == 0) {
+        for (i = 0; i < dpb_buffer_.dpb_size; i++) {
+            AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
 
-        if (p_ref_pic->is_reference == kUsedForShortTerm) {
-            // Eq. 8-27
-            if (p_ref_pic->frame_num > curr_pic_.frame_num) {
-                p_ref_pic->frame_num_wrap = p_ref_pic->frame_num - max_frame_num;
-            } else {
-                p_ref_pic->frame_num_wrap = p_ref_pic->frame_num;
-            }
+            if (p_ref_pic->is_reference == kUsedForShortTerm) {
+                // Eq. 8-27
+                if (p_ref_pic->frame_num > curr_pic_.frame_num) {
+                    p_ref_pic->frame_num_wrap = p_ref_pic->frame_num - max_frame_num;
+                } else {
+                    p_ref_pic->frame_num_wrap = p_ref_pic->frame_num;
+                }
 
-            if (curr_pic_.pic_structure == kFrame) {
-                p_ref_pic->pic_num = p_ref_pic->frame_num_wrap;  // Eq. 8-28
-            } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
-                p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap + 1;  // Eq. 8-30
-            } else {
-                p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap;  // Eq. 8-31
-            }
-        } else if (p_ref_pic->is_reference == kUsedForLongTerm) {
-            // Note: Todo: assign long_term_frame_idx in MarkDecodedRefPics()
-            if (curr_pic_.pic_structure == kFrame) {
-                p_ref_pic->long_term_pic_num = p_ref_pic->long_term_frame_idx;  // Eq. 8-29
-            } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
-                p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx + 1;  // Eq. 8-32
-            } else {
-                p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx;  // Eq. 8-33
+                if (curr_pic_.pic_structure == kFrame) {
+                    p_ref_pic->pic_num = p_ref_pic->frame_num_wrap;  // Eq. 8-28
+                } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
+                    p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap + 1;  // Eq. 8-30
+                } else {
+                    p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap;  // Eq. 8-31
+                }
+            } else if (p_ref_pic->is_reference == kUsedForLongTerm) {
+                // Note: Todo: assign long_term_frame_idx in MarkDecodedRefPics()
+                if (curr_pic_.pic_structure == kFrame) {
+                    p_ref_pic->long_term_pic_num = p_ref_pic->long_term_frame_idx;  // Eq. 8-29
+                } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
+                    p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx + 1;  // Eq. 8-32
+                } else {
+                    p_ref_pic->long_term_pic_num = 2 * p_ref_pic->long_term_frame_idx;  // Eq. 8-33
+                }
             }
         }
     }
@@ -1670,28 +1696,28 @@ void AvcVideoParser::SetupReflist() {
         if (curr_pic_.pic_structure == kFrame) { // 8.2.4.2.1
             // Group short term ref pictures
             int ref_index = 0;
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForShortTerm) {
-                    ref_list_0_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_0_[ref_index] = *p_ref_pic;
                     ref_index++;
                 }
             }
             // Group long term ref pictures
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForLongTerm) {
-                    ref_list_0_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_0_[ref_index] = *p_ref_pic;
                     ref_index++;
                 }
             }
             // Sort short term refs with descending order of pic_num
             if (dpb_buffer_.num_short_term > 1) {
-                qsort((void*)ref_list_0_, dpb_buffer_.num_short_term, sizeof(AvcPicture), ComparePicNumDesc);
+                qsort((void*)p_slice_info->ref_list_0_, dpb_buffer_.num_short_term, sizeof(AvcPicture), ComparePicNumDesc);
             }
             // Sort long term refs with ascending order of long_term_pic_num
             if (dpb_buffer_.num_long_term > 1) {
-                qsort((void*)&ref_list_0_[dpb_buffer_.num_short_term], dpb_buffer_.num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+                qsort((void*)&p_slice_info->ref_list_0_[dpb_buffer_.num_short_term], dpb_buffer_.num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
         } else { // 8.2.4.2.2
             std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add P ref field list init." << std::endl;
@@ -1704,45 +1730,45 @@ void AvcVideoParser::SetupReflist() {
             int num_long_term = 0;
             int ref_index = 0;
             // Group short term ref pictures that have smaller POC than the current picture
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt < curr_pic_.pic_order_cnt) {
-                    ref_list_0_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_0_[ref_index] = *p_ref_pic;
                     num_short_term_smaller++;
                     ref_index++;
                 }
             }
             // Sort in descending order of POC
             if (num_short_term_smaller > 1) {
-                qsort((void*)ref_list_0_, num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
+                qsort((void*)p_slice_info->ref_list_0_, num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
             }
 
             // Group short term ref pictures that have greater POC than the current picture
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt > curr_pic_.pic_order_cnt) {
-                    ref_list_0_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_0_[ref_index] = *p_ref_pic;
                     num_short_term_greater++;
                     ref_index++;
                 }
             }
             // Sort in ascending order of POC
             if (num_short_term_greater > 1) {
-                qsort((void*)&ref_list_0_[num_short_term_smaller], num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
+                qsort((void*)&p_slice_info->ref_list_0_[num_short_term_smaller], num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
             }
 
             // Group long term ref pictures
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForLongTerm) {
-                    ref_list_0_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_0_[ref_index] = *p_ref_pic;
                     num_long_term++;
                     ref_index++;
                 }
             }
             // Sort long term refs with ascending order of long_term_pic_num
             if (num_long_term > 1) {
-                qsort((void*)&ref_list_0_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+                qsort((void*)&p_slice_info->ref_list_0_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
 
             // RefPicList1
@@ -1752,45 +1778,45 @@ void AvcVideoParser::SetupReflist() {
             ref_index = 0;
 
             // Group short term ref pictures that have greater POC than the current picture
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt > curr_pic_.pic_order_cnt) {
-                    ref_list_1_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_1_[ref_index] = *p_ref_pic;
                     num_short_term_greater++;
                     ref_index++;
                 }
             }
             // Sort in ascending order of POC
             if (num_short_term_greater > 1) {
-                qsort((void*)ref_list_1_, num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
+                qsort((void*)p_slice_info->ref_list_1_, num_short_term_greater, sizeof(AvcPicture), ComparePocAsc);
             }
 
             // Group short term ref pictures that have smaller POC than the current picture
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForShortTerm && p_ref_pic->pic_order_cnt < curr_pic_.pic_order_cnt) {
-                    ref_list_1_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_1_[ref_index] = *p_ref_pic;
                     num_short_term_smaller++;
                     ref_index++;
                 }
             }
             // Sort in descending order of POC
             if (num_short_term_smaller > 1) {
-                qsort((void*)&ref_list_1_[num_short_term_greater], num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
+                qsort((void*)&p_slice_info->ref_list_1_[num_short_term_greater], num_short_term_smaller, sizeof(AvcPicture), ComparePocDesc);
             }
  
             // Group long term ref pictures
-            for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+            for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                 AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
                 if (p_ref_pic->is_reference == kUsedForLongTerm) {
-                    ref_list_1_[ref_index] = *p_ref_pic;
+                    p_slice_info->ref_list_1_[ref_index] = *p_ref_pic;
                     num_long_term++;
                     ref_index++;
                 }
             }
             // Sort long term refs with ascending order of long_term_pic_num
             if (num_long_term > 1) {
-                qsort((void*)&ref_list_1_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
+                qsort((void*)&p_slice_info->ref_list_1_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
         } else { // 8.2.4.2.4
             std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add B ref field list init." << std::endl;
@@ -1834,7 +1860,7 @@ ParserResult AvcVideoParser::FindFreeBufInDpb() {
 
 ParserResult AvcVideoParser::MarkDecodedRefPics() {
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
-    AvcSliceHeader *p_slice_header = &slice_header_0_;
+    AvcSliceHeader *p_slice_header = &slice_info_list_[0].slice_header;
     int i;
 
     if (slice_nal_unit_header_.nal_ref_idc == 0) {
