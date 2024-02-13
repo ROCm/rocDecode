@@ -9,4 +9,4 @@ The `rocDecCreateVideoParser()` API creates a video parser object for the Codec 
 
 - `pfn_display_picture callback` function is triggered when a frame in display order is ready to be consumed by the caller.
 
-- `pfn_get_sei_msg callback` function is triggered when a user SEI message is parsed by the parser and sent back to the caller.
+- `pfn_get_sei_msg callback` function is triggered when a user's Supplementation Enhancement Information (SEI) message is parsed by the parser and sent back to the caller.
