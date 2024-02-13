@@ -196,7 +196,6 @@ doxygen .Doxyfile
     * SLES - `15-SP4`
 * ROCm:
     * rocm-core - `6.1.0.60100-1137`
-    * amdgpu-core - `1:6.1.60100-1709965`
-      
+    * amdgpu-core - `1:6.1.60100-1709965`      
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
