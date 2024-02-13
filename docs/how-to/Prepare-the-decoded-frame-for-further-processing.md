@@ -8,7 +8,7 @@ The decoded frames can be used for further postprocessing using the `rocDecGetVi
         OUT_SURFACE_MEM_NOT_MAPPED = 3         /**<  decoded output is not available (interop won't be used): useful for decode only performance app*/
     } OutputSurfaceMemoryType;
 
-If the mapped surface type is `OUT_SURFACE_MEM_DEV_INTERNAL`, the direct pointer to the decoded surface is given to the user. The user is supposed to call `ReleaseFrame()` of the RocVideoDecoder class. If the requested surface type is `OUT_SURFACE_MEM_DEV_COPIED` or `OUT_SURFACE_MEM_HOST_COPIED`, the internal decoded frame is copied to another buffer either in device memory or host memory. After that, it is immediately unmapped for re-use by the RocVideoDecoder class.
+If the mapped surface type is `OUT_SURFACE_MEM_DEV_INTERNAL`, the direct pointer to the decoded surface is given to the user. The user must call `ReleaseFrame()` of the RocVideoDecoder class. If the requested surface type is `OUT_SURFACE_MEM_DEV_COPIED` or `OUT_SURFACE_MEM_HOST_COPIED`, the internal decoded frame is copied to another buffer either in device memory or host memory. After that, it is immediately unmapped for re-use by the RocVideoDecoder class.
 
 Refer to the RocVideoDecoder class and [samples](https://github.com/ROCm/rocDecode/tree/develop/samples) for details on how to use the APIs.
 
