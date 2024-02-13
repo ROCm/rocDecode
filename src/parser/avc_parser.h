@@ -71,6 +71,7 @@ public:
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
         uint32_t is_reference;
         uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t pic_output_flag;  // OutputFlag
     } AvcPicture;
 
 protected:
@@ -97,6 +98,10 @@ protected:
         uint32_t num_short_term; // numShortTerm;
         uint32_t num_long_term; // numLongTerm;
         AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
+        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t dpb_fullness;  // number of pictures in DPB
+        uint32_t num_output_pics;  // number of pictures that are output after the decode call
+        uint32_t output_pic_list[AVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     AvcNalUnitHeader nal_unit_header_;
@@ -133,6 +138,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SendPicForDecode();
+
+    /*! \brief Function to output decoded pictures from DPB for post-processing.
+     * \return Return code in ParserResult form
+     */
+    ParserResult OutputDecodedPictures();
 
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -207,14 +217,36 @@ protected:
      */
     void SetupReflist(AvcSliceInfo *p_slice_info);
 
+    /*! \brief Function to check the fullness of DPB and output picture if needed.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult CheckDpbAndOutput();
+
     /*! \brief Function to find a free buffer in DPB for the current picture
+     * \return <tt>ParserResult</tt>
      */
     ParserResult FindFreeBufInDpb();
 
     /*! \brief Function to mark decoded reference picture in DPB. 8.2.5. This step is 
-     * performed after the current picture is decoded.
+     * performed after the current picture is decoded, for future pictures.
+     * \return <tt>ParserResult</tt>
      */
     ParserResult MarkDecodedRefPics();
+
+    /*! \brief Function to bump one picture out of DPB. C.4.5.3.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult BumpPicFromDpb();
+
+    /*! \brief Function to insert the current picture into DPB.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult InsertCurrPicIntoDpb();
+
+    /*! \brief Function to send out the remaining pictures that need for output in DPB buffer.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult FlushDpb();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.
