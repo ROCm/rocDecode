@@ -4,7 +4,8 @@ There are three main components in rocDecode, as shown below,
 
 - Demuxer - Demuxer is based on FFmpeg, a leading multimedia framework. For more information, refer to https://ffmpeg.org/about.html.
 - Video Parser APIs 
-- Video Decode APIs 
+- Video Decode APIs
+- 
 
 <p align="center"><img width="70%" src="../data/VideoDecoderPipeline.PNG" /></p>
 
