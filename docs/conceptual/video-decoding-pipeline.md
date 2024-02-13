@@ -25,7 +25,7 @@ Steps in decoding video content for applications (available in the rocDecode Too
 4. Wait for the decoding to finish.
 5. Get the decoded YUV frame from amd-gpu context to HIP (using VAAPI-HIP interop under ROCm).
 6. Execute HIP kernels in the mapped YUV frame. For example, format conversion, scaling, object detection, classification, and others.
-7. Un-map decoded HIP YUV frame.
+7. Release decoded frame.
 
 **Note**: YUV is a similar color space to Red, Green, and Blue (RGB). While "Y" is luminance (brightness), "U" and "V" indicate chrominance (color). Refer to https://en.wikipedia.org/wiki/Y%E2%80%B2UV for more information about the YUV color model. 
 
