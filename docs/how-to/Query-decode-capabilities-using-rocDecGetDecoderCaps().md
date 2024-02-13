@@ -2,7 +2,7 @@
 
 `rocDecGetDecoderCaps()` Allows users to query the capabilities of underlying hardware video decoder as different hardware will have different capabilities. Decoder capabilities usually inform the user of the supported codecs, max. resolution, bit-depth, etc.
 
-The following pseudo-code illustrates the use of this API. If any of the decoder caps are not supported, the application is supposed to handle the error appropriately.
+The following pseudo-code illustrates the use of this API. For non-supported decoder capabilities, the application is supposed to handle the error appropriately.
 
     RocdecDecodeCaps decode_caps;
     memset(&decode_caps, 0, sizeof(decode_caps));
