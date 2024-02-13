@@ -1,5 +1,5 @@
 ## Reconfiguring the decoder
-The `rocDecReconfigureDecoder()` can be called to reuse a single decoder for multiple clips or when the video resolution changes during the decode. The API currently supports resolution changes, resize parameter changes, and target area parameter changes for the same codec without having to destroy the ongoing decoder instance and create a new one. This can improve performance and reduce the overall latency. 
+The `rocDecReconfigureDecoder()` can be called to reuse a single decoder for multiple clips or when the video resolution changes during the decode. The API currently supports resolution changes, resize parameter changes, and target area parameter changes for the same codec without having to destroy an ongoing decoder instance and create a new one. This can improve performance and reduce the overall latency. 
 
 The inputs to the API are:
 * decoder_handle: A rocdec decoder handler `rocDecDecoderHandle`.
