@@ -1,6 +1,6 @@
 ## Querying decode capabilities using rocDecGetDecoderCaps() (defined in rocdecode.h)
 
-`rocDecGetDecoderCaps()` Allows users to query the capabilities of underlying hardware video decoder as different hardware will have different capabilities. Caps usually inform the user of the supported codecs, max. resolution, bit-depth, etc.
+`rocDecGetDecoderCaps()` Allows users to query the capabilities of underlying hardware video decoder as different hardware will have different capabilities. Decoder capabilities usually inform the user of the supported codecs, max. resolution, bit-depth, etc.
 
 The following pseudo-code illustrates the use of this API. If any of the decoder caps are not supported, the application is supposed to handle the error appropriately.
 
