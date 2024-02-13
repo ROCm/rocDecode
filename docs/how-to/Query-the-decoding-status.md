@@ -3,7 +3,7 @@ After submitting a frame for decoding, `rocDecGetDecodeStatus() can be called to
 
 The inputs to the API are:
 * decoder_handle: A rocDecoder handler `rocDecDecoderHandle`.
-* pic_idx: An int value for the picIdx for which the user wants a status.
+* pic_idx: "An int value for the picIdx for which the user wants a status" to "Index" of the picture for which the user wants a status.
 * decode_status: A pointer to `RocdecDecodeStatus` as a return value.
 
 The API returns one of the following statuses:
