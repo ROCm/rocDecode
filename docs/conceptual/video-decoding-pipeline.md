@@ -26,6 +26,6 @@ Steps in decoding video content for applications (available in the rocDecode Too
 6. Execute HIP kernels in the mapped YUV frame. For example, format conversion, scaling, object detection, classification, and others.
 7. Un-map decoded HIP YUV frame.
 
-The above steps are demonstrated in the sample applications included in the repository.
+**Note**: YUV is a similar color space to Red, Green, and Blue (RGB). While "Y" is luminance (brightness), "U" and "V" indicate chrominance (color). Refer to https://en.wikipedia.org/wiki/Y%E2%80%B2UV for more information about the YUV color model. 
 
-For samples, refer to the [samples](https://github.com/ROCm/rocDecode/tree/develop/samples) directory. 
+The above steps are demonstrated in the sample applications included in the repository. For samples, refer to the [samples](https://github.com/ROCm/rocDecode/tree/develop/samples) directory. 
