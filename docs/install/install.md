@@ -195,7 +195,7 @@ doxygen .Doxyfile
 * ROCm:
     * rocm-core - `5.6.1.50601-93`
     * amdgpu-core - `1:5.6.50601-1649308`
-* FFMPEG - `4.2.7` / `4.4.2-0`
+* FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
 
 
