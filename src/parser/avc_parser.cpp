@@ -1955,7 +1955,7 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
             if (dpb_buffer_.num_short_term + dpb_buffer_.num_long_term == p_sps->max_num_ref_frames) {
                 int32_t min_frame_num_wrap = 0xFFFFFF; // more than the largest possible value of FrameNumWrap (2 ^ 16)
                 int min_index = AVC_MAX_DPB_FRAMES;
-                for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+                for (i = 0; i < dpb_buffer_.dpb_size; i++) {
                     if (dpb_buffer_.frame_buffer_list[i].is_reference == kUsedForShortTerm) {
                         if (dpb_buffer_.frame_buffer_list[i].frame_num_wrap < min_frame_num_wrap) {
                             min_frame_num_wrap = dpb_buffer_.frame_buffer_list[i].frame_num_wrap;
@@ -1963,7 +1963,7 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
                         }
                     }
                 }
-                if (min_index < AVC_MAX_DPB_FRAMES) {
+                if (min_index < dpb_buffer_.dpb_size) {
                     dpb_buffer_.frame_buffer_list[min_index].is_reference = kUnusedForReference;
                 } else {
                     ERR("Could not find any short term ref picture.");
@@ -1978,41 +1978,77 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
 }
 
 ParserResult AvcVideoParser::BumpPicFromDpb() {
-    int32_t min_poc = 0x7FFFFFFF;  // largest possible POC value 2^31 - 1
-    int min_poc_pic_idx = AVC_MAX_DPB_FRAMES;
+    int32_t min_poc_no_ref = 0x7FFFFFFF;  // largest possible POC value 2^31 - 1
+    int32_t min_poc_ref = 0x7FFFFFFF;  // largest possible POC value 2^31 - 1
+    int min_poc_pic_idx_no_ref = AVC_MAX_DPB_FRAMES;
+    int min_poc_pic_idx_ref = AVC_MAX_DPB_FRAMES;
     int i;
 
     for (i = 0; i < dpb_buffer_.dpb_size; i++) {
-        if (dpb_buffer_.frame_buffer_list[i].pic_output_flag && dpb_buffer_.frame_buffer_list[i].use_status && dpb_buffer_.frame_buffer_list[i].is_reference == kUnusedForReference) {
-            if (dpb_buffer_.frame_buffer_list[i].pic_order_cnt < min_poc) {
-                min_poc = dpb_buffer_.frame_buffer_list[i].pic_order_cnt;
-                min_poc_pic_idx = i;
+        if (dpb_buffer_.frame_buffer_list[i].use_status) {
+            if (dpb_buffer_.frame_buffer_list[i].is_reference) {
+                if (dpb_buffer_.frame_buffer_list[i].pic_order_cnt < min_poc_ref && dpb_buffer_.frame_buffer_list[i].pic_output_flag) {
+                    // Find the min-poc ref pic that has not been output yet.
+                    min_poc_ref = dpb_buffer_.frame_buffer_list[i].pic_order_cnt;
+                    min_poc_pic_idx_ref = i;
+                }
+            } else {
+                if (dpb_buffer_.frame_buffer_list[i].pic_order_cnt < min_poc_no_ref) {
+                    min_poc_no_ref = dpb_buffer_.frame_buffer_list[i].pic_order_cnt;
+                    min_poc_pic_idx_no_ref = i;
+                }
             }
         }
     }
-    if (min_poc_pic_idx >= dpb_buffer_.dpb_size) {
-        // No picture that is needed for ouput is found
-        return PARSER_OK;
+    if (min_poc_pic_idx_no_ref >= dpb_buffer_.dpb_size) {
+        ERR("Error! Could not find a non-reference buffer to bump.");
+        return PARSER_OUT_OF_RANGE;
+    }
+
+    // Output any ref pics before (lower POC) the non-ref pic to be bumped out.
+    while (min_poc_ref < min_poc_no_ref) {
+        dpb_buffer_.frame_buffer_list[min_poc_pic_idx_ref].pic_output_flag = 0;
+        if (dpb_buffer_.num_needed_for_output > 0) {
+            dpb_buffer_.num_needed_for_output--;
+            // Insert into output/display picture list
+            if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+                ERR("Error! DPB output buffer list overflow!");
+                return PARSER_OUT_OF_RANGE;
+            } else {
+                dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_ref;
+                dpb_buffer_.num_output_pics++;
+            }
+        }
+        min_poc_ref = 0x7FFFFFFF;
+        min_poc_pic_idx_ref = AVC_MAX_DPB_FRAMES;
+        for (i = 0; i < dpb_buffer_.dpb_size; i++) {
+            if (dpb_buffer_.frame_buffer_list[i].pic_output_flag && dpb_buffer_.frame_buffer_list[i].use_status && dpb_buffer_.frame_buffer_list[i].is_reference && dpb_buffer_.frame_buffer_list[i].pic_order_cnt < min_poc_ref) {
+                min_poc_ref = dpb_buffer_.frame_buffer_list[i].pic_order_cnt;
+                min_poc_pic_idx_ref = i;
+            }
+        }
     }
 
     // Mark as "not needed for output"
-    dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_output_flag = 0;
-    if (dpb_buffer_.num_needed_for_output > 0) {
-        dpb_buffer_.num_needed_for_output--;
+    if (dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].pic_output_flag) {
+        dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].pic_output_flag = 0;
+        if (dpb_buffer_.num_needed_for_output > 0) {
+            dpb_buffer_.num_needed_for_output--;
+        }
+
+        // Insert into output/display picture list
+        if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+            ERR("Error! DPB output buffer list overflow!");
+            return PARSER_OUT_OF_RANGE;
+        } else {
+            dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_no_ref;
+            dpb_buffer_.num_output_pics++;
+        }
     }
     // Remove it from DPB.
-    dpb_buffer_.frame_buffer_list[min_poc_pic_idx].use_status = 0;
+    dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].use_status = 0;
     if (dpb_buffer_.dpb_fullness > 0 ) {
         dpb_buffer_.dpb_fullness--;
-    }
-
-    // Insert into output/display picture list
-    if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
-        ERR("Error! DPB output buffer list overflow!");
-        return PARSER_OUT_OF_RANGE;
-    } else {
-        dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx;
-        dpb_buffer_.num_output_pics++;
     }
 
     return PARSER_OK;
@@ -2300,7 +2336,7 @@ void AvcVideoParser::PrintDpb() {
     }
     MSG("");
     MSG("output_pic_list:");
-    for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
+    for (i = 0; i < dpb_buffer_.num_output_pics; i++) {
         MSG_NO_NEWLINE(dpb_buffer_.output_pic_list[i] << ", ");
     }
     MSG("");
