@@ -54,7 +54,7 @@ sudo apt install libstdc++-12-dev
 
 #### Prerequisites setup script for Linux
 
-For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
+For the convenience of the developer, we provide the setup script [rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py) which will install all the dependencies required by this project.
 
 **Usage:**
 
