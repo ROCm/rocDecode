@@ -115,7 +115,7 @@ protected:
     typedef struct
     {
         uint32_t dpb_size;  // DPB buffer size in number of frames
-        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
