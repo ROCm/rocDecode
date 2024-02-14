@@ -1,9 +1,3 @@
-.. meta::
-  :description: rocDecode documentation 
-  :keywords: rocDecode, ROCm, documentation
-
-.. _video_decoding_pipeline:
-
 
 # Video decoding pipeline
 
