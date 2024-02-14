@@ -7,8 +7,10 @@ There are three main components in rocDecode, as shown below,
 - Video Parser APIs 
 - Video Decode APIs
   
+  
 
 <p align="left"><img width="70%" src="../data/VideoDecoderPipeline.png" /></p>
+
 
 The workflow is as follows,
 
