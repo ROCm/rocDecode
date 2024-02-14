@@ -1,11 +1,7 @@
-.. meta::
-  :description: rocDecode documentation and API reference library
-  :keywords: rocDecode, ROCm, API, documentation
 
 
-********************************************************************
-How-To
-********************************************************************
+
+# How-To
 
 This section provides guides on how to use the rocDECODE library and its different utilities.
 
