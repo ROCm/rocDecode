@@ -51,7 +51,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
     exit(0);
 }
 
@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
                 if (b_generate_md5) {
                     viddec.UpdateMd5ForFrame(pframe, surf_info);
                 }
-                if (dump_output_frames) {
+                if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
                 // release frame
@@ -238,6 +238,12 @@ int main(int argc, char **argv) {
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        } else {
+            if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                std::cout << "info: saved frames into " << output_file_path << std::endl;
+            }
         }
         if (b_generate_md5) {
             uint8_t *digest;
