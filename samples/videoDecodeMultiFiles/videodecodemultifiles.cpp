@@ -61,7 +61,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "z 0 (force_zero_latency - Decoded frames will be flushed out for display immediately; default: 0)" << std::endl
     << "sei 0 (extract SEI messages; default: 0)" << std::endl
     << "crop l,t,r,b (crop rectangle for output (not used when using interopped decoded frame); default: 0)" << std::endl
-    << "m 0 decoded surface memory; optional; default - 0 [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl
+    << "m 0 decoded surface memory; optional; default - 0 [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
     << "flush 1 flush last frames during reconfig; optional; default - 1 [1 : Flush last frames during reconfig  0 : Discard last frames during reconfigure ]" << std::endl
     << "infile input2.[mp4/mov...]" << std::endl
     << "outfile output2.yuv" << std::endl
@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
                 }
                 for (int i = 0; i < n_frame_returned; i++) {
                     pframe = viddec->GetFrame(&pts);
-                    if (file_data.dump_output_frames) {
+                    if (file_data.dump_output_frames && file_data.mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                         viddec->SaveFrameToFile(file_data.out_file, pframe, surf_info);
                     }
                     // release frame
@@ -244,6 +244,13 @@ int main(int argc, char **argv) {
             if (!file_data.dump_output_frames) {
                 std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
                 std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+            } else {
+            if (file_data.mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                std::cout << "info: saved frames into " << file_data.out_file << std::endl;
+            }
+
             }
             if (!use_reconfigure) {
                 delete viddec;

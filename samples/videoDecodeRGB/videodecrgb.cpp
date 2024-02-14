@@ -53,8 +53,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
-    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
-    << "-m output_surface_memory_type - decoded surface memory; optional; default - 0" << std::endl;
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
 
     exit(0);
 }
@@ -204,10 +203,9 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                 viddec.SaveFrameToFile(output_file_path, frame, *surf_info);
         }
 
-        //current_frame_index = 1 - current_frame_index;
+        cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
 
-        cv[current_frame_index].notify_one();
     }
 }
 
@@ -257,13 +255,6 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-d");
             }
             device_id = atoi(argv[i]);
-            continue;
-        }
-        if (!strcmp(argv[i], "-m")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-m");
-            }
-            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
         if (!strcmp(argv[i], "-crop")) {

@@ -358,8 +358,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     if (!(crop_rect_.r && crop_rect_.b)) {
         disp_width_ = p_video_format->display_area.right - p_video_format->display_area.left;
         disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
-        videoDecodeCreateInfo.target_width = disp_width_;
-        videoDecodeCreateInfo.target_height = disp_height_;
+        videoDecodeCreateInfo.target_width = (disp_width_ + 1) & ~1;
+        videoDecodeCreateInfo.target_height = (disp_height_ + 1) & ~1;
     } else {
         videoDecodeCreateInfo.display_area.left = crop_rect_.l;
         videoDecodeCreateInfo.display_area.top = crop_rect_.t;
@@ -393,7 +393,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-        output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
+        output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
     } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED){
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
@@ -544,7 +544,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         output_surface_info_.output_surface_size_in_bytes = surface_stride_ * (surface_vstride_ + (chroma_vstride_ * num_chroma_planes_));
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     } else if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-        output_surface_info_.output_surface_size_in_bytes = GetFrameSizePitched();
+        output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
     } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
@@ -675,7 +675,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                     DecFrameBuffer dec_frame = { 0 };
                     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                         // allocate device memory
-                        HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSizePitched()));
+                        HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
                     } else {
                         dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
                     }
@@ -686,44 +686,48 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                 p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
             }
             // Copy luma data
-            int dst_pitch = surface_stride_;
+            int dst_pitch = disp_width_ * byte_per_pixel_;
+            uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_dev_ptr[0]) + crop_rect_.t * src_pitch[0] + crop_rect_.l * byte_per_pixel_;
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                 if (src_pitch[0] == dst_pitch) {
                     int luma_size = src_pitch[0] * coded_height_;
-                    HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, src_dev_ptr[0], luma_size, hip_stream_));
+                    HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, p_src_ptr_y, luma_size, hip_stream_));
                 } else {
                     // use 2d copy to copy an ROI
-                    HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToDevice, hip_stream_));
                 }
             } else
-                HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, coded_width_ * byte_per_pixel_, src_dev_ptr[0], src_pitch[0], coded_width_ * byte_per_pixel_, coded_height_, hipMemcpyDeviceToHost, hip_stream_));
+                HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToHost, hip_stream_));
 
             // Copy chroma plane ( )
             // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
-            uint8_t *p_frame_uv = p_dec_frame + dst_pitch * coded_height_;
+            uint8_t *p_frame_uv = p_dec_frame + dst_pitch * disp_height_;
+            uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_dev_ptr[1]) + (crop_rect_.t >> 1) * src_pitch[1] + crop_rect_.l * byte_per_pixel_ :
+                                                    static_cast<uint8_t *>(src_dev_ptr[1]) + crop_rect_.t * src_pitch[1] + crop_rect_.l  * byte_per_pixel_;
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                 if (src_pitch[1] == dst_pitch) {
                     int chroma_size = chroma_height_ * dst_pitch;
-                    HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[1], chroma_size, hip_stream_));
+                    HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, p_src_ptr_uv, chroma_size, hip_stream_));
                 } else {
                     // use 2d copy to copy an ROI
-                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
                 }
             } else
-                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[1], src_pitch[1], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
 
             if (num_chroma_planes_ == 2) {
-                uint8_t *p_frame_uv = p_dec_frame + dst_pitch * (coded_height_ + chroma_height_);
+                uint8_t *p_frame_v = p_dec_frame + dst_pitch * (disp_height_ + chroma_height_);
+                uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_dev_ptr[2]) + crop_rect_.t * src_pitch[2] + crop_rect_.l * byte_per_pixel_;
                 if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                     if (src_pitch[2] == dst_pitch) {
                         int chroma_size = chroma_height_ * dst_pitch;
-                        HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, src_dev_ptr[2], chroma_size, hip_stream_));
+                        HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_v, p_src_ptr_v, chroma_size, hip_stream_));
                     } else {
                         // use 2d copy to copy an ROI
-                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
                     }
                 } else
-                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, src_dev_ptr[2], src_pitch[2], coded_width_ * byte_per_pixel_, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
             }
 
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
@@ -886,9 +890,11 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
     } else
         hst_ptr = static_cast<uint8_t *> (surf_mem);
 
-
     uint8_t *tmp_hst_ptr = hst_ptr;
-
+    if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL && (crop_rect_.l | crop_rect_.t)) {
+        tmp_hst_ptr += (crop_rect_.t * surf_info->output_pitch) + crop_rect_.l * surf_info->bytes_per_pixel;
+    }
+    
     if (current_output_filename.empty()) {
         current_output_filename = output_file_name;
     }
@@ -925,45 +931,33 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         if (img_width * surf_info->bytes_per_pixel == output_stride && img_height == surf_info->output_vstride) {
             fwrite(hst_ptr, 1, output_image_size, fp_out_);
         } else {
-            uint32_t width = surf_info->output_width;
-            if (surf_info->bit_depth == 8) {
+            uint32_t width = surf_info->output_width * surf_info->bytes_per_pixel;
+            if (surf_info->bit_depth <= 16) {
                 for (int i = 0; i < surf_info->output_height; i++) {
                     fwrite(tmp_hst_ptr, 1, width, fp_out_);
                     tmp_hst_ptr += output_stride;
                 }
                 // dump chroma
                 uint8_t *uv_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
+                if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
+                    uv_hst_ptr += (num_chroma_planes_ == 1) ? ((crop_rect_.t >> 1) * surf_info->output_pitch) + (crop_rect_.l * surf_info->bytes_per_pixel):
+                                                            (crop_rect_.t * surf_info->output_pitch) + (crop_rect_.l * surf_info->bytes_per_pixel);
+                }
                 for (int i = 0; i < chroma_height_; i++) {
                     fwrite(uv_hst_ptr, 1, width, fp_out_);
                     uv_hst_ptr += output_stride;
                 }
                 if (num_chroma_planes_ == 2) {
-                    uint8_t *v_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
+                    uv_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
+                    if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
+                        uv_hst_ptr += (crop_rect_.t * surf_info->output_pitch) + (crop_rect_.l * surf_info->bytes_per_pixel);
+                    }
                     for (int i = 0; i < chroma_height_; i++) {
                         fwrite(uv_hst_ptr, 1, width, fp_out_);
-                        v_hst_ptr += output_stride;
+                        uv_hst_ptr += output_stride;
                     }
                 }
-
-            } else if (surf_info->bit_depth > 8 &&  surf_info->bit_depth <= 16 ) {
-                for (int i = 0; i < img_height; i++) {
-                    fwrite(tmp_hst_ptr, 1, width * surf_info->bytes_per_pixel, fp_out_);
-                    tmp_hst_ptr += output_stride;
-                }
-                // dump chroma
-                uint8_t *uv_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
-                for (int i = 0; i < chroma_height_; i++) {
-                    fwrite(uv_hst_ptr, 1, width * surf_info->bytes_per_pixel, fp_out_);
-                    uv_hst_ptr += output_stride;
-                }
-                if (num_chroma_planes_ == 2) {
-                    uint8_t *v_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
-                    for (int i = 0; i < chroma_height_; i++) {
-                        fwrite(uv_hst_ptr, 1, width, fp_out_);
-                        v_hst_ptr += output_stride;
-                    }
-                }
-            }
+            } 
         }
     }
 

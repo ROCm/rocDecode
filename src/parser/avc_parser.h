@@ -80,6 +80,16 @@ protected:
         kUsedForLongTerm = 2
     };
 
+    /*! \brief Slice info of a picture
+     */
+    typedef struct {
+        AvcSliceHeader slice_header;
+        uint32_t slice_data_offset; // offset in the slice data buffer of this slice
+        uint32_t slice_data_size; // slice data size in bytes
+        AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
+        AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
+    } AvcSliceInfo;
+
     /*! \brief Decoded picture buffer
      */
     typedef struct{
@@ -96,7 +106,8 @@ protected:
     int32_t active_pps_id_;
 
     AvcNalUnitHeader   slice_nal_unit_header_;
-    AvcSliceHeader     slice_header_0_;
+    std::vector<AvcSliceInfo> slice_info_list_;
+    std::vector<RocdecAvcSliceParams> slice_param_list_;
 
     int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
     int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
@@ -111,8 +122,6 @@ protected:
     // DPB
     AvcPicture curr_pic_;
     DecodedPictureBuffer dpb_buffer_;
-    AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
-    AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
 
     /*! \brief Function to notify decoder about video format change (new SPS) through callback
      * \param [in] p_sps Pointer to the current active SPS
@@ -193,9 +202,10 @@ protected:
      */
     void CalculateCurrPoc();
 
-    /*! \brief Function to set up the reference picutre lists. 8.2.4.
+    /*! \brief Function to set up the reference picutre lists for each slice. 8.2.4.
+     * \param [in] p_slice_info Poiner to slice info struct
      */
-    void SetupReflist();
+    void SetupReflist(AvcSliceInfo *p_slice_info);
 
     /*! \brief Function to find a free buffer in DPB for the current picture
      */

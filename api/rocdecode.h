@@ -805,8 +805,7 @@ typedef struct _RocdecPicParams {
     uint32_t        bitstream_data_len;                /**< IN: Number of bytes in bitstream data buffer */
     const uint8_t   *bitstream_data;                   /**< IN: Ptr to bitstream data for this picture (slice-layer) */
     uint32_t        num_slices;                        /**< IN: Number of slices in this picture */
-    const uint32_t  *slice_data_offsets;               /**< IN: num_slices entries, contains offset of each slice within
-                                                        the bitstream data buffer */
+
     int             ref_pic_flag;                      /**< IN: This picture is a reference picture */
     int             intra_pic_flag;                    /**< IN: This picture is entirely intra coded */
     uint32_t        reserved[30];                      /**< Reserved for future use */
@@ -821,10 +820,12 @@ typedef struct _RocdecPicParams {
         uint32_t                codec_reserved[256];
     } pic_params;
 
+    /*! \brief Variable size array. The user should allocate one slice param struct for each slice.
+     */
     union {
         // Todo: Add slice params defines for other codecs.
-        RocdecAvcSliceParams    avc;
-        RocdecHevcSliceParams   hevc;
+        RocdecAvcSliceParams    *avc;
+        RocdecHevcSliceParams   *hevc;
     } slice_params;
 
     union {

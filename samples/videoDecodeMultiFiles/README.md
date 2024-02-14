@@ -1,8 +1,8 @@
 # Video decode multi files sample
 
-The video decode multiple files sample illustrates the use of providing a list of files as input to showcase the reconfigure option in rocDecode library. The input video files have to be of the same codec type to use the reconfigure option but can have different resolution or resize parameters.
+The video decodes multiple files sample illustrates the use of providing a list of files as input to showcase the reconfigure option in the rocDecode library. The input video files have to be of the same codec type to use the reconfigure option but can have different resolutions or resize parameters.
 
-The reconfigure option can be disabled by the user if needed. The input file is parsed line by line and data is stored in a queue. The individual video files are demuxed and decoded one after the other in a loop. Outpuot for each individual input file can also be stored if needed.
+The reconfigure option can be disabled by the user if needed. The input file is parsed line by line and data is stored in a queue. The individual video files are demuxed and decoded one after the other in a loop. Output for each input file can also be stored if needed.
 
 ## Prerequisites:
 
@@ -41,7 +41,7 @@ outfile output1.yuv [optional]
 z 0 [optional]
 sei 0 [optional]
 crop l,t,r,b [optional]
-m  0 [optional] [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]
+m  0 [optional] [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]
 infile input2.[mp4/mov...] [optional]
 outfile output2.yuv [optional]
 ...
