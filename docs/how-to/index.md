@@ -11,7 +11,7 @@ This section provides guides on how to use the rocDECODE library and its differe
 * :ref:`Destroy the parser using rocDecDestroyVideoParser()`
 * :ref:`Query decode capabilities using rocDecGetDecoderCaps() (defined in rocdecode.h)`
 * :ref:`Create a Decoder using rocDecCreateDecoder()`
-* :ref:`Decode the frame using rocDecDecodeFrame
+* :ref:`Decode the frame using rocDecDecodeFrame`
 * :ref:`Prepare the decoded frame for further processing`
 * :ref:`Query the decoding status`
 * :ref:`Reconfigure the decoder`
