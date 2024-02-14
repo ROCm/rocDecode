@@ -1,7 +1,7 @@
 
 # Installing rocDecode
 
-rocDecode is a high-performance video decode SDK for AMD GPUs. rocDecode API lets developers access the video decoding features available on the GPU.
+rocDecode is a high-performance video decode SDK for AMD GPUs. The rocDecode API allows developers access the video decoding features available on the GPU.
 
 ## Supported codecs
 
@@ -42,7 +42,7 @@ sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
 
 **NOTE:**
 
-* All package installs are shown with the `apt` package manager, use the appropriate package manager depending on the OS.
+* All package installs are shown with the `apt` package manager. Use the appropriate package manager depending on the operating system.
 
 * Ubuntu 22.04 - Install `libstdc++-12-dev`
 
@@ -52,7 +52,7 @@ sudo apt install libstdc++-12-dev
 
 #### Prerequisites setup script for Linux
 
-For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py) which will install all the dependencies required by this project.
+For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py), which will install all the dependencies this project requires. 
 
 **Usage:**
 
@@ -61,7 +61,7 @@ For the convenience of the developer, we provide the setup script [rocDecode-set
                              --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 ```
 
-**NOTE:** This script only needs to be executed once.
+**NOTE:** Execute this script only once.
 
 ## Build and install instructions
 
@@ -154,7 +154,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 
 ### Sample prerequisites
 
-* [FFMPEG](https://ffmpeg.org/about.html) - required to run sample applications & make test
+* [FFmpeg](https://ffmpeg.org/about.html) - required to run sample applications & make test
 
     * On `Ubuntu`
 
