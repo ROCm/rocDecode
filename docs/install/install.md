@@ -166,7 +166,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 
 ## Docker
 
-Docker files to build rocDecode containers are available [here.](docker/)
+Docker files to build rocDecode containers are available [here](docker/).
 
 ## Documentation
 
