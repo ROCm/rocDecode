@@ -203,10 +203,9 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                 viddec.SaveFrameToFile(output_file_path, frame, *surf_info);
         }
 
-        //current_frame_index = 1 - current_frame_index;
+        cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
 
-        cv[current_frame_index].notify_one();
     }
 }
 
