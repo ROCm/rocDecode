@@ -15,6 +15,7 @@ This section provides guides on how to use the rocDECODE library and its differe
 * :ref:`Prepare the decoded frame for further processing`
 * :ref:`Query the decoding status`
 * :ref:`Reconfigure the decoder`
-* :ref:`Destroy the decoder'
+* :ref:`Destroy the decoder`
+
 
 
