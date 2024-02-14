@@ -127,7 +127,7 @@ The installer will copy
 * Samples folder into `/opt/rocm/share/rocdecode`
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
 
-**NOTE:** FFMPEG dev install required to run samples and tests
+**NOTE:** FFMPEG dev install required to run samples and tests.
 
 ### Verify with sample application
 
@@ -140,7 +140,7 @@ make -j8
 
 ### Verify with rocdecode-test package
 
-The test package will install the ctest module to test the rocdecode. Follow the below steps to test the package install
+The test package will install the ctest module to test the rocdecode. Follow the below steps to test the package install.
 
 ```shell
 mkdir rocdecode-test && cd rocdecode-test
@@ -154,7 +154,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 
 ### Sample prerequisites
 
-* [FFmpeg](https://ffmpeg.org/about.html) - required to run sample applications & make test
+* [FFmpeg](https://ffmpeg.org/about.html) - required to run sample applications & make test.
 
     * On `Ubuntu`
 
@@ -166,7 +166,7 @@ The tool provides a few samples to decode videos [here](samples/). Please refer 
 
 ## Docker
 
-Docker files to build rocDecode containers are available [here](docker/)
+Docker files to build rocDecode containers are available [here.](docker/)
 
 ## Documentation
 
