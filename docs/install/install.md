@@ -34,7 +34,7 @@ sudo apt install cmake
 sudo apt install pkg-config
 ```
 
-* [FFMPEG](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
+* [FFmpeg](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
 
 ```shell
 sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
