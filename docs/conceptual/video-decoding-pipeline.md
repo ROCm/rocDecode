@@ -1,3 +1,10 @@
+.. meta::
+  :description: rocDecode documentation 
+  :keywords: rocDecode, ROCm, documentation
+
+.. _video_decoding_pipeline:
+
+
 # Video decoding pipeline
 
 There are three main components in rocDecode, as shown below, 
