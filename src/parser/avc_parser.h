@@ -98,7 +98,7 @@ protected:
         uint32_t num_short_term; // numShortTerm;
         uint32_t num_long_term; // numLongTerm;
         AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
-        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         uint32_t num_output_pics;  // number of pictures that are output after the decode call
         uint32_t output_pic_list[AVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]

@@ -1476,7 +1476,7 @@ void AvcVideoParser::InitDpb() {
     dpb_buffer_.dpb_fullness = 0;
     dpb_buffer_.num_short_term = 0;
     dpb_buffer_.num_long_term = 0;
-    dpb_buffer_.num_needed_for_output = 0;
+    dpb_buffer_.num_pics_needed_for_output = 0;
     dpb_buffer_.num_output_pics = 0;
 }
 
@@ -2008,8 +2008,8 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
     // Output any ref pics before (lower POC) the non-ref pic to be bumped out.
     while (min_poc_ref < min_poc_no_ref) {
         dpb_buffer_.frame_buffer_list[min_poc_pic_idx_ref].pic_output_flag = 0;
-        if (dpb_buffer_.num_needed_for_output > 0) {
-            dpb_buffer_.num_needed_for_output--;
+        if (dpb_buffer_.num_pics_needed_for_output > 0) {
+            dpb_buffer_.num_pics_needed_for_output--;
             // Insert into output/display picture list
             if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
                 ERR("Error! DPB output buffer list overflow!");
@@ -2032,8 +2032,8 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
     // Mark as "not needed for output"
     if (dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].pic_output_flag) {
         dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].pic_output_flag = 0;
-        if (dpb_buffer_.num_needed_for_output > 0) {
-            dpb_buffer_.num_needed_for_output--;
+        if (dpb_buffer_.num_pics_needed_for_output > 0) {
+            dpb_buffer_.num_pics_needed_for_output--;
         }
 
         // Insert into output/display picture list
@@ -2065,7 +2065,7 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
     if (i < dpb_buffer_.dpb_size) {
         dpb_buffer_.frame_buffer_list[i] = curr_pic_;
         if (dpb_buffer_.frame_buffer_list[i].pic_output_flag) {
-                dpb_buffer_.num_needed_for_output++;
+                dpb_buffer_.num_pics_needed_for_output++;
         }
         dpb_buffer_.dpb_fullness++;
         if (curr_pic_.is_reference == kUsedForShortTerm) {
@@ -2085,13 +2085,13 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
 }
 
 ParserResult AvcVideoParser::FlushDpb() {
-    if (dpb_buffer_.num_needed_for_output) {
+    if (dpb_buffer_.num_pics_needed_for_output) {
         // Mark all reference pictures as "unused for reference
         for (int i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
             dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
         }
         // Bump the remaining pictures
-        while (dpb_buffer_.num_needed_for_output) {
+        while (dpb_buffer_.num_pics_needed_for_output) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2326,7 +2326,7 @@ void AvcVideoParser::PrintDpb() {
     MSG("dpb_size = " << dpb_buffer_.dpb_size);
     MSG("num_short_term = " << dpb_buffer_.num_short_term);
     MSG("num_long_term = " << dpb_buffer_.num_long_term);
-    MSG("num_needed_for_output = " << dpb_buffer_.num_needed_for_output);
+    MSG("num_pics_needed_for_output = " << dpb_buffer_.num_pics_needed_for_output);
     MSG("dpb_fullness = " << dpb_buffer_.dpb_fullness);
     MSG("num_output_pics = " << dpb_buffer_.num_output_pics);
     MSG("Frame buffer store:");

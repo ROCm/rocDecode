@@ -2181,7 +2181,7 @@ void HevcVideoParser::InitDpb() {
     }
     dpb_buffer_.dpb_size = 0;
     dpb_buffer_.dpb_fullness = 0;
-    dpb_buffer_.num_needed_for_output = 0;
+    dpb_buffer_.num_pics_needed_for_output = 0;
     dpb_buffer_.num_output_pics = 0;
 }
 
@@ -2193,14 +2193,14 @@ void HevcVideoParser::EmptyDpb() {
         dpb_buffer_.output_pic_list[i] = 0xFF;
     }
     dpb_buffer_.dpb_fullness = 0;
-    dpb_buffer_.num_needed_for_output = 0;
+    dpb_buffer_.num_pics_needed_for_output = 0;
     dpb_buffer_.num_output_pics = 0;
 }
 
 int HevcVideoParser::FlushDpb() {
-    if (dpb_buffer_.num_needed_for_output) {
+    if (dpb_buffer_.num_pics_needed_for_output) {
         // Bump the remaining pictures
-        while (dpb_buffer_.num_needed_for_output) {
+        while (dpb_buffer_.num_pics_needed_for_output) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2256,7 +2256,7 @@ int HevcVideoParser::MarkOutputPictures() {
             }
         }
 
-        while (dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
+        while (dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2310,7 +2310,7 @@ int HevcVideoParser::FindFreeBufAndMark() {
     dpb_buffer_.frame_buffer_list[index].use_status = 3;
 
     if (dpb_buffer_.frame_buffer_list[index].pic_output_flag) {
-        dpb_buffer_.num_needed_for_output++;
+        dpb_buffer_.num_pics_needed_for_output++;
     }
     dpb_buffer_.dpb_fullness++;
 
@@ -2319,7 +2319,7 @@ int HevcVideoParser::FindFreeBufAndMark() {
     uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
 
     // Conditional bumping (when max_num_reorder_pics > 0) to avoid synchronous job submission while keeping in conformance with the spec.
-    while (max_num_reorder_pics > 0 && dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
+    while (max_num_reorder_pics > 0 && dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
         if (BumpPicFromDpb() != PARSER_OK) {
             return PARSER_FAIL;
         }
@@ -2350,8 +2350,8 @@ int HevcVideoParser::BumpPicFromDpb() {
 
     // Mark as "not needed for output"
     dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_output_flag = 0;
-    if (dpb_buffer_.num_needed_for_output > 0) {
-        dpb_buffer_.num_needed_for_output--;
+    if (dpb_buffer_.num_pics_needed_for_output > 0) {
+        dpb_buffer_.num_pics_needed_for_output--;
     }
 
     // If it is not used for reference, empty it.
