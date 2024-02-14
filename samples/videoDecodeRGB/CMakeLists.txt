@@ -63,8 +63,8 @@ set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific ma
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 # find rocDecode
-find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS {ROCM_PATH}/lib)
-find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode {ROCM_PATH}/include/rocdecode)
+find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS ${ROCM_PATH}/lib)
+find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode ${ROCM_PATH}/include/rocdecode)
 
 if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
     set(ROCDECODE_FOUND TRUE)
