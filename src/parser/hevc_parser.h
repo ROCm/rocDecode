@@ -42,6 +42,11 @@ public:
      */
     HevcVideoParser();
 
+    /**
+     * @brief HEVCParser object destructor
+     */
+    virtual ~HevcVideoParser();
+
     /*! \brief Function to Initialize the parser
      * \param [in] p_params Input of <tt>RocdecParserParams</tt> with codec type to initialize parser.
      * \return <tt>rocDecStatus</tt> Returns success on completion, else error code for failure
@@ -60,11 +65,6 @@ public:
      * @return rocDecStatus 
      */
     virtual rocDecStatus UnInitialize();     // derived method :: nothing to do for this
-
-    /**
-     * @brief HEVCParser object destructor
-     */
-    virtual ~HevcVideoParser();
 
 protected:
     /*! \brief Inline function to Parse the NAL Unit Header
@@ -115,7 +115,7 @@ protected:
     typedef struct
     {
         uint32_t dpb_size;  // DPB buffer size in number of frames
-        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
@@ -277,13 +277,6 @@ protected:
      */
     bool ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header);
 
-    /*! \brief Function to parse Sei Message Info
-     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
-     * \param [in] size Size of the input stream
-     * \return No return value
-     */
-    void ParseSeiMessage(uint8_t *nalu, size_t size);
-
     /*! \brief Function to calculate the picture order count of the current picture. Once per picutre. (8.3.1)
      */
     void CalculateCurrPoc();
@@ -343,16 +336,20 @@ protected:
 #endif // DBGINFO
 
 private:
-    // functions to fill structures for callback functions
+    /*! \brief Callback function to notify decoder about new SPS.
+     */
     int FillSeqCallbackFn(HevcSeqParamSet* sps_data);
-    void FillSeiMessageCallbackFn();
 
-    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+    /*! \brief Callback function to send parsed SEI playload to decoder.
+     */
+    void SendSeiMsgPayload();
+
+    /*! \brief Callback function to fill the decode parameters and call decoder to decode a picture
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
 
-    /*! \brief Function to output decoded pictures from DPB for post-processing.
+    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
      * \return Return code in ParserResult form
      */
     int OutputDecodedPictures();

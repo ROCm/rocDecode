@@ -34,8 +34,6 @@ THE SOFTWARE.
 #define HEVC_MAX_NUM_REF_PICS 16
 // 7.4.7.1. (num_tile_columns_minus1 + 1) * PicHeightInCtbsY − 1. Max tile columns = 20 (A.4.2). Pic height in 16x16 CTB of 8K = 270.
 #define MAX_ENTRY_POINT_OFFSETS 20 * 270
-#define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
-#define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 
 /*! \brief Enumerator for the NAL Unit types - ISO-IEC 14496-15-2004.pdf, page 14, table 1 " NAL unit types in elementary streams
  */

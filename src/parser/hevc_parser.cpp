@@ -48,30 +48,33 @@ HevcVideoParser::HevcVideoParser() {
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
 
-    sei_rbsp_buf_ = nullptr;
-    sei_rbsp_buf_size_ = 0;
-    sei_payload_buf_ = nullptr;
-    sei_payload_buf_size_ = 0;
-    sei_message_list_.assign(INIT_SEI_MESSAGE_COUNT, {0});
-
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
     InitDpb();
+}
+
+HevcVideoParser::~HevcVideoParser() {
+    if (m_vps_) {
+        delete [] m_vps_;
+    }
+    if (m_sps_) {
+        delete [] m_sps_;
+    }
+    if (m_pps_) {
+        delete [] m_pps_;
+    }
+    if (m_sh_copy_) {
+        delete m_sh_copy_;
+    }
 }
 
 rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
     return RocVideoParser::Initialize(p_params);
 }
 
-/**
- * @brief function to uninitialize hevc parser
- * 
- * @return rocDecStatus 
- */
 rocDecStatus HevcVideoParser::UnInitialize() {
     //todo:: do any uninitialization here
     return ROCDEC_SUCCESS;
 }
-
 
 rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
@@ -94,7 +97,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Whenever new sei message found
         if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
-            FillSeiMessageCallbackFn();
+            SendSeiMsgPayload();
         }
 
         // Decode the picture
@@ -123,27 +126,6 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     }
 
     return ROCDEC_SUCCESS;
-}
-
-HevcVideoParser::~HevcVideoParser() {
-    if (m_vps_) {
-        delete [] m_vps_;
-    }
-    if (m_sps_) {
-        delete [] m_sps_;
-    }
-    if (m_pps_) {
-        delete [] m_pps_;
-    }
-    if (m_sh_copy_) {
-        delete m_sh_copy_;
-    }
-    if (sei_rbsp_buf_) {
-        delete [] sei_rbsp_buf_;
-    }
-    if (sei_payload_buf_) {
-        delete [] sei_payload_buf_;
-    }
 }
 
 int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
@@ -247,7 +229,7 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     }
 }
 
-void HevcVideoParser::FillSeiMessageCallbackFn() {
+void HevcVideoParser::SendSeiMsgPayload() {
     sei_message_info_params_.sei_message_count = sei_message_count_;
     sei_message_info_params_.sei_message = sei_message_list_.data();
     sei_message_info_params_.sei_data = (void*)sei_payload_buf_;
@@ -1846,57 +1828,6 @@ bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegH
     return false;
 }
 
-void HevcVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
-    int offset = 0; // byte offset
-    int payload_type;
-    int payload_size;
-
-    do {
-        payload_type = 0;
-        while (nalu[offset] == 0xFF) {
-            payload_type += 255;  // ff_byte
-            offset++;
-        }
-        payload_type += nalu[offset];  // last_payload_type_byte
-        offset++;
-
-        payload_size = 0;
-        while (nalu[offset] == 0xFF) {
-            payload_size += 255;  // ff_byte
-            offset++;
-        }
-        payload_size += nalu[offset];  // last_payload_size_byte
-        offset++;
-
-        // We start with INIT_SEI_MESSAGE_COUNT. Should be enough for normal use cases. If not, resize.
-        if((sei_message_count_ + 1) > sei_message_list_.size()) {
-            sei_message_list_.resize((sei_message_count_ + 1));
-        }
-        sei_message_list_[sei_message_count_].sei_message_type = payload_type;
-        sei_message_list_[sei_message_count_].sei_message_size = payload_size;
-
-        if (sei_payload_buf_) {
-            if ((payload_size + sei_payload_size_) > sei_payload_buf_size_) {
-                uint8_t *tmp_ptr = new uint8_t [payload_size + sei_payload_size_];
-                memcpy(tmp_ptr, sei_payload_buf_, sei_payload_size_); // save the existing payload
-                delete [] sei_payload_buf_;
-                sei_payload_buf_ = tmp_ptr;
-            }
-        } else {
-            // First payload, sei_payload_size_ is 0.
-            sei_payload_buf_size_ = payload_size > INIT_SEI_PAYLOAD_BUF_SIZE ? payload_size : INIT_SEI_PAYLOAD_BUF_SIZE;
-            sei_payload_buf_ = new uint8_t [sei_payload_buf_size_];
-        }
-        // Append the current payload to sei_payload_buf_
-        memcpy(sei_payload_buf_ + sei_payload_size_, nalu + offset, payload_size);
-
-        sei_payload_size_ += payload_size;
-        sei_message_count_++;
-
-        offset += payload_size;
-    } while (offset < size && nalu[offset] != 0x80);
-}
-
 bool HevcVideoParser::IsIdrPic(HevcNalUnitHeader *nal_header_ptr) {
     return (nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_W_RADL || nal_header_ptr->nal_unit_type == NAL_UNIT_CODED_SLICE_IDR_N_LP);
 }
@@ -2181,7 +2112,7 @@ void HevcVideoParser::InitDpb() {
     }
     dpb_buffer_.dpb_size = 0;
     dpb_buffer_.dpb_fullness = 0;
-    dpb_buffer_.num_needed_for_output = 0;
+    dpb_buffer_.num_pics_needed_for_output = 0;
     dpb_buffer_.num_output_pics = 0;
 }
 
@@ -2193,14 +2124,14 @@ void HevcVideoParser::EmptyDpb() {
         dpb_buffer_.output_pic_list[i] = 0xFF;
     }
     dpb_buffer_.dpb_fullness = 0;
-    dpb_buffer_.num_needed_for_output = 0;
+    dpb_buffer_.num_pics_needed_for_output = 0;
     dpb_buffer_.num_output_pics = 0;
 }
 
 int HevcVideoParser::FlushDpb() {
-    if (dpb_buffer_.num_needed_for_output) {
+    if (dpb_buffer_.num_pics_needed_for_output) {
         // Bump the remaining pictures
-        while (dpb_buffer_.num_needed_for_output) {
+        while (dpb_buffer_.num_pics_needed_for_output) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2256,7 +2187,7 @@ int HevcVideoParser::MarkOutputPictures() {
             }
         }
 
-        while (dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
+        while (dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
             if (BumpPicFromDpb() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -2310,7 +2241,7 @@ int HevcVideoParser::FindFreeBufAndMark() {
     dpb_buffer_.frame_buffer_list[index].use_status = 3;
 
     if (dpb_buffer_.frame_buffer_list[index].pic_output_flag) {
-        dpb_buffer_.num_needed_for_output++;
+        dpb_buffer_.num_pics_needed_for_output++;
     }
     dpb_buffer_.dpb_fullness++;
 
@@ -2319,7 +2250,7 @@ int HevcVideoParser::FindFreeBufAndMark() {
     uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
 
     // Conditional bumping (when max_num_reorder_pics > 0) to avoid synchronous job submission while keeping in conformance with the spec.
-    while (max_num_reorder_pics > 0 && dpb_buffer_.num_needed_for_output > max_num_reorder_pics) {
+    while (max_num_reorder_pics > 0 && dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
         if (BumpPicFromDpb() != PARSER_OK) {
             return PARSER_FAIL;
         }
@@ -2350,8 +2281,8 @@ int HevcVideoParser::BumpPicFromDpb() {
 
     // Mark as "not needed for output"
     dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_output_flag = 0;
-    if (dpb_buffer_.num_needed_for_output > 0) {
-        dpb_buffer_.num_needed_for_output--;
+    if (dpb_buffer_.num_pics_needed_for_output > 0) {
+        dpb_buffer_.num_pics_needed_for_output--;
     }
 
     // If it is not used for reference, empty it.
