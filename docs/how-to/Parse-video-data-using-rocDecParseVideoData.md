@@ -1,4 +1,4 @@
-## Parsing video data using rocDecParseVideoData()
+## Parse video data using rocDecParseVideoData()
 
 Elementary stream video packets extracted from the de-multiplexer are fed into the parser using the `rocDecParseVideoData()` API. 
 
