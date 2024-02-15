@@ -76,6 +76,8 @@ typedef struct {
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
 #define INIT_SLICE_LIST_NUM 16 // initial slice information/parameter struct list size
+#define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
+#define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 
 /**
  * @brief Base class for video parsing
@@ -84,8 +86,8 @@ typedef struct {
 class RocVideoParser {
 public:
     RocVideoParser();    // default constructor
+    virtual ~RocVideoParser();
     RocVideoParser(RocdecParserParams *pParams) : parser_params_(*pParams) {};
-    virtual ~RocVideoParser() = default ;
     virtual void SetParserParams(RocdecParserParams *pParams) { parser_params_ = *pParams; };
     RocdecParserParams *GetParserParams() {return &parser_params_;};
     virtual rocDecStatus Initialize(RocdecParserParams *pParams);
@@ -152,6 +154,13 @@ protected:
      * \return Returns the size of the converted buffer in <tt>size_t</tt>
      */
     size_t EbspToRbsp(uint8_t *stream_buffer, size_t begin_bytepos, size_t end_bytepos);
+
+    /*! \brief Function to parse Sei Message Info
+     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] size Size of the input stream
+     * \return No return value
+     */
+    void ParseSeiMessage(uint8_t *nalu, size_t size);
 };
 
 // helpers

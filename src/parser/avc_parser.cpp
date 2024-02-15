@@ -69,6 +69,11 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             new_sps_activated_ = false;
         }
 
+        // Whenever new sei message found
+        if (pfn_get_sei_message_cb_ && sei_message_count_ > 0) {
+            SendSeiMsgPayload();
+        }
+
         // Decode the picture
         if (SendPicForDecode() != PARSER_OK) {
             ERR(STR("Failed to decode!"));
@@ -209,7 +214,20 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 
                 case kAvcNalTypeSEI_Info: {
                     if (pfn_get_sei_message_cb_) {
-                        // Todo
+                        int sei_ebsp_size = nal_unit_size_ - 4; // copy the entire NAL unit
+                        if (sei_rbsp_buf_) {
+                            if (sei_ebsp_size > sei_rbsp_buf_size_) {
+                                delete [] sei_rbsp_buf_;
+                                sei_rbsp_buf_ = new uint8_t [sei_ebsp_size];
+                                sei_rbsp_buf_size_ = sei_ebsp_size;
+                            }
+                        } else {
+                            sei_rbsp_buf_size_ = sei_ebsp_size > INIT_SEI_PAYLOAD_BUF_SIZE ? sei_ebsp_size : INIT_SEI_PAYLOAD_BUF_SIZE;
+                            sei_rbsp_buf_ = new uint8_t [sei_rbsp_buf_size_];
+                        }
+                        memcpy(sei_rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), sei_ebsp_size);
+                        rbsp_size_ = EbspToRbsp(sei_rbsp_buf_, 0, sei_ebsp_size);
+                        ParseSeiMessage(sei_rbsp_buf_, rbsp_size_);
                     }
                     break;
                 }
@@ -347,6 +365,16 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     } else {
         return PARSER_OK;
     }
+}
+
+void AvcVideoParser::SendSeiMsgPayload() {
+    sei_message_info_params_.sei_message_count = sei_message_count_;
+    sei_message_info_params_.sei_message = sei_message_list_.data();
+    sei_message_info_params_.sei_data = (void*)sei_payload_buf_;
+    sei_message_info_params_.picIdx = curr_pic_.pic_idx;
+
+    // callback function with RocdecSeiMessageInfo params filled out
+    if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.user_data, &sei_message_info_params_);
 }
 
 ParserResult AvcVideoParser::SendPicForDecode() {
