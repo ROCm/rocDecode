@@ -30,6 +30,7 @@ make -j
 ./videodecode -i <input video file [required]> 
               -o <output path to save decoded YUV frames [optional]> 
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
+              -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
               -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
               -sei <extract SEI messages [optional]>
               -md5 <generate MD5 message digest on the decoded YUV image sequence [optional]>
