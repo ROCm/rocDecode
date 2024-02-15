@@ -1,4 +1,4 @@
-# Using rocDecode API
+# Use rocDecode API
 
 All rocDecode APIs are exposed in the header files: `rocdecode.h` and `rocparser.h`. Users can find these header files in the `api` folder in the rocDecode repository.
 
