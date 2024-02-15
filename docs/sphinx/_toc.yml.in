@@ -23,7 +23,7 @@ subtrees:
           - file: how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps().md
           - file: how-to/Query-the-decoding-status.md       
           - file: how-to/Reconfigure-the-decorder.md  
-      - file: reference
+      - file: reference/index.md
         title: Reference
         subtrees:
           - entries:
