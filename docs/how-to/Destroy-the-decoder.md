@@ -1,4 +1,4 @@
-## Destroying the decoder
+## Destroy the decoder
 Users must call the `rocDecDestroyDecoder()` to destroy the session and free up resources.
 
 The inputs to the API are:
