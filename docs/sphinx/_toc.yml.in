@@ -6,9 +6,9 @@ subtrees:
   - file: what-is-rocDecode.md
     title: What is rocDecode SDK
   - file: install/install.md
-    title: rocDecode SDK Installation
+    title: Installation
   - file: how-to/index.md
-    title: rocDecode SDK How To
+    title: How To
     subtrees:
     - entries:
       - file: how-to/Use-rocDecode-API.md
