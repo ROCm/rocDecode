@@ -1,4 +1,4 @@
-## Preparing the decoded frame for further processing
+## Prepare the decoded frame for further processing
 The decoded frames can be used for further postprocessing using the rocDecGetVideoFrame() API call. The successful completion of rocDecGetVideoFrame() indicates that the decoding process is completed and the device memory pointer is inter-opped into the ROCm HIP address space to process the decoded frame in device memory further. The caller gets the necessary information on the output surface, like YUV format, dimensions, pitch, and others, from this call. In the high-level RocVideoDecoder class, we provide four different surface type modes for the mapped surface as specified in OutputSurfaceMemoryType, as explained below.
 
     typedef enum OutputSurfaceMemoryType_enum {
