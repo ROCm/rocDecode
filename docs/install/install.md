@@ -1,5 +1,5 @@
 
-# Installing rocDecode
+# Installation
 
 rocDecode is a high-performance video decode SDK for AMD GPUs. The rocDecode API allows developers access the video decoding features available on the GPU.
 
