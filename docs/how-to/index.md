@@ -6,8 +6,11 @@
 This section provides guides on how to use the rocDECODE library and its different utilities.
 
 - name
+  
   href: https://github.com/Rmalavally/rocDecode/blob/rocDecode_reorg/docs/how-to/Use-rocDecode-API.md
+  
   title: Using rocDecode API
+  
 - name
   href: https://github.com/Rmalavally/rocDecode/blob/rocDecode_reorg/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser().md
   title: Create-parser-object-using-rocDecCreateVideoParser()
