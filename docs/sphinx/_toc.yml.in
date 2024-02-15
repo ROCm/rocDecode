@@ -24,10 +24,10 @@ subtrees:
           - file: how-to/Query-the-decoding-status.md       
           - file: how-to/Reconfigure-the-decorder.md  
       - file: reference
-        title: Reference
+        title: API Reference
         subtrees:
          - entries:
           - file: doxygen/html/files
             title: API Reference 
         - file: license.md
-          title: License
+         
