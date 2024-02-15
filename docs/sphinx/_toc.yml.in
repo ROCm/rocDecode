@@ -26,12 +26,8 @@ subtrees:
       - file: reference
         title: Reference
         subtrees:
-          - entries:
-              - file: reference/index.md
-                title: rocDecode API Reference
-                subtrees:
-                  - entries:
-                    - file: doxygen/html/files
-                      title: API Reference 
+         - entries:
+          - file: doxygen/html/files
+            title: API Reference 
         - file: license.md
           title: License
