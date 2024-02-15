@@ -1,9 +1,9 @@
-# Anywhere {branch} is used, the branch name will be substituted.
-# These comments will also be removed.
+defaults:
+  numbered: False
 #root: doxygen/html/index
-root: index.md
+root: index
 subtrees:
-  - entries
+ - entries
     - file: what-is-rocDecode.md
       title: What is rocDecode
      - file: how-to/index.md
