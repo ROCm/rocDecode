@@ -23,7 +23,7 @@ subtrees:
       - file: how-to/Query-the-decoding-status.md       
       - file: how-to/Reconfigure-the-decorder.md  
   - file: reference/index.md
-    title: rocDecode API Reference
+    title: API Reference
     subtrees:
     - entries:
       - file: doxygen/html/files
