@@ -27,5 +27,5 @@ subtrees:
     subtrees:
     - entries:
       - file: doxygen/html/files
-        title: rocDecode Header files
+        title: API Reference
   - file: license.md
