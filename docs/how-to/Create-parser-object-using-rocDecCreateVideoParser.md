@@ -1,5 +1,5 @@
 
-## Creating parser object using rocDecCreateVideoParser()
+## Create parser object using rocDecCreateVideoParser()
 
 The `rocDecCreateVideoParser()` API creates a video parser object for the Codec specified by the user. The API takes max_num_decode_surfaces, which determines the DPB (Decoded Picture Buffer) size for decoding. When creating a parser object, the application must register certain callback functions with the driver, which is called from the parser during the decode.
 
