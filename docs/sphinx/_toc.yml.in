@@ -7,7 +7,7 @@ subtrees:
     title: What is rocDecode
   - file: install/install.md
     title: Installation
-  - file: how-to
+  - file: how-to/index.md
     title: How To
     subtrees:
     - entries:
