@@ -1,4 +1,4 @@
-## Querying the decoding status
+## Query the decoding status
 After submitting a frame for decoding, `rocDecGetDecodeStatus()` can be called to query the decoding status for a given frame. A struct pointer `RocdecDecodeStatus*` is filled and returned to the user.
 
 The inputs to the API are:
