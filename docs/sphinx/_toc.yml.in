@@ -27,9 +27,9 @@ subtrees:
         title: Reference
         subtrees:
           - entries:
-            - file: api/rocdecode.h
-            - file: api/rocparser.h 
-            - file: /utils/rocvideodecode/roc_video_dec.h 
-            - file: /utils/video_demuxer.h 
+            - file: reference/rocdecode.h
+            - file: reference/rocparser.h 
+            - file: reference/utils/rocvideodecode/roc_video_dec.h 
+            - file: reference/utils/video_demuxer.h 
         - file: license.md
           title: License
