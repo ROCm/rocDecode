@@ -1,6 +1,6 @@
 # MIT License
 
-# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc.
+# Copyright (c) 2022 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,7 +17,7 @@
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
 # Configuration file for the Sphinx documentation builder.
@@ -27,7 +27,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import re
-import shutil
 
 from rocm_docs import ROCmDocs
 
@@ -36,15 +35,7 @@ with open('../CMakeLists.txt', encoding='utf-8') as f:
     if not match:
         raise ValueError("VERSION not found!")
     version_number = match[1]
-left_nav_title = f"rocDecode {version_number} Documentation"
-
-shutil.copy2('../README.md','./quickStart.md')
-shutil.copy2('../samples/README.md','./samples.md')
-shutil.copy2('../samples/videoDecode/README.md','./videoDecode.md')
-shutil.copy2('../samples/videoDecodeMem/README.md','./videoDecodeMem.md')
-shutil.copy2('../samples/videoDecodeMultiFiles/README.md','./videoDecodeMultiFiles.md')
-shutil.copy2('../samples/videoDecodePerf/README.md','./videoDecodePerf.md')
-shutil.copy2('../samples/videoDecodeRGB/README.md','./videoDecodeRGB.md')
+left_nav_title = f"rocdecode {version_number} Documentation"
 
 # for PDF output on Read the Docs
 project = "rocDecode Documentation"
