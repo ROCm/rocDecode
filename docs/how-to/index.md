@@ -1,7 +1,7 @@
 
 
 
-# How-To
+# How To
 
 This section guides you on how to use the rocDecode SDK library and its different utilities.
 
