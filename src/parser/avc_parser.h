@@ -144,6 +144,10 @@ protected:
      */
     ParserResult OutputDecodedPictures();
 
+    /*! \brief Callback function to send parsed SEI playload to decoder.
+     */
+    void SendSeiMsgPayload();
+
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] pic_data_size Size of the input stream
