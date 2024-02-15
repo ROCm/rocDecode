@@ -1,4 +1,3 @@
-Fix - Markdown
 
 # rocDecode SDK 
 
