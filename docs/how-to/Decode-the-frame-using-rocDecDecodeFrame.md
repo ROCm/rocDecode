@@ -1,4 +1,4 @@
-## Decoding the frame using rocDecDecodeFrame()
+## Decode the frame using rocDecDecodeFrame()
 
 After de-multiplexing and parsing, users can decode bitstream data containing a frame/field using hardware. 
 
