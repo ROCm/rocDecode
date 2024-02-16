@@ -45,6 +45,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
     << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
@@ -71,6 +72,7 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
     ReconfigParams reconfig_params = { 0 };
     ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+    uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -100,6 +102,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-d");
             }
             device_id = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-f")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            num_decoded_frames = atoi(argv[i]);
             continue;
         }
         if (!strcmp(argv[i], "-z")) {
@@ -231,6 +240,9 @@ int main(int argc, char **argv) {
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             total_dec_time += time_per_decode;
             n_frame += n_frame_returned;
+            if (num_decoded_frames && num_decoded_frames == n_frame) {
+                break;
+            }
         } while (n_video_bytes);
         
         n_frame += viddec.GetNumOfFlushedFrames();
