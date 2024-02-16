@@ -16,7 +16,7 @@ There are three main components in rocDecode, as shown below,
   
   
 
-<p align="left"><img width="70%" src="docs/VideoDecoderPipeline.png" /></p>
+<p align="left"><img width="70%" src="/docs/VideoDecoderPipeline.png" /></p>
 
 
 The workflow is as follows,
