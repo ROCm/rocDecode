@@ -29,6 +29,21 @@ RocVideoParser::RocVideoParser() {
     new_sps_activated_ = false;
     frame_rate_.numerator = 0;
     frame_rate_.denominator = 0;
+
+    sei_rbsp_buf_ = nullptr;
+    sei_rbsp_buf_size_ = 0;
+    sei_payload_buf_ = nullptr;
+    sei_payload_buf_size_ = 0;
+    sei_message_list_.assign(INIT_SEI_MESSAGE_COUNT, {0});
+}
+
+RocVideoParser::~RocVideoParser() {
+    if (sei_rbsp_buf_) {
+        delete [] sei_rbsp_buf_;
+    }
+    if (sei_payload_buf_) {
+        delete [] sei_payload_buf_;
+    }
 }
 
 /**
@@ -131,4 +146,55 @@ size_t RocVideoParser::EbspToRbsp(uint8_t *streamBuffer,size_t begin_bytepos, si
         streamBuffer_i++;
     }
     return end_bytepos - begin_bytepos + reduce_count;
+}
+
+void RocVideoParser::ParseSeiMessage(uint8_t *nalu, size_t size) {
+    int offset = 0; // byte offset
+    int payload_type;
+    int payload_size;
+
+    do {
+        payload_type = 0;
+        while (nalu[offset] == 0xFF) {
+            payload_type += 255;  // ff_byte
+            offset++;
+        }
+        payload_type += nalu[offset];  // last_payload_type_byte
+        offset++;
+
+        payload_size = 0;
+        while (nalu[offset] == 0xFF) {
+            payload_size += 255;  // ff_byte
+            offset++;
+        }
+        payload_size += nalu[offset];  // last_payload_size_byte
+        offset++;
+
+        // We start with INIT_SEI_MESSAGE_COUNT. Should be enough for normal use cases. If not, resize.
+        if((sei_message_count_ + 1) > sei_message_list_.size()) {
+            sei_message_list_.resize((sei_message_count_ + 1));
+        }
+        sei_message_list_[sei_message_count_].sei_message_type = payload_type;
+        sei_message_list_[sei_message_count_].sei_message_size = payload_size;
+
+        if (sei_payload_buf_) {
+            if ((payload_size + sei_payload_size_) > sei_payload_buf_size_) {
+                uint8_t *tmp_ptr = new uint8_t [payload_size + sei_payload_size_];
+                memcpy(tmp_ptr, sei_payload_buf_, sei_payload_size_); // save the existing payload
+                delete [] sei_payload_buf_;
+                sei_payload_buf_ = tmp_ptr;
+            }
+        } else {
+            // First payload, sei_payload_size_ is 0.
+            sei_payload_buf_size_ = payload_size > INIT_SEI_PAYLOAD_BUF_SIZE ? payload_size : INIT_SEI_PAYLOAD_BUF_SIZE;
+            sei_payload_buf_ = new uint8_t [sei_payload_buf_size_];
+        }
+        // Append the current payload to sei_payload_buf_
+        memcpy(sei_payload_buf_ + sei_payload_size_, nalu + offset, payload_size);
+
+        sei_payload_size_ += payload_size;
+        sei_message_count_++;
+
+        offset += payload_size;
+    } while (offset < size && nalu[offset] != 0x80);
 }
