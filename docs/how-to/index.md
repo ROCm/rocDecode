@@ -5,9 +5,9 @@
 
 This section guides you on how to use the rocDecode SDK library and its different utilities. Ensure you following the sequence of actions, as listed below,
 
-1. :ref:`Use-rocDecode-API`
+1. [Use-rocDecode-API](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html)
 
-2. :ref:`Create-parser-object-using-rocDecCreateVideoParser()`
+2. [Create-parser-object-using-rocDecCreateVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html)
 
 3. :ref:`Parse-video-data-using-rocDecParseVideoData()`
 
