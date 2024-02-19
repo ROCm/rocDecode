@@ -27,7 +27,7 @@ The rocDecode documentation is structured as follows:
 
     * `Using rocDecode API <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html>`_
     * `Create parser object using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
-    * 'Create-parser-object-using-rocDecCreateVideoParser() <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
+    * `Create-parser-object-using-rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
     * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
     * `Destroy the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html>`_
     * `Destroy the parser using rocDecDestroyVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html>`_
