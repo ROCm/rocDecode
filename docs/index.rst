@@ -21,11 +21,11 @@ The rocDecode documentation is structured as follows:
 
   .. grid-item-card:: Installation
 
-    * :ref:`install`
+    * :ref:`Install`
 
   .. grid-item-card:: How-to
 
-    * :ref:`Using-rocDecode-API`
+    * :ref:`Using rocDecode API`
     * :ref:`Create parser object using rocDecCreateVideoParser`
     * :ref:`Parse video data using rocDecParseVideoData`
     * :ref:`Destroy the parser using rocDecDestroyVideoParser`
