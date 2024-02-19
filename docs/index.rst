@@ -28,11 +28,12 @@ The rocDecode documentation is structured as follows:
     * `Using rocDecode API <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html>`_
     * `Create parser object using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
     * 'Create-parser-object-using-rocDecCreateVideoParser() <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
+    * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
     * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
     * `Destroy the parser using rocDecDestroyVideoParser  <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_ `
     * :ref:`Query decode capabilities using rocDecGetDecoderCaps`
     * :ref:`Create a Decoder using rocDecCreateDecoder`
-    * :ref:`Decode the frame using rocDecDecodeFrame`
+    * :ref:`
     * :ref:`Prepare the decoded frame for further processing`
     * :ref:`Query the decoding status`
     * :ref:`Reconfigure the decoder`
