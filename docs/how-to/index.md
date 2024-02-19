@@ -3,7 +3,7 @@
 
 # How To
 
-This section guides you on how to use the rocDecode SDK library and its different utilities. Ensure you following the sequence of actions, as listed below,
+This section guides you on how to use the rocDecode SDK library and its different utilities. Ensure you follow the sequence of actions, as listed below,
 
 1. [Use-rocDecode-API](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html)
 
