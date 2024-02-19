@@ -25,9 +25,9 @@ The rocDecode documentation is structured as follows:
 
   .. grid-item-card:: How-to
 
-    * :ref:`Using rocDecode API`
-    * :ref:`Create parser object using rocDecCreateVideoParser`
-    * :ref:`Parse video data using rocDecParseVideoData`
+    * `Using rocDecode API <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html>`_
+    * `Create parser object using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
+    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`
     * :ref:`Destroy the parser using rocDecDestroyVideoParser`
     * :ref:`Query decode capabilities using rocDecGetDecoderCaps`
     * :ref:`Create a Decoder using rocDecCreateDecoder`
