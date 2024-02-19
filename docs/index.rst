@@ -29,15 +29,14 @@ The rocDecode documentation is structured as follows:
     * `Create parser object using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
     * 'Create-parser-object-using-rocDecCreateVideoParser() <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
     * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
-    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
-    * `Destroy the parser using rocDecDestroyVideoParser  <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_ `
-    * :ref:`Query decode capabilities using rocDecGetDecoderCaps`
-    * :ref:`Create a Decoder using rocDecCreateDecoder`
-    * :ref:`
-    * :ref:`Prepare the decoded frame for further processing`
-    * :ref:`Query the decoding status`
-    * :ref:`Reconfigure the decoder`
-    * :ref:`Destroy the decoder`
+    * `Destroy the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html>`_
+    * `Destroy the parser using rocDecDestroyVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html>`_
+    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html>`_
+    * `Prepare the decoded frame for further processing <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html>`_
+    * `Query decode capabilities using rocDecGetDecoderCaps <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.html>`_
+    * `Query the decoding status <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html>`_
+    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decorder.html>`_
+    
 
   .. grid-item-card:: Reference
 
