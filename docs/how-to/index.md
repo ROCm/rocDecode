@@ -15,7 +15,7 @@ This section guides you on how to use the rocDecode SDK library and its differen
 
 5. [Destroy-the-decoder](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html)
 
-6. [Destroy-the-parser-using-rocDecDestroyVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html)
+6. [Destroy-the-parser-using-rocDecDestroyVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html)
 
 7. [Parse-video-data-using-rocDecParseVideoData()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html)
 
