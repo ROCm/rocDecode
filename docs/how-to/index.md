@@ -7,25 +7,26 @@ This section guides you on how to use the rocDecode SDK library and its differen
 
 1. [Use-rocDecode-API](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html)
 
-2. [Create-parser-object-using-rocDecCreateVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html)
+2. [Create-a-Decoder-using-rocDecCreateDecoder()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html)
 
-3. :ref:`Parse-video-data-using-rocDecParseVideoData()`
+3. [Create-parser-object-using-rocDecCreateVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html)
 
-4. :ref:`Destroy-the-parser-using-rocDecDestroyVideoParser()`
+4. [Decode-the-frame-using-rocDecDecodeFrame](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html)
 
-5. :ref:`Query-decode-capabilities-using-rocDecGetDecoderCaps()`
+5. [Destroy-the-decoder](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html)
 
-6. :ref:`Create-a-Decoder-using-rocDecCreateDecoder()`
+6. [Destroy-the-parser-using-rocDecDestroyVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html
 
-7. :ref:`Decode-the-frame-using-rocDecDecodeFrame`
+7. [Parse-video-data-using-rocDecParseVideoData()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html)
 
-8. :ref:`Prepare-the-decoded-frame-for-further-processing`
-  
-9. :ref:`Query-the-decoding-status`
+8. [Prepare-the-decoded-frame-for-further-processing](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html)
 
-10. :ref:`Reconfigure-the-decoder`
+9. [Query-decode-capabilities-using-rocDecGetDecoderCaps()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.html)
 
-11. :ref:`Destroy-the-decoder`
+10. [Query-the-decoding-status](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html}
+
+11. [Reconfigure-the-decoder](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decorder.html}
+
 
 
 
