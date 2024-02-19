@@ -11,7 +11,7 @@ This section guides you on how to use the rocDecode SDK library and its differen
 
 3. [Create-parser-object-using-rocDecCreateVideoParser()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html)
 
-4. [Decode-the-frame-using-rocDecDecodeFrame](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html)
+4. [Decode-the-frame-using-rocDecDecodeFrame()](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html)
 
 5. [Destroy-the-decoder](https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html)
 
