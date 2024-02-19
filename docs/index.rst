@@ -40,7 +40,7 @@ The rocDecode documentation is structured as follows:
 
   .. grid-item-card:: Reference
 
-    * `rocDecode Header Files <https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/files.html>`_
+    * `rocDecode Header files <https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/files.html>`_
 
   .. grid-item-card:: Samples
 
