@@ -54,7 +54,6 @@ rocDecStatus AvcVideoParser::UnInitialize() {
 
 rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
-        printf("Frame %d .....\n", pic_count_); // Jefftest
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
 
