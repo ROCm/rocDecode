@@ -33,6 +33,7 @@ AvcVideoParser::AvcVideoParser() {
     curr_has_mmco_5_ = 0;
     prev_ref_pic_bottom_field_ = 0;
     curr_ref_pic_bottom_field_ = 0;
+    max_long_term_frame_idx_ = 0;
 
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
@@ -53,6 +54,7 @@ rocDecStatus AvcVideoParser::UnInitialize() {
 
 rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
+        printf("Frame %d .....\n", pic_count_); // Jefftest
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
 
@@ -197,16 +199,21 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         curr_pic_.pic_output_flag = 1; // Annex C. OutputFlag is set to 1 for Annex A streams
                     }
 
+                    ParserResult ret2;
                     // Reference picture lists construction (8.2.4)
                     if (p_slice_header->slice_type != kAvcSliceTypeI && p_slice_header->slice_type != kAvcSliceTypeSI && p_slice_header->slice_type != kAvcSliceTypeI_7 && p_slice_header->slice_type != kAvcSliceTypeSI_9) {
-                        SetupReflist(&slice_info_list_[num_slices_]);
+                        if ((ret2 = SetupReflist(&slice_info_list_[num_slices_])) != PARSER_OK) {
+                            return ret2;
+                        }
                     }
 
                     if (num_slices_ == 0) {
                         // Find a free buffer in DPB for the current picture. Due to the current 1-1 mapping of DPB and 
                         // decoded buffer pool at VAAP level, we need to get a surface from DPB for the current picture to be 
                         // decoded into.
-                        FindFreeBufInDpb();
+                        if ((ret2 = FindFreeBufInDpb()) != PARSER_OK) {
+                            return ret2;
+                        }
                     }
                     num_slices_++;
                     break;
@@ -1712,11 +1719,12 @@ static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void 
 }
 
 // 8.2.4 Decoding process for reference picture lists construction
-void AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
+ParserResult AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
-    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4);
-    int i;
+    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4); // MaxFrameNum
     AvcSliceHeader *p_slice_header = &p_slice_info->slice_header;
+    int max_pic_num = p_slice_header->field_pic_flag ? 2 * max_frame_num : max_frame_num;
+    int i;
 
     memset(p_slice_info->ref_list_0_, 0, sizeof(p_slice_info->ref_list_0_));
     memset(p_slice_info->ref_list_1_, 0, sizeof(p_slice_info->ref_list_1_));
@@ -1783,7 +1791,8 @@ void AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
                 qsort((void*)&p_slice_info->ref_list_0_[dpb_buffer_.num_short_term], dpb_buffer_.num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
         } else { // 8.2.4.2.2
-            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add P ref field list init." << std::endl;
+            ERR("P ref field list init not supported yet.");
+            return PARSER_NOT_IMPLEMENTED;
         }
     } else {
         if (curr_pic_.pic_structure == kFrame) { // 8.2.4.2.3
@@ -1882,20 +1891,133 @@ void AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
                 qsort((void*)&p_slice_info->ref_list_1_[num_short_term_smaller + num_short_term_greater], num_long_term, sizeof(AvcPicture), CompareLongTermPicNumAsc);
             }
         } else { // 8.2.4.2.4
-            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Add B ref field list init." << std::endl;
+            ERR("B ref field list init not supported yet.");
+            return PARSER_NOT_IMPLEMENTED;
         }
     }
 
     // 8.2.4.3 Modification process for reference picture lists
     if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l0 == 1) {
-        std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Added ref list 0 modification support." << std::endl;
+        AvcPicture *ref_pic_list_x = p_slice_info->ref_list_0_; // RefPicListX
+        AvcListMod *p_list_mod = p_slice_header->ref_pic_list.modification_l0;
+        int num_ref_idx_lx_active = p_slice_header->num_ref_idx_l0_active_minus1 + 1;
+        if (num_ref_idx_lx_active >= AVC_MAX_REF_FRAME_NUM) {
+            ERR("Can not shift the remaining ref pictures.\n");
+            return PARSER_OUT_OF_RANGE;
+        }
+        if (ModifiyRefList(ref_pic_list_x, p_list_mod, num_ref_idx_lx_active, p_slice_header) != PARSER_OK) {
+            return PARSER_FAIL;
+        }
     }
 
     if (p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6) {
         if (p_slice_header->ref_pic_list.ref_pic_list_modification_flag_l1 == 1) {
-            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: Added ref list 1 modification support." << std::endl;
+            AvcPicture *ref_pic_list_x = p_slice_info->ref_list_1_; // RefPicListX
+            AvcListMod *p_list_mod = p_slice_header->ref_pic_list.modification_l1;
+            int num_ref_idx_lx_active = p_slice_header->num_ref_idx_l1_active_minus1 + 1;
+            if (num_ref_idx_lx_active >= AVC_MAX_REF_FRAME_NUM) {
+                ERR("Can not shift the remaining ref pictures.\n");
+                return PARSER_OUT_OF_RANGE;
+            }
+            if (ModifiyRefList(ref_pic_list_x, p_list_mod, num_ref_idx_lx_active, p_slice_header) != PARSER_OK) {
+                return PARSER_FAIL;
+            }
         }
     }
+    return PARSER_OK;
+}
+
+ParserResult AvcVideoParser::ModifiyRefList(AvcPicture *ref_pic_list_x, AvcListMod *p_list_mod, int num_ref_idx_lx_active, AvcSliceHeader *p_slice_header) {
+    AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+    int ref_idx_lx = 0; // refIdxLX
+    int curr_pic_num = p_slice_header->field_pic_flag ? 2 * p_slice_header->frame_num + 1 : p_slice_header->frame_num; // CurrPicNum
+    int pic_num_lx_pred = curr_pic_num; // picNumLXPred
+    int max_frame_num = 1 << (p_sps->log2_max_frame_num_minus4 + 4); // MaxFrameNum
+    int max_pic_num = p_slice_header->field_pic_flag ? 2 * max_frame_num : max_frame_num;
+    int i;
+
+    while (p_list_mod->modification_of_pic_nums_idc != 3) {
+        if (p_list_mod->modification_of_pic_nums_idc < 2) {
+            // 8.2.4.3.1 Modification process of reference picture lists for short-term reference pictures
+            int pic_num_lx_no_wrap; // picNumLXNoWrap
+            if (p_list_mod->modification_of_pic_nums_idc == 0) {
+                // (8-34)
+                if (pic_num_lx_pred < (p_list_mod->abs_diff_pic_num_minus1 + 1)) {
+                    pic_num_lx_no_wrap = pic_num_lx_pred - (p_list_mod->abs_diff_pic_num_minus1 + 1) + max_pic_num;
+                } else {
+                    pic_num_lx_no_wrap = pic_num_lx_pred - (p_list_mod->abs_diff_pic_num_minus1 + 1);
+                }
+            } else {
+                // (8-35)
+                if ((pic_num_lx_pred + (p_list_mod->abs_diff_pic_num_minus1 + 1)) >= max_pic_num) {
+                    pic_num_lx_no_wrap = pic_num_lx_pred + (p_list_mod->abs_diff_pic_num_minus1 + 1) - max_pic_num;
+                } else {
+                    pic_num_lx_no_wrap = pic_num_lx_pred + (p_list_mod->abs_diff_pic_num_minus1 + 1);
+                }
+            }
+            // (8-36)
+            pic_num_lx_pred = pic_num_lx_no_wrap;
+            int pic_num_lx; // picNumLX
+            if (pic_num_lx_no_wrap > curr_pic_num) {
+                pic_num_lx = pic_num_lx_no_wrap - max_pic_num;
+            } else {
+                pic_num_lx = pic_num_lx_no_wrap;
+            }
+            // (8-37)
+            // Shift further
+            for (int c_idx = num_ref_idx_lx_active; c_idx > ref_idx_lx; c_idx--) {
+                ref_pic_list_x[c_idx] = ref_pic_list_x[c_idx - 1];
+            }
+            // Find short-term reference picture with PicNum equal to pic_num_lx
+            for (i = 0; i <= num_ref_idx_lx_active; i++) {
+                if (ref_pic_list_x[i].is_reference == kUsedForShortTerm && ref_pic_list_x[i].pic_num == pic_num_lx) {
+                    break;
+                }
+            }
+            if (i > num_ref_idx_lx_active) {
+                ERR("Could not find a short-term reference with the modified pic num.");
+                return PARSER_OUT_OF_RANGE;
+            }
+            ref_pic_list_x[ref_idx_lx] = ref_pic_list_x[i];
+            ref_idx_lx++;
+            int n_idx = ref_idx_lx;
+            for (int c_idx = ref_idx_lx; c_idx <= num_ref_idx_lx_active; c_idx++) {
+                int pic_num_f = ref_pic_list_x[c_idx].is_reference == kUsedForShortTerm ? ref_pic_list_x[c_idx].pic_num : max_pic_num;
+                if ( pic_num_f != pic_num_lx) {
+                    ref_pic_list_x[n_idx++] = ref_pic_list_x[c_idx];
+                }
+            }
+        } else if (p_list_mod->modification_of_pic_nums_idc == 2) {
+            // 8.2.4.3.2 Modification process of reference picture lists for long-term reference pictures
+            // (8-38)
+            // Shift further
+            for (int c_idx = num_ref_idx_lx_active; c_idx > ref_idx_lx; c_idx--) {
+                ref_pic_list_x[c_idx] = ref_pic_list_x[c_idx - 1];
+            }
+            // Find long-term reference picture with LongTermPicNum equal to long_term_pic_num
+            for (i = 0; i <= num_ref_idx_lx_active; i++) {
+                if (ref_pic_list_x[i].is_reference == kUsedForLongTerm && ref_pic_list_x[i].long_term_pic_num == p_list_mod->long_term_pic_num) {
+                    break;
+                }
+            }
+            if (i > num_ref_idx_lx_active) {
+                ERR("Could not find long-term reference with the modified long term pic num.");
+                return PARSER_OUT_OF_RANGE;
+            }
+            ref_pic_list_x[ref_idx_lx] = ref_pic_list_x[i];
+            ref_idx_lx++;
+            int n_idx = ref_idx_lx;
+            for (int c_idx = ref_idx_lx; c_idx <= num_ref_idx_lx_active; c_idx++) {
+                int long_term_pic_num_f = ref_pic_list_x[c_idx].is_reference == kUsedForLongTerm ? ref_pic_list_x[c_idx].long_term_pic_num : 2 * (max_long_term_frame_idx_ + 1);
+                if ( long_term_pic_num_f != p_list_mod->long_term_pic_num) {
+                    ref_pic_list_x[n_idx++] = ref_pic_list_x[c_idx];
+                }
+            }
+        }
+        p_list_mod = &p_slice_header->ref_pic_list.modification_l0[ref_idx_lx];
+    }
+
+    return PARSER_OK;
 }
 
 ParserResult AvcVideoParser::CheckDpbAndOutput() {
@@ -1968,6 +2090,7 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
             curr_pic_.is_reference = kUsedForLongTerm;
             curr_pic_.long_term_frame_idx = 0;
             dpb_buffer_.num_long_term = 0;
+            max_long_term_frame_idx_ = 0;
         } else {
             curr_pic_.is_reference = kUsedForShortTerm;
             dpb_buffer_.num_short_term = 0;
@@ -1975,7 +2098,8 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
     } else {
         if (p_slice_header->dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag == 1) {
             // 8.2.5.4 Adaptive memory control decoded reference picture marking process
-            std::cout << "Error!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Todo: 8.2.5.4 ............" << std::endl;
+            ERR("8.2.5.4 Adaptive memory control decoded reference picture marking process not supported yet.");
+            return PARSER_NOT_IMPLEMENTED;
         } else {
             // 8.2.5.3 Sliding window decoded reference picture marking process
             curr_pic_.is_reference = kUsedForShortTerm;  // 8.2.5.1: 3.
