@@ -150,7 +150,7 @@ ctest -VV
 
 ## Samples
 
-The tool provides a few samples to decode videos [here](samples/). Please refer to the individual folders to build and run the samples.
+The tool provides a few samples to decode videos [here](samples/). Refer to the individual folders to build and run the samples.
 
 ### Sample prerequisites
 
