@@ -26,16 +26,16 @@ The rocDecode documentation is structured as follows:
   .. grid-item-card:: How-to
 
     * `Use rocDecode API <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html>`_
-    * `Create parser object using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
-    * `Create-parser-object-using-rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_
+    * `Create-parser-object-using-rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_  
+    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html>`_
+    * `Query decode capabilities using rocDecGetDecoderCaps <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.html>`_
+    * `Create a decoder using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
     * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
+    * `Query the decoding status <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html>`_
+    * `Prepare the decoded frame for further processing <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html>`_
+    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decorder.html>`_
     * `Destroy the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html>`_
     * `Destroy the parser using rocDecDestroyVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html>`_
-    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html>`_
-    * `Prepare the decoded frame for further processing <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html>`_
-    * `Query decode capabilities using rocDecGetDecoderCaps <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.html>`_
-    * `Query the decoding status <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html>`_
-    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decorder.html>`_
     
 
   .. grid-item-card:: Reference
