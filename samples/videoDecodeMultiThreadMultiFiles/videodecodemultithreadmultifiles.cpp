@@ -26,6 +26,12 @@ THE SOFTWARE.
 #include <vector>
 #include <string>
 #include <chrono>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <atomic>
+#include <thread>
+#include <functional>
 #include <sys/stat.h>
 #include <libgen.h>
 #if __cplusplus >= 201703L && __has_include(<filesystem>)
@@ -36,19 +42,86 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 
-void DecProc(std::unique_ptr<RocVideoDecoder> p_dec, std::unique_ptr<VideoDemuxer> demuxer, int *pn_frame, double *pn_fps) {
+class ThreadPool {
+    public:
+        ThreadPool (int threads) : shutdown_(false) {
+            // Create the specified number of threads
+            threads_.reserve (threads);
+            for (int i = 0; i < threads; ++i)
+                threads_.emplace_back (std::bind (&ThreadPool::ThreadEntry, this, i));
+        }
+
+        ~ThreadPool () {}
+
+        void JoinThreads () {
+            {
+                // Unblock any threads and tell them to stop
+                std::unique_lock <std::mutex> lock (mutex);
+
+                shutdown_ = true;
+                cond_var_.notify_all();
+            }
+
+            // Wait for all threads to stop
+            std::cerr << "Joining threads" << std::endl;
+            for (auto& thread : threads_)
+                thread.join();
+        }
+
+        void ExecuteJob (std::function <void ()> func) {
+            // Place a job on the queue and unblock a thread
+            std::unique_lock <std::mutex> lock (mutex);
+
+            jobs_.emplace (std::move (func));
+            cond_var_.notify_one();
+        }
+
+    protected:
+        void ThreadEntry (int i) {
+            std::function <void ()> job;
+
+            while (1) {
+                {
+                    std::unique_lock <std::mutex> lock (mutex);
+                    while (! shutdown_ && jobs_.empty())
+                        cond_var_.wait (lock);
+
+                    if (jobs_.empty ()) {
+                        // No jobs to do and we are shutting down
+                        std::cerr << "Thread " << i << " terminates" << std::endl;
+                        return;
+                    }
+
+                    std::cerr << "Thread " << i << " does a job" << std::endl;
+                    job = std::move (jobs_.front ());
+                    jobs_.pop();
+                }
+
+                // Do the job without holding any locks
+                job ();
+            }
+        }
+
+        std::mutex mutex;
+        std::condition_variable cond_var_;
+        bool shutdown_;
+        std::queue <std::function <void ()>> jobs_;
+        std::vector <std::thread> threads_;
+};
+
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    do {
+    /*do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
         n_frame += n_frame_returned;
     } while (n_video_bytes);
-
+    */
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
@@ -178,6 +251,7 @@ int main(int argc, char **argv) {
         GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
 
         std::cout << "info: Number of threads: " << n_thread << std::endl;
+        ThreadPool thread_pool (n_thread);
 
         for (int j = 0; j < num_files; j += n_thread) {
             for (int i = 0; i < n_thread; i++) {
@@ -201,16 +275,13 @@ int main(int argc, char **argv) {
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
                 std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
 
-                v_thread.push_back(std::thread(DecProc, std::move(dec), std::move(demuxer), &v_frame[i], &v_fps[i]));
+                thread_pool.ExecuteJob(std::bind (DecProc, dec.get(), demuxer.get(), &v_frame[i], &v_fps[i]));
+                total_fps += v_fps[i];
+                n_total += v_frame[i];
             }
         }
 
-        for (int i = 0; i < v_thread.size(); i++) {
-            v_thread[i].join();
-            total_fps += v_fps[i];
-            n_total += v_frame[i];
-        }
-
+        thread_pool.JoinThreads();
         std::cout << "info: Total frame decoded: " << n_total  << std::endl;
         std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
         std::cout << "info: avg FPS: " << total_fps  << std::endl;
