@@ -2,15 +2,33 @@
 # These comments will also be removed.
 root: doxygen/html/index
 subtrees:
-- caption: Quick-start
-  entries:
-  - file: quickStart
-- caption: API reference
-  entries:
-  - file: doxygen/html/files
-- caption: Tutorials
-  entries:
-  - file: rocDecodeUserGuide
-- caption: About
-  entries:
-  - file: license
+  - caption: What is rocDecode?
+    entries:
+      - file: quick_overview
+  - caption: Quick-start
+    entries:
+      - file: quickStart
+  - caption: Hardware requirements
+    entries:
+      - file: tutorial/hardwareCapabilities
+  - caption: API reference
+    entries:
+      - file: doxygen/html/files
+  - caption: Tutorials
+    entries:
+      - file: tutorial/overview
+      - file: tutorial/decodingPipeline
+      - file: tutorial/usingAPI
+  - caption: Samples
+    entries:
+      - file: samples
+        subtrees:
+          - entries:
+            - file: videoDecode
+            - file: videoDecodeMem
+            - file: videoDecodeMultiFiles
+            - file: videoDecodePerf
+            - file: videoDecodeRGB
+  - caption: About
+    entries:
+      - file: license

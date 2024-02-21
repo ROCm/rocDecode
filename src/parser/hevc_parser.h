@@ -42,6 +42,11 @@ public:
      */
     HevcVideoParser();
 
+    /**
+     * @brief HEVCParser object destructor
+     */
+    virtual ~HevcVideoParser();
+
     /*! \brief Function to Initialize the parser
      * \param [in] p_params Input of <tt>RocdecParserParams</tt> with codec type to initialize parser.
      * \return <tt>rocDecStatus</tt> Returns success on completion, else error code for failure
@@ -61,11 +66,6 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method :: nothing to do for this
 
-    /**
-     * @brief HEVCParser object destructor
-     */
-    virtual ~HevcVideoParser();
-
 protected:
     /*! \brief Inline function to Parse the NAL Unit Header
      * 
@@ -83,6 +83,16 @@ protected:
 
         return nalu_header;
     }
+
+    /*! \brief Slice info of a picture
+     */
+    typedef struct {
+        HevcSliceSegHeader slice_header;
+        uint32_t slice_data_offset; // offset in the slice data buffer of this slice
+        uint32_t slice_data_size; // slice data size in bytes
+        uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
+        uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
+    } HevcSliceInfo;
 
     /*! \brief Picture info for decoding process
      */
@@ -105,7 +115,7 @@ protected:
     typedef struct
     {
         uint32_t dpb_size;  // DPB buffer size in number of frames
-        uint32_t num_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
@@ -121,8 +131,9 @@ protected:
     HevcVideoParamSet*  m_vps_ = nullptr;
     HevcSeqParamSet*    m_sps_ = nullptr;
     HevcPicParamSet*    m_pps_ = nullptr;
-    HevcSliceSegHeader* m_sh_ = nullptr;
     HevcSliceSegHeader* m_sh_copy_ = nullptr;
+    std::vector<HevcSliceInfo> slice_info_list_;
+    std::vector<RocdecHevcSliceParams> slice_param_list_;
 
     HevcNalUnitHeader   slice_nal_unit_header_;
     HevcPicInfo         curr_pic_info_;
@@ -157,9 +168,6 @@ protected:
     uint8_t ref_pic_set_st_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetStFoll
     uint8_t ref_pic_set_lt_curr_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtCurr
     uint8_t ref_pic_set_lt_foll_[HEVC_MAX_NUM_REF_PICS];  // RefPicSetLtFoll
-
-    uint8_t ref_pic_list_0_[HEVC_MAX_NUM_REF_PICS];  // RefPicList0
-    uint8_t ref_pic_list_1_[HEVC_MAX_NUM_REF_PICS];  // RefPicList1
 
     /*! \brief Function to parse Video Parameter Set 
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -262,31 +270,25 @@ protected:
     void ParsePredWeightTable(HevcSliceSegHeader *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset);
 
     /*! \brief Function to parse Slice Header
-     * \param [in] nal_unit_type Input of <tt>uint32_t</tt> containing the enumerator value to the NAL Unit Type
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
+     * \param [out] p_slice_header Pointer to the slice header struct
      * \return True is successful, else false
      */
-    bool ParseSliceHeader(uint8_t *nalu, size_t size);
+    bool ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header);
 
-    /*! \brief Function to parse Sei Message Info
-     * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
-     * \param [in] size Size of the input stream
-     * \return No return value
-     */
-    void ParseSeiMessage(uint8_t *nalu, size_t size);
-
-    /*! \brief Function to calculate the picture order count of the current picture (8.3.1)
+    /*! \brief Function to calculate the picture order count of the current picture. Once per picutre. (8.3.1)
      */
     void CalculateCurrPoc();
 
-    /*! \brief Function to perform decoding process for reference picture set (8.3.2)
+    /*! \brief Function to perform decoding process for reference picture set. Once per picture. (8.3.2)
      */
     void DecodeRps();
 
-    /*! \brief Function to perform decoding process for reference picture lists construction (8.3.4)
+    /*! \brief Function to perform decoding process for reference picture lists construction per slice. (8.3.4)
+     * \param [in] p_slice_info Pointer to the slice info struct
      */
-    void ConstructRefPicLists();
+    void ConstructRefPicLists(HevcSliceInfo *p_slice_info);
 
     /*! \brief Function to initialize DPB buffer.
      */
@@ -334,16 +336,20 @@ protected:
 #endif // DBGINFO
 
 private:
-    // functions to fill structures for callback functions
+    /*! \brief Callback function to notify decoder about new SPS.
+     */
     int FillSeqCallbackFn(HevcSeqParamSet* sps_data);
-    void FillSeiMessageCallbackFn();
 
-    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+    /*! \brief Callback function to send parsed SEI playload to decoder.
+     */
+    void SendSeiMsgPayload();
+
+    /*! \brief Callback function to fill the decode parameters and call decoder to decode a picture
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
 
-    /*! \brief Function to output decoded pictures from DPB for post-processing.
+    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
      * \return Return code in ParserResult form
      */
     int OutputDecodedPictures();

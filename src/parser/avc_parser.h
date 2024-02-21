@@ -71,6 +71,7 @@ public:
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
         uint32_t is_reference;
         uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t pic_output_flag;  // OutputFlag
     } AvcPicture;
 
 protected:
@@ -80,6 +81,16 @@ protected:
         kUsedForLongTerm = 2
     };
 
+    /*! \brief Slice info of a picture
+     */
+    typedef struct {
+        AvcSliceHeader slice_header;
+        uint32_t slice_data_offset; // offset in the slice data buffer of this slice
+        uint32_t slice_data_size; // slice data size in bytes
+        AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
+        AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
+    } AvcSliceInfo;
+
     /*! \brief Decoded picture buffer
      */
     typedef struct{
@@ -87,6 +98,10 @@ protected:
         uint32_t num_short_term; // numShortTerm;
         uint32_t num_long_term; // numLongTerm;
         AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
+        uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
+        uint32_t dpb_fullness;  // number of pictures in DPB
+        uint32_t num_output_pics;  // number of pictures that are output after the decode call
+        uint32_t output_pic_list[AVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     AvcNalUnitHeader nal_unit_header_;
@@ -96,7 +111,8 @@ protected:
     int32_t active_pps_id_;
 
     AvcNalUnitHeader   slice_nal_unit_header_;
-    AvcSliceHeader     slice_header_0_;
+    std::vector<AvcSliceInfo> slice_info_list_;
+    std::vector<RocdecAvcSliceParams> slice_param_list_;
 
     int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
     int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
@@ -111,8 +127,6 @@ protected:
     // DPB
     AvcPicture curr_pic_;
     DecodedPictureBuffer dpb_buffer_;
-    AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
-    AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
 
     /*! \brief Function to notify decoder about video format change (new SPS) through callback
      * \param [in] p_sps Pointer to the current active SPS
@@ -124,6 +138,15 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SendPicForDecode();
+
+    /*! \brief Function to output decoded pictures from DPB for post-processing.
+     * \return Return code in ParserResult form
+     */
+    ParserResult OutputDecodedPictures();
+
+    /*! \brief Callback function to send parsed SEI playload to decoder.
+     */
+    void SendSeiMsgPayload();
 
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -193,18 +216,41 @@ protected:
      */
     void CalculateCurrPoc();
 
-    /*! \brief Function to set up the reference picutre lists. 8.2.4.
+    /*! \brief Function to set up the reference picutre lists for each slice. 8.2.4.
+     * \param [in] p_slice_info Poiner to slice info struct
      */
-    void SetupReflist();
+    void SetupReflist(AvcSliceInfo *p_slice_info);
+
+    /*! \brief Function to check the fullness of DPB and output picture if needed.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult CheckDpbAndOutput();
 
     /*! \brief Function to find a free buffer in DPB for the current picture
+     * \return <tt>ParserResult</tt>
      */
     ParserResult FindFreeBufInDpb();
 
     /*! \brief Function to mark decoded reference picture in DPB. 8.2.5. This step is 
-     * performed after the current picture is decoded.
+     * performed after the current picture is decoded, for future pictures.
+     * \return <tt>ParserResult</tt>
      */
     ParserResult MarkDecodedRefPics();
+
+    /*! \brief Function to bump one picture out of DPB. C.4.5.3.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult BumpPicFromDpb();
+
+    /*! \brief Function to insert the current picture into DPB.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult InsertCurrPicIntoDpb();
+
+    /*! \brief Function to send out the remaining pictures that need for output in DPB buffer.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult FlushDpb();
 
 #if DBGINFO
     /*! \brief Function to log out parsed SPS content for debug.

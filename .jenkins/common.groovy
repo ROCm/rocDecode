@@ -8,7 +8,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
     String buildTypeDir = debug ? 'debug' : 'release'
     
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
@@ -34,18 +34,35 @@ def runTestCommand (platform, project) {
     }
 
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 export HOME=/home/jenkins
-                echo Make Test
+                echo make test
                 cd ${project.paths.project_build_prefix}/build/release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
+                echo rocdecode-sample - videoDecode
                 mkdir -p rocdecode-sample && cd rocdecode-sample
                 cmake /opt/rocm/share/rocdecode/samples/videoDecode/
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+                echo rocdecode-test package verification
                 cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
                 cmake /opt/rocm/share/rocdecode/test/
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
+                echo rocdecode conformance tests
+                cd ../ && mkdir -p conformance && cd conformance
+                pip3 install pandas
+                wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
+                unzip HevcConformance.zip
+                python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
+                echo rocdecode-sample - videoDecode with data1 video test
+                cd ../ && cd rocdecode-sample
+                wget http://math-ci.amd.com/userContent/computer-vision/data1.img
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i ./data1.img
+                echo rocdecode-sample - videoDecodePerf with data1 video test
+                mkdir -p rocdecode-perf && cd rocdecode-perf
+                cmake /opt/rocm/share/rocdecode/samples/videoDecodePerf/
+                make -j8
+                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
                 """
 
     platform.runCommand(this, command)
@@ -94,7 +111,7 @@ def runPackageCommand(platform, project) {
     }
 
     def command = """#!/usr/bin/env bash
-                set -x
+                set -ex
                 export HOME=/home/jenkins
                 echo Make rocDecode Package
                 cd ${project.paths.project_build_prefix}/build/release

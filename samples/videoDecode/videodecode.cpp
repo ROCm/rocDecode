@@ -45,13 +45,14 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
     << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
     exit(0);
 }
 
@@ -71,6 +72,7 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
     ReconfigParams reconfig_params = { 0 };
     ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+    uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -100,6 +102,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-d");
             }
             device_id = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-f")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            num_decoded_frames = atoi(argv[i]);
             continue;
         }
         if (!strcmp(argv[i], "-z")) {
@@ -221,7 +230,7 @@ int main(int argc, char **argv) {
                 if (b_generate_md5) {
                     viddec.UpdateMd5ForFrame(pframe, surf_info);
                 }
-                if (dump_output_frames) {
+                if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
                 // release frame
@@ -231,6 +240,9 @@ int main(int argc, char **argv) {
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             total_dec_time += time_per_decode;
             n_frame += n_frame_returned;
+            if (num_decoded_frames && num_decoded_frames == n_frame) {
+                break;
+            }
         } while (n_video_bytes);
         
         n_frame += viddec.GetNumOfFlushedFrames();
@@ -238,6 +250,12 @@ int main(int argc, char **argv) {
         if (!dump_output_frames) {
             std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        } else {
+            if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                std::cout << "info: saved frames into " << output_file_path << std::endl;
+            }
         }
         if (b_generate_md5) {
             uint8_t *digest;
