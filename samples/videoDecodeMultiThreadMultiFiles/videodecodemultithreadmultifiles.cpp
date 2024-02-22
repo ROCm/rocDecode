@@ -44,10 +44,10 @@ THE SOFTWARE.
 
 class ThreadPool {
     public:
-        ThreadPool(int threads) : shutdown_(false) {
+        ThreadPool(int nthreads) : shutdown_(false) {
             // Create the specified number of threads
-            threads_.reserve(threads);
-            for (int i = 0; i < threads; ++i)
+            threads_.reserve(nthreads);
+            for (int i = 0; i < nthreads; ++i)
                 threads_.emplace_back(std::bind(&ThreadPool::ThreadEntry, this, i));
         }
 
@@ -77,7 +77,7 @@ class ThreadPool {
         void ThreadEntry(int i) {
             std::function<void()> job;
 
-            while (1) {
+            while (true) {
                 {
                     std::unique_lock<std::mutex> lock (mutex_);
                     while (!shutdown_ && jobs_.empty())
