@@ -56,22 +56,19 @@ class ThreadPool {
         void JoinThreads () {
             {
                 // Unblock any threads and tell them to stop
-                std::unique_lock <std::mutex> lock (mutex);
-
+                std::unique_lock <std::mutex> lock (mutex_);
                 shutdown_ = true;
                 cond_var_.notify_all();
             }
 
             // Wait for all threads to stop
-            std::cerr << "Joining threads" << std::endl;
             for (auto& thread : threads_)
                 thread.join();
         }
 
         void ExecuteJob (std::function <void ()> func) {
             // Place a job on the queue and unblock a thread
-            std::unique_lock <std::mutex> lock (mutex);
-
+            std::unique_lock <std::mutex> lock (mutex_);
             jobs_.emplace (std::move (func));
             cond_var_.notify_one();
         }
@@ -82,17 +79,15 @@ class ThreadPool {
 
             while (1) {
                 {
-                    std::unique_lock <std::mutex> lock (mutex);
+                    std::unique_lock <std::mutex> lock (mutex_);
                     while (! shutdown_ && jobs_.empty())
                         cond_var_.wait (lock);
 
                     if (jobs_.empty ()) {
-                        // No jobs to do and we are shutting down
-                        std::cerr << "Thread " << i << " terminates" << std::endl;
+                        // No jobs to do; shutting down
                         return;
                     }
 
-                    std::cerr << "Thread " << i << " does a job" << std::endl;
                     job = std::move (jobs_.front ());
                     jobs_.pop();
                 }
@@ -102,7 +97,7 @@ class ThreadPool {
             }
         }
 
-        std::mutex mutex;
+        std::mutex mutex_;
         std::condition_variable cond_var_;
         bool shutdown_;
         std::queue <std::function <void ()>> jobs_;
@@ -294,7 +289,6 @@ int main(int argc, char **argv) {
 
         thread_pool.JoinThreads();
         for (int i = 0; i < num_files; i++) {
-            std::cout << "v_fps[i] = " << v_fps[i] << " v_frame[i] = " << v_frame[i] << std::endl;
             total_fps += v_fps[i];
             n_total += v_frame[i];
         }
