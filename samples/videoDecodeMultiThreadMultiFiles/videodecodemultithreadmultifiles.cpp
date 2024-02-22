@@ -100,8 +100,8 @@ class ThreadPool {
         std::mutex mutex_;
         std::condition_variable cond_var_;
         bool shutdown_;
-        std::queue <std::function <void ()>> jobs_;
-        std::vector <std::thread> threads_;
+        std::queue<std::function<void()>> jobs_;
+        std::vector<std::thread> threads_;
 };
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
     }
     
     try {
-        for (const auto & entry : std::filesystem::directory_iterator(input_folder_path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
             input_file_names.push_back(entry.path());
             num_files++;
         }
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
                 int file_idx = i % num_files + j;
                 if (file_idx == num_files)
                     break;
-                thread_pool.ExecuteJob(std::bind (DecProc, v_viddec[file_idx].get(), v_demuxer[file_idx].get(), &v_frame[file_idx], &v_fps[file_idx]));
+                thread_pool.ExecuteJob(std::bind(DecProc, v_viddec[file_idx].get(), v_demuxer[file_idx].get(), &v_frame[file_idx], &v_fps[file_idx]));
             }
         }
 
