@@ -123,6 +123,7 @@ protected:
     int curr_has_mmco_5_;
     int prev_ref_pic_bottom_field_;
     int curr_ref_pic_bottom_field_;
+    int max_long_term_frame_idx_; // MaxLongTermFrameIdx
 
     // DPB
     AvcPicture curr_pic_;
@@ -218,8 +219,18 @@ protected:
 
     /*! \brief Function to set up the reference picutre lists for each slice. 8.2.4.
      * \param [in] p_slice_info Poiner to slice info struct
+     * \return <tt>ParserResult</tt>
      */
-    void SetupReflist(AvcSliceInfo *p_slice_info);
+    ParserResult SetupReflist(AvcSliceInfo *p_slice_info);
+
+    /*! \brief Function to modify a reference picture list.
+     * \param [in/out] ref_pic_list_x The reference picture list to be modified
+     * \param [in] p_list_mod Modification instructions
+     * \param [in] num_ref_idx_lx_active Reference list size
+     * \param [in] p_slice_header Pointer to slice header struct
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult ModifiyRefList(AvcPicture *ref_pic_list_x, AvcListMod *p_list_mod, int num_ref_idx_lx_active, AvcSliceHeader *p_slice_header);
 
     /*! \brief Function to check the fullness of DPB and output picture if needed.
      * \return <tt>ParserResult</tt>
