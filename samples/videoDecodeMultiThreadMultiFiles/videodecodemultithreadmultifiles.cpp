@@ -116,12 +116,12 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     double total_dec_time = 0.0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    /*do {
+    do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
         n_frame += n_frame_returned;
     } while (n_video_bytes);
-    */
+
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
@@ -240,22 +240,26 @@ int main(int argc, char **argv) {
         int pci_bus_id, pci_domain_id, pci_device_id;
 
         float total_fps = 0;
-        std::vector<std::thread> v_thread;
+        int n_total = 0;
         std::vector<double> v_fps;
         std::vector<int> v_frame;
-        v_fps.resize(n_thread, 0);
-        v_frame.resize(n_thread, 0);
-        int n_total = 0;
+        v_fps.resize(num_files, 0);
+        v_frame.resize(num_files, 0);
 
         int hip_vis_dev_count = 0;
         GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
 
         std::cout << "info: Number of threads: " << n_thread << std::endl;
+        
+        std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
+        std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         ThreadPool thread_pool (n_thread);
 
         for (int j = 0; j < num_files; j += n_thread) {
             for (int i = 0; i < n_thread; i++) {
                 int file_idx = i % num_files + j;
+                if (file_idx == num_files)
+                    break;
                 std::size_t found_file = input_file_names[file_idx].find_last_of('/');
                 std::cout << "info: Input file: " << input_file_names[file_idx].substr(found_file + 1) << std::endl;
                 std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_names[file_idx].c_str()));
@@ -273,15 +277,28 @@ int main(int argc, char **argv) {
                 std::cout << "info: stream " << file_idx << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
-                std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
 
-                thread_pool.ExecuteJob(std::bind (DecProc, dec.get(), demuxer.get(), &v_frame[i], &v_fps[i]));
-                total_fps += v_fps[i];
-                n_total += v_frame[i];
+                v_demuxer.push_back(std::move(demuxer));
+                v_viddec.push_back(std::move(dec));
+            }
+        }
+
+        for (int j = 0; j < num_files; j += n_thread) {
+            for (int i = 0; i < n_thread; i++) {
+                int file_idx = i % num_files + j;
+                if (file_idx == num_files)
+                    break;
+                thread_pool.ExecuteJob(std::bind (DecProc, v_viddec[file_idx].get(), v_demuxer[file_idx].get(), &v_frame[file_idx], &v_fps[file_idx]));
             }
         }
 
         thread_pool.JoinThreads();
+        for (int i = 0; i < num_files; i++) {
+            std::cout << "v_fps[i] = " << v_fps[i] << " v_frame[i] = " << v_frame[i] << std::endl;
+            total_fps += v_fps[i];
+            n_total += v_frame[i];
+        }
+
         std::cout << "info: Total frame decoded: " << n_total  << std::endl;
         std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
         std::cout << "info: avg FPS: " << total_fps  << std::endl;
