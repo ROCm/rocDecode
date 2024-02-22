@@ -33,7 +33,7 @@ The rocDecode documentation is structured as follows:
     * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
     * `Query the decoding status <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html>`_
     * `Prepare the decoded frame for further processing <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html>`_
-    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decorder.html>`_
+    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decoder.html>`_
     * `Destroy the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html>`_
     * `Destroy the parser using rocDecDestroyVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html>`_
     
