@@ -44,19 +44,19 @@ THE SOFTWARE.
 
 class ThreadPool {
     public:
-        ThreadPool (int threads) : shutdown_(false) {
+        ThreadPool(int threads) : shutdown_(false) {
             // Create the specified number of threads
-            threads_.reserve (threads);
+            threads_.reserve(threads);
             for (int i = 0; i < threads; ++i)
-                threads_.emplace_back (std::bind (&ThreadPool::ThreadEntry, this, i));
+                threads_.emplace_back(std::bind(&ThreadPool::ThreadEntry, this, i));
         }
 
-        ~ThreadPool () {}
+        ~ThreadPool() {}
 
-        void JoinThreads () {
+        void JoinThreads() {
             {
                 // Unblock any threads and tell them to stop
-                std::unique_lock <std::mutex> lock (mutex_);
+                std::unique_lock<std::mutex>lock (mutex_);
                 shutdown_ = true;
                 cond_var_.notify_all();
             }
@@ -66,34 +66,34 @@ class ThreadPool {
                 thread.join();
         }
 
-        void ExecuteJob (std::function <void ()> func) {
+        void ExecuteJob(std::function<void()> func) {
             // Place a job on the queue and unblock a thread
-            std::unique_lock <std::mutex> lock (mutex_);
-            jobs_.emplace (std::move (func));
+            std::unique_lock<std::mutex> lock (mutex_);
+            jobs_.emplace(std::move (func));
             cond_var_.notify_one();
         }
 
     protected:
-        void ThreadEntry (int i) {
-            std::function <void ()> job;
+        void ThreadEntry(int i) {
+            std::function<void()> job;
 
             while (1) {
                 {
-                    std::unique_lock <std::mutex> lock (mutex_);
-                    while (! shutdown_ && jobs_.empty())
-                        cond_var_.wait (lock);
+                    std::unique_lock<std::mutex> lock (mutex_);
+                    while (!shutdown_ && jobs_.empty())
+                        cond_var_.wait(lock);
 
-                    if (jobs_.empty ()) {
+                    if (jobs_.empty()) {
                         // No jobs to do; shutting down
                         return;
                     }
 
-                    job = std::move (jobs_.front ());
+                    job = std::move(jobs_.front ());
                     jobs_.pop();
                 }
 
                 // Do the job without holding any locks
-                job ();
+                job();
             }
         }
 
