@@ -21,7 +21,7 @@ The rocDecode documentation is structured as follows:
 
 .. grid-item-card:: Installation
 
-    * `Google <http://www.google.com>`_
+    * `Installation <https://github.com/ROCm/rocDecode/blob/master/docs/install/install.html>`_
 
    
 .. grid-item-card:: How-to
