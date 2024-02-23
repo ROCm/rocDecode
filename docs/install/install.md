@@ -18,7 +18,7 @@ rocDecode SDK is a high-performance video decode SDK for AMD GPUs. The rocDecode
     * **NOTE:** `gfx908` or higher required
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
-    * **NOTE:** To install rocDecode with minimum requirements follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
+    * **NOTE:** To install rocDecode with minimum requirements, follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
 
 ### To build from source
 
@@ -127,7 +127,7 @@ The installer will copy
 * Samples folder into `/opt/rocm/share/rocdecode`
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
 
-**NOTE:** FFMPEG dev install required to run samples and tests.
+**NOTE:** FFmpeg dev install required to run samples and tests.
 
 ### Verify with sample application
 
