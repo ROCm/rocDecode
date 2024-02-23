@@ -132,8 +132,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i <directory containing input video files [required]> " << std::endl
     << "-t Number of threads ( 1 >= n_thread <= 64) - optional; default: 4" << std::endl
-    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
-    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
+    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl;
     exit(0);
 }
 
@@ -179,13 +178,6 @@ int main(int argc, char **argv) {
             if (device_id < 0) {
                 ShowHelpAndExit(argv[i]);
             }
-            continue;
-        }
-        if (!strcmp(argv[i], "-z")) {
-            if (i == argc) {
-                ShowHelpAndExit("-z");
-            }
-            b_force_zero_latency = true;
             continue;
         }
         ShowHelpAndExit(argv[i]);
@@ -256,7 +248,6 @@ int main(int argc, char **argv) {
                 if (file_idx == num_files)
                     break;
                 std::size_t found_file = input_file_names[file_idx].find_last_of('/');
-                std::cout << "info: Input file: " << input_file_names[file_idx].substr(found_file + 1) << std::endl;
                 std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_names[file_idx].c_str()));
                 rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
                 if (!hip_vis_dev_count) {
@@ -269,7 +260,7 @@ int main(int argc, char **argv) {
                 }
                 std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                 dec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-                std::cout << "info: stream " << file_idx << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+                std::cout << "info: decoding " << input_file_names[file_idx].substr(found_file + 1) << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
 
