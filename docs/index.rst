@@ -22,7 +22,6 @@ The rocDecode documentation is structured as follows:
 .. grid-item-card:: Installation
 
     * :doc:`Installation <install>`
-
    
 .. grid-item-card:: How-to
 
@@ -45,6 +44,8 @@ The rocDecode documentation is structured as follows:
   .. grid-item-card:: Samples
 
     * `Samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
+
+
 
 To contribute to the documentation refer to `Contributing to ROCm  <https://rocm.docs.amd.com/en/latest/contribute/index.html>`_.
 
