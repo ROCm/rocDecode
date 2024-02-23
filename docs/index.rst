@@ -16,16 +16,12 @@ The code is open and hosted at: https://github.com/ROCm/rocDecode
 
 The rocDecode documentation is structured as follows:
 
-
-   
-
 .. grid:: 2
   :gutter: 3
 
 .. grid-item-card:: Installation
 
     * :doc:`Installation <install>`
-
 .. grid-item-card:: How-to
 
     * :doc:`Use-rocDecode-API <how-to/Use-rocDecode-API>`
