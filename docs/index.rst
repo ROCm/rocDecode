@@ -40,7 +40,7 @@ The rocDecode documentation is structured as follows:
 
   .. grid-item-card::   
 
-     * :doc:`API library <../doxygen/html/index>`  
+     * :doc:`API Reference <../doxygen/html/files>`  
 
   .. grid-item-card:: Samples
 
