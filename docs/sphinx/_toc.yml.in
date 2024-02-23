@@ -15,14 +15,23 @@ subtrees:
       - file: how-to/Create-parser-object-using-rocDecCreateVideoParser.md
         title: Create parser object
       - file: how-to/Parse-video-data-using-rocDecParseVideoData.md
+        title: Parse video data
       - file: how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.md
-      - file: how-to/Create-a-decoder-using-rocDecCreateDecoder.md      
+        title: Query decode capabilities
+      - file: how-to/Create-a-decoder-using-rocDecCreateDecoder.md 
+        title: Create a decoder     
       - file: how-to/Decode-the-frame-using-rocDecDecodeFrame.md
+        title: Decode the frame
       - file: how-to/Query-the-decoding-status.md  
+        title: Query the decoding status
       - file: how-to/Prepare-the-decoded-frame-for-further-processing.md
+        title: Prepare the decoded frame for processing
       - file: how-to/Reconfigure-the-decorder.md 
+        title: Reconfigure the decoder
       - file: how-to/Destroy-the-decoder.md
-      - file: how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.md                           
+        title: Destroy the decoder
+      - file: how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.md
+        title: Destroy the parser                           
   - file: reference/index.md
     title: API Reference
     subtrees:
