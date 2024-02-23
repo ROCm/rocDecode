@@ -27,15 +27,15 @@ The rocDecode documentation is structured as follows:
 
     * :doc:`Use-rocDecode-API <how-to/Use-rocDecode-API>`
     * :doc:`Create-parser-object-using-rocDecCreateVideoParser <how-to/Create-parser-object-using-rocDecCreateVideoParser>`
-    * :ref:`Parse-video-data-using-rocDecParseVideoData`
-    * :ref:`Query-decode-capabilities-using-rocDecGetDecoderCaps`
-    * :ref:`Create a decoder using rocDecCreateVideoParser`
-    * :ref:`Decode-the-frame-using-rocDecDecodeFrame`
-    * :ref:`Query-the-decoding-status`
-    * :ref:`Prepare-the-decoded-frame-for-further-processing`
-    * :ref:`Reconfigure-the-decoder`
-    * :ref:`Destroy-the-decoder`
-    * :ref:`Destroy-the-parser-using-rocDecDestroyVideoParser`   
+    * :doc:`Parse-video-data-using-rocDecParseVideoData <Parse-video-data-using-rocDecParseVideoData>`
+    * :doc:`Query-decode-capabilities-using-rocDecGetDecoderCaps <Parse-video-data-using-rocDecParseVideoData>`
+    * :doc:`Create a decoder using rocDecCreateVideoParser <Create a decoder using rocDecCreateVideoParser>'
+    * :doc:`Decode-the-frame-using-rocDecDecodeFrame <Decode-the-frame-using-rocDecDecodeFrame>'
+    * :doc:`Query-the-decoding-status <Query-the-decoding-status>'
+    * :doc:`Prepare-the-decoded-frame-for-further-processing <Prepare-the-decoded-frame-for-further-processing>'
+    * :doc:`Reconfigure-the-decoder <Reconfigure-the-decoder>'
+    * :doc:`Destroy-the-decoder <Destroy-the-decoder>'
+    * :doc:`Destroy-the-parser-using-rocDecDestroyVideoParser <Destroy-the-parser-using-rocDecDestroyVideoParser>'  
 
   .. grid-item-card:: API Reference
 
