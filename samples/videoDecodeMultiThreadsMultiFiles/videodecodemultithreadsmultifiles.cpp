@@ -56,7 +56,7 @@ class ThreadPool {
         void JoinThreads() {
             {
                 // Unblock any threads and tell them to stop
-                std::unique_lock<std::mutex>lock (mutex_);
+                std::unique_lock<std::mutex> lock(mutex_);
                 shutdown_ = true;
                 cond_var_.notify_all();
             }
@@ -68,8 +68,8 @@ class ThreadPool {
 
         void ExecuteJob(std::function<void()> func) {
             // Place a job on the queue and unblock a thread
-            std::unique_lock<std::mutex> lock (mutex_);
-            jobs_.emplace(std::move (func));
+            std::unique_lock<std::mutex> lock(mutex_);
+            jobs_.emplace(std::move(func));
             cond_var_.notify_one();
         }
 
@@ -79,7 +79,7 @@ class ThreadPool {
 
             while (true) {
                 {
-                    std::unique_lock<std::mutex> lock (mutex_);
+                    std::unique_lock<std::mutex> lock(mutex_);
                     while (!shutdown_ && jobs_.empty())
                         cond_var_.wait(lock);
 
@@ -88,7 +88,7 @@ class ThreadPool {
                         return;
                     }
 
-                    job = std::move(jobs_.front ());
+                    job = std::move(jobs_.front());
                     jobs_.pop();
                 }
 
