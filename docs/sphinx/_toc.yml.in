@@ -13,6 +13,7 @@ subtrees:
     - entries:
       - file: how-to/Use-rocDecode-API.md
       - file: how-to/Create-parser-object-using-rocDecCreateVideoParser.md
+        title: Create parser object
       - file: how-to/Parse-video-data-using-rocDecParseVideoData.md
       - file: how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.md
       - file: how-to/Create-a-decoder-using-rocDecCreateDecoder.md      
