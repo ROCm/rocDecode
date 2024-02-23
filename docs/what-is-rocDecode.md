@@ -10,7 +10,7 @@ In addition, rocDecode API can be used to create multiple instances of video dec
 
 There are three main components in rocDecode SDK, as shown below, 
 
-- Demuxer - Demuxer is based on FFmpeg, a leading multimedia framework. For more information, refer to https://ffmpeg.org/about.html.
+- Demuxer - Demuxer is based on FFmpeg, a leading multimedia framework. For more information, refer to the [FFmpeg website](https://ffmpeg.org/about.html).
 - Video Parser APIs 
 - Video Decode APIs
   
