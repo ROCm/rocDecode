@@ -15,7 +15,7 @@ There are three main components in rocDecode SDK, as shown below,
 - Video Decode APIs
   
   
-<img src="VideoDecoderPipelinetest.png" alt="isolated" width="400"/>
+<img src="VideoDecoderPipelinetest.png" alt="isolated" width="600"/>
 
 
 The workflow is as follows,
