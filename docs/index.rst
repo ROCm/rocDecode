@@ -16,7 +16,7 @@ The code is open and hosted at: https://github.com/ROCm/rocDecode
 
 The rocDecode documentation is structured as follows:
 
-.. grid:: 1 2 2 3
+.. grid:: 2
   :gutter: 3
 
 .. grid-item-card:: Installation
