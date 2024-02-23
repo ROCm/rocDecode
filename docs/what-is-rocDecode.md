@@ -18,6 +18,8 @@ There are three main components in rocDecode SDK, as shown below,
 <img src="VideoDecoderPipelinetest.png" alt="isolated" width="600"/>
 
 
+
+
 The workflow is as follows,
 
 1. Demuxer extracts a segment of the video data and sends it to the Video parser.
