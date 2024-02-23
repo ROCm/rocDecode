@@ -52,7 +52,7 @@ sudo apt install libstdc++-12-dev
 
 #### Prerequisites setup script for Linux
 
-For the convenience of the developer, we provide the setup script [rocDecode-setup.py](rocDecode-setup.py), which will install all the dependencies this project requires. 
+For the convenience of the developer, we provide the setup script [rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py), which will install all the dependencies this project requires. 
 
 **Usage:**
 
@@ -166,7 +166,7 @@ The tool provides a few samples to decode videos [here](https://github.com/ROCm/
 
 ## Docker
 
-Docker files to build rocDecode containers are available [here](docker/).
+Docker files to build rocDecode containers are available [here](https://github.com/ROCm/rocDecode/tree/develop/docker).
 
 ## Documentation
 
