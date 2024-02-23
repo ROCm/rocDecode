@@ -29,7 +29,7 @@ The rocDecode documentation is structured as follows:
     * :doc:`Create-parser-object-using-rocDecCreateVideoParser <how-to/Create-parser-object-using-rocDecCreateVideoParser>`
     * :doc:`Parse-video-data-using-rocDecParseVideoData <how-to/Parse-video-data-using-rocDecParseVideoData>`
     * :doc:`Query-decode-capabilities-using-rocDecGetDecoderCaps <how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps>`
-    * :doc:`Creat-a-decoder-using-rocDecCreateVideoParser <how-to/Create-a-decoder-using-rocDecCreateVideoParser>'
+    * :doc:`Create-a-decoder-using-rocDecCreateVideoParser <how-to/Create-a-decoder-using-rocDecCreateVideoParser>'
     * :doc:`Decode-the-frame-using-rocDecDecodeFrame <how-to/Decode-the-frame-using-rocDecDecodeFrame>'
     * :doc:`Query-the-decoding-status <how-to/Query-the-decoding-status>'
     * :doc:`Prepare-the-decoded-frame-for-further-processing <how-to/Prepare-the-decoded-frame-for-further-processing>'
