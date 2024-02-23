@@ -1,4 +1,4 @@
-# Video decode multi threads multi file sample
+# Video decode multi threads multi files sample
 
 This sample decodes multiple files using multiple threads, using the rocDecode library. The input is a directory of files and an input number of threads. The maximum number of threads is capped to 64.
 If the number of files is higher than the number of threads requested by the user, the files are distributed to the threads in a round robin fashion. 
