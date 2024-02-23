@@ -21,7 +21,8 @@ The rocDecode documentation is structured as follows:
 
 .. grid-item-card:: Installation
 
-    * :doc:`Installation <install>'
+    * :doc:`Installation <install>`
+
    
 .. grid-item-card:: How-to
 
