@@ -80,9 +80,7 @@ class ThreadPool {
             while (true) {
                 {
                     std::unique_lock<std::mutex> lock(mutex_);
-                    while (!shutdown_ && jobs_.empty())
-                        cond_var_.wait(lock);
-
+                    cond_var_.wait(lock, [&] {return shutdown_ || !jobs_.empty();});
                     if (jobs_.empty()) {
                         // No jobs to do; shutting down
                         return;
@@ -240,7 +238,7 @@ int main(int argc, char **argv) {
         
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
-        ThreadPool thread_pool (n_thread);
+        ThreadPool thread_pool(n_thread);
 
         for (int j = 0; j < num_files; j += n_thread) {
             for (int i = 0; i < n_thread; i++) {
