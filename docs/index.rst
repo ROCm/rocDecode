@@ -38,7 +38,7 @@ The rocDecode documentation is structured as follows:
     * :ref:`Destroy-the-decoder`
     * :ref:`Destroy-the-parser-using-rocDecDestroyVideoParser`   
 
-  .. grid-item-card::   
+  .. grid-item-card:: API Reference
 
      * :doc:`API Reference <../doxygen/html/files>`  
 
