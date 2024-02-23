@@ -37,6 +37,8 @@ THE SOFTWARE.
 
 #define AVC_MACRO_BLOCK_SIZE                            16
 
+#define NO_LONG_TERM_FRAME_INDICES                      -1
+
 // AVC spec. Table 7-1 – NAL unit type codes, syntax element categories, and NAL unit type classes.
 enum AvcNalUnitType {
     kAvcNalTypeUnspecified                    = 0, 
