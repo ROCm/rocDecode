@@ -25,7 +25,7 @@ The rocAL documentation is structured as follows:
 
     * :doc:`install`
 
-    .. grid-item-card:: How-to
+  .. grid-item-card:: How-to
 
     * :doc:`Use-rocDecode-API <how-to/Use-rocDecode-API>`
     * :doc:`Create-parser-object-using-rocDecCreateVideoParser <how-to/Create-parser-object-using-rocDecCreateVideoParser>`
