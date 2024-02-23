@@ -16,14 +16,16 @@ The code is open and hosted at: https://github.com/ROCm/rocDecode
 
 The rocDecode documentation is structured as follows:
 
+The rocAL documentation is structured as follows:
+
 .. grid:: 2
   :gutter: 3
 
-.. grid-item-card:: Installation
+  .. grid-item-card:: Installation
 
-    * :doc:` Installation <install>`
+    * :doc:`install`
 
-.. grid-item-card:: How-to
+    .. grid-item-card:: How-to
 
     * :doc:`Use-rocDecode-API <how-to/Use-rocDecode-API>`
     * :doc:`Create-parser-object-using-rocDecCreateVideoParser <how-to/Create-parser-object-using-rocDecCreateVideoParser>`
@@ -34,8 +36,8 @@ The rocDecode documentation is structured as follows:
     * :doc:`Query-the-decoding-status <how-to/Query-the-decoding-status>`
     * :doc:`Prepare-the-decoded-frame-for-further-processing <how-to/Prepare-the-decoded-frame-for-further-processing>`
     * :doc:`Reconfigure-the-decoder <how-to/Reconfigure-the-decoder>`
-    * :doc:`Destroy-the-decoder <how-to/Destroy-the-decoder>'
-    * :doc:`Destroy-the-parser-using-rocDecDestroyVideoParser <how-to/Destroy-the-parser-using-rocDecDestroyVideoParser>` 
+    * :doc:`Destroy-the-decoder <how-to/Destroy-the-decoder>`
+    * :doc:`Destroy-the-parser-using-rocDecDestroyVideoParser <how-to/Destroy-the-parser-using-rocDecDestroyVideoParser>`
 
   .. grid-item-card:: API Reference
 
@@ -45,8 +47,11 @@ The rocDecode documentation is structured as follows:
 
     * `Samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
 
+  
 
 
+    
 To contribute to the documentation refer to `Contributing to ROCm  <https://rocm.docs.amd.com/en/latest/contribute/index.html>`_.
 
 You can find licensing information on the `Licensing <https://rocm.docs.amd.com/en/latest/about/license.html>`_ page.
+
