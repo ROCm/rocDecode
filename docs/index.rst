@@ -19,28 +19,28 @@ The rocDecode documentation is structured as follows:
 .. grid:: 2
   :gutter: 3
 
-  .. grid-item-card:: Installation
+.. grid-item-card:: Installation
 
-    * `Installation <https://github.com/ROCm/rocDecode/blob/master/docs/install/install.html>`_
+    * :ref:`install`   
 
-  .. grid-item-card:: How-to
+   
+.. grid-item-card:: How-to
 
-    * `Use rocDecode API <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Use-rocDecode-API.html>`_
-    * `Create-parser-object-using-rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-parser-object-using-rocDecCreateVideoParser.html>`_  
-    * `Parse video data using rocDecParseVideoData <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Parse-video-data-using-rocDecParseVideoData.html>`_
-    * `Query decode capabilities using rocDecGetDecoderCaps <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-decode-capabilities-using-rocDecGetDecoderCaps.html>`_
-    * `Create a decoder using rocDecCreateVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Create-a-decoder-using-rocDecCreateDecoder.html>`_
-    * `Decode the frame using rocDecDecodeFrame <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Decode-the-frame-using-rocDecDecodeFrame.html>`_
-    * `Query the decoding status <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Query-the-decoding-status.html>`_
-    * `Prepare the decoded frame for further processing <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Prepare-the-decoded-frame-for-further-processing.html>`_
-    * `Reconfigure the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Reconfigure-the-decoder.html>`_
-    * `Destroy the decoder <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-decoder.html>`_
-    * `Destroy the parser using rocDecDestroyVideoParser <https://github.com/ROCm/rocDecode/blob/master/docs/how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.html>`_
-    
+    * :ref:`Use-rocDecode-API`
+    * :ref:`Create-parser-object-using-rocDecCreateVideoParser`
+    * :ref:`Parse-video-data-using-rocDecParseVideoData`
+    * :ref:`Query-decode-capabilities-using-rocDecGetDecoderCaps`
+    * :ref:`Create a decoder using rocDecCreateVideoParser`
+    * :ref:`Decode-the-frame-using-rocDecDecodeFrame`
+    * :ref:`Query-the-decoding-status`
+    * :ref:`Prepare-the-decoded-frame-for-further-processing`
+    * :ref:`Reconfigure-the-decoder`
+    * :ref:`Destroy-the-decoder`
+    * :ref:`Destroy-the-parser-using-rocDecDestroyVideoParser`   
 
-  .. grid-item-card:: Reference
+  .. grid-item-card:: API Reference
 
-    * `rocDecode Header files <https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/files.html>`_
+     * :doc:`API library <../doxygen/html/index>`  
 
   .. grid-item-card:: Samples
 
