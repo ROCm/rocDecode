@@ -23,7 +23,7 @@ The rocAL documentation is structured as follows:
 
   .. grid-item-card:: Installation
 
-    * :doc:`Installation <install/install>`
+    * :doc:`rocDecode Installation <install/install>`
 
   .. grid-item-card:: How to
 
