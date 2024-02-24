@@ -1,4 +1,4 @@
-# API reference
+# rocDecode API reference
 
 
 This section provides technical descriptions and important information about the different rocDecode APIs and library components.
