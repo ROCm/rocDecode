@@ -39,7 +39,7 @@ The rocAL documentation is structured as follows:
     * :doc:`Destroy the decoder <how-to/Destroy-the-decoder>`
     * :doc:`Destroy the parser <how-to/Destroy-the-parser-using-rocDecDestroyVideoParser>`
 
-  .. grid-item-card:: API Reference
+  .. grid-item-card:: Reference
 
      * :doc:`API Reference <../doxygen/html/files>`  
 
