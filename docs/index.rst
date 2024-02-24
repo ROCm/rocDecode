@@ -41,7 +41,7 @@ The rocAL documentation is structured as follows:
 
   .. grid-item-card:: Reference
 
-     * :doc:`API Reference <../doxygen/html/files>`  
+     * :doc:`Reference <../doxygen/html/files>`  
 
   .. grid-item-card:: Samples
 
