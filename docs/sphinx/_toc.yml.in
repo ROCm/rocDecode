@@ -33,7 +33,7 @@ subtrees:
       - file: how-to/Destroy-the-parser-using-rocDecDestroyVideoParser.md
         title: Destroy the parser                           
   - file: reference/index.md
-    title: API Reference
+    title: Reference
     subtrees:
     - entries:
       - file: doxygen/html/files
