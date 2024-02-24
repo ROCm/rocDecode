@@ -381,6 +381,24 @@ void AvcVideoParser::SendSeiMsgPayload() {
     if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.user_data, &sei_message_info_params_);
 }
 
+static const int diag_scan_4x4[16] = {
+    0, 1, 4, 8,
+    5, 2, 3, 6,
+    9, 12, 13, 10,
+    7, 11, 14, 15
+};
+
+static const int diag_scan_8x8[64] = {
+    0,  1,  8,  16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
+};
+
 ParserResult AvcVideoParser::SendPicForDecode() {
     int i, j;
     AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
@@ -598,12 +616,12 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     RocdecAvcIQMatrix *p_iq_matrix = &dec_pic_params_.iq_matrix.avc;
     for (i = 0; i < 6; i++) {
         for (j = 0; j < 16; j++) {
-            p_iq_matrix->scaling_list_4x4[i][j] = p_pps->scaling_list_4x4[i][j];
+            p_iq_matrix->scaling_list_4x4[i][diag_scan_4x4[j]] = p_pps->scaling_list_4x4[i][j];
         }
     }
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 64; j++) {
-            p_iq_matrix->scaling_list_8x8[i][j] = p_pps->scaling_list_8x8[i][j];
+            p_iq_matrix->scaling_list_8x8[i][diag_scan_8x8[j]] = p_pps->scaling_list_8x8[i][j];
         }
     }
 
