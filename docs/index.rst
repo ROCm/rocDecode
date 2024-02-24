@@ -16,8 +16,6 @@ The code is open and hosted at: https://github.com/ROCm/rocDecode
 
 The rocDecode documentation is structured as follows:
 
-The rocAL documentation is structured as follows:
-
 .. grid:: 2
   :gutter: 3
 
