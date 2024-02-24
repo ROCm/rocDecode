@@ -41,11 +41,11 @@ The rocAL documentation is structured as follows:
 
   .. grid-item-card:: Reference
 
-     * :doc:`Reference <../doxygen/html/files>`  
+     * :doc:`rocDecode reference <../doxygen/html/files>`  
 
   .. grid-item-card:: Samples
 
-    * `Samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
+    * `rocDecode samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
 
   
 
