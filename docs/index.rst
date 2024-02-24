@@ -41,7 +41,7 @@ The rocAL documentation is structured as follows:
 
   .. grid-item-card:: Reference
 
-     * :doc:`rocDecode reference <../doxygen/html/files>`  
+     * :doc:`rocDecode API reference <../doxygen/html/files>`  
 
   .. grid-item-card:: Samples
 
