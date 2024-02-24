@@ -1,7 +1,7 @@
 
 
 
-# How To
+# How to
 
 This section guides you on how to use the rocDecode SDK library and its different utilities. Ensure you follow the sequence of actions in the order as listed below,
 
