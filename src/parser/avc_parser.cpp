@@ -1777,7 +1777,6 @@ ParserResult AvcVideoParser::SetupReflist(AvcSliceInfo *p_slice_info) {
                     p_ref_pic->pic_num = 2 * p_ref_pic->frame_num_wrap;  // Eq. 8-31
                 }
             } else if (p_ref_pic->is_reference == kUsedForLongTerm) {
-                // Note: Todo: assign long_term_frame_idx in MarkDecodedRefPics()
                 if (curr_pic_.pic_structure == kFrame) {
                     p_ref_pic->long_term_pic_num = p_ref_pic->long_term_frame_idx;  // Eq. 8-29
                 } else if (((curr_pic_.pic_structure == kTopField) && (p_ref_pic->pic_structure == kTopField)) || ((curr_pic_.pic_structure == kBottomField) && (p_ref_pic->pic_structure == kBottomField))) {
@@ -2120,7 +2119,8 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
                         int curr_pic_num = p_slice_header->field_pic_flag ? 2 * p_slice_header->frame_num + 1 : p_slice_header->frame_num;
                         int pic_num_x = curr_pic_num - (p_mmco->difference_of_pic_nums_minus1 + 1);
                         if (p_slice_header->field_pic_flag) {
-                            // Todo
+                            ERR("Field picture not supported.\n");
+                            return PARSER_NOT_IMPLEMENTED;
                         } else {
                             for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
                                 if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForShortTerm && dpb_buffer_.frame_buffer_list[j].pic_num == pic_num_x) {
@@ -2134,7 +2134,8 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
 
                     case 2: { // 8.2.5.4.2 Marking process of a long-term reference picture as "unused for reference"
                         if (p_slice_header->field_pic_flag) {
-                            // Todo
+                            ERR("Field picture not supported.\n");
+                            return PARSER_NOT_IMPLEMENTED;
                         } else {
                             for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
                                 if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForLongTerm && dpb_buffer_.frame_buffer_list[j].long_term_pic_num == p_mmco->long_term_pic_num) {
@@ -2156,7 +2157,8 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
                         int curr_pic_num = p_slice_header->field_pic_flag ? 2 * p_slice_header->frame_num + 1 : p_slice_header->frame_num;
                         int pic_num_x = curr_pic_num - (p_mmco->difference_of_pic_nums_minus1 + 1);
                         if (p_slice_header->field_pic_flag) {
-                            // Todo
+                            ERR("Field picture not supported.\n");
+                            return PARSER_NOT_IMPLEMENTED;
                         } else {
                             for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
                                 if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForShortTerm && dpb_buffer_.frame_buffer_list[j].pic_num == pic_num_x) {
@@ -2203,7 +2205,8 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
                             }
                         }
                         if (p_slice_header->field_pic_flag) {
-                            // Todo
+                            ERR("Field picture not supported.\n");
+                            return PARSER_NOT_IMPLEMENTED;
                         } else {
                             curr_pic_.is_reference = kUsedForLongTerm;
                             curr_pic_.long_term_frame_idx = p_mmco->long_term_frame_idx;
