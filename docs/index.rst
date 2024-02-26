@@ -5,7 +5,7 @@
 .. _rocDecode:
 
 ********************************************************************
-rocDecode
+rocDecode documentation
 ********************************************************************
 
 rocDecode provides APIs, utilities, and samples that you can use to easily access the video decoding
