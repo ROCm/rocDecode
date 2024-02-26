@@ -3,12 +3,12 @@ defaults:
 root: index
 subtrees:
 - entries:
-  - file: what-is-rocDecode.md
+  - file: what-is-rocDecode.rst
     title: What is rocDecode?
 
 - caption: Install
   entries:
-  - file: install/quick-start.md
+  - file: install/quick-start.rst
     title: Quick-start
   - file: install/install.md
     title: Installation guide
@@ -24,12 +24,12 @@ subtrees:
 
 - caption: How to
   entries:
-  - file: how-to/using-rocdecode.md
+  - file: how-to/using-rocdecode.rst
     title: Use rocDecode
 
 - caption: Conceptual
   entries:
-  - file: conceptual/video-decoding-pipeline.md
+  - file: conceptual/video-decoding-pipeline.rst
     title: Video decoding pipeline
 
 - caption: Tutorials

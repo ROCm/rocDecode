@@ -2,8 +2,6 @@
   :description: rocDecode documentation and API reference library
   :keywords: rocDecode, ROCm, API, documentation
 
-.. _rocDecode:
-
 ********************************************************************
 rocDecode documentation
 ********************************************************************

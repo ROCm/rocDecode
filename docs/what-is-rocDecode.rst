@@ -1,10 +1,10 @@
-<head>
-  <meta charset="UTF-8">
-  <meta name="description" content="What is rocDecode?">
-  <meta name="keywords" content="video decoding, rocDecode, AMD, ROCm">
-</head>
+.. meta::
+  :description: What is rocDecode?
+  :keywords: video decoding, rocDecode, AMD, ROCm
 
-# What is rocDecode?
+********************************************************************
+What is rocDecode?
+********************************************************************
 
 AMD GPUs contain one or more media engines (VCNs) that provide fully accelerated, hardware-based
 video decoding. Hardware decoders consume lower power than CPU-based decoders. Dedicated
@@ -23,4 +23,4 @@ number of available VCNs in a GPU device. By configuring the decoder for a devic
 VCNs can be used seamlessly for decoding a batch of video streams in parallel.
 
 For more information, refer to the
-[Video decoding pipeline](./conceptual/video-decoding-pipeline.md).
+:doc:`Video decoding pipeline <./conceptual/video-decoding-pipeline>`.

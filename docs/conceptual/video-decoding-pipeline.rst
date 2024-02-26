@@ -1,19 +1,20 @@
-<head>
-  <meta charset="UTF-8">
-  <meta name="description" content="Video decoding pipeline">
-  <meta name="keywords" content="video decoder, video decoding, rocDecode, AMD, ROCm">
-</head>
+.. meta::
+  :description: Video decoding pipeline
+  :keywords: video decoder, video decoding, rocDecode, AMD, ROCm
 
-# Video decoding pipeline
+********************************************************************
+Video decoding pipeline
+********************************************************************
+
+.. image:: ../data/VideoDecoderPipelinetest.png
+   :alt: Video decoder pipeline test
 
 There are three main components in rocDecode:
 
 * Demuxer: Our demuxer is based on FFmpeg, a leading multimedia framework. For more information,
-  refer to the [FFmpeg website](https://ffmpeg.org/about.html).
+  refer to the `FFmpeg website <https://ffmpeg.org/about.html>`_.
 * Video parser APIs
-* Video decode APIs
-
-![Video decoder pipeline test diagram](../data/VideoDecoderPipelinetest.png)
+* Video decoder APIs
 
 rocDecode follows this workflow:
 
@@ -36,10 +37,9 @@ Steps in decoding video content for applications (available in the rocDecode Too
    classification, and others.
 7. Release the decoded frame.
 
-```{note}
-YUV is a color space that represents images using luminance (Y) for brightness and two chrominance
-components (U and V) for color information.
-```
+.. note::
+   YUV is a color space that represents images using luminance (Y) for brightness and two chrominance
+   components (U and V) for color information.
 
 The preceding steps are demonstrated in the sample applications located in our
-[GitHub repository](https://github.com/ROCm/rocDecode/tree/develop/samples) directory.
+`GitHub repository <https://github.com/ROCm/rocDecode/tree/develop/samples>`_ directory.
