@@ -1,3 +1,9 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="What is rocDecode?">
+  <meta name="keywords" content="video decoding, rocDecode, AMD, ROCm">
+</head>
+
 # What is rocDecode?
 
 AMD GPUs contain one or more media engines (VCNs) that provide fully accelerated, hardware-based
