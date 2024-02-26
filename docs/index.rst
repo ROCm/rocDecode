@@ -21,6 +21,7 @@ Our documentation is structured as follows:
 
   .. grid-item-card:: Install
 
+    * :doc:`Quick-start <./install/quick-start>`
     * :doc:`rocDecode installation <./install/install>`
 
   .. grid-item-card:: API reference

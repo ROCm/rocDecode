@@ -1,6 +1,6 @@
 # MIT License
 
-# Copyright (c) 2022 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ with open('../CMakeLists.txt', encoding='utf-8') as f:
 left_nav_title = f"rocdecode {version_number} Documentation"
 
 # for PDF output on Read the Docs
-project = "rocDecode Documentation"
+project = "rocDecode documentation"
 author = "Advanced Micro Devices, Inc."
 copyright = "Copyright (c) 2024 Advanced Micro Devices, Inc. All rights reserved."
 version = version_number
