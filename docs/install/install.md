@@ -1,7 +1,20 @@
 
 # Installation
 
-rocDecode SDK is a high-performance video decode SDK for AMD GPUs. The rocDecode API allows developers access the video decoding features available on the GPU.
+rocDecode SDK is a high-performance video decode SDK for AMD GPUs. Using the rocDecode API,
+you can access the video decoding features available on your GPU.
+
+## Tested configurations
+
+* Linux
+  * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+  * SLES - `15-SP4`
+* ROCm:
+  * rocm-core - `5.6.1.50601-93`
+  * amdgpu-core - `1:5.6.50601-1649308`
+* FFmpeg - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.4`
 
 ## Supported codecs
 
@@ -10,90 +23,107 @@ rocDecode SDK is a high-performance video decode SDK for AMD GPUs. The rocDecode
 ## Prerequisites
 
 * Linux distribution
-    * Ubuntu - `20.04` / `22.04`
-    * RHEL - `8` / `9`
-    * SLES - `15-SP4`
+  * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+  * SLES - `15-SP4`
 
-* [ROCm supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
-    * **NOTE:** `gfx908` or higher required
+* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
+  * **NOTE:** `gfx908` or higher required
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
-    * **NOTE:** To install rocDecode with minimum requirements, follow instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
+* Install ROCm `6.1.0` or later with
+  [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
+  * Run: `--usecase=multimediasdk,rocm --no-32`
+  * **NOTE:** To install rocDecode with minimum requirements, follow the instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
 
 ### To build from source
 
 * CMake `3.5` or later
 
-```shell
-sudo apt install cmake
-```
+  ```shell
+  sudo apt install cmake
+  ```
 
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
 
-```shell
-sudo apt install pkg-config
-```
+  ```shell
+  sudo apt install pkg-config
+  ```
 
 * [FFmpeg](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
 
-```shell
-sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+  ```shell
+  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+  ```
+
+```{note}
+All package installs are shown with the `apt` package manager. Use the appropriate package
+manager for your operating system.
 ```
-
-**NOTE:**
-
-* All package installs are shown with the `apt` package manager. Use the appropriate package manager depending on the operating system.
 
 * Ubuntu 22.04 - Install `libstdc++-12-dev`
 
-```shell
-sudo apt install libstdc++-12-dev
-```
+  ```shell
+  sudo apt install libstdc++-12-dev
+  ```
 
 #### Prerequisites setup script for Linux
 
-For the convenience of the developer, we provide the setup script [rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py), which will install all the dependencies this project requires. 
-
-**Usage:**
+For your convenience, we provide the setup script,
+[rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py),
+which installs all required dependencies.
 
 ```shell
   python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
                              --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 ```
 
-**NOTE:** Execute this script only once.
+```{note}
+Run this script only once.
+```
 
-## Build and install instructions
+### rocDecode package install
 
-### Package install
+To install rocDecode runtime, development, and test packages, run the line of code for your operating
+system.
 
-Install rocDecode runtime, development, and test packages.
+```{note}
+Package install auto installs all dependencies.
+```
+
+::::{tab-set}
+
+:::{tab-item} Ubuntu
+
+  ```shell
+  sudo apt install rocdecode rocdecode-dev rocdecode-test
+  ```
+
+:::
+
+:::{tab-item} RHEL
+
+  ```shell
+  sudo yum install rocdecode rocdecode-devel rocdecode-test
+  ```
+
+:::
+
+:::{tab-item} SLES
+
+  ```shell
+  sudo zypper install rocdecode rocdecode-devel rocdecode-test
+  ```
+
+:::
+::::
 
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
 * Test package - `rocdecode-test` provides ctest to verify installation
 
-**NOTE:** Package install will auto install all dependencies.
-
-#### Ubuntu
-
-```shell
-sudo apt install rocdecode rocdecode-dev rocdecode-test
-```
-
-#### RHEL
-
-```shell
-sudo yum install rocdecode rocdecode-devel rocdecode-test
-```
-
-#### SLES
-
-```shell
-sudo zypper install rocdecode rocdecode-devel rocdecode-test
-```
-
 ### Source build and install
+
+To build rocDecode from source, run:
 
 ```shell
 git clone https://github.com/ROCm/rocDecode.git
@@ -104,75 +134,92 @@ make -j8
 sudo make install
 ```
 
-* run tests - Requires `FFMPEG` dev install
+* Run tests (this requires `FFMPEG` dev install):
 
   ```shell
   make test
   ```
 
-  **NOTE:** run tests with verbose option `make test ARGS="-VV"`
+  To run tests with verbose option, use `make test ARGS="-VV"`.
 
-* make package
-  
+* Make package:
+
   ```shell
   sudo make package
   ```
 
 ## Verify installation
 
-The installer will copy
+The installer copies:
 
 * Libraries into `/opt/rocm/lib`
 * Header files into `/opt/rocm/include/rocdecode`
 * Samples folder into `/opt/rocm/share/rocdecode`
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
 
-**NOTE:** FFmpeg dev install required to run samples and tests.
-
-### Verify with sample application
-
-```shell
-mkdir rocdecode-sample && cd rocdecode-sample
-cmake /opt/rocm/share/rocdecode/samples/videoDecode/
-make -j8
-./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+```{note}
+FFmpeg dev install is required to run samples and tests.
 ```
 
-### Verify with rocdecode-test package
+* To verify your installation using a sample application, run:
 
-The test package will install the ctest module to test the rocdecode. Follow the below steps to test the package install.
+  ```shell
+  mkdir rocdecode-sample && cd rocdecode-sample
+  cmake /opt/rocm/share/rocdecode/samples/videoDecode/
+  make -j8
+  ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+  ```
 
-```shell
-mkdir rocdecode-test && cd rocdecode-test
-cmake /opt/rocm/share/rocdecode/test/
-ctest -VV
-```
+* To verify your installation using the `rocdecode-test` package, run:
+
+  ```shell
+  mkdir rocdecode-test && cd rocdecode-test
+  cmake /opt/rocm/share/rocdecode/test/
+  ctest -VV
+  ```
+
+  This test package installs the CTest module.
 
 ## Samples
 
-The tool provides a few samples to decode videos [here](https://github.com/ROCm/rocDecode/tree/develop/samples). Refer to the individual folders to build and run the samples.
+You can access samples to decode your videos in our
+[GitHub repository](https://github.com/ROCm/rocDecode/tree/develop/samples). Refer to the
+individual folders to build and run the samples.
 
-### Sample prerequisites
+[FFmpeg](https://ffmpeg.org/about.html) is required for sample applications and `make test`. To install
+FFmpeg, refer to the instructions listed for your operating system:
 
-* [FFmpeg](https://ffmpeg.org/about.html) - required to run sample applications & make test.
+::::{tab-set}
 
-    * On `Ubuntu`
+:::{tab-item} Ubuntu
 
   ```shell
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
-  
-    * On `RHEL`/`SLES` - install ffmpeg development packages manually or use `rocDecode-setup.py` script
+
+:::
+
+:::{tab-item} RHEL
+
+  Install FFmpeg development packages manually or use the `rocDecode-setup.py` script
+
+:::
+
+:::{tab-item} SLES
+
+  Install FFmpeg development packages manually or use the `rocDecode-setup.py` script
+
+:::
+::::
 
 ## Docker
 
-Docker files to build rocDecode containers are available [here](https://github.com/ROCm/rocDecode/tree/develop/docker).
+You can find rocDecode Docker containers in our
+[GitHub repository](https://github.com/ROCm/rocDecode/tree/develop/docker).
 
 ## Documentation
 
-Run the steps below to build documentation locally.
-
-* Sphinx
+Run the following code to build our documentation locally.
 
 ```shell
 cd docs
@@ -180,36 +227,20 @@ pip3 install -r sphinx/requirements.txt
 python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
 ```
 
-* Doxygen
-
-```shell
-doxygen .Doxyfile
-```
-
-## Tested configurations
-
-* Linux distribution
-    * Ubuntu - `20.04` / `22.04`
-    * RHEL - `8` / `9`
-    * SLES - `15-SP4`
-* ROCm:
-    * rocm-core - `5.6.1.50601-93`
-    * amdgpu-core - `1:5.6.50601-1649308`
-* FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.4`
-
+For more information on documentation builds, refer to the
+{doc}`Building documentation <rocm:contribute/building>` page.
 
 # rocDecode hardware capabilities
 
-The table below shows the codec support and capabilities of the VCN for each GPU architecture supported by rocDecode.
+The following table shows the codec support and capabilities of the VCN for each supported GPU
+architecture.
 
-| GPU Architecture                   | VCN Generation | Number of VCNs | H.265/HEVC | Max width, Max height - H.265 | H.264/AVC | Max width, Max height - H.264 |
-| :--------------------------------- | :------------- | :------------- | :--------- | :---------------------------- | :-------- | :---------------------------- |
-| gfx908 - MI1xx                     | VCN 2.5.0      | 2              | Yes        | 4096, 2176                    | No        | 4096, 2160                    |
-| gfx90a - MI2xx                     | VCN 2.6.0      | 2              | Yes        | 4096, 2176                    | No        | 4096, 2160                    |
-| gfx940, gfx942 - MI3xx             | VCN 3.0        | 3              | Yes        | 7680, 4320                    | No        | 4096, 2176                    |
-| gfx941 - MI3xx                     | VCN 3.0        | 4              | Yes        | 7680, 4320                    | No        | 4096, 2176                    |
-| gfx1030, gfx1031, gfx1032 - Navi2x | VCN 3.x        | 2              | Yes        | 7680, 4320                    | No        | 4096, 2176                    |
-| gfx1100, gfx1102 - Navi3x          | VCN 4.0        | 2              | Yes        | 7680, 4320                    | No        | 4096, 2176                    |
-| gfx1101 - Navi3x                   | VCN 4.0        | 1              | Yes        | 7680, 4320                    | No        | 4096, 2176                    |
-
+| GPU Architecture | VCN Generation | Number of VCNs | H.265/HEVC | Max width, Max height - H.265 | H.264/AVC | Max width, Max height - H.264 |
+| :----------- | :------------- | :------------- | :--------- | :------------ | :-------- | :-------------- |
+| gfx908 - MI1xx | VCN 2.5.0 | 2 | Yes | 4096, 2176 | No | 4096, 2160 |
+| gfx90a - MI2xx | VCN 2.6.0 | 2 | Yes | 4096, 2176 | No | 4096, 2160 |
+| gfx940, gfx942 - MI3xx | VCN 3.0 | 3 | Yes | 7680, 4320 | No | 4096, 2176 |
+| gfx941 - MI3xx | VCN 3.0 | 4 | Yes | 7680, 4320 | No | 4096, 2176 |
+| gfx1030, gfx1031, gfx1032 - Navi2x | VCN 3.x | 2 | Yes | 7680, 4320 | No | 4096, 2176 |
+| gfx1100, gfx1102 - Navi3x | VCN 4.0 | 2 | Yes | 7680, 4320 | No | 4096, 2176 |
+| gfx1101 - Navi3x | VCN 4.0 | 1 | Yes | 7680, 4320 | No | 4096, 2176 |
