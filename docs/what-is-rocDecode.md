@@ -1,4 +1,4 @@
-# rocDecode SDK overview
+# rocDecode overview
 
 AMD GPUs contain one or more media engines (VCNs) that provide fully accelerated hardware-based video decoding. Hardware decoders consume lower power than CPU-based decoders. Dedicated hardware decoders offload decoding tasks from the CPU, boosting overall decoding throughput. With proper power management, decoding on hardware decoders can lower the overall system power consumption and improve decoding performance.
 
