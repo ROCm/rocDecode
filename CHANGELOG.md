@@ -1,67 +1,52 @@
-# rocDecode
+# rocDecode changelog
 
-# Changelog
+Documentation for rocDecode is available at
+[https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## Online Documentation
+## (Unreleased) rocDecode 0.5.0
 
-[rocDecode Documentation](https://github.com/ROCmSoftwarePlatform/rocDecode#rocDecode)
+### Changes
 
-## rocDecode 0.5.0 (unreleased)
+* Changed setup updates
+* Added AMDGPU package support
+* Optimized package dependencies
+* Updated README
 
-### Added
+### Fixes
 
-* AMDGPU package support
-
-### Optimizations
-
-* Package dependdencies
-* Readme
-
-### Changed
-
-* Setup Updates
-
-### Fixed
-
-* minor bug fix and updates
+* Minor bug fix and updates
 
 ### Tested configurations
 
 * Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-* ROCm: 
-  + rocm-core - `5.6.1.50601-93`
-  + amdgpu-core - `1:5.6.50601-1649308`
+  * Ubuntu - `20.04` / `22.04`
+* ROCm:
+  * rocm-core - `5.6.1.50601-93`
+  * amdgpu-core - `1:5.6.50601-1649308`
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
 
 ## rocDecode 0.4.0
 
-### Added
+### Changes
 
-* CTest - Tests for install verification
-* Doxygen - Support for API documentation
+* Added CTest - Tests for install verification
+* Added Doxygen - Support for API documentation
+* Changed setup updates
+* Optimized CMakeList Cleanup
+* Added README
 
-### Optimizations
+### Fixes
 
-* CMakeList Cleanup
-* Readme
-
-### Changed
-
-* Setup Updates
-
-### Fixed
-
-* minor bug fix and updates
+* Minor bug fix and updates
 
 ### Tested configurations
 
 * Linux distribution
-  + Ubuntu - `20.04` / `22.04`
-* ROCm: 
-  + rocm-core - `5.6.1.50601-93`
-  + amdgpu-core - `1:5.6.50601-1649308`
+  * Ubuntu - `20.04` / `22.04`
+* ROCm:
+  * rocm-core - `5.6.1.50601-93`
+  * amdgpu-core - `1:5.6.50601-1649308`
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * rocDecode Setup Script - `V1.1`
