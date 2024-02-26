@@ -16,4 +16,5 @@ In addition, you can use the rocDecode API to create multiple instances of video
 number of available VCNs in a GPU device. By configuring the decoder for a device, all available
 VCNs can be used seamlessly for decoding a batch of video streams in parallel.
 
-For more information, refer to [Video decoding pipeline](./conceptual/video-decoding-pipeline.md).
+For more information, refer to the
+[Video decoding pipeline](./conceptual/video-decoding-pipeline.md).

@@ -2,7 +2,7 @@
 
 To learn how to use the rocDecode SDK library and its different utilities, follow these instructions:
 
-## 1. rocDecode API overview
+## 1. API overview
 
 All rocDecode APIs are exposed in the header files `rocdecode.h` and `rocparser.h`. You can find these
 files in the `api` folder in the rocDecode repository.
@@ -21,7 +21,7 @@ The parser object in `rocparser.h` has three main APIs:
 * `rocDecParseVideoData()`
 * `rocDecDestroyVideoParser()`
 
-## 2. Create a parser object using rocDecCreateVideoParser
+## 2. Create a parser object
 
 The `rocDecCreateVideoParser()` API creates a video parser object for the codec that you specify. The
 API takes `max_num_decode_surfaces`, which determines the Decoded Picture Buffer (DPB) size for
@@ -41,18 +41,17 @@ the driver, which is called from the parser during decode.
 * The `pfn_get_sei_msg callback` function is triggered when your Supplementation Enhancement
   Information (SEI) message is parsed and sent back to the caller.
 
-## 3. Parse video data using rocDecParseVideoData
+## 3. Parse video data
 
 Elementary stream video packets extracted from the de-multiplexer are fed into the parser using the
 `rocDecParseVideoData()` API.
 
-During this call, the parser triggers the
-[callbacks](#2-create-a-parser-object-using-rocdeccreatevideoparser) as it encounters a new sequence
-header, receives compressed frame/field data ready to be decoded, or when it's ready to display a
-frame. If any of the callbacks return a failure, it is propagated back to the application so the decoding
-can be ended gracefully.
+During this call, the parser triggers the callbacks as it encounters a new sequence header, receives
+compressed frame/field data ready to be decoded, or when it's ready to display a frame. If any of the
+callbacks return a failure, it is propagated back to the application so the decoding can be ended
+gracefully.
 
-## 4. Query decode capabilities using rocDecGetDecoderCaps
+## 4. Query decode capabilities
 
 The `rocDecGetDecoderCaps()` API allows you to query the capabilities of the underlying hardware
 video decoder. Decoder capabilities usually include supported codecs, maximum resolution, and
@@ -90,7 +89,7 @@ appropriately for non-supported decoder capabilities.
     }
 ```
 
-## 5. Create a decoder using rocDecCreateDecoder
+## 5. Create a decoder
 
 `rocDecCreateDecoder()` creates an instance of the hardware video decoder object and provides you
 with a handle upon successful creation. Refer to the `RocDecoderCreateInfo` structure for information
@@ -100,7 +99,7 @@ returned by `rocDecCreateDecoder()` must be retained for the entire decode sessi
 handle is passed along with the other decoding APIs. In addition, you can inform display or crop
 dimensions along with this API.
 
-## 6. Decode the frame using rocDecDecodeFrame
+## 6. Decode the frame
 
 After de-multiplexing and parsing, you can decode bitstream data containing a frame/field using
 hardware.
@@ -192,7 +191,7 @@ The API input is:
 
 The API returns a `RocdecDecodeStatus` value.
 
-## 11.  Destroy the parser using rocDecDestroyVideoParser
+## 11.  Destroy the parser
 
 You must call `rocDecDestroyVideoParser()` to destroy the parser object and free up all allocated
 resources at the end of video decoding.
