@@ -121,7 +121,7 @@ status for a given frame. A structure pointer, `RocdecDecodeStatus*`, is filled 
 The API inputs are:
 
 * `decoder_handle`: A `RocDecoder` handler, `rocDecDecoderHandle`.
-* `pic_idx`: An `int` value for `picIdx`, for which you want a status to index of the picture for which the user wants a status.
+* `pic_idx`: An `int` value for the `picIdx` for which you want a status in order to index of the picture.
 * `decode_status`: A pointer to `RocdecDecodeStatus` as a return value.
 
 The API returns one of the following statuses:
