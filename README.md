@@ -12,8 +12,8 @@ you can access the video decoding features available on your GPU.
   * RHEL - `8` / `9`
   * SLES - `15-SP4`
 * ROCm:
-  * rocm-core - `5.6.1.50601-93`
-  * amdgpu-core - `1:5.6.50601-1649308`
+  * rocm-core - `6.1.0.60100-28`
+  * amdgpu-core - `1:6.1.60100-1731559`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
 

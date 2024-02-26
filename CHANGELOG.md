@@ -21,8 +21,8 @@ Documentation for rocDecode is available at
 * Linux distribution
   * Ubuntu - `20.04` / `22.04`
 * ROCm:
-  * rocm-core - `5.6.1.50601-93`
-  * amdgpu-core - `1:5.6.50601-1649308`
+  * rocm-core - `6.1.0.60100-28`
+  * amdgpu-core - `1:6.1.60100-1731559`
 * FFMPEG - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.4`
 

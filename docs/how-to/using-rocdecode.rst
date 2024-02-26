@@ -42,10 +42,10 @@ the driver, which is called from the parser during decode.
 
 * The ``pfn_decode_picture`` callback function is triggered when a picture is set for decoding.
 
-* The ``pfn_display_picture callback`` function is triggered when a frame in display order is ready to be
+* The ``pfn_display_picture`` callback function is triggered when a frame in display order is ready to be
   consumed by the caller.
 
-* The ``pfn_get_sei_msg callback`` function is triggered when your Supplementation Enhancement
+* The ``pfn_get_sei_msg`` callback function is triggered when your Supplementation Enhancement
   Information (SEI) message is parsed and sent back to the caller.
 
 3. Parse video data

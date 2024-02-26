@@ -20,8 +20,8 @@ Tested configurations
 
 * ROCm
 
-  * rocm-core: 5.6.1.50601-93
-  * amdgpu-core: 1:5.6.50601-1649308
+  * rocm-core: 6.1.0.60100-28
+  * amdgpu-core: 1:6.1.60100-1731559
 
 * FFmpeg: 4.2.7/4.4.2-0
 
@@ -50,10 +50,7 @@ Prerequisites
   * Run: ``--usecase=multimediasdk,rocm --no-32``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
-Build from source
-========================================
-
-* CMake `3.5` or later
+* CMake 3.5 or later
 
   .. code:: shell
 
@@ -65,27 +62,25 @@ Build from source
 
     sudo apt install pkg-config
 
-
 * `FFmpeg <https://ffmpeg.org/about.html>`_ runtime and headers - for tests and samples
 
   .. code:: shell
 
     sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
 
-
-.. note::
-  All package installs are shown with the ``apt`` package manager. Use the appropriate package
-  manager for your operating system.
-
-* Ubuntu 22.04: Install ``libstdc++-12-dev``
+* If using Ubuntu 22.04, you must install ``libstdc++-12-dev``
 
   .. code:: shell
 
     sudo apt install libstdc++-12-dev
 
+.. note::
 
-Prerequisites setup script for Linux
-------------------------------------------------------------------------------------------------------------
+  All package installs are shown with the ``apt`` package manager. Use the appropriate package
+  manager for your operating system.
+
+Prerequisites setup script
+----------------------------------------------------------------------------------------------------------
 
 For your convenience, we provide the setup script,
 `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py>`_,
@@ -96,16 +91,19 @@ which installs all required dependencies. Run this script only once.
   python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
                             --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 
+rocDecode installation instructions
+========================================
 
-rocDecode package install
+To install rocDecode, you can use :ref:`package-install` or
+:ref:`build-from-source`.
+
+.. _package-install:
+
+Package install
 ------------------------------------------------------------------------------------------------------------
 
 To install rocDecode runtime, development, and test packages, run the line of code for your operating
 system.
-
-.. note::
-
-  Package install auto installs all dependencies.
 
 .. tab-set::
 
@@ -127,11 +125,17 @@ system.
 
       sudo zypper install rocdecode rocdecode-devel rocdecode-test
 
-* Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
-* Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
-* Test package - `rocdecode-test` provides ctest to verify installation
+.. note::
 
-Source build and install
+  Package install auto installs all dependencies.
+
+* Runtime package: `rocdecode` only provides the rocdecode library `librocdecode.so`
+* Development package: `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
+* Test package: `rocdecode-test` provides ctest to verify installation
+
+.. _build-from-source:
+
+Build from source
 ------------------------------------------------------------------------------------------------------------
 
 To build rocDecode from source, run:
