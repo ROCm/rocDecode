@@ -173,10 +173,6 @@ The installer copies:
 * Samples folder into ``/opt/rocm/share/rocdecode``
 * Documents folder into ``/opt/rocm/share/doc/rocdecode``
 
-.. note::
-
-  FFmpeg dev install is required to run samples and tests.
-
 To verify your installation using a sample application, run:
 
 .. code:: shell
