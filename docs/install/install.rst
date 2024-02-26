@@ -91,7 +91,7 @@ which installs all required dependencies. Run this script only once.
   python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
                             --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 
-rocDecode installation instructions
+Installation instructions
 ========================================
 
 To install rocDecode, you can use :ref:`package-install` or
@@ -247,7 +247,7 @@ Run the following code to build our documentation locally.
 For more information on documentation builds, refer to the
 :doc:`Building documentation <rocm:contribute/building>` page.
 
-rocDecode hardware capabilities
+Hardware capabilities
 ===================================================
 
 The following table shows the codec support and capabilities of the VCN for each supported GPU
