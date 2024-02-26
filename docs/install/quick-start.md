@@ -1,3 +1,9 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="rocDecode quick-start install">
+  <meta name="keywords" content="install, quick-start, rocDecode, AMD, ROCm">
+</head>
+
 # rocDecode quick-start installation
 
 To install the rocDecode runtime with minimum requirements, follow these steps:

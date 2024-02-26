@@ -1,3 +1,10 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Using rocDecode">
+  <meta name="keywords" content="parse video, parse, decode, video decoder, video decoding,
+  rocDecode, AMD, ROCm">
+</head>
+
 # Using rocDecode
 
 To learn how to use the rocDecode SDK library and its different utilities, follow these instructions:

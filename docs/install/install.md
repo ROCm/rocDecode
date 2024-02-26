@@ -1,3 +1,8 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Install rocDecode">
+  <meta name="keywords" content="install, rocDecode, AMD, ROCm">
+</head>
 
 # Installation
 

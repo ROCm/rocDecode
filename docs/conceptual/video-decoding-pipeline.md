@@ -1,3 +1,8 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Video decoding pipeline">
+  <meta name="keywords" content="video decoder, video decoding, rocDecode, AMD, ROCm">
+</head>
 
 # Video decoding pipeline
 
@@ -32,7 +37,8 @@ Steps in decoding video content for applications (available in the rocDecode Too
 7. Release the decoded frame.
 
 ```{note}
-YUV is a color space that represents images using luminance (Y) for brightness and two chrominance components (U and V) for color information.
+YUV is a color space that represents images using luminance (Y) for brightness and two chrominance
+components (U and V) for color information.
 ```
 
 The preceding steps are demonstrated in the sample applications located in our
