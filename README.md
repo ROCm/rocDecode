@@ -179,7 +179,7 @@ FFmpeg, refer to the instructions listed for your operating system:
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
 
-* `RHEL`/`SLES`:
+* RHEL/SLES:
 
   Install ffmpeg development packages manually or use `rocDecode-setup.py` script
 
