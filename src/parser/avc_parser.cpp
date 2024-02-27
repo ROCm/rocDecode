@@ -75,6 +75,11 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             SendSeiMsgPayload();
         }
 
+        // Error handling: if there is no slice data, return gracefully.
+        if (num_slices_ == 0) {
+            return ROCDEC_SUCCESS;
+        }
+
         // Decode the picture
         if (SendPicForDecode() != PARSER_OK) {
             ERR(STR("Failed to decode!"));
@@ -2607,11 +2612,13 @@ void AvcVideoParser::PrintDpb() {
         MSG("Frame buffer " << i << ": pic_idx = " << p_buf->pic_idx << ", pic_structure = " << p_buf->pic_structure << ", pic_order_cnt = " << p_buf->pic_order_cnt << ", top_field_order_cnt = " << p_buf->top_field_order_cnt << ", bottom_field_order_cnt = " << p_buf->bottom_field_order_cnt << ", frame_num = " << p_buf->frame_num << ", frame_num_wrap = " << p_buf->frame_num_wrap << ", pic_num = " << p_buf->pic_num << ", long_term_pic_num = " << p_buf->long_term_pic_num << ", long_term_frame_idx = " << p_buf->long_term_frame_idx << ", is_reference = " << p_buf->is_reference << ", use_status = " << p_buf->use_status << ", pic_output_flag = " << p_buf->pic_output_flag);
     }
     MSG("");
-    MSG("output_pic_list:");
-    for (i = 0; i < dpb_buffer_.num_output_pics; i++) {
-        MSG_NO_NEWLINE(dpb_buffer_.output_pic_list[i] << ", ");
-    }
+    if (dpb_buffer_.num_output_pics) {
+        MSG("output_pic_list:");
+        for (i = 0; i < dpb_buffer_.num_output_pics; i++) {
+            MSG_NO_NEWLINE(dpb_buffer_.output_pic_list[i] << ", ");
+        }
     MSG("");
+    }
 }
 
 void AvcVideoParser::PrintVappiBufInfo() {
