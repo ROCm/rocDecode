@@ -40,7 +40,8 @@ THE SOFTWARE.
  * @param p_src_nv12_uv - source pointer of UV plane
  * @param hip_stream    - Stream for launching the kernel
  */
-void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_nv12, int src_pitch, int src_width, int src_height, unsigned char* p_src_nv12_uv, hipStream_t hip_stream);
+void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_nv12, 
+                int src_pitch, int src_width, int src_height, unsigned char* p_src_nv12_uv, unsigned char* p_dst_nv12_uv, hipStream_t hip_stream);
 
 /**
  * @brief 
@@ -54,9 +55,11 @@ void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst
  * @param src_width 
  * @param src_height 
  * @param p_src_p016_uv 
+ * @param p_dst_p016_uv 
  * @param hip_stream    - Stream for launching the kernel
  */
-void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016, int src_pitch, int src_width, int src_height, unsigned char* p_src_p016_uv, hipStream_t hip_stream);
+void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016, int src_pitch, 
+            int src_width, int src_height, unsigned char* p_src_p016_uv, unsigned char* p_dst_p016_uv, hipStream_t hip_stream);
 
 /**
  * @brief Function to resize 420 YUV image
@@ -95,5 +98,35 @@ void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_
  * @param src_height - source height
  * @param b_resize_uv - to resize UV plance or not
  */
-void ResizeYUVHipKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
+void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
                                     int src_width, int src_height, bool b_resize_uv = false, hipStream_t hip_stream = nullptr);
+
+#if 0
+/**
+ * @brief low level HIP kernel for Resize using tex2d
+ * 
+ */
+template<typename YuvUnitx2>
+static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t tex_uv,
+                        uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height, float fx_scale, float fy_scale);
+
+/**
+ * @brief low level HIP kernel for Resize using tex2d
+ * 
+ * @tparam YuvUnitx2 
+ * @param p_src    - src Y pointer
+ * @param p_src_uv  - src UV pointer
+ * @param src_pitch - src pitch
+ * @param p_dst     - dst Y pointer
+ * @param p_dst_uv  - dst UV pointer
+ * @param pitch     - dst pitch
+ * @param width     - dst width
+ * @param height    - dst height
+ * @param fx_scale  - xscale
+ * @param fy_scale  - yscale
+ * @return 
+ */
+template<typename YuvUnitx2>
+static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitch,
+                        uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height, float fx_scale, float fy_scale);
+#endif
