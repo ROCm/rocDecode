@@ -20,11 +20,10 @@ access the video decoding features available on your GPU.
   > [!IMPORTANT] 
   > `gfx908` or higher GPU required
 
-* Install ROCm `6.1.0` or later with
-  [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
-  * Run: `--usecase=multimediasdk,rocm --no-32`
-  * To install rocDecode with minimum requirements, follow the
-    [quick-start](./docs/install/quick-start.rst) instructions
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
+  > [!IMPORTANT]
+  > * `--usecase=multimediasdk,rocm --no-32`
+  > * To install rocDecode with minimum requirements, follow the [quick-start](./docs/install/quick-start.rst) instructions
 
 * CMake `3.5` or later
 
