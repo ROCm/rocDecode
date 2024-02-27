@@ -1480,7 +1480,7 @@ bool AvcVideoParser::MoreRbspData(uint8_t *p_stream, size_t stream_size_in_byte,
     bool more_rbsp_bits = false;
     uint8_t curr_byte = p_stream[bit_offset >> 3];
     uint8_t next_bytes[3];
-    uint32_t next_byte_offset = (bit_offset + 7) >> 3;
+    uint32_t next_byte_offset = (bit_offset >> 3) + 1;
     int bit_offset_in_byte = bit_offset % 8;
     
     /// If the following bytes are not start code, we have more RBSP data. If we don't have enough bytes
