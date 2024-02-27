@@ -16,14 +16,13 @@ access the video decoding features available on your GPU.
   * RHEL - `8` / `9`
   * SLES - `15-SP4`
 
-* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) 
-  > [!IMPORTANT] 
-  > `gfx908` or higher GPU required
+* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
+> [!IMPORTANT] 
+> `gfx908` or higher GPU required
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
-  > [!IMPORTANT]
-  > * `--usecase=multimediasdk,rocm --no-32`
-  > * To install rocDecode with minimum requirements, follow the [quick-start](./docs/install/quick-start.rst) instructions
+> [!IMPORTANT]
+> * `--usecase=multimediasdk,rocm --no-32`
 
 * CMake `3.5` or later
 
@@ -51,8 +50,8 @@ access the video decoding features available on your GPU.
   ```
 
 >[!NOTE]
-> All package installs are shown with the `apt` package manager. Use the appropriate package
-> manager for your operating system.
+> * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
+> * To install rocDecode with minimum requirements, follow the [quick-start](./docs/install/quick-start.rst) instructions
 
 ### Prerequisites setup script
 
@@ -72,8 +71,8 @@ The installation process uses the following steps:
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
-  > [!IMPORTANT] 
-  > `--usecase=multimediasdk,rocm --no-32`
+> [!IMPORTANT] 
+> `--usecase=multimediasdk,rocm --no-32`
 
 * Use either [Package install](#package-install) or [Source install](#source-install) as described below.
 
