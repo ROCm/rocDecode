@@ -199,4 +199,5 @@ python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
 ```
 
 For more information on documentation builds, refer to the
-{doc}`Building documentation <rocm:contribute/building>` page.
+[Building documentation](https://rocm.docs.amd.com/en/latest/contribute/building.html)
+page.
