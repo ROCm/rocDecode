@@ -2,8 +2,8 @@
 
 <p align="center"><img width="70%" src="docs/data/AMD_rocDecode_Logo.png" /></p>
 
-rocDecode SDK is a high-performance video decode SDK for AMD GPUs. Using the rocDecode API,
-you can access the video decoding features available on your GPU.
+rocDecode is a high-performance video decode SDK for AMD GPUs. Using the rocDecode API, you can
+access the video decoding features available on your GPU.
 
 ## Tested configurations
 
@@ -107,7 +107,7 @@ system.
 
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
-* Test package - `rocdecode-test` provides ctest to verify installation
+* Test package - `rocdecode-test` provides CTest to verify installation
 
 ### Source install
 
