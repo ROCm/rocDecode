@@ -28,15 +28,13 @@ you can access the video decoding features available on your GPU.
   * RHEL - `8` / `9`
   * SLES - `15-SP4`
 
-* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
-  * **NOTE:** `gfx908` or higher required
+* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) (`gfx908` or higher required)
 
 * Install ROCm `6.1.0` or later with
   [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
   * Run: `--usecase=multimediasdk,rocm --no-32`
-  * **NOTE:** To install rocDecode with minimum requirements, follow the instructions [here](https://github.com/ROCm/rocDecode/wiki#how-can-i-install-rocdecode-runtime-with-minimum-requirements)
-
-### To build from source
+  * To install rocDecode with minimum requirements, follow the
+    [quick-start](./docs/install/quick-start.rst) instructions
 
 * CMake `3.5` or later
 
@@ -56,38 +54,35 @@ you can access the video decoding features available on your GPU.
   sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
   ```
 
->[!NOTE]
-> All package installs are shown with the `apt` package manager. Use the appropriate package
-> manager for your operating system.
-
-* Ubuntu 22.04 - Install `libstdc++-12-dev`
+* If using Ubuntu 22.04, you must install `libstdc++-12-dev`
 
   ```shell
   sudo apt install libstdc++-12-dev
   ```
 
-#### Prerequisites setup script for Linux
+>[!NOTE]
+> All package installs are shown with the `apt` package manager. Use the appropriate package
+> manager for your operating system.
 
+### Prerequisites setup script
 
 For your convenience, we provide the setup script,
 [rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py),
-which installs all required dependencies.
+which installs all required dependencies. Run this script only once.
 
 ```shell
   python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
                              --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 ```
 
->[!NOTE]
->Run this script only once.
+## Installation instructions
 
-### rocDecode package install
+To install rocDecode, you can use [Package install](#package-install) or [Source install](#source-install).
+
+### Package install
 
 To install rocDecode runtime, development, and test packages, run the line of code for your operating
 system.
-
->[!NOTE]
-> Package install auto installs all dependencies.
 
 * Ubuntu
 
@@ -107,11 +102,14 @@ system.
   sudo zypper install rocdecode rocdecode-devel rocdecode-test
   ```
 
+>[!NOTE]
+> Package install auto installs all dependencies.
+
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
 * Test package - `rocdecode-test` provides ctest to verify installation
 
-### Source build and install
+### Source install
 
 To build rocDecode from source, run:
 
@@ -124,7 +122,7 @@ make -j8
 sudo make install
 ```
 
-* Run tests (this requires `FFMPEG` dev install):
+* Run tests (this requires FFmpeg dev install):
 
   ```shell
   make test
@@ -146,9 +144,6 @@ The installer copies:
 * Header files into `/opt/rocm/include/rocdecode`
 * Samples folder into `/opt/rocm/share/rocdecode`
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
-
->[!NOTE]
-> FFmpeg dev install is required to run samples and tests.
 
 * To verify your installation using a sample application, run:
 

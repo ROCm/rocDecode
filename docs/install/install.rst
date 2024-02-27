@@ -95,7 +95,7 @@ Installation instructions
 ========================================
 
 To install rocDecode, you can use :ref:`package-install` or
-:ref:`build-from-source`.
+:ref:`source-install`.
 
 .. _package-install:
 
@@ -129,13 +129,13 @@ system.
 
   Package install auto installs all dependencies.
 
-* Runtime package: `rocdecode` only provides the rocdecode library `librocdecode.so`
-* Development package: `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
-* Test package: `rocdecode-test` provides ctest to verify installation
+* Runtime package: ``rocdecode`` only provides the rocdecode library ``librocdecode.so``
+* Development package: ``rocdecode-dev``or ``rocdecode-devel`` provides the library, header files, and samples
+* Test package: ``rocdecode-test`` provides CTest to verify installation
 
-.. _build-from-source:
+.. _source-install:
 
-Build from source
+Source install
 ------------------------------------------------------------------------------------------------------------
 
 To build rocDecode from source, run:
