@@ -95,6 +95,8 @@ sudo yum install rocdecode rocdecode-devel rocdecode-test
 sudo zypper install rocdecode rocdecode-devel rocdecode-test
 ```
 
+**NOTE:** `RHEL`/`SLES` package install requires manual `FFMPEG V4.X` dev install
+
 ### Source build and install
 
 ```shell
