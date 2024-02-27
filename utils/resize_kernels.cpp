@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include "resize_kernels.h"
 #include "roc_video_dec.h"
 
-#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
 template<typename YuvUnitx2>
 static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t tex_uv,
         uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height,
@@ -82,7 +82,7 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
 template <typename YuvUnitx2>
 static void Resize(unsigned char *p_dst, unsigned char* p_dst_uv, int dst_pitch, int dst_width, int dst_height, 
                     unsigned char *p_src, unsigned char *p_src_uv, int src_pitch, int src_width, int src_height, hipStream_t hip_stream) {
-#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = p_src;
@@ -134,7 +134,7 @@ void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst
     return Resize<ushort2>(p_dst_p016, p_dst_uv, dst_pitch, dst_width, dst_height, p_src_p016, p_src_uv, src_pitch, src_width, src_height, hip_stream);
 }
 
-#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
 static __global__ void Scale_tex2D(hipTextureObject_t tex_src, uint8_t *p_dst, int pitch, int width, 
                             int height, float fx_scale, float fy_scale) {
     int x = blockIdx.x * blockDim.x + threadIdx.x,
@@ -198,7 +198,7 @@ static __global__ void Scale_UV(uint8_t *p_src, int src_pitch, uint8_t *p_dst, i
 void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
                                     int src_width, int src_height, bool b_resize_uv, hipStream_t hip_stream) {
 
-#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = dp_src;
