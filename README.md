@@ -122,15 +122,15 @@ make -j8
 sudo make install
 ```
 
-* Run tests (this requires FFmpeg dev install):
+Run tests (this requires FFmpeg dev install):
 
   ```shell
   make test
   ```
 
-  To run tests with verbose option, use `make test ARGS="-VV"`.
+To run tests with verbose option, use `make test ARGS="-VV"`.
 
-* Make package:
+Make package:
 
   ```shell
   sudo make package
