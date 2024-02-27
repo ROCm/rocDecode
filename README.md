@@ -70,9 +70,7 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
-> [!IMPORTANT] 
-> `--usecase=multimediasdk,rocm --no-32`
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
 
 * Use either [Package install](#package-install) or [Source install](#source-install) as described below.
 
@@ -128,7 +126,7 @@ Run tests:
   make test
   ```
   > [!IMPORTANT] 
-  > Requires `FFMPEG` dev install
+  > make test requires `FFMPEG` dev install
 
   >[!NOTE]
   > To run tests with verbose option, use `make test ARGS="-VV"`.
