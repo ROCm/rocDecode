@@ -26,6 +26,9 @@ THE SOFTWARE.
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
+    #if USE_AVCODEC_58_54
+        #include <libavcodec/bsf.h>
+    #endif
 }
 
 #include "rocdecode.h"

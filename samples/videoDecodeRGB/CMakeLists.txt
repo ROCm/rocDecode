@@ -81,6 +81,11 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # FFMPEG
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+    if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.54.100)
+      target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_58_54=0)
+    else()
+      target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_58_54=1)
+    endif()
     # rocDecode and utils
     include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${ROCDECODE_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
