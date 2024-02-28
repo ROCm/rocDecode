@@ -124,11 +124,11 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo mesa-amdgpu-multimedia-devel libstdc++-12-dev')
+              ' install vainfo libdrm-amdgpu-dev mesa-amdgpu-multimedia-devel libstdc++-12-dev')
 else:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install mesa-amdgpu-multimedia-devel')
+              ' install libdrm-amdgpu-devel mesa-amdgpu-multimedia-devel')
 
 # rocDecode Dev Requirements
 if developerInstall == 'ON':
