@@ -20,9 +20,9 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT] 
 > `gfx908` or higher GPU required
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html)
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecases - multimediasdk and rocm
 > [!IMPORTANT]
-> * `--usecase=multimediasdk,rocm --no-32`
+> `sudo amdgpu-install --usecase=multimediasdk,rocm --no-32`
 
 * CMake `3.5` or later
 
@@ -36,6 +36,11 @@ access the video decoding features available on your GPU.
   sudo apt install pkg-config
   ```
 
+* AMD Libdrm
+  ```shell
+  sudo apt install libdrm-amdgpu-dev
+  ```
+
 * [FFmpeg](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
 
   ```shell
@@ -43,11 +48,11 @@ access the video decoding features available on your GPU.
   ```
 
 > [!IMPORTANT] 
-> If using Ubuntu 22.04, you must install `libstdc++-12-dev`
-
-  ```shell
-  sudo apt install libstdc++-12-dev
-  ```
+> * If using Ubuntu 22.04, you must install `libstdc++-12-dev`
+>
+>  ```shell
+>  sudo apt install libstdc++-12-dev
+>  ```
 
 >[!NOTE]
 > * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
@@ -60,8 +65,8 @@ For your convenience, we provide the setup script,
 which installs all required dependencies. Run this script only once.
 
 ```shell
-  python rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
-                             --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
+python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
+                            --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
 ```
 
 ## Installation instructions
@@ -109,18 +114,19 @@ system.
 
 ### Source install
 
-To build rocDecode from source, run:
+To build rocDecode from source and install, run:
 
 ```shell
 git clone https://github.com/ROCm/rocDecode.git
 cd rocDecode
+python3 rocDecode-setup.py
 mkdir build && cd build
 cmake ../
 make -j8
 sudo make install
 ```
 
-Run tests:
+#### Run tests
 
   ```shell
   make test
@@ -131,7 +137,7 @@ Run tests:
   >[!NOTE]
   > To run tests with verbose option, use `make test ARGS="-VV"`.
 
-Make package:
+#### Make package
 
   ```shell
   sudo make package
@@ -147,6 +153,7 @@ The installer copies:
 * Documents folder into `/opt/rocm/share/doc/rocdecode`
 
 ### Using sample application
+
 To verify your installation using a sample application, run:
 
   ```shell
@@ -157,6 +164,7 @@ To verify your installation using a sample application, run:
   ```
 
 ### Using test package
+
 To verify your installation using the `rocdecode-test` package, run:
 
   ```shell
