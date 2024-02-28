@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.4"
+__version__ = "1.5"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -124,11 +124,14 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo mesa-amdgpu-multimedia-devel libstdc++-12-dev')
+              ' install vainfo libdrm-amdgpu-dev mesa-amdgpu-multimedia-devel')
+    if "22.04" in platform.freedesktop_os_release().get("VERSION_ID"):
+        os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
+              ' install libstdc++-12-dev')
 else:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install mesa-amdgpu-multimedia-devel')
+              ' install libdrm-amdgpu-devel mesa-amdgpu-multimedia-devel')
 
 # rocDecode Dev Requirements
 if developerInstall == 'ON':
