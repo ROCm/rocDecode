@@ -21,8 +21,8 @@
 #
 ################################################################################
 
-find_library(LIBDRM_LIBRARY NAMES drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 /usr/lib64)
-find_path(LIBDRM_INCLUDE_DIR NAMES drm.h PATHS /opt/amdgpu/include/libdrm /usr/include/libdrm)
+find_library(LIBDRM_LIBRARY NAMES drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 NO_DEFAULT_PATH)
+find_path(LIBDRM_INCLUDE_DIR NAMES drm.h PATHS /opt/amdgpu/include/libdrm NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Libdrm DEFAULT_MSG LIBDRM_INCLUDE_DIR LIBDRM_LIBRARY)
