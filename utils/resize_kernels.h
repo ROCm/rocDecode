@@ -100,33 +100,3 @@ void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_
  */
 void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
                                     int src_width, int src_height, bool b_resize_uv = false, hipStream_t hip_stream = nullptr);
-
-#if 0
-/**
- * @brief low level HIP kernel for Resize using tex2d
- * 
- */
-template<typename YuvUnitx2>
-static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t tex_uv,
-                        uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height, float fx_scale, float fy_scale);
-
-/**
- * @brief low level HIP kernel for Resize using tex2d
- * 
- * @tparam YuvUnitx2 
- * @param p_src    - src Y pointer
- * @param p_src_uv  - src UV pointer
- * @param src_pitch - src pitch
- * @param p_dst     - dst Y pointer
- * @param p_dst_uv  - dst UV pointer
- * @param pitch     - dst pitch
- * @param width     - dst width
- * @param height    - dst height
- * @param fx_scale  - xscale
- * @param fy_scale  - yscale
- * @return 
- */
-template<typename YuvUnitx2>
-static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitch,
-                        uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height, float fx_scale, float fy_scale);
-#endif

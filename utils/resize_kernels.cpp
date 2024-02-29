@@ -23,7 +23,23 @@ THE SOFTWARE.
 #include "resize_kernels.h"
 #include "roc_video_dec.h"
 
-#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+/**
+ * @brief low level HIP kernel for Resize using tex2d
+ * 
+ * @tparam YuvUnitx2 
+ * @param tex_y    - text2D object Y pointer
+ * @param tex_uv   - text2D object UV pointer
+ * @param p_dst     - dst Y pointer
+ * @param p_dst_uv  - dst UV pointer
+ * @param pitch     - dst pitch
+ * @param width     - dst width
+ * @param height    - dst height
+ * @param fx_scale  - xscale
+ * @param fy_scale  - yscale
+ * @return 
+ */
+
 template<typename YuvUnitx2>
 static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t tex_uv,
         uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height,
@@ -53,9 +69,27 @@ static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t te
 }
 #endif
 
+/**
+ * @brief low level HIP kernel for Resize using nearest neighbor interpolation
+ * 
+ * @tparam YuvUnitx2 
+ * @param p_src    - src Y pointer
+ * @param p_src_uv  - src UV pointer
+ * @param src_pitch - src pitch
+ * @param p_dst     - dst Y pointer
+ * @param p_dst_uv  - dst UV pointer
+ * @param pitch     - dst pitch
+ * @param width     - dst width
+ * @param height    - dst height
+ * @param fx_scale  - xscale
+ * @param fy_scale  - yscale
+ * @return 
+ */
+
 template<typename YuvUnitx2>
 static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitch,
                         uint8_t *p_dst, uint8_t *p_dst_uv, int pitch, int width, int height, float fx_scale, float fy_scale) {
+
     int ix = blockIdx.x * blockDim.x + threadIdx.x,
         iy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -65,16 +99,19 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
 
     int x = ix * 2, y = iy * 2;
     typedef decltype(YuvUnitx2::x) YuvUnit;
+    uint8_t *p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)*(p_src + y * static_cast<int>(y*fy_scale) * pitch + static_cast<int>(x * fx_scale)),
-        (YuvUnit)*(p_src + y * static_cast<int>(y*fy_scale) * pitch + static_cast<int>((x + 1) * fx_scale))
+        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale))),
+        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)))
     };
     y++;
+    p_src_y = p_src + pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale)); 
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)*(p_src + y * static_cast<int>(y*fy_scale) * pitch + static_cast<int>(x * fx_scale)),
-        (YuvUnit)*(p_src + y * static_cast<int>(y*fy_scale) * pitch + static_cast<int>((x + 1) * fx_scale))
+        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale))),
+        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)))
     };
-    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<int> (ix * fx_scale) *sizeof(YuvUnit) + static_cast<int>((iy * fy_scale)) * src_pitch);
+    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<uint>(fmaf(ix, fx_scale, fx_scale*0.5)) * sizeof(YuvUnit) + 
+                            src_pitch * static_cast<uint>(fmaf(iy, fy_scale, 0.5 * fy_scale)));
     *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)p_uv[0], (YuvUnit)p_uv[1] };
 }
 
@@ -82,7 +119,7 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
 template <typename YuvUnitx2>
 static void Resize(unsigned char *p_dst, unsigned char* p_dst_uv, int dst_pitch, int dst_width, int dst_height, 
                     unsigned char *p_src, unsigned char *p_src_uv, int src_pitch, int src_width, int src_height, hipStream_t hip_stream) {
-#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = p_src;
@@ -134,14 +171,13 @@ void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst
     return Resize<ushort2>(p_dst_p016, p_dst_uv, dst_pitch, dst_width, dst_height, p_src_p016, p_src_uv, src_pitch, src_width, src_height, hip_stream);
 }
 
-#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
 static __global__ void Scale_tex2D(hipTextureObject_t tex_src, uint8_t *p_dst, int pitch, int width, 
                             int height, float fx_scale, float fy_scale) {
     int x = blockIdx.x * blockDim.x + threadIdx.x,
         y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= width || y >= height)
-    {
+    if (x >= width || y >= height) {
         return;
     }
 
@@ -153,8 +189,7 @@ static __global__ void Scale_UV_tex2D(hipTextureObject_t tex_src, uint8_t *p_dst
     int x = blockIdx.x * blockDim.x + threadIdx.x,
         y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= width || y >= height)
-    {
+    if (x >= width || y >= height){
         return;
     }
     float2 uv = tex2D<float2>(tex_src, x * fx_scale, y * fy_scale);
@@ -169,13 +204,12 @@ static __global__ void Scale(uint8_t *p_src, int src_pitch, uint8_t *p_dst, int 
     int x = blockIdx.x * blockDim.x + threadIdx.x,
         y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= width || y >= height)
-    {
+    if (x >= width || y >= height){
         return;
     }
 
     // do nearest neighbor interpolation
-    uint8_t *p_src_xy = p_src + static_cast<int>(y * fy_scale * src_pitch) + static_cast<int>(x * fx_scale);
+    uint8_t *p_src_xy = p_src + src_pitch * static_cast<uint>(fmaf(y, fy_scale, 0.5 * fy_scale)) + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale));
     *(uint8_t*)(p_dst + (y * pitch) + x) = *p_src_xy;
 }
 
@@ -184,12 +218,11 @@ static __global__ void Scale_UV(uint8_t *p_src, int src_pitch, uint8_t *p_dst, i
     int x = blockIdx.x * blockDim.x + threadIdx.x,
         y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= width || y >= height)
-    {
+    if (x >= width || y >= height) {
         return;
     }
     // do nearest neighbor interpolation
-    uint8_t *p_src_uv = p_src + static_cast<int>(y * fy_scale * src_pitch) + static_cast<int>(x * fx_scale);
+    uint8_t *p_src_uv = p_src + src_pitch * static_cast<uint>(fmaf(y , fy_scale, 0.5 * fy_scale)) + static_cast<uint>(fmaf(x, fx_scale, 0.5 * fx_scale));
     uchar2 dst_uv = uchar2{ p_src_uv[0], p_src_uv[1] };
     *(uchar2*)(p_dst + (y * pitch) + 2 * x) = dst_uv;
 }
@@ -198,7 +231,7 @@ static __global__ void Scale_UV(uint8_t *p_src, int src_pitch, uint8_t *p_dst, i
 void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
                                     int src_width, int src_height, bool b_resize_uv, hipStream_t hip_stream) {
 
-#if 1//!defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
+#if !defined(__HIP_NO_IMAGE_SUPPORT) || !__HIP_NO_IMAGE_SUPPORT
     hipResourceDesc res_desc = {};
     res_desc.resType = hipResourceTypePitch2D;
     res_desc.res.pitch2D.devPtr = dp_src;
@@ -221,13 +254,11 @@ void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int
     dim3 blockSize(16, 16, 1);
     dim3 gridSize(((uint32_t)dst_width + blockSize.x - 1) / blockSize.x, ((uint32_t)dst_height + blockSize.y - 1) / blockSize.y, 1);
 
-    if (b_resize_uv)
-    {
+    if (b_resize_uv){
         Scale_UV_tex2D <<<gridSize, blockSize, 0, hip_stream >>>(tex_src, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
-    else
-    {
+    else{
         Scale_tex2D <<<gridSize, blockSize, 0, hip_stream >>>(tex_src, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
@@ -238,13 +269,11 @@ void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int
     dim3 blockSize(16, 16, 1);
     dim3 gridSize(((uint32_t)dst_width + blockSize.x - 1) / blockSize.x, ((uint32_t)dst_height + blockSize.y - 1) / blockSize.y, 1);
 
-    if (b_resize_uv)
-    {
+    if (b_resize_uv) {
         Scale_UV <<<gridSize, blockSize, 0, hip_stream >>>(dp_src, src_pitch, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
-    else
-    {
+    else {
         Scale <<<gridSize, blockSize, 0, hip_stream >>>(dp_src, src_pitch, dp_dst,
             dst_pitch, dst_width, dst_height, 1.0f * src_width / dst_width, 1.0f * src_height / dst_height);
     }
