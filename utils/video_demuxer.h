@@ -57,7 +57,7 @@ class VideoDemuxer {
         const uint32_t GetBitDepth() const { return bit_depth_;}
         const uint32_t GetBytePerPixel() const { return byte_per_pixel_;}
         const uint32_t GetBitRate() const { return bit_rate_;}
-        const double GetFrameRate() const {return frame_rate_.num / frame_rate_.den;};
+        const double GetFrameRate() const {return frame_rate_.den != 0 ? frame_rate_.num / frame_rate_.den : 0;};
     private:
         VideoDemuxer(AVFormatContext *av_fmt_input_ctx);
         AVFormatContext *CreateFmtContextUtil(StreamProvider *stream_provider);
@@ -70,7 +70,7 @@ class VideoDemuxer {
         AVBSFContext *av_bsf_ctx_ = nullptr;
         AVCodecID av_video_codec_id_;
         AVPixelFormat chroma_format_;
-        AVRational frame_rate_;
+        AVRational frame_rate_ = {};
         uint8_t *data_with_header_ = nullptr;
         int av_stream_ = 0;
         bool is_h264_ = false; 
@@ -195,6 +195,7 @@ VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx
     chroma_format_ = (AVPixelFormat)av_fmt_input_ctx_->streams[av_stream_]->codecpar->format;
     bit_rate_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->bit_rate;
     frame_rate_ = av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate;
+
     switch (chroma_format_) {
         case AV_PIX_FMT_YUV420P10LE:
         case AV_PIX_FMT_GRAY10LE:
