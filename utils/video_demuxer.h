@@ -51,6 +51,13 @@ class VideoDemuxer {
         VideoDemuxer(StreamProvider *stream_provider) : VideoDemuxer(CreateFmtContextUtil(stream_provider)) {av_io_ctx_ = av_fmt_input_ctx_->pb;}
         ~VideoDemuxer();
         bool Demux(uint8_t **video, int *video_size, int64_t *pts = nullptr);
+        const uint32_t GetWidth() const { return width_;}
+        const uint32_t GetHeight() const { return height_;}
+        const uint32_t GetChromaHeight() const { return chroma_height_;}
+        const uint32_t GetBitDepth() const { return bit_depth_;}
+        const uint32_t GetBytePerPixel() const { return byte_per_pixel_;}
+        const uint32_t GetBitRate() const { return bit_rate_;}
+        const double GetFrameRate() const {return frame_rate_.den != 0 ? frame_rate_.num / frame_rate_.den : 0;};
     private:
         VideoDemuxer(AVFormatContext *av_fmt_input_ctx);
         AVFormatContext *CreateFmtContextUtil(StreamProvider *stream_provider);
@@ -62,6 +69,8 @@ class VideoDemuxer {
         AVPacket* packet_filtered_ = nullptr;
         AVBSFContext *av_bsf_ctx_ = nullptr;
         AVCodecID av_video_codec_id_;
+        AVPixelFormat chroma_format_;
+        AVRational frame_rate_ = {};
         uint8_t *data_with_header_ = nullptr;
         int av_stream_ = 0;
         bool is_h264_ = false; 
@@ -69,7 +78,13 @@ class VideoDemuxer {
         bool is_mpeg4_ = false;
         int64_t default_time_scale_ = 1000;
         double time_base_ = 0.0;
-        unsigned int frame_count_ = 0;
+        uint32_t frame_count_ = 0;
+        uint32_t width_ = 0;
+        uint32_t height_ = 0;
+        uint32_t chroma_height_ = 0;
+        uint32_t bit_depth_ = 0;
+        uint32_t byte_per_pixel_ = 0;
+        uint32_t bit_rate_ = 0;
 };
 
 VideoDemuxer::~VideoDemuxer() {
@@ -175,6 +190,55 @@ VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx
         return;
     }
     av_video_codec_id_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->codec_id;
+    width_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->width;
+    height_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->height;
+    chroma_format_ = (AVPixelFormat)av_fmt_input_ctx_->streams[av_stream_]->codecpar->format;
+    bit_rate_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->bit_rate;
+    frame_rate_ = av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate;
+
+    switch (chroma_format_) {
+        case AV_PIX_FMT_YUV420P10LE:
+        case AV_PIX_FMT_GRAY10LE:
+            bit_depth_ = 10;
+            chroma_height_ = (height_ + 1) >> 1;
+            byte_per_pixel_ = 2;
+            break;
+        case AV_PIX_FMT_YUV420P12LE:
+            bit_depth_ = 12;
+            chroma_height_ = (height_ + 1) >> 1;
+            byte_per_pixel_ = 2;
+            break;
+        case AV_PIX_FMT_YUV444P10LE:
+            bit_depth_ = 10;
+            chroma_height_ = height_ << 1;
+            byte_per_pixel_ = 2;
+            break;
+        case AV_PIX_FMT_YUV444P12LE:
+            bit_depth_ = 12;
+            chroma_height_ = height_ << 1;
+            byte_per_pixel_ = 2;
+            break;
+        case AV_PIX_FMT_YUV444P:
+            bit_depth_ = 8;
+            chroma_height_ = height_ << 1;
+            byte_per_pixel_ = 1;
+            break;
+        case AV_PIX_FMT_YUV420P:
+        case AV_PIX_FMT_YUVJ420P:
+        case AV_PIX_FMT_YUVJ422P:
+        case AV_PIX_FMT_YUVJ444P:
+        case AV_PIX_FMT_GRAY8:
+            bit_depth_ = 8;
+            chroma_height_ = (height_ + 1) >> 1;
+            byte_per_pixel_ = 1;
+            break;
+        default:
+            chroma_format_ = AV_PIX_FMT_YUV420P;
+            bit_depth_ = 8;
+            chroma_height_ = (height_ + 1) >> 1;
+            byte_per_pixel_ = 1;
+        }
+
     AVRational time_base = av_fmt_input_ctx_->streams[av_stream_]->time_base;
     time_base_ = av_q2d(time_base);
 
@@ -270,15 +334,15 @@ int VideoDemuxer::ReadPacket(void *data, uint8_t *buf, int buf_size) {
 
 static inline rocDecVideoCodec AVCodec2RocDecVideoCodec(AVCodecID av_codec) {
     switch (av_codec) {
-    case AV_CODEC_ID_MPEG1VIDEO : return rocDecVideoCodec_MPEG1;
-    case AV_CODEC_ID_MPEG2VIDEO : return rocDecVideoCodec_MPEG2;
-    case AV_CODEC_ID_MPEG4      : return rocDecVideoCodec_MPEG4;
-    case AV_CODEC_ID_H264       : return rocDecVideoCodec_AVC;
-    case AV_CODEC_ID_HEVC       : return rocDecVideoCodec_HEVC;
-    case AV_CODEC_ID_VP8        : return rocDecVideoCodec_VP8;
-    case AV_CODEC_ID_VP9        : return rocDecVideoCodec_VP9;
-    case AV_CODEC_ID_MJPEG      : return rocDecVideoCodec_JPEG;
-    case AV_CODEC_ID_AV1        : return rocDecVideoCodec_AV1;
-    default                     : return rocDecVideoCodec_NumCodecs;
+        case AV_CODEC_ID_MPEG1VIDEO : return rocDecVideoCodec_MPEG1;
+        case AV_CODEC_ID_MPEG2VIDEO : return rocDecVideoCodec_MPEG2;
+        case AV_CODEC_ID_MPEG4      : return rocDecVideoCodec_MPEG4;
+        case AV_CODEC_ID_H264       : return rocDecVideoCodec_AVC;
+        case AV_CODEC_ID_HEVC       : return rocDecVideoCodec_HEVC;
+        case AV_CODEC_ID_VP8        : return rocDecVideoCodec_VP8;
+        case AV_CODEC_ID_VP9        : return rocDecVideoCodec_VP9;
+        case AV_CODEC_ID_MJPEG      : return rocDecVideoCodec_JPEG;
+        case AV_CODEC_ID_AV1        : return rocDecVideoCodec_AV1;
+        default                     : return rocDecVideoCodec_NumCodecs;
     }
 }
