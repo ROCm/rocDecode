@@ -215,11 +215,9 @@ int main(int argc, char **argv) {
     int device_id = 0, num_files = 0;
     int n_thread = 4;
     Rect *p_crop_rect = nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to decode only for performance
     bool b_force_zero_latency = false, b_dump_output_frames = false;
     std::vector<std::string> input_file_names;
-
-
     ParseCommandLine (input_folder_path, output_folder_path, device_id, n_thread, b_dump_output_frames, mem_type, argc, argv);
 
     try {
@@ -230,7 +228,6 @@ int main(int argc, char **argv) {
 
         std::vector<std::string> output_file_names(num_files);
         n_thread = ((n_thread > num_files) ? num_files : n_thread);
-
         int num_devices = 0, sd = 0;
         hipError_t hip_status = hipSuccess;
         hipDeviceProp_t hip_dev_prop;
@@ -240,7 +237,6 @@ int main(int argc, char **argv) {
             std::cout << "ERROR: hipGetDeviceCount failed! (" << hip_status << ")" << std::endl;
             return -1;
         }
-
         if (num_devices < 1) {
             ERR("ERROR: didn't find any GPU!");
             return -1;
@@ -265,7 +261,6 @@ int main(int argc, char **argv) {
 
         std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
-
         double total_fps = 0;
         int n_total = 0;
         std::vector<double> v_fps;
@@ -284,7 +279,7 @@ int main(int argc, char **argv) {
 
         //reconfig parameters
         ReconfigParams reconfig_params = { 0 };
-        ReconfigDumpFileStruct reconfig_user_struct = { 0 };                
+        ReconfigDumpFileStruct reconfig_user_struct = {0};
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         if (!b_dump_output_frames) {
             reconfig_user_struct.b_dump_frames_to_file = false;
@@ -295,7 +290,7 @@ int main(int argc, char **argv) {
         }
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
-        for(int i = 0; i < num_files; i++) {
+        for (int i = 0; i < num_files; i++) {
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_names[i].c_str()));
             v_demuxer[i] = std::move(demuxer);
             std::size_t found_file = input_file_names[i].find_last_of('/');
@@ -329,7 +324,7 @@ int main(int argc, char **argv) {
 
         for (int j = 0; j < num_files; j++) {
             int thread_idx = j % n_thread;
-            if(j >= n_thread) {
+            if (j >= n_thread) {
                 std::size_t found_file = input_file_names[j].find_last_of('/');
                 rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
                 v_viddec[thread_idx]->SetReconfigParams(&reconfig_params);
