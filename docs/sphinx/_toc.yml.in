@@ -1,34 +1,42 @@
-# Anywhere {branch} is used, the branch name will be substituted.
-# These comments will also be removed.
-root: doxygen/html/index
+defaults:
+  numbered: False
+root: index
 subtrees:
-  - caption: What is rocDecode?
-    entries:
-      - file: quick_overview
-  - caption: Quick-start
-    entries:
-      - file: quickStart
-  - caption: Hardware requirements
-    entries:
-      - file: tutorial/hardwareCapabilities
-  - caption: API reference
-    entries:
-      - file: doxygen/html/files
-  - caption: Tutorials
-    entries:
-      - file: tutorial/overview
-      - file: tutorial/decodingPipeline
-      - file: tutorial/usingAPI
-  - caption: Samples
-    entries:
-      - file: samples
-        subtrees:
-          - entries:
-            - file: videoDecode
-            - file: videoDecodeMem
-            - file: videoDecodeMultiFiles
-            - file: videoDecodePerf
-            - file: videoDecodeRGB
-  - caption: About
-    entries:
-      - file: license
+- entries:
+  - file: what-is-rocDecode.rst
+    title: What is rocDecode?
+
+- caption: Install
+  entries:
+  - file: install/quick-start.rst
+    title: Quick-start
+  - file: install/install.md
+    title: Installation guide
+
+- caption: API reference
+  entries:
+  - file: doxygen/html/files
+    title: API library
+  - file: doxygen/html/globals
+    title: Functions
+  - file: doxygen/html/annotated
+    title: Data structures
+
+- caption: How to
+  entries:
+  - file: how-to/using-rocdecode.rst
+    title: Use rocDecode
+
+- caption: Conceptual
+  entries:
+  - file: conceptual/video-decoding-pipeline.rst
+    title: Video decoding pipeline
+
+- caption: Tutorials
+  entries:
+  - url: https://github.com/ROCm/rocDecode/tree/develop/samples
+    title: GitHub samples
+
+- caption: About
+  entries:
+  - file: license.md
