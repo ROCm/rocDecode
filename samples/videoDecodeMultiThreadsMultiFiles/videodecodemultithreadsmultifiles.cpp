@@ -70,50 +70,64 @@ class ThreadPool {
         void ExecuteJob(std::function<void()> func) {
             // Place a job on the queue and unblock a thread
             std::unique_lock<std::mutex> lock(mutex_);
-            jobs_.emplace(std::move(func));
+            decode_jobs_queue_.emplace(std::move(func));
             cond_var_.notify_one();
         }
 
     protected:
         void ThreadEntry(int i) {
-            std::function<void()> job;
+            std::function<void()> execute_decode_job;
 
             while (true) {
                 {
                     std::unique_lock<std::mutex> lock(mutex_);
-                    cond_var_.wait(lock, [&] {return shutdown_ || !jobs_.empty();});
-                    if (jobs_.empty()) {
+                    cond_var_.wait(lock, [&] {return shutdown_ || !decode_jobs_queue_.empty();});
+                    if (decode_jobs_queue_.empty()) {
                         // No jobs to do; shutting down
                         return;
                     }
 
-                    job = std::move(jobs_.front());
-                    jobs_.pop();
+                    execute_decode_job = std::move(decode_jobs_queue_.front());
+                    decode_jobs_queue_.pop();
                 }
 
-                // Do the job without holding any locks
-                job();
+                // Execute the decode job without holding any locks
+                execute_decode_job();
             }
         }
 
         std::mutex mutex_;
         std::condition_variable cond_var_;
         bool shutdown_;
-        std::queue<std::function<void()>> jobs_;
+        std::queue<std::function<void()>> decode_jobs_queue_;
         std::vector<std::thread> threads_;
 };
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, bool &b_dump_output_frames, std::string &output_file_name, OutputSurfaceMemoryType mem_type) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
-    uint8_t *p_video = nullptr;
+    uint8_t *p_video = nullptr, *p_frame = nullptr;
     int64_t pts = 0;
-    double total_dec_time = 0.0;
+    double total_dec_time = 0.0;    
+    OutputSurfaceInfo *surf_info;
+
     auto start_time = std::chrono::high_resolution_clock::now();
     do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
         n_frame += n_frame_returned;
+        if (b_dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {if (!n_frame && !p_dec->GetOutputSurfaceInfo(&surf_info)) {
+                std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+                break;
+            }
+            for (int i = 0; i < n_frame_returned; i++) {
+                p_frame = p_dec->GetFrame(&pts);
+                p_dec->SaveFrameToFile(output_file_name, p_frame, surf_info);
+                // release frame
+                p_dec->ReleaseFrame(pts);
+            }
+        }
     } while (n_video_bytes);
+    n_frame += p_dec->GetNumOfFlushedFrames();
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
@@ -130,19 +144,13 @@ void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i <directory containing input video files [required]> " << std::endl
     << "-t Number of threads ( 1 >= n_thread <= 64) - optional; default: 4" << std::endl
-    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl;
+    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
+    << "-o Directory for output YUV files - optional" << std::endl
+    << "-m output_surface_memory_type - decoded surface memory; optional; default - 3" << std::endl;
     exit(0);
 }
 
-int main(int argc, char **argv) {
-
-    std::string input_folder_path;
-    int device_id = 0, num_files = 0;
-    int n_thread = 4;
-    Rect *p_crop_rect = nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
-    bool b_force_zero_latency = false, b_flush_last_frames = true;
-    std::vector<std::string> input_file_names;
+void ParseCommandLine (std::string &input_folder_path, std::string &output_folder_path, int &device_id, int &n_thread, bool &b_dump_output_frames, OutputSurfaceMemoryType &mem_type, int argc, char *argv[]) {
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -178,15 +186,49 @@ int main(int argc, char **argv) {
             }
             continue;
         }
+        if (!strcmp(argv[i], "-o")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-o");
+            }
+            output_folder_path = argv[i];
+            if (std::filesystem::is_directory(output_folder_path)) {
+                std::filesystem::remove_all(output_folder_path);
+            }
+            std::filesystem::create_directory(output_folder_path);
+            b_dump_output_frames = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
-    
+}
+
+int main(int argc, char **argv) {
+
+    std::string input_folder_path, output_folder_path;
+    int device_id = 0, num_files = 0;
+    int n_thread = 4;
+    Rect *p_crop_rect = nullptr;
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
+    bool b_force_zero_latency = false, b_dump_output_frames = false;
+    std::vector<std::string> input_file_names;
+
+
+    ParseCommandLine (input_folder_path, output_folder_path, device_id, n_thread, b_dump_output_frames, mem_type, argc, argv);
+
     try {
         for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
             input_file_names.push_back(entry.path());
             num_files++;
         }
 
+        std::vector<std::string> output_file_names(num_files);
         n_thread = ((n_thread > num_files) ? num_files : n_thread);
 
         int num_devices = 0, sd = 0;
@@ -242,12 +284,27 @@ int main(int argc, char **argv) {
 
         //reconfig parameters
         ReconfigParams reconfig_params = { 0 };
-        ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+        ReconfigDumpFileStruct reconfig_user_struct = { 0 };                
+        reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+        if (!b_dump_output_frames) {
+            reconfig_user_struct.b_dump_frames_to_file = false;
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+        } else {
+            reconfig_user_struct.b_dump_frames_to_file = true;
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
+        }
+        reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
         for(int i = 0; i < num_files; i++) {
-            std::size_t found_file = input_file_names[i].find_last_of('/');
             std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_names[i].c_str()));
             v_demuxer[i] = std::move(demuxer);
+            std::size_t found_file = input_file_names[i].find_last_of('/');
+            input_file_names[i] = input_file_names[i].substr(found_file + 1);
+            if (b_dump_output_frames) {
+                std::size_t found_ext = input_file_names[i].find_last_of('.');
+                std::string path = output_folder_path + "/output_" + input_file_names[i].substr(0, found_ext) + ".yuv";
+                output_file_names[i] = path;
+            }
         }
 
         for (int i = 0; i < n_thread; i++) {
@@ -275,17 +332,13 @@ int main(int argc, char **argv) {
             if(j >= n_thread) {
                 std::size_t found_file = input_file_names[j].find_last_of('/');
                 rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
-                reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
-                reconfig_user_struct.b_dump_frames_to_file = false;
-                reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
-                reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
                 v_viddec[thread_idx]->SetReconfigParams(&reconfig_params);
                 v_viddec[thread_idx]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-                std::cout << "info: decoding " << input_file_names[j].substr(found_file + 1) << " using GPU device " << v_device_id[thread_idx] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+                std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_device_id[thread_idx] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             }
-            thread_pool.ExecuteJob(std::bind(DecProc, v_viddec[thread_idx].get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j]));
+            thread_pool.ExecuteJob(std::bind(DecProc, v_viddec[thread_idx].get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], b_dump_output_frames, output_file_names[j], mem_type));
         }
 
         thread_pool.JoinThreads();
@@ -293,10 +346,20 @@ int main(int argc, char **argv) {
             total_fps += v_fps[i] * static_cast<double>(n_thread) / static_cast<double>(num_files);
             n_total += v_frame[i];
         }
+        if (!b_dump_output_frames) {
+            std::cout << "info: Total frame decoded: " << n_total  << std::endl;
+            std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
+            std::cout << "info: avg FPS: " << total_fps  << std::endl;
+        }
+        else {
+            if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+                std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
+            } else {
+                for (int i = 0; i < num_files; i++)
+                    std::cout << "info: saved frames into " << output_file_names[i] << std::endl;
+            }
+        }
 
-        std::cout << "info: Total frame decoded: " << n_total  << std::endl;
-        std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
-        std::cout << "info: avg FPS: " << total_fps  << std::endl;
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;
       exit(1);
