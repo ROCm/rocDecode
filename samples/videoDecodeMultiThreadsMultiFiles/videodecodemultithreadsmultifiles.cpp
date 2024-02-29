@@ -150,7 +150,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     exit(0);
 }
 
-void ParseCommandLine (std::string &input_folder_path, std::string &output_folder_path, int &device_id, int &n_thread, bool &b_dump_output_frames, OutputSurfaceMemoryType &mem_type, int argc, char *argv[]) {
+void ParseCommandLine(std::string &input_folder_path, std::string &output_folder_path, int &device_id, int &n_thread, bool &b_dump_output_frames, OutputSurfaceMemoryType &mem_type, int argc, char *argv[]) {
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to decode only for performance
     bool b_force_zero_latency = false, b_dump_output_frames = false;
     std::vector<std::string> input_file_names;
-    ParseCommandLine (input_folder_path, output_folder_path, device_id, n_thread, b_dump_output_frames, mem_type, argc, argv);
+    ParseCommandLine(input_folder_path, output_folder_path, device_id, n_thread, b_dump_output_frames, mem_type, argc, argv);
 
     try {
         for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
@@ -258,7 +258,6 @@ int main(int argc, char **argv) {
         }
 
         std::vector<int> v_device_id(n_thread);
-
         std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
         double total_fps = 0;
@@ -267,7 +266,6 @@ int main(int argc, char **argv) {
         std::vector<int> v_frame;
         v_fps.resize(num_files, 0);
         v_frame.resize(num_files, 0);
-
         int hip_vis_dev_count = 0;
         GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
 
