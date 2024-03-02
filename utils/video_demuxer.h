@@ -26,7 +26,7 @@ THE SOFTWARE.
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
-    #if USE_AVCODEC_58_54
+    #if USE_AVCODEC_GREATER_THAN_58_134
         #include <libavcodec/bsf.h>
     #endif
 }
