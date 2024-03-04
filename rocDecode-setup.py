@@ -125,7 +125,7 @@ if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install vainfo libdrm-amdgpu-dev mesa-amdgpu-multimedia-devel')
-    if "22.04" in platform.freedesktop_os_release().get("VERSION_ID"):
+    if "22.04" in platform.version():
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install libstdc++-12-dev')
 else:
