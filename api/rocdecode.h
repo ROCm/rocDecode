@@ -116,7 +116,7 @@ typedef enum rocDecVideoSurfaceFormat_enum {
 //! These enums are used in ROCDCODECREATEINFO and RocdecDecodeCaps structures
 /**************************************************************************************************************/
 typedef enum rocDecVideoChromaFormat_enum {
-    rocDecVideoChromaFormat_Monochrome=0,  /**< MonoChrome */
+    rocDecVideoChromaFormat_Monochrome = 0,  /**< MonoChrome */
     rocDecVideoChromaFormat_420,           /**< YUV 4:2:0  */
     rocDecVideoChromaFormat_422,           /**< YUV 4:2:2  */
     rocDecVideoChromaFormat_444            /**< YUV 4:4:4  */
