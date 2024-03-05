@@ -191,7 +191,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
 
   # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu, mesa-amdgpu-multimedia")
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, mesa-amdgpu-multimedia")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, mesa-amdgpu-multimedia")
   # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
   set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, mesa-amdgpu-multimedia-devel, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
