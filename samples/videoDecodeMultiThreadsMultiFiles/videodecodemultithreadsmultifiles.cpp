@@ -103,6 +103,15 @@ class ThreadPool {
         std::vector<std::thread> threads_;
 };
 
+struct DecoderInfo {
+    int dec_device_id;
+    std::unique_ptr<RocVideoDecoder> viddec;
+    std::uint32_t bit_depth;
+    rocDecVideoCodec rocdec_codec_id;
+
+    DecoderInfo() : dec_device_id (0), viddec (nullptr), bit_depth (8) {}
+};
+
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, bool &b_dump_output_frames, std::string &output_file_name, OutputSurfaceMemoryType mem_type) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     uint8_t *p_video = nullptr, *p_frame = nullptr;
@@ -257,7 +266,6 @@ int main(int argc, char **argv) {
             sd = 1;
         }
 
-        std::vector<int> v_device_id(n_thread);
         std::string device_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
         double total_fps = 0;
@@ -272,7 +280,8 @@ int main(int argc, char **argv) {
         std::cout << "info: Number of threads: " << n_thread << std::endl;
 
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer(num_files);
-        std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec(n_thread);
+        std::unique_ptr<RocVideoDecoder> dec_8bit(nullptr), dec_10bit(nullptr);
+        std::vector<std::unique_ptr<DecoderInfo>> v_dec_info;
         ThreadPool thread_pool(n_thread);
 
         //reconfig parameters
@@ -301,21 +310,31 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
+            v_dec_info.emplace_back(std::make_unique<DecoderInfo>());
             if (!hip_vis_dev_count) {
-                if (device_id % 2 == 0)
-                    v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
-                else
-                    v_device_id[i] = (i % 2 == 0) ? device_id - sd : device_id;
+                if (device_id % 2 == 0) {
+                    v_dec_info[i]->dec_device_id = (i % 2 == 0) ? device_id : device_id + sd;
+                } else
+                    v_dec_info[i]->dec_device_id = (i % 2 == 0) ? device_id - sd : device_id;
             } else {
-                v_device_id[i] = i % hip_vis_dev_count;
+                v_dec_info[i]->dec_device_id = i % hip_vis_dev_count;
             }
 
-            rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[i]->GetCodecID());
-            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
-            v_viddec[i] = std::move(dec);
+            v_dec_info[i]->rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[i]->GetCodecID());
+            v_dec_info[i]->bit_depth = v_demuxer[i]->GetBitDepth();
+            if (v_dec_info[i]->bit_depth == 8) {
+                std::cout << "from 8 bit for thread " << i << " creating decoder bit depth = " << v_dec_info[i]->bit_depth << std::endl;
+                std::unique_ptr<RocVideoDecoder> dec_8bit(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                v_dec_info[i]->viddec = std::move(dec_8bit);
+            } else {
+                std::cout << "from 10 bit for thread " << i << " creating decoder bit depth = " << v_dec_info[i]->bit_depth << std::endl;
+                std::unique_ptr<RocVideoDecoder> dec_10bit(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                v_dec_info[i]->viddec = std::move(dec_10bit);
+            }
 
-            v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-            std::cout << "info: decoding " << input_file_names[i] << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+
+            v_dec_info[i]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+            std::cout << "info: decoding " << input_file_names[i] << " using GPU device " << v_dec_info[i]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
             std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
         }
@@ -323,15 +342,44 @@ int main(int argc, char **argv) {
         for (int j = 0; j < num_files; j++) {
             int thread_idx = j % n_thread;
             if (j >= n_thread) {
-                std::size_t found_file = input_file_names[j].find_last_of('/');
-                rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
-                v_viddec[thread_idx]->SetReconfigParams(&reconfig_params);
-                v_viddec[thread_idx]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-                std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_device_id[thread_idx] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+                v_dec_info[thread_idx]->rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
+                uint32_t bit_depth = v_demuxer[j]->GetBitDepth();
+                if (v_dec_info[thread_idx]->bit_depth != bit_depth) {
+                    std::cout << "creating a new decoder for new bit depth...old thread bit depth - " << v_dec_info[thread_idx]->bit_depth
+                    << " current file bit depth - " << bit_depth << std::endl;
+                    if (bit_depth == 8) {
+                        v_dec_info[thread_idx]->bit_depth = 8;
+                        if (dec_8bit == nullptr) {
+                            std::cout << "here 1... \n";
+                            std::unique_ptr<RocVideoDecoder> dec_8bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_8bit);
+                        } else {
+                            std::cout << "here 2... \n";
+                            v_dec_info[thread_idx]->viddec.swap(dec_8bit);
+                            v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                        }
+                    } else { // bit_depth = 10bit
+                        v_dec_info[thread_idx]->bit_depth = 10;
+                        if (dec_10bit == nullptr) {
+                            std::cout << "here 3... \n";
+                            std::unique_ptr<RocVideoDecoder> dec_10bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_10bit);
+                        } else {
+                            std::cout << "here 4... \n";
+                            v_dec_info[thread_idx]->viddec.swap(dec_10bit);
+                            v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                        }
+                    }
+                } else {
+                    std::cout << "here 5... \n";
+                    v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                }
+                v_dec_info[thread_idx]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+                std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_dec_info[thread_idx]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             }
-            thread_pool.ExecuteJob(std::bind(DecProc, v_viddec[thread_idx].get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], b_dump_output_frames, output_file_names[j], mem_type));
+            thread_pool.ExecuteJob(std::bind(DecProc, v_dec_info[thread_idx]->viddec.get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], b_dump_output_frames, output_file_names[j], mem_type));
         }
 
         thread_pool.JoinThreads();
