@@ -354,7 +354,8 @@ int main(int argc, char **argv) {
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit);
                         } else {
                             v_dec_info[thread_idx]->viddec.swap(dec_8bit);
-                            v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                            v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
+                            //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     } else { // bit_depth = 10bit
                         v_dec_info[thread_idx]->bit_depth = 10;
@@ -363,11 +364,13 @@ int main(int argc, char **argv) {
                             v_dec_info[thread_idx]->viddec = std::move(dec_10bit);
                         } else {
                             v_dec_info[thread_idx]->viddec.swap(dec_10bit);
-                            v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                            v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
+                            //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     }
                 } else {
-                    v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
+                    v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
+                    //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                 }
                 v_dec_info[thread_idx]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
                 std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_dec_info[thread_idx]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
