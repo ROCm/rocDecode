@@ -65,17 +65,12 @@ find_package(FFmpeg QUIET)
 # find rocDecode
 find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS ${ROCM_PATH}/lib)
 find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode ${ROCM_PATH}/include/rocdecode)
-
 if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
     set(ROCDECODE_FOUND TRUE)
     message("-- ${White}${PROJECT_NAME}: Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
 endif()
 
 if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
-    # Threads
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads REQUIRED)
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::device)
     # FFMPEG
@@ -84,14 +79,24 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # rocDecode and utils
     include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${ROCDECODE_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    # threads
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
+    # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} 
                         videodecrgb.cpp 
                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp 
                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/colorspace_kernels.cpp)
-
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
+    # FFMPEG multi-version support
+    if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.134.100)
+      target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=0)
+    else()
+      target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=1)
+    endif()
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)
