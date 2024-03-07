@@ -47,7 +47,7 @@ Prerequisites
 * Install ROCm 6.1.0 or later with
   `amdgpu-install <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html>`_
 
-  * Run: ``--usecase=rocm --no-32``
+  * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
 * AMD Libdrm

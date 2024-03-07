@@ -9,7 +9,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install gcc g++ cmake pkg-config g
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install initramfs-tools libnuma-dev wget keyboard-configuration && \
         wget https://repo.radeon.com/amdgpu-install/6.1/ubuntu/jammy/amdgpu-install_6.1.60100-1_all.deb && \
         sudo apt-get install -y ./amdgpu-install_6.1.60100-1_all.deb && \
-        sudo amdgpu-install -y --usecase=rocm --no-32
+        sudo amdgpu-install -y --usecase=rocm
 
 WORKDIR /workspace
 

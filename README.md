@@ -22,7 +22,7 @@ access the video decoding features available on your GPU.
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
 > [!IMPORTANT]
-> `sudo amdgpu-install --usecase=rocm --no-32`
+> `sudo amdgpu-install --usecase=rocm`
 
 * AMD Libdrm
   ```shell
@@ -85,7 +85,7 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm --no-32`
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
 
 * Use either [Package install](#package-install) or [Source install](#source-install) as described below.
 

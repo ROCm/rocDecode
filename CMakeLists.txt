@@ -193,7 +193,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # Set the dependent packages
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, libva-amdgpu, mesa-amdgpu-dri-drivers")
-  # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
+  # Set the dev dependent packages
   set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
     set(rocDecode_DEBIAN_DEV_PACKAGE_LIST "${rocDecode_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
