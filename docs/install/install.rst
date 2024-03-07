@@ -47,8 +47,26 @@ Prerequisites
 * Install ROCm 6.1.0 or later with
   `amdgpu-install <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html>`_
 
-  * Run: ``--usecase=multimediasdk,rocm --no-32``
+  * Run: ``--usecase=rocm --no-32``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
+
+* AMD Libdrm
+
+  .. code:: shell
+
+   sudo apt install libdrm-amdgpu-dev
+
+* AMD Libva
+
+  .. code:: shell
+
+   sudo apt install libva-amdgpu-dev
+
+* AMD VA Drivers
+
+  .. code:: shell
+
+   sudo apt install mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 

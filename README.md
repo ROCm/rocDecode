@@ -20,9 +20,24 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT] 
 > `gfx908` or higher GPU required
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecases - multimediasdk and rocm
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
 > [!IMPORTANT]
-> `sudo amdgpu-install --usecase=multimediasdk,rocm --no-32`
+> `sudo amdgpu-install --usecase=rocm --no-32`
+
+* AMD Libdrm
+  ```shell
+  sudo apt install libdrm-amdgpu-dev
+  ```
+
+* AMD Libva
+  ```shell
+  sudo apt install libva-amdgpu-dev
+  ```  
+
+* AMD VA Drivers
+  ```shell
+  sudo apt install mesa-amdgpu-va-drivers
+  ```  
 
 * CMake `3.5` or later
 
@@ -34,11 +49,6 @@ access the video decoding features available on your GPU.
 
   ```shell
   sudo apt install pkg-config
-  ```
-
-* AMD Libdrm
-  ```shell
-  sudo apt install libdrm-amdgpu-dev
   ```
 
 * [FFmpeg](https://ffmpeg.org/about.html) runtime and headers - for tests and samples
@@ -75,7 +85,7 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=multimediasdk,rocm --no-32`
+* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm --no-32`
 
 * Use either [Package install](#package-install) or [Source install](#source-install) as described below.
 
