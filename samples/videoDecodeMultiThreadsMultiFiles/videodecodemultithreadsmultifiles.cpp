@@ -353,8 +353,8 @@ int main(int argc, char **argv) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit);
                         } else {
-                            v_dec_info[thread_idx]->viddec.swap(dec_8bit);
                             v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
+                            v_dec_info[thread_idx]->viddec.swap(dec_8bit);
                             //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     } else { // bit_depth = 10bit
@@ -363,8 +363,8 @@ int main(int argc, char **argv) {
                             std::unique_ptr<RocVideoDecoder> dec_10bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_10bit);
                         } else {
-                            v_dec_info[thread_idx]->viddec.swap(dec_10bit);
                             v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
+                            v_dec_info[thread_idx]->viddec.swap(dec_10bit);
                             //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     }
