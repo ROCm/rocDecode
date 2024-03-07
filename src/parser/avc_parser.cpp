@@ -153,8 +153,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 case kAvcNalTypePic_Parameter_Set: {
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
-                    ret2 = ParsePps(rbsp_buf_, rbsp_size_);
-                    if (ret2 != PARSER_OK) {
+                    if ((ret2 = ParsePps(rbsp_buf_, rbsp_size_)) != PARSER_OK) {
                         return ret2;
                     }
                     break;
@@ -179,7 +178,9 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     AvcSliceHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
-                    ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header);
+                    if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
+                        return ret2;
+                    }
 
                     // Start decode process
                     if (num_slices_ == 0) {
