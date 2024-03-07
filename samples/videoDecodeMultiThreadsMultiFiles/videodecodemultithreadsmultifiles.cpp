@@ -149,6 +149,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     double n_fps = 1000 / average_decoding_time;
     *pn_fps = n_fps;
     *pn_frame = n_frame;
+    p_dec->ResetSaveFrameToFile();
     decoding_complete = true;
 }
 
@@ -353,9 +354,7 @@ int main(int argc, char **argv) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit);
                         } else {
-                            v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
                             v_dec_info[thread_idx]->viddec.swap(dec_8bit);
-                            //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     } else { // bit_depth = 10bit
                         v_dec_info[thread_idx]->bit_depth = 10;
@@ -363,14 +362,9 @@ int main(int argc, char **argv) {
                             std::unique_ptr<RocVideoDecoder> dec_10bit(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, v_dec_info[thread_idx]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_10bit);
                         } else {
-                            v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
                             v_dec_info[thread_idx]->viddec.swap(dec_10bit);
-                            //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                         }
                     }
-                } else {
-                    v_dec_info[thread_idx]->viddec->ResetSaveFrameToFile();
-                    //v_dec_info[thread_idx]->viddec->SetReconfigParams(&reconfig_params);
                 }
                 v_dec_info[thread_idx]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
                 std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_dec_info[thread_idx]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
