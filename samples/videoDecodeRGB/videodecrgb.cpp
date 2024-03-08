@@ -159,33 +159,35 @@ std::queue<uint8_t*> frame_queue[frame_buffers_size];
 std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
 
-void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputFormatEnum e_output_format,
-    uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
+void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
+        OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
+
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
     int current_frame_index = 0;
-    OutputSurfaceInfo *resize_surf_info = new OutputSurfaceInfo;
-    memcpy(resize_surf_info, *surf_info, sizeof(OutputSurfaceInfo));
-    OutputSurfaceInfo *p_surf_info = *surf_info;
     uint8_t *frame;
 
     while (continue_processing || !frame_queue[current_frame_index].empty()) {
+        OutputSurfaceInfo *p_surf_info;
+        uint8_t *out_frame;
         {
             std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
             cv[current_frame_index].wait(lock, [&] {return !frame_queue[current_frame_index].empty() || !continue_processing;});
             if (!continue_processing && frame_queue[current_frame_index].empty()) {
                 break;
             }
+            p_surf_info = *surf_info;
             // Get the current frame at the curren_buffer index for processing
             frame = frame_queue[current_frame_index].front();
             frame_queue[current_frame_index].pop();
+            out_frame = frame;
         }
-        if (p_resize_dim->w && p_resize_dim->h) {
+        if (p_resize_dim->w && p_resize_dim->h && *res_surf_info) {
             // check if the resize dims are different from output dims
             // resize is needed since output dims are different from resize dims
             if (((*surf_info)->output_width != p_resize_dim->w) || ((*surf_info)->output_height != p_resize_dim->h)) {
                 resize_image_size = p_resize_dim->w * (p_resize_dim->h + (p_resize_dim->h >> 1)) * (*surf_info)->bytes_per_pixel;
-                if (p_resize_dev_mem != nullptr && resize_image_size > 0) {
+                if (p_resize_dev_mem == nullptr && resize_image_size > 0) {
                     hip_status = hipMalloc(&p_resize_dev_mem, resize_image_size);
                     if (hip_status != hipSuccess) {
                         std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;
@@ -195,17 +197,18 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                  // call resize kernel
                  if ((*surf_info)->bytes_per_pixel == 2)
                     ResizeP016(p_resize_dev_mem, p_resize_dim->w*2, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, (*surf_info)->output_width,
-                     (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch), nullptr, viddec.GetStream());
+                     (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, viddec.GetStream());
                  else                                
                     ResizeNv12(p_resize_dev_mem, p_resize_dim->w, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, (*surf_info)->output_width,
                      (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch), nullptr, viddec.GetStream());
-                resize_surf_info->output_width = p_resize_dim->w;
-                resize_surf_info->output_height = p_resize_dim->h;
-                resize_surf_info->output_pitch = p_resize_dim->w * (*surf_info)->bytes_per_pixel;
-                resize_surf_info->output_vstride = p_resize_dim->h;
-                resize_surf_info->output_surface_size_in_bytes = resize_surf_info->output_pitch * (p_resize_dim->h + (p_resize_dim->h >> 1));
-                resize_surf_info->mem_type = OUT_SURFACE_MEM_DEV_COPIED;
-                p_surf_info = resize_surf_info;
+                (*res_surf_info)->output_width = p_resize_dim->w;
+                (*res_surf_info)->output_height = p_resize_dim->h;
+                (*res_surf_info)->output_pitch = p_resize_dim->w * (*surf_info)->bytes_per_pixel;
+                (*res_surf_info)->output_vstride = p_resize_dim->h;
+                (*res_surf_info)->output_surface_size_in_bytes = (*res_surf_info)->output_pitch * (p_resize_dim->h + (p_resize_dim->h >> 1));
+                (*res_surf_info)->mem_type = OUT_SURFACE_MEM_DEV_COPIED;
+                p_surf_info = *res_surf_info;
+                out_frame = p_resize_dev_mem;
             }
         }
 
@@ -226,18 +229,17 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                     return;
                 }
             }
-            ColorConvertYUV2RGB(frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
+            ColorConvertYUV2RGB(out_frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
         }
         if (dump_output_frames) {
             if (convert_to_rgb)
                 DumpRGBImage(output_file_path, p_rgb_dev_mem, p_surf_info, rgb_image_size);
             else
-                viddec.SaveFrameToFile(output_file_path, frame, p_surf_info);
+                viddec.SaveFrameToFile(output_file_path, out_frame, p_surf_info);
         }
 
         cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
-
     }
 }
 
@@ -246,7 +248,6 @@ int main(int argc, char **argv) {
     std::string input_file_path, output_file_path;
     bool dump_output_frames = false;
     bool convert_to_rgb = false;
-    bool resize_yuv  = false;
     int device_id = 0;
     Rect crop_rect = {};
     Dim resize_dim = {};
@@ -349,15 +350,12 @@ int main(int argc, char **argv) {
         uint8_t *p_frame = nullptr;
         int64_t pts = 0;
         OutputSurfaceInfo *surf_info;
+        OutputSurfaceInfo *resize_surf_info = nullptr;
         uint32_t width, height;
         double total_dec_time = 0;
         convert_to_rgb = e_output_format != native;
-        if (resize_dim.w && resize_dim.h) {
-            resize_yuv = true;
-        }
-        
         std::atomic<bool> continue_processing(true);
-        std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, std::ref(e_output_format),
+        std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
                                     std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
 
         auto startTime = std::chrono::high_resolution_clock::now();
@@ -367,6 +365,10 @@ int main(int argc, char **argv) {
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Image Info!" << std::endl;
                 break;
+            }
+            if (resize_dim.w && resize_dim.h && !resize_surf_info) {
+                resize_surf_info = new OutputSurfaceInfo;
+                memcpy(resize_surf_info, surf_info, sizeof(OutputSurfaceInfo));
             }
 
             int last_index = 0;
@@ -435,6 +437,9 @@ int main(int argc, char **argv) {
             }
             std::cout << info_message << total_dec_time / n_frame << std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        }
+        if (resize_surf_info != nullptr) {
+            delete resize_surf_info;
         }
     } catch (const std::exception &ex) {
         std::cout << ex.what() << std::endl;

@@ -101,16 +101,16 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
     typedef decltype(YuvUnitx2::x) YuvUnit;
     uint8_t *p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale))),
-        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)))
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit)),
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale) * sizeof(YuvUnit)))
     };
     y++;
-    p_src_y = p_src + pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale)); 
+    p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale))),
-        (YuvUnit)*(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)))
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit)),
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit))
     };
-    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<uint>(fmaf(ix, fx_scale, fx_scale*0.5)) * sizeof(YuvUnit) + 
+    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<uint>(fmaf(ix, fx_scale, fx_scale*0.5)) * sizeof(YuvUnit) * 2 + 
                             src_pitch * static_cast<uint>(fmaf(iy, fy_scale, 0.5 * fy_scale)));
     *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)p_uv[0], (YuvUnit)p_uv[1] };
 }
@@ -135,7 +135,6 @@ static void Resize(unsigned char *p_dst, unsigned char* p_dst_uv, int dst_pitch,
     hipTextureObject_t tex_y=0;
     HIP_API_CALL(hipCreateTextureObject(&tex_y, &res_desc, &tex_desc, NULL));
 
-    res_desc.res.pitch2D.devPtr = p_src_uv;
     res_desc.res.pitch2D.desc = hipCreateChannelDesc<YuvUnitx2>();
     res_desc.res.pitch2D.width = src_width >> 1;
     res_desc.res.pitch2D.height = src_height * 3 / 2;
@@ -222,7 +221,7 @@ static __global__ void Scale_UV(uint8_t *p_src, int src_pitch, uint8_t *p_dst, i
         return;
     }
     // do nearest neighbor interpolation
-    uint8_t *p_src_uv = p_src + src_pitch * static_cast<uint>(fmaf(y , fy_scale, 0.5 * fy_scale)) + static_cast<uint>(fmaf(x, fx_scale, 0.5 * fx_scale));
+    uint8_t *p_src_uv = p_src + src_pitch * static_cast<uint>(fmaf(y , fy_scale, 0.5 * fy_scale)) + static_cast<uint>(fmaf(x, fx_scale, 0.5 * fx_scale)) * 2;
     uchar2 dst_uv = uchar2{ p_src_uv[0], p_src_uv[1] };
     *(uchar2*)(p_dst + (y * pitch) + 2 * x) = dst_uv;
 }
