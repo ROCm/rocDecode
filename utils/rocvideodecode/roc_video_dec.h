@@ -318,6 +318,11 @@ class RocVideoDecoder {
         void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
 
         /**
+         * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
+        */
+       void ResetSaveFrameToFile();
+
+        /**
          * @brief Helper function to start MD5 calculation
          */
         void InitMd5();
