@@ -172,9 +172,9 @@ protected:
     /*! \brief Function to parse Picture Parameter Set 
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
-     * \return No return value
+     * \return <tt>ParserResult</tt>
      */
-    void ParsePps(uint8_t *p_stream, size_t stream_size_in_byte);
+    ParserResult ParsePps(uint8_t *p_stream, size_t stream_size_in_byte);
 
     /*! \brief Function to parse slice header
      * \param p_stream The pointer to the input bit stream
