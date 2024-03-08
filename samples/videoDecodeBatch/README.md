@@ -21,7 +21,7 @@ If the number of files is lesser than the number of threads requested by the use
 ## Build
 
 ```shell
-mkdir video_decode_multi_threads_multi_file_sample && cd mkdir video_decode_multi_threads_multi_file_sample
+mkdir video_decode_batch && cd mkdir video_decode_batch
 cmake ../
 make -j
 ```
@@ -29,7 +29,7 @@ make -j
 ## Run
 
 ```shell
-./videodecodemultithreadsmultifiles -i <directory containing input video files [required]> 
+./videodecodebatch -i <directory containing input video files [required]> 
                                    -t <number of threads [optional - default:4]>
                                    -d <Device ID (>= 0) [optional - default:0]>
 ```
