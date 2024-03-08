@@ -124,14 +124,14 @@ os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' ' +
 if "Ubuntu" in platfromInfo:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install vainfo libdrm-amdgpu-dev mesa-amdgpu-multimedia-devel')
-    if "22.04" in platform.freedesktop_os_release().get("VERSION_ID"):
+              ' install vainfo libdrm-amdgpu-dev libva-amdgpu-dev mesa-amdgpu-va-drivers')
+    if "22.04" in platform.version():
         os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
               ' install libstdc++-12-dev')
 else:
     os.system('sudo -v')
     os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-              ' install libdrm-amdgpu-devel mesa-amdgpu-multimedia-devel')
+              ' install libdrm-amdgpu-devel libva-amdgpu-devel mesa-amdgpu-dri-drivers')
 
 # rocDecode Dev Requirements
 if developerInstall == 'ON':

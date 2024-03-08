@@ -980,6 +980,13 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
     }
 }
 
+void RocVideoDecoder::ResetSaveFrameToFile() {
+  if (fp_out_) {
+        fclose(fp_out_);
+        fp_out_ = nullptr;
+    }
+}
+
 void RocVideoDecoder::InitMd5() {
     md5_ctx_ = av_md5_alloc();
     av_md5_init(md5_ctx_);
