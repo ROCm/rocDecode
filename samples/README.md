@@ -29,3 +29,9 @@ This sample uses multiple threads to decode the same input video parallelly.
 This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded using rocDecode API and optionally color-converted using custom HIP kernels on AMD hardware. This sample converts decoded YUV output to one of the RGB or BGR formats(24bit, 32bit, 464bit) in a separate thread allowing it to run both VCN hardware and compute engine in parallel.
 
 This sample uses HIP kernels to showcase the color conversion.  Whenever a frame is ready after decoding, the `ColorSpaceConversionThread` is notified and can be used for post-processing.
+
+## [Video decode batch sample](videoDecodeBatch)
+
+This sample decodes multiple files using multiple threads, using the rocDecode library. The input is a directory of files and an input number of threads. The maximum number of threads is capped to 64.
+If the number of files is higher than the number of threads requested by the user, the files are distributed to the threads in a round robin fashion. 
+If the number of files is lesser than the number of threads requested by the user, the number of threads created will be equal to the number of files.
