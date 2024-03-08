@@ -354,10 +354,10 @@ int main(int argc, char **argv) {
                 if (v_dec_info[thread_idx]->bit_depth != bit_depth || v_dec_info[thread_idx]->rocdec_codec_id != codec_id) {
                     if (bit_depth == 8) { // can be HEVC or H.264
                         v_dec_info[thread_idx]->bit_depth = 8;
-                        if (dec_8bit_avc == nullptr) {
+                        if (dec_8bit_avc == nullptr && codec_id == rocDecVideoCodec_AVC) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit_avc(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit_avc);
-                        } else if (dec_8bit_hevc == nullptr) {
+                        } else if (dec_8bit_hevc == nullptr && codec_id == rocDecVideoCodec_HEVC) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit_hevc(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit_hevc);
                         } else {
