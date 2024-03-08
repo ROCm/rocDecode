@@ -251,7 +251,6 @@ int main(int argc, char **argv) {
     int device_id = 0;
     Rect crop_rect = {};
     Dim resize_dim = {};
-    Dim coded_dims = {};
     Rect *p_crop_rect = nullptr;
     size_t rgb_image_size;
     uint32_t rgb_image_stride;
@@ -333,7 +332,6 @@ int main(int argc, char **argv) {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect);
-        demuxer.GetCodedDims(&coded_dims.w, &coded_dims.h);
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;

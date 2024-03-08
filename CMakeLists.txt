@@ -191,15 +191,15 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
 
   # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu, mesa-amdgpu-multimedia")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, mesa-amdgpu-multimedia")
-  # Set the dev dependent packages - TBD: mesa-amdgpu-multimedia-devel name will be changed to -dev
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, mesa-amdgpu-multimedia-devel, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, libva-amdgpu, mesa-amdgpu-dri-drivers")
+  # Set the dev dependent packages
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
     set(rocDecode_DEBIAN_DEV_PACKAGE_LIST "${rocDecode_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libdrm-amdgpu-devel, mesa-amdgpu-multimedia-devel, pkg-config")
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libdrm-amdgpu-devel, libva-amdgpu-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -288,13 +288,13 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   endif()
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
-    message("-- ${White}AMD ROCm rocDecode RunTime Package -- ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
-    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}rocDecode .rpm RunTime Package Requirements -- ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}rocDecode .rpm Devel Package Requirements -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
-    message("-- ${White}AMD ROCm rocDecode RunTime Package -- ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
-    message("-- ${White}AMD ROCm rocDecode Dev Package -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}rocDecode .deb RunTime Package Requirements -- ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}rocDecode .deb Dev Package Requirements -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
   include(CPack)
@@ -325,7 +325,7 @@ else()
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install rocm-hip-runtime-dev!")
   endif()
   if(NOT Libva_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libva Not Found - please install mesa-amdgpu-multimedia-devel!")
+    message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
   endif()
   if(NOT Libdrm_FOUND)
     message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install libdrm-amdgpu-dev/libdrm-amdgpu-devel!")
