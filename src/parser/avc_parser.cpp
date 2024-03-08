@@ -115,6 +115,7 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
 ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size) {
     ParserResult ret = PARSER_OK;
+    ParserResult ret2;
 
     pic_data_buffer_ptr_ = (uint8_t*)p_stream;
     pic_data_size_ = pic_data_size;
@@ -152,7 +153,9 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 case kAvcNalTypePic_Parameter_Set: {
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
-                    ParsePps(rbsp_buf_, rbsp_size_);
+                    if ((ret2 = ParsePps(rbsp_buf_, rbsp_size_)) != PARSER_OK) {
+                        return ret2;
+                    }
                     break;
                 }
                 
@@ -175,7 +178,9 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     AvcSliceHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
-                    ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header);
+                    if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
+                        return ret2;
+                    }
 
                     // Start decode process
                     if (num_slices_ == 0) {
@@ -203,7 +208,6 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         curr_pic_.pic_output_flag = 1; // Annex C. OutputFlag is set to 1 for Annex A streams
                     }
 
-                    ParserResult ret2;
                     // Reference picture lists construction (8.2.4)
                     if ((ret2 = SetupReflist(&slice_info_list_[num_slices_])) != PARSER_OK) {
                         return ret2;
@@ -908,7 +912,7 @@ void AvcVideoParser::ParseSps(uint8_t *p_stream, size_t size) {
 #endif // DBGINFO
 }
 
-void AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_byte) {
+ParserResult AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_byte) {
     AvcSeqParameterSet *p_sps = nullptr;
     AvcPicParameterSet *p_pps = nullptr;
     size_t offset = 0; // current bit offset
@@ -929,6 +933,10 @@ void AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_byte) {
 
     p_pps->num_slice_groups_minus1 = Parser::ExpGolomb::ReadUe(p_stream, offset);
     if (p_pps->num_slice_groups_minus1 > 0) {
+        // Note: VCN supports High Profile only (num_slice_groups_minus1 = 0)
+        ERR("Multiple slice groups are not supported");
+        return PARSER_NOT_SUPPORTED;
+
         p_pps->slice_group_map_type = Parser::ExpGolomb::ReadUe(p_stream, offset);
         if (p_pps->slice_group_map_type == 0) {
             for (int i_group = 0; i_group <= p_pps->num_slice_groups_minus1; i_group++) {
@@ -946,7 +954,6 @@ void AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_byte) {
             p_pps->pic_size_in_map_units_minus1 = Parser::ExpGolomb::ReadUe(p_stream, offset);
             int slice_group_id_size = ceil(log2(p_pps->num_slice_groups_minus1 + 1));
             for (int i = 0; i <= p_pps->pic_size_in_map_units_minus1; i++) {
-                //p_pps->slice_group_id[i] = Parser::ReadBits(p_stream, offset, slice_group_id_size);
                 int temp = Parser::ReadBits(p_stream, offset, slice_group_id_size);
                 ERR("AVC PPS parsing: slice_group_id memory not allocaed!");
             }
@@ -1091,6 +1098,7 @@ void AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_byte) {
 #if DBGINFO
     PrintPps(p_pps);
 #endif // DBGINFO
+    return PARSER_OK;
 }
 
 ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_size_in_byte, AvcSliceHeader *p_slice_header) {
@@ -1146,6 +1154,10 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
     } else {
         p_slice_header->field_pic_flag = 0;
         p_slice_header->bottom_field_flag = 0;
+    }
+    if (p_slice_header->field_pic_flag) {
+        ERR("Field picture is not supported.");
+        return PARSER_NOT_SUPPORTED;
     }
 
     if ( nal_unit_header_.nal_ref_idc ) {
