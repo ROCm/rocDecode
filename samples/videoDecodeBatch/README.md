@@ -21,7 +21,7 @@ If the number of files is lesser than the number of threads requested by the use
 ## Build
 
 ```shell
-mkdir video_decode_batch && cd mkdir video_decode_batch
+mkdir video_decode_batch && cd video_decode_batch
 cmake ../
 make -j
 ```
