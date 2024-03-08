@@ -24,20 +24,12 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* AMD Libdrm
+* AMD multimedia packages
   ```shell
-  sudo apt install libdrm-amdgpu-dev
+  sudo apt install libdrm-amdgpu1 libva-amdgpu-dev mesa-amdgpu-va-drivers
   ```
-
-* AMD Libva
-  ```shell
-  sudo apt install libva-amdgpu-dev
-  ```  
-
-* AMD VA Drivers
-  ```shell
-  sudo apt install mesa-amdgpu-va-drivers
-  ```  
+  > [!NOTE]
+  > RPM Packages for `RHEL`/`SLES` - `libdrm-amdgpu libva-amdgpu-devel  mesa-amdgpu-dri-drivers`
 
 * CMake `3.5` or later
 

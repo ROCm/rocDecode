@@ -106,7 +106,6 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
   # LibDRM
-  include_directories(${LIBDRM_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
   # LibVA
   include_directories(${LIBVA_INCLUDE_DIR})
@@ -194,12 +193,12 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, libva-amdgpu, mesa-amdgpu-dri-drivers")
   # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
     set(rocDecode_DEBIAN_DEV_PACKAGE_LIST "${rocDecode_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libdrm-amdgpu-devel, libva-amdgpu-devel, pkg-config")
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libva-amdgpu-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -328,6 +327,6 @@ else()
     message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
   endif()
   if(NOT Libdrm_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install libdrm-amdgpu-dev/libdrm-amdgpu-devel!")
+    message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install libdrm-amdgpu1/libdrm-amdgpu!")
   endif()
 endif()
