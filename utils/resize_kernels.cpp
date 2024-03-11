@@ -64,7 +64,7 @@ static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t te
         (YuvUnit)(tex2D<float>(tex_y, x * fx_scale, y * fy_scale) * MAX),
         (YuvUnit)(tex2D<float>(tex_y, (x + 1) * fx_scale, y * fy_scale) * MAX)
     };
-    float2 uv = tex2D<float2>(tex_uv, ix * fx_scale, (height + iy) * fy_scale + 0.5f);
+    float2 uv = tex2D<float2>(tex_uv, ix * fx_scale, iy * fy_scale + 0.5f);
     *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)(uv.x * MAX), (YuvUnit)(uv.y * MAX) };
 }
 #endif
@@ -107,10 +107,10 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
     y++;
     p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit)),
-        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit))
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5 * fx_scale)) * sizeof(YuvUnit)),
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5 * fx_scale)) * sizeof(YuvUnit))
     };
-    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<uint>(fmaf(ix, fx_scale, fx_scale*0.5)) * sizeof(YuvUnit) * 2 + 
+    YuvUnit *p_uv = (YuvUnit *) (p_src_uv + static_cast<uint>(fmaf(ix, fx_scale, fx_scale * 0.5)) * sizeof(YuvUnit) * 2 + 
                             src_pitch * static_cast<uint>(fmaf(iy, fy_scale, 0.5 * fy_scale)));
     *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)p_uv[0], (YuvUnit)p_uv[1] };
 }
@@ -135,9 +135,10 @@ static void Resize(unsigned char *p_dst, unsigned char* p_dst_uv, int dst_pitch,
     hipTextureObject_t tex_y=0;
     HIP_API_CALL(hipCreateTextureObject(&tex_y, &res_desc, &tex_desc, NULL));
 
+    res_desc.res.pitch2D.devPtr = p_src_uv;
     res_desc.res.pitch2D.desc = hipCreateChannelDesc<YuvUnitx2>();
     res_desc.res.pitch2D.width = src_width >> 1;
-    res_desc.res.pitch2D.height = src_height * 3 / 2;
+    res_desc.res.pitch2D.height = src_height / 2;
 
     hipTextureObject_t tex_uv=0;
     HIP_API_CALL(hipCreateTextureObject(&tex_uv, &res_desc, &tex_desc, NULL));
@@ -226,7 +227,20 @@ static __global__ void Scale_UV(uint8_t *p_src, int src_pitch, uint8_t *p_dst, i
     *(uchar2*)(p_dst + (y * pitch) + 2 * x) = dst_uv;
 }
 
-
+/**
+ * @brief Resize a single plane of Y/U/V or UV interleaved (reserved for future)
+ * 
+ * @param dp_dst    - dest pointer
+ * @param dst_pitch - Pitch of the dst plane
+ * @param dst_width - Width of the dst plane
+ * @param dst_height - Height of the dst plane
+ * @param dp_src     - source pointer
+ * @param src_pitch  - source pitch
+ * @param src_width  - source width
+ * @param src_height - source height
+ * @param b_resize_uv - to resize UV plance or not
+ * @param hip_stream    - Stream for launching the kernel   
+ */
 void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int dst_height, uint8_t *dp_src, int src_pitch, 
                                     int src_width, int src_height, bool b_resize_uv, hipStream_t hip_stream) {
 
