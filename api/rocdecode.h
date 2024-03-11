@@ -186,7 +186,7 @@ typedef struct _RocDecoderCreateInfo {
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } display_area;                                    /**< IN: area of the frame that should be displayed */
+    } display_rect;                                    /**< IN: area of the frame that should be displayed */
     rocDecVideoSurfaceFormat    output_format;         /**< IN: rocDecVideoSurfaceFormat_XXX */
     uint32_t                    target_width;          /**< IN: Post-processed output width (Should be aligned to 2) */
     uint32_t                    target_height;         /**< IN: Post-processed output height (Should be aligned to 2) */
@@ -196,8 +196,8 @@ typedef struct _RocDecoderCreateInfo {
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } target_rect;                                     /**< IN: target rectangle in the output frame (for aspect ratio conversion)
-                                                                if a null rectangle is specified, {0,0,target_width,target_height} will be used*/
+    } target_rect;                                     /**< IN: (for future use) target rectangle in the output frame (for aspect ratio conversion)
+                                                            if a null rectangle is specified, {0,0,target_width,target_height} will be used*/
     uint32_t                    reserved_2[4];         /**< Reserved for future use - set to zero */
 } RocDecoderCreateInfo;
 
@@ -226,24 +226,19 @@ typedef struct _RocdecReconfigureDecoderInfo {
     uint32_t target_height;         /**< IN: Post Processed output height */
     uint32_t num_decode_surfaces;   /**< IN: Maximum number of internal decode surfaces */
     uint32_t reserved_1[12];        /**< Reserved for future use. Set to Zero */
-    /**
-    * IN: Area of frame to be displayed. Use-case : Source Cropping
-    */
     struct {
         int16_t left;
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } roi_area;
-    /**
-    * IN: Target Rectangle in the OutputFrame. Use-case : Aspect ratio Conversion
-    */
+    } display_rect;                 /**< IN: area of the frame that should be displayed */
     struct {
         int16_t left;
         int16_t top;
         int16_t right;
         int16_t bottom;
-    } target_rect;
+    } target_rect;                  /**< IN: (for future use) target rectangle in the output frame (for aspect ratio conversion)
+                                    if a null rectangle is specified, {0,0,target_width,target_height} will be used */
     uint32_t reserved_2[11]; /**< Reserved for future use. Set to Zero */
 } RocdecReconfigureDecoderInfo; 
 

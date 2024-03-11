@@ -355,23 +355,18 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     videoDecodeCreateInfo.height = coded_height_;
     videoDecodeCreateInfo.max_width = max_width_;
     videoDecodeCreateInfo.max_height = max_height_;
-    videoDecodeCreateInfo.display_area.left = disp_rect_.left;
-    videoDecodeCreateInfo.display_area.top = disp_rect_.top;
-    videoDecodeCreateInfo.display_area.right = disp_rect_.right;
-    videoDecodeCreateInfo.display_area.bottom = disp_rect_.bottom;
-    // If user does not specify ROI, set target_rect to display_area
-    if (crop_rect_.left == 0 && crop_rect_.right == 0 && crop_rect_.top == 0 && crop_rect_.bottom == 0) {
-        videoDecodeCreateInfo.target_rect.top = disp_rect_.top;
-        videoDecodeCreateInfo.target_rect.bottom = disp_rect_.bottom;
-        videoDecodeCreateInfo.target_rect.left = disp_rect_.left;
-        videoDecodeCreateInfo.target_rect.right = disp_rect_.right;
+    if (!(crop_rect_.right && crop_rect_.bottom)) {
+        videoDecodeCreateInfo.display_rect.top = disp_rect_.top;
+        videoDecodeCreateInfo.display_rect.bottom = disp_rect_.bottom;
+        videoDecodeCreateInfo.display_rect.left = disp_rect_.left;
+        videoDecodeCreateInfo.display_rect.right = disp_rect_.right;
         target_width_ = disp_width_;
         target_height_ = disp_height_;
     } else {
-        videoDecodeCreateInfo.target_rect.top = crop_rect_.top;
-        videoDecodeCreateInfo.target_rect.bottom = crop_rect_.bottom;
-        videoDecodeCreateInfo.target_rect.left = crop_rect_.left;
-        videoDecodeCreateInfo.target_rect.right = crop_rect_.right;
+        videoDecodeCreateInfo.display_rect.top = crop_rect_.top;
+        videoDecodeCreateInfo.display_rect.bottom = crop_rect_.bottom;
+        videoDecodeCreateInfo.display_rect.left = crop_rect_.left;
+        videoDecodeCreateInfo.display_rect.right = crop_rect_.right;
         target_width_ = (crop_rect_.right - crop_rect_.left + 1) & ~1;
         target_height_ = (crop_rect_.bottom - crop_rect_.top + 1) & ~1;
     }
@@ -412,8 +407,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     input_video_info_str_ << "Video Decoding Params:" << std::endl
         << "\tNum Surfaces : " << videoDecodeCreateInfo.num_decode_surfaces << std::endl
-        << "\tCrop         : [" << videoDecodeCreateInfo.display_area.left << ", " << videoDecodeCreateInfo.display_area.top << ", "
-        << videoDecodeCreateInfo.display_area.right << ", " << videoDecodeCreateInfo.display_area.bottom << "]" << std::endl
+        << "\tCrop         : [" << videoDecodeCreateInfo.display_rect.left << ", " << videoDecodeCreateInfo.display_rect.top << ", "
+        << videoDecodeCreateInfo.display_rect.right << ", " << videoDecodeCreateInfo.display_rect.bottom << "]" << std::endl
         << "\tResize       : " << videoDecodeCreateInfo.target_width << "x" << videoDecodeCreateInfo.target_height << std::endl
     ;
     input_video_info_str_ << std::endl;
@@ -505,8 +500,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         disp_width_ = p_video_format->display_area.right - p_video_format->display_area.left;
         disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
         chroma_height_ = static_cast<int>(std::ceil(disp_height_ * GetChromaHeightFactor(video_surface_format_)));
-        // If user does not specify ROI, set target_rect to display_area
-        if (crop_rect_.left == 0 && crop_rect_.right == 0 && crop_rect_.top == 0 && crop_rect_.bottom == 0) {
+        if (!(crop_rect_.right && crop_rect_.bottom)) {
             target_width_ = disp_width_;
             target_height_ = disp_height_;
         } else {
@@ -559,14 +553,17 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     reconfig_params.target_width = target_width_;
     reconfig_params.target_height = target_height_;
     reconfig_params.num_decode_surfaces = p_video_format->min_num_decode_surfaces;
-    reconfig_params.roi_area.left = crop_rect_.left;
-    reconfig_params.roi_area.top = crop_rect_.top;
-    reconfig_params.roi_area.right = crop_rect_.right;
-    reconfig_params.roi_area.bottom = crop_rect_.bottom;
-    reconfig_params.target_rect.left = disp_rect_.left;
-    reconfig_params.target_rect.top = disp_rect_.top;
-    reconfig_params.target_rect.right = disp_rect_.right;
-    reconfig_params.target_rect.bottom = disp_rect_.bottom;
+    if (!(crop_rect_.right && crop_rect_.bottom)) {
+        reconfig_params.display_rect.top = disp_rect_.top;
+        reconfig_params.display_rect.bottom = disp_rect_.bottom;
+        reconfig_params.display_rect.left = disp_rect_.left;
+        reconfig_params.display_rect.right = disp_rect_.right;
+    } else {
+        reconfig_params.display_rect.top = crop_rect_.top;
+        reconfig_params.display_rect.bottom = crop_rect_.bottom;
+        reconfig_params.display_rect.left = crop_rect_.left;
+        reconfig_params.display_rect.right = crop_rect_.right;
+    }
 
     if (roc_decoder_ == nullptr) {
         ROCDEC_THROW("Reconfigurition of the decoder detected but the decoder was not initialized previoulsy!", ROCDEC_NOT_SUPPORTED);
