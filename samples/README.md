@@ -6,6 +6,12 @@ rocDecode samples
 
 The video decode sample illustrates decoding a single packetized video stream using FFMPEG demuxer, video parser, and rocDecoder to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample uses the high-level RocVideoDecoder class which connects both the video parser and Rocdecoder. This process repeats in a loop until all frames have been decoded.
 
+## [Video decode batch sample](videoDecodeBatch)
+
+This sample decodes multiple files using multiple threads, using the rocDecode library. The input is a directory of files and an input number of threads. The maximum number of threads is capped to 64.
+If the number of files is higher than the number of threads requested by the user, the files are distributed to the threads in a round robin fashion. 
+If the number of files is lesser than the number of threads requested by the user, the number of threads created will be equal to the number of files.
+
 ## [Video decode memory](videoDecodeMem)
 
 The video decode memory sample illustrates a way to pass the data chunk-by-chunk sequentially to the FFMPEG demuxer which is then decoded on AMD hardware using rocDecode library.
