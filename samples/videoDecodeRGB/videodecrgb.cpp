@@ -200,7 +200,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                         (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, viddec.GetStream());
                  } else {                        
                     ResizeNv12(p_resize_dev_mem, p_resize_dim->w, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, (*surf_info)->output_width,
-                         (*surf_info)->output_height, (frame + (*surf_info)->output_vstride*(*surf_info)->output_pitch), nullptr, viddec.GetStream());
+                         (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, viddec.GetStream());
                  }
                 (*res_surf_info)->output_width = p_resize_dim->w;
                 (*res_surf_info)->output_height = p_resize_dim->h;
@@ -223,7 +223,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                 rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * p_surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
                                                         rgb_width * p_surf_info->output_height * 6 : rgb_width * p_surf_info->output_height * 8;
             }
-            if (p_rgb_dev_mem == nullptr) {                
+            if (p_rgb_dev_mem == nullptr) {
                 hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
                 if (hip_status != hipSuccess) {
                     std::cerr << "ERROR: hipMalloc failed to allocate the device memory for the output!" << hip_status << std::endl;

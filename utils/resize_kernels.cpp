@@ -101,8 +101,8 @@ static __global__ void ResizeHip(uint8_t *p_src, uint8_t *p_src_uv, int src_pitc
     typedef decltype(YuvUnitx2::x) YuvUnit;
     uint8_t *p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5*fx_scale)) * sizeof(YuvUnit)),
-        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5*fx_scale) * sizeof(YuvUnit)))
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x, fx_scale, 0.5 * fx_scale)) * sizeof(YuvUnit)),
+        *(YuvUnit *)(p_src_y + static_cast<uint>(fmaf(x + 1, fx_scale, 0.5 * fx_scale) * sizeof(YuvUnit)))
     };
     y++;
     p_src_y = p_src + src_pitch * static_cast<uint32_t>(fmaf(y, fy_scale, 0.5 * fy_scale));
