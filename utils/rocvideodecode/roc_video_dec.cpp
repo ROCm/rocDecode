@@ -360,8 +360,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         videoDecodeCreateInfo.display_rect.bottom = disp_rect_.bottom;
         videoDecodeCreateInfo.display_rect.left = disp_rect_.left;
         videoDecodeCreateInfo.display_rect.right = disp_rect_.right;
-        target_width_ = disp_width_;
-        target_height_ = disp_height_;
+        target_width_ = (disp_width_ + 1) & ~1;
+        target_height_ = (disp_height_ + 1) & ~1;
     } else {
         videoDecodeCreateInfo.display_rect.top = crop_rect_.top;
         videoDecodeCreateInfo.display_rect.bottom = crop_rect_.bottom;
@@ -501,8 +501,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
         chroma_height_ = static_cast<int>(std::ceil(disp_height_ * GetChromaHeightFactor(video_surface_format_)));
         if (!(crop_rect_.right && crop_rect_.bottom)) {
-            target_width_ = disp_width_;
-            target_height_ = disp_height_;
+            target_width_ = (disp_width_ + 1) & ~1;
+            target_height_ = (disp_height_ + 1) & ~1;
         } else {
             target_width_ = (crop_rect_.right - crop_rect_.left + 1) & ~1;
             target_height_ = (crop_rect_.bottom - crop_rect_.top + 1) & ~1;
