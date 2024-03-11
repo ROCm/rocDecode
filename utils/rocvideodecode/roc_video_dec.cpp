@@ -698,7 +698,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             }
             // Copy luma data
             int dst_pitch = disp_width_ * byte_per_pixel_;
-            uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_dev_ptr[0]) + crop_rect_.top * src_pitch[0] + crop_rect_.left * byte_per_pixel_;
+            uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_dev_ptr[0]) + (disp_rect_.top + crop_rect_.top) * src_pitch[0] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                 if (src_pitch[0] == dst_pitch) {
                     int luma_size = src_pitch[0] * coded_height_;
@@ -713,8 +713,8 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             // Copy chroma plane ( )
             // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
             uint8_t *p_frame_uv = p_dec_frame + dst_pitch * disp_height_;
-            uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_dev_ptr[1]) + (crop_rect_.top >> 1) * src_pitch[1] + crop_rect_.left * byte_per_pixel_ :
-                                                    static_cast<uint8_t *>(src_dev_ptr[1]) + crop_rect_.top * src_pitch[1] + crop_rect_.left  * byte_per_pixel_;
+            uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_dev_ptr[1]) + ((disp_rect_.top + crop_rect_.top) >> 1) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_ :
+            static_cast<uint8_t *>(src_dev_ptr[1]) + (disp_rect_.top + crop_rect_.top) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                 if (src_pitch[1] == dst_pitch) {
                     int chroma_size = chroma_height_ * dst_pitch;
@@ -728,7 +728,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 
             if (num_chroma_planes_ == 2) {
                 uint8_t *p_frame_v = p_dec_frame + dst_pitch * (disp_height_ + chroma_height_);
-                uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_dev_ptr[2]) + crop_rect_.top * src_pitch[2] + crop_rect_.left * byte_per_pixel_;
+                uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_dev_ptr[2]) + (disp_rect_.top + crop_rect_.top) * src_pitch[2] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
                 if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                     if (src_pitch[2] == dst_pitch) {
                         int chroma_size = chroma_height_ * dst_pitch;
@@ -952,7 +952,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
                 uint8_t *uv_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
                 if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
                     uv_hst_ptr += (num_chroma_planes_ == 1) ? (((disp_rect_.top + crop_rect_.top) >> 1) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel):
-                                                            ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
+                    ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
                 }
                 for (int i = 0; i < chroma_height_; i++) {
                     fwrite(uv_hst_ptr, 1, width, fp_out_);
@@ -961,7 +961,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
                 if (num_chroma_planes_ == 2) {
                     uv_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
                     if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-                        uv_hst_ptr += (crop_rect_.top * surf_info->output_pitch) + (crop_rect_.left * surf_info->bytes_per_pixel);
+                        uv_hst_ptr += ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
                     }
                     for (int i = 0; i < chroma_height_; i++) {
                         fwrite(uv_hst_ptr, 1, width, fp_out_);
