@@ -98,15 +98,12 @@ endif()
 message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
 find_package(HIP QUIET)
-find_package(Libdrm QUIET)
 find_package(Libva QUIET)
 
-if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
+if(HIP_FOUND AND Libva_FOUND)
 
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
-  # LibDRM
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
   # LibVA
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
@@ -190,8 +187,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
 
   # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, libva-amdgpu, mesa-amdgpu-dri-drivers")
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva-amdgpu-drm2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva-amdgpu, libdrm-amdgpu, mesa-amdgpu-dri-drivers")
   # Set the dev dependent packages
   set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
@@ -325,8 +322,5 @@ else()
   endif()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
-  endif()
-  if(NOT Libdrm_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install libdrm-amdgpu1/libdrm-amdgpu!")
   endif()
 endif()

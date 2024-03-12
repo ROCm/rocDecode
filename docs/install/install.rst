@@ -54,7 +54,7 @@ Prerequisites
 
   .. code:: shell
 
-   sudo apt install libdrm-amdgpu1 libva-amdgpu-dev mesa-amdgpu-va-drivers
+   sudo apt install libva-amdgpu-dev libdrm-amdgpu1 mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 
