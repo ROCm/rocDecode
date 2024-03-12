@@ -2016,12 +2016,12 @@ ParserResult AvcVideoParser::ModifiyRefList(AvcPicture *ref_pic_list_x, AvcListM
             }
             // (8-37)
             // Find short-term reference picture with PicNum equal to pic_num_lx
-            for (i = 0; i < num_ref_idx_lx_active; i++) {
+            for (i = 0; i < dpb_buffer_.num_short_term; i++) {
                 if (ref_pic_list_x[i].is_reference == kUsedForShortTerm && ref_pic_list_x[i].pic_num == pic_num_lx) {
                     break;
                 }
             }
-            if (i == num_ref_idx_lx_active) {
+            if (i == dpb_buffer_.num_short_term) {
                 ERR("Could not find a short-term reference with the modified pic num.");
                 return PARSER_OUT_OF_RANGE;
             }
@@ -2030,12 +2030,12 @@ ParserResult AvcVideoParser::ModifiyRefList(AvcPicture *ref_pic_list_x, AvcListM
             // 8.2.4.3.2 Modification process of reference picture lists for long-term reference pictures
             // (8-38)
             // Find long-term reference picture with LongTermPicNum equal to long_term_pic_num
-            for (i = 0; i < num_ref_idx_lx_active; i++) {
+            for (i = dpb_buffer_.num_short_term; i < dpb_buffer_.num_short_term + dpb_buffer_.num_long_term; i++) {
                 if (ref_pic_list_x[i].is_reference == kUsedForLongTerm && ref_pic_list_x[i].long_term_pic_num == p_list_mod->long_term_pic_num) {
                     break;
                 }
             }
-            if (i == num_ref_idx_lx_active) {
+            if (i == dpb_buffer_.num_short_term + dpb_buffer_.num_long_term) {
                 ERR("Could not find long-term reference with the modified long term pic num.");
                 return PARSER_OUT_OF_RANGE;
             }
