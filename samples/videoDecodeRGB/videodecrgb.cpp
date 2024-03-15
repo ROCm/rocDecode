@@ -185,6 +185,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
         if (p_resize_dim->w && p_resize_dim->h && *res_surf_info) {
             // check if the resize dims are different from output dims
             // resize is needed since output dims are different from resize dims
+            // TODO:: the below code assumes NV12/P016 for decoded output surface. Modify to take other surface formats in future
             if (((*surf_info)->output_width != p_resize_dim->w) || ((*surf_info)->output_height != p_resize_dim->h)) {
                 resize_image_size = p_resize_dim->w * (p_resize_dim->h + (p_resize_dim->h >> 1)) * (*surf_info)->bytes_per_pixel;
                 if (p_resize_dev_mem == nullptr && resize_image_size > 0) {

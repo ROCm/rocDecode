@@ -40,7 +40,7 @@ THE SOFTWARE.
  * @param p_src_nv12_uv - source pointer of UV plane
  * @param hip_stream    - Stream for launching the kernel
  */
-void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_nv12, 
+void ResizeNv12(uint8_t *p_dst_nv12, int dst_pitch, int dst_width, int dst_height, uint8_t *p_src_nv12, 
                 int src_pitch, int src_width, int src_height, unsigned char* p_src_nv12_uv, unsigned char* p_dst_nv12_uv, hipStream_t hip_stream);
 
 /**
@@ -58,32 +58,32 @@ void ResizeNv12(unsigned char *p_dst_nv12, int dst_pitch, int dst_width, int dst
  * @param p_dst_p016_uv 
  * @param hip_stream    - Stream for launching the kernel
  */
-void ResizeP016(unsigned char *p_dst_p016, int dst_pitch, int dst_width, int dst_height, unsigned char *p_src_p016, int src_pitch, 
+void ResizeP016(uint8_t *p_dst_p016, int dst_pitch, int dst_width, int dst_height, uint8_t *p_src_p016, int src_pitch, 
             int src_width, int src_height, unsigned char* p_src_p016_uv, unsigned char* p_dst_p016_uv, hipStream_t hip_stream);
 
 /**
  * @brief Function to resize 420 YUV image
  * 
- * @param p_dst_Y  - Destination Y plane pointer
- * @param p_dst_U  - Destination U plane pointer
- * @param p_dst_V  - Destination V plane pointer
- * @param dst_pitch_Y   - Destination Pitch Y
- * @param dst_pitch_UV  - Destination Pitch UV
+ * @param p_dst_y  - Destination Y plane pointer
+ * @param p_dst_u  - Destination U plane pointer
+ * @param p_dst_v  - Destination V plane pointer
+ * @param dst_pitch_y   - Destination Pitch Y
+ * @param dst_pitch_uv  - Destination Pitch UV
  * @param dst_width     - Destination Width
  * @param dst_height    - Destination Height
- * @param p_src_Y       - Src Y plane pointer
- * @param p_src_U       - Src U plane pointer
- * @param p_src_V       - Src V plane pointer
- * @param src_pitch_Y   - Src Pitch Y
- * @param src_pitch_UV  - Src Pitch UV
+ * @param p_src_y       - Src Y plane pointer
+ * @param p_src_u       - Src U plane pointer
+ * @param p_src_v       - Src V plane pointer
+ * @param src_pitch_y   - Src Pitch Y
+ * @param src_pitch_uv  - Src Pitch UV
  * @param src_width     - Src Width
  * @param src_height    - Src Height
  * @param b_nv12        - Is uv interleaved?                   
  * @param hip_stream    - Stream for launching the kernel   
  */
-void ResizeYUV420(uint8_t *p_dst_Y, uint8_t* p_dst_U, uint8_t* p_dst_V, int dst_pitch_Y, int dst_pitch_UV, 
-                int dst_width, int dst_height, uint8_t *p_src_Y, uint8_t* p_src_U, uint8_t* p_src_V,
-                int src_pitch_Y, int src_pitch_UV, int src_width, int src_height, bool b_nv12 = false, hipStream_t hip_stream = nullptr);
+void ResizeYUV420(uint8_t *p_dst_y, uint8_t* p_dst_u, uint8_t* p_dst_v, int dst_pitch_y, int dst_pitch_uv, 
+                int dst_width, int dst_height, uint8_t *p_src_y, uint8_t* p_src_u, uint8_t* p_src_v,
+                int src_pitch_y, int src_pitch_uv, int src_width, int src_height, bool b_nv12 = false, hipStream_t hip_stream = nullptr);
 
 /**
  * @brief The function to launch ResizeYUV HIP kernel

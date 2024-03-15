@@ -54,18 +54,18 @@ static __global__ void ResizeHip(hipTextureObject_t tex_y, hipTextureObject_t te
 
     int x = ix * 2, y = iy * 2;
     typedef decltype(YuvUnitx2::x) YuvUnit;
-    const int MAX = (1 << (sizeof(YuvUnit) * 8)) - 1;
+    const int max_yuv_value = (1 << (sizeof(YuvUnit) * 8)) - 1;
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)(tex2D<float>(tex_y, x * fx_scale, y * fy_scale) * MAX),
-        (YuvUnit)(tex2D<float>(tex_y, (x + 1) * fx_scale, y * fy_scale) * MAX)
+        (YuvUnit)(tex2D<float>(tex_y, x * fx_scale, y * fy_scale) * max_yuv_value),
+        (YuvUnit)(tex2D<float>(tex_y, (x + 1) * fx_scale, y * fy_scale) * max_yuv_value)
     };
     y++;
     *(YuvUnitx2 *)(p_dst + y * pitch + x * sizeof(YuvUnit)) = YuvUnitx2 {
-        (YuvUnit)(tex2D<float>(tex_y, x * fx_scale, y * fy_scale) * MAX),
-        (YuvUnit)(tex2D<float>(tex_y, (x + 1) * fx_scale, y * fy_scale) * MAX)
+        (YuvUnit)(tex2D<float>(tex_y, x * fx_scale, y * fy_scale) * max_yuv_value),
+        (YuvUnit)(tex2D<float>(tex_y, (x + 1) * fx_scale, y * fy_scale) * max_yuv_value)
     };
     float2 uv = tex2D<float2>(tex_uv, ix * fx_scale, iy * fy_scale + 0.5f);
-    *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)(uv.x * MAX), (YuvUnit)(uv.y * MAX) };
+    *(YuvUnitx2 *)(p_dst_uv + iy * pitch + ix * 2 * sizeof(YuvUnit)) = YuvUnitx2{ (YuvUnit)(uv.x * max_yuv_value), (YuvUnit)(uv.y * max_yuv_value) };
 }
 #endif
 
@@ -294,18 +294,18 @@ void ResizeYUVHipLaunchKernel(uint8_t *dp_dst, int dst_pitch, int dst_width, int
 
 }
 
-void ResizeYUV420(uint8_t *p_dst_Y, 
-                uint8_t* p_dst_U, 
-                uint8_t* p_dst_V, 
-                int dst_pitch_Y, 
-                int dst_pitch_UV, 
-                int dst_width, 
+void ResizeYUV420(uint8_t *p_dst_y,
+                uint8_t* p_dst_u,
+                uint8_t* p_dst_v,
+                int dst_pitch_y,
+                int dst_pitch_uv,
+                int dst_width,
                 int dst_height,
-                uint8_t *p_src_Y,
-                uint8_t* p_src_U,
-                uint8_t* p_src_V, 
-                int src_pitch_Y,
-                int src_pitch_UV,
+                uint8_t *p_src_y,
+                uint8_t* p_src_u,
+                uint8_t* p_src_v,
+                int src_pitch_y,
+                int src_pitch_uv,
                 int src_width,
                 int src_height,
                 bool b_nv12,
@@ -317,12 +317,12 @@ void ResizeYUV420(uint8_t *p_dst_Y,
     int uv_height_src = (src_height + 1) >> 1;
 
     // Scale Y plane
-    ResizeYUVHipLaunchKernel(p_dst_Y, dst_pitch_Y, dst_width, dst_height, p_src_Y, src_pitch_Y, src_width, src_height, 0, hip_stream);
+    ResizeYUVHipLaunchKernel(p_dst_y, dst_pitch_y, dst_width, dst_height, p_src_y, src_pitch_y, src_width, src_height, 0, hip_stream);
     if (b_nv12) {
-        ResizeYUVHipLaunchKernel(p_dst_U, dst_pitch_UV, uv_width_dst, uv_height_dst, p_src_U, src_pitch_UV, uv_width_src, uv_height_src, b_nv12, hip_stream);
+        ResizeYUVHipLaunchKernel(p_dst_u, dst_pitch_uv, uv_width_dst, uv_height_dst, p_src_u, src_pitch_uv, uv_width_src, uv_height_src, b_nv12, hip_stream);
     } else {
-        ResizeYUVHipLaunchKernel(p_dst_U, dst_pitch_UV, uv_width_dst, uv_height_dst, p_src_U, src_pitch_UV, uv_width_src, uv_height_src, b_nv12, hip_stream);
-        ResizeYUVHipLaunchKernel(p_dst_V, dst_pitch_UV, uv_width_dst, uv_height_dst, p_src_V, src_pitch_UV, uv_width_src, uv_height_src, b_nv12, hip_stream);
+        ResizeYUVHipLaunchKernel(p_dst_u, dst_pitch_uv, uv_width_dst, uv_height_dst, p_src_u, src_pitch_uv, uv_width_src, uv_height_src, b_nv12, hip_stream);
+        ResizeYUVHipLaunchKernel(p_dst_v, dst_pitch_uv, uv_width_dst, uv_height_dst, p_src_v, src_pitch_uv, uv_width_src, uv_height_src, b_nv12, hip_stream);
     }
 }
 
