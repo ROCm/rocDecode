@@ -50,23 +50,11 @@ Prerequisites
   * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
-* AMD Libdrm
+* AMD multimedia packages
 
   .. code:: shell
 
-   sudo apt install libdrm-amdgpu-dev
-
-* AMD Libva
-
-  .. code:: shell
-
-   sudo apt install libva-amdgpu-dev
-
-* AMD VA Drivers
-
-  .. code:: shell
-
-   sudo apt install mesa-amdgpu-va-drivers
+   sudo apt install libva-amdgpu-dev libdrm-amdgpu1 mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 

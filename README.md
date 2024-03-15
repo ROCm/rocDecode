@@ -24,20 +24,12 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* AMD Libdrm
+* AMD multimedia packages
   ```shell
-  sudo apt install libdrm-amdgpu-dev
+  sudo apt install libva-amdgpu-dev libdrm-amdgpu1 mesa-amdgpu-va-drivers
   ```
-
-* AMD Libva
-  ```shell
-  sudo apt install libva-amdgpu-dev
-  ```  
-
-* AMD VA Drivers
-  ```shell
-  sudo apt install mesa-amdgpu-va-drivers
-  ```  
+> [!NOTE]
+> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu-devel libdrm-amdgpu mesa-amdgpu-dri-drivers`
 
 * CMake `3.5` or later
 
@@ -231,4 +223,4 @@ page.
   * rocm-core - `6.1.0.60100-28`
   * amdgpu-core - `1:6.1.60100-1731559`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.4`
+* rocDecode Setup Script - `V1.6`
