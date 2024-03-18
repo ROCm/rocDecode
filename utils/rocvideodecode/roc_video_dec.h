@@ -124,6 +124,10 @@ struct Rect {
     int bottom;
 };
 
+struct Dim {
+    int w, h;
+};
+
 static inline int align(int value, int alignment) {
    return (value + alignment - 1) & ~(alignment - 1);
 }
