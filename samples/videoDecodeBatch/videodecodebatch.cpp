@@ -345,7 +345,6 @@ int main(int argc, char **argv) {
         }
 
         std::mutex mutex;
-        std::condition_variable cond_var;
 
         for (int j = 0; j < num_files; j++) {
             int thread_idx = j % n_thread;
