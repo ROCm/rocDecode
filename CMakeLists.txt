@@ -98,16 +98,12 @@ endif()
 message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
 find_package(HIP QUIET)
-find_package(Libdrm QUIET)
 find_package(Libva QUIET)
 
-if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
+if(HIP_FOUND AND Libva_FOUND)
 
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
-  # LibDRM
-  include_directories(${LIBDRM_INCLUDE_DIR})
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_LIBRARY})
   # LibVA
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
@@ -144,6 +140,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   install(FILES samples/common.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples COMPONENT dev)
   install(FILES utils/colorspace_kernels.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/colorspace_kernels.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
+  install(FILES utils/resize_kernels.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
+  install(FILES utils/resize_kernels.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/video COMPONENT dev)
   # install license information - {ROCM_PATH}/share/doc/rocdecode
   set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
@@ -191,15 +189,15 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_FOUND)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
 
   # Set the dependent packages
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libdrm-amdgpu1, libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libdrm-amdgpu, libva-amdgpu, mesa-amdgpu-dri-drivers")
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva-amdgpu-drm2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva-amdgpu, libdrm-amdgpu, mesa-amdgpu-dri-drivers")
   # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libdrm-amdgpu-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
     set(rocDecode_DEBIAN_DEV_PACKAGE_LIST "${rocDecode_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libdrm-amdgpu-devel, libva-amdgpu-devel, pkg-config")
+  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libva-amdgpu-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -326,8 +324,5 @@ else()
   endif()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
-  endif()
-  if(NOT Libdrm_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libdrm Not Found - please install libdrm-amdgpu-dev/libdrm-amdgpu-devel!")
   endif()
 endif()
