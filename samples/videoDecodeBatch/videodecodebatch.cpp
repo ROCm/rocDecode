@@ -119,7 +119,6 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     int64_t pts = 0;
     double total_dec_time = 0.0;
     OutputSurfaceInfo *surf_info;
-    decoding_complete = false;
     auto start_time = std::chrono::high_resolution_clock::now();
     do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
@@ -345,10 +344,17 @@ int main(int argc, char **argv) {
             std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
         }
 
+        std::mutex mutex;
+        std::condition_variable cond_var;
+
         for (int j = 0; j < num_files; j++) {
             int thread_idx = j % n_thread;
             if (j >= n_thread) {
-                while (!v_dec_info[thread_idx]->decoding_complete);
+                {
+                    std::unique_lock<std::mutex> lock(mutex);
+                    while (!v_dec_info[thread_idx]->decoding_complete);
+                    v_dec_info[thread_idx]->decoding_complete = false;
+                }
                 uint32_t bit_depth = v_demuxer[j]->GetBitDepth();
                 rocDecVideoCodec codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
                 if (v_dec_info[thread_idx]->bit_depth != bit_depth || v_dec_info[thread_idx]->rocdec_codec_id != codec_id) {
