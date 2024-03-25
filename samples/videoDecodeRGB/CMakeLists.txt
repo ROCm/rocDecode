@@ -86,7 +86,6 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} 
                         videodecrgb.cpp 
-                        ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp 
                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/colorspace_kernels.cpp
                         ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/resize_kernels.cpp)
 

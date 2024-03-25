@@ -82,7 +82,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     find_package(Threads REQUIRED)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
 
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodebatch.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodebatch.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})

@@ -77,7 +77,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
     # sample app exe
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodemultifiles.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodemultifiles.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
