@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstring>
 #include <va/va.h>
 #include <va/va_drm.h>
 #include <va/va_drmcommon.h>
@@ -76,4 +77,5 @@ private:
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
+    void GetVisibleDevices(std::vector<int>& visible_devices);
 };

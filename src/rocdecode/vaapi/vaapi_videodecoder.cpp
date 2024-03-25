@@ -77,7 +77,14 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     int num_render_cards_per_device = ((gcn_arch_name_base.compare("gfx940") == 0) ||
                                        (gcn_arch_name_base.compare("gfx941") == 0) ||
                                        (gcn_arch_name_base.compare("gfx942") == 0)) ? 8 : 1;
-    std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
+    std::vector<int> visible_devices;
+    GetVisibleDevices(visible_devices);
+    std::string drm_node;
+    if (visible_devices.size() != 0) {
+        drm_node = "/dev/dri/renderD" + std::to_string(128 + (visible_devices[decoder_create_info_.device_id]) * num_render_cards_per_device);
+    } else {
+        drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
+    }
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to initilize the VAAPI.");
@@ -404,4 +411,16 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
         }
     }
     return ROCDEC_SUCCESS;
+}
+
+void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
+    char *visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    if (visible_devices != nullptr) {
+        char *token = std::strtok(visible_devices,",");
+        while (token != nullptr) {
+            visible_devices_vetor.push_back(std::atoi(token));
+            token = std::strtok(nullptr,",");
+        }
+    std::sort(visible_devices_vetor.begin(), visible_devices_vetor.end());
+    }
 }
