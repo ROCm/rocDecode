@@ -69,3 +69,15 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
 
     return n_frames_flushed;
 }
+
+int GetEnvVar(const char *name, int &dev_count) {
+    char *v = std::getenv(name);
+    if (v) {
+        char* p_tkn = std::strtok(v, ",");
+        while (p_tkn != nullptr) {
+            dev_count++;
+            p_tkn = strtok(nullptr, ",");
+        }
+    }
+    return dev_count;
+}
