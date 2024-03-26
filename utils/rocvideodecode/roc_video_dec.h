@@ -158,8 +158,6 @@ typedef struct ReconfigParams_t {
     uint32_t reconfig_flush_mode;
 } ReconfigParams;
 
-int GetEnvVar(const char *name, int &dev_count);
-
 class RocVideoDecoder {
     public:
       /**
