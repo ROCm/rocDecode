@@ -73,8 +73,8 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND AND Threads_FOUND)
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                       ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
-    # rocDecode
-    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    # rocDecode and utils
+    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/..)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
     # threads
     set(THREADS_PREFER_PTHREAD_FLAG ON)
