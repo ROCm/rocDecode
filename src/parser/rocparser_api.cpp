@@ -35,8 +35,10 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
     }
 
     const char *is_avc_enabled = std::getenv("ROCDECODE_ENABLE_AVC");
+    const char *is_av1_enabled = std::getenv("ROCDECODE_ENABLE_AV1");
     if (parser_params->codec_type != rocDecVideoCodec_HEVC &&
-        (parser_params->codec_type == rocDecVideoCodec_AVC && (is_avc_enabled == nullptr || std::string(is_avc_enabled) != "1"))) {
+        (parser_params->codec_type == rocDecVideoCodec_AVC && (is_avc_enabled == nullptr || std::string(is_avc_enabled) != "1")) &&
+        (parser_params->codec_type == rocDecVideoCodec_AV1 && (is_av1_enabled == nullptr || std::string(is_av1_enabled) != "1"))) {
         ERR("The current version of rocDecode officially supports only the H.265 (HEVC) codec.");
         return ROCDEC_NOT_IMPLEMENTED;
     }
