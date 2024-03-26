@@ -2113,17 +2113,17 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
         if (FlushDpb() != PARSER_OK) {
                 return PARSER_FAIL;
         }
+        dpb_buffer_.num_long_term = 0;
+        dpb_buffer_.num_short_term = 0;
 
         dpb_buffer_.dpb_fullness = 0;
         if (p_slice_header->dec_ref_pic_marking.long_term_reference_flag) {
             curr_pic_.is_reference = kUsedForLongTerm;
             curr_pic_.long_term_frame_idx = 0;
-            dpb_buffer_.num_long_term = 0;
             max_long_term_frame_idx_ = 0;
         } else {
             curr_pic_.is_reference = kUsedForShortTerm;
             max_long_term_frame_idx_ = NO_LONG_TERM_FRAME_INDICES;
-            dpb_buffer_.num_short_term = 0;
         }
     } else {
         curr_pic_.is_reference = kUsedForShortTerm;  // 8.2.5.1: 3.
