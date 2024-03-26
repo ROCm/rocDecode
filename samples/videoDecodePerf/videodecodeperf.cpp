@@ -35,6 +35,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "common.h"
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
