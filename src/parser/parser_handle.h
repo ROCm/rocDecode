@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "rocparser.h"
 #include "roc_video_parser.h"
 #include "avc_parser.h"
+#include "av1_parser.h"
 #include "hevc_parser.h"
 
 class RocParserHandle {
@@ -48,6 +49,9 @@ private:
                 break;
             case rocDecVideoCodec_HEVC:
                 roc_parser_ = std::make_shared<HevcVideoParser>();
+                break;
+            case rocDecVideoCodec_AV1:
+                roc_parser_ = std::make_shared<Av1VideoParser>();
                 break;
             default:
                 THROW("Unsupported parser type "+ TOSTR(params->codec_type));
