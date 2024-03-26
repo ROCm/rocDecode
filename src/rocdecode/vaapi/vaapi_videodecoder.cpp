@@ -80,7 +80,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     std::vector<int> visible_devices;
     GetVisibleDevices(visible_devices);
     std::string drm_node;
-    if (visible_devices.size() != 0) {
+    if (decoder_create_info_.device_id < visible_devices.size()) {
         drm_node = "/dev/dri/renderD" + std::to_string(128 + visible_devices[decoder_create_info_.device_id] * num_render_cards_per_device);
     } else {
         drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
