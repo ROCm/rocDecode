@@ -44,7 +44,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--rocm_path', 	type=str, default='/opt/rocm',
                     help='ROCm Installation Path - optional (default:/opt/rocm) - ROCm Installation Required')
 parser.add_argument('--developer', 	type=str, default='ON',
-                    help='Setup Developer Options - optional (default:ON) [options:ON/OFF]')
+                    help='Setup Developer Options - optional (default:OFF) [options:ON/OFF]')
 
 args = parser.parse_args()
 developerInstall = args.developer.upper()

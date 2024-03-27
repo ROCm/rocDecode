@@ -67,8 +67,8 @@ For your convenience, we provide the setup script,
 which installs all required dependencies. Run this script only once.
 
 ```shell
-python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
-                            --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
+python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path  - optional (default:/opt/rocm)]
+                            --developer [ Setup Developer Options - optional (default:OFF) [options:ON/OFF]]
 ```
 
 ## Installation instructions
