@@ -23,11 +23,13 @@ THE SOFTWARE.
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <filesystem>
 #include <va/va.h>
 #include <va/va_drm.h>
 #include <va/va_drmcommon.h>
@@ -45,11 +47,19 @@ THE SOFTWARE.
 
 #define INIT_SLICE_PARAM_LIST_NUM 16 // initial slice parameter buffer list size
 
+typedef enum {
+    kSpx = 0, // Single Partition Accelerator
+    kDpx = 1, // Dual Partition Accelerator
+    kTpx = 2, // Triple Partition Accelerator
+    kQpx = 3, // Quad Partition Accelerator
+    kCpx = 4, // Core Partition Accelerator
+} ComputePartition;
+
 class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
-    rocDecStatus InitializeDecoder(std::string gcn_arch_name);
+    rocDecStatus InitializeDecoder(std::string device_name, std::string gcn_arch_name);
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
@@ -78,4 +88,8 @@ private:
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
     void GetVisibleDevices(std::vector<int>& visible_devices);
+    void GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions);
+    void GetNumRenderCardsPerDevice(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
+                                    std::vector<ComputePartition> &currnet_compute_partitions,
+                                    int &num_render_cards_per_socket, int &offset);
 };
