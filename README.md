@@ -67,8 +67,8 @@ For your convenience, we provide the setup script,
 which installs all required dependencies. Run this script only once.
 
 ```shell
-python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path - optional (default:/opt/rocm)]
-                            --developer [ Setup Developer Options - optional (default:ON) [options:ON/OFF]]
+python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path  - optional (default:/opt/rocm)]
+                            --developer [ Setup Developer Options - optional (default:OFF) [options:ON/OFF]]
 ```
 
 ## Installation instructions
@@ -223,4 +223,4 @@ page.
   * rocm-core - `6.1.0.60100-28`
   * amdgpu-core - `1:6.1.60100-1731559`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.6`
+* rocDecode Setup Script - `V1.7`
