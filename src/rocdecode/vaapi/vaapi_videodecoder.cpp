@@ -81,13 +81,13 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
     if (gcn_arch_name_base.compare("gfx940") == 0 ||
         gcn_arch_name_base.compare("gfx941") == 0 ||
         gcn_arch_name_base.compare("gfx942") == 0) {
-            std::vector<ComputePartition> currnet_compute_partitions;
-            GetCurrentComputePartition(currnet_compute_partitions);
-            if (currnet_compute_partitions.empty()) {
-                //if the currnet_compute_partitions is empty then the default SPX mode is assumed.
+            std::vector<ComputePartition> current_compute_partitions;
+            GetCurrentComputePartition(current_compute_partitions);
+            if (current_compute_partitions.empty()) {
+                //if the current_compute_partitions is empty then the default SPX mode is assumed.
                 num_render_cards_per_socket = 8;
             } else {
-                GetNumRenderCardsPerDevice(device_name, decoder_create_info_.device_id, visible_devices, currnet_compute_partitions, num_render_cards_per_socket, offset);
+                GetNumRenderCardsPerDevice(device_name, decoder_create_info_.device_id, visible_devices, current_compute_partitions, num_render_cards_per_socket, offset);
             }
         }
 
@@ -437,7 +437,7 @@ void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_veto
     }
 }
 
-void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions) {
+void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
     std::string search_path = "/sys/devices/";
     std::string partition_file = "current_compute_partition";
     for (const auto& entry : std::filesystem::recursive_directory_iterator(search_path)) {
@@ -447,15 +447,15 @@ void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition>
                 std::string partition;
                 std::getline(file, partition);
                 if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
-                    currnet_compute_partitions.push_back(kSpx);
+                    current_compute_partitions.push_back(kSpx);
                 } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
-                    currnet_compute_partitions.push_back(kDpx);
+                    current_compute_partitions.push_back(kDpx);
                 } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
-                    currnet_compute_partitions.push_back(kTpx);
+                    current_compute_partitions.push_back(kTpx);
                 } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
-                    currnet_compute_partitions.push_back(kQpx);
+                    current_compute_partitions.push_back(kQpx);
                 } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
-                    currnet_compute_partitions.push_back(kCpx);
+                    current_compute_partitions.push_back(kCpx);
                 }
                 file.close();
             }
@@ -464,11 +464,11 @@ void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition>
 }
 
 void VaapiVideoDecoder::GetNumRenderCardsPerDevice(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
-                                                   std::vector<ComputePartition> &currnet_compute_partitions,
+                                                   std::vector<ComputePartition> &current_compute_partitions,
                                                    int &num_render_cards_per_socket, int &offset) {
     offset = 0;
-    if (!currnet_compute_partitions.empty()) {
-        switch (currnet_compute_partitions[0]) {
+    if (!current_compute_partitions.empty()) {
+        switch (current_compute_partitions[0]) {
             case kSpx:
                 num_render_cards_per_socket = 8;
                 break;
