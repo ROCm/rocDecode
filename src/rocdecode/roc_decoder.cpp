@@ -59,7 +59,7 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
         memset((void *)&hip_interop_[i], 0, sizeof(hip_interop_[i]));
     }
 
-    rocdec_status = va_video_decoder_.InitializeDecoder(hip_dev_prop_.gcnArchName);
+    rocdec_status = va_video_decoder_.InitializeDecoder(hip_dev_prop_.name, hip_dev_prop_.gcnArchName);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to initilize the VAAPI Video decoder.");
         return rocdec_status;
