@@ -117,7 +117,7 @@ protected:
     int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
     int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
     int prev_top_field_order_cnt_;
-    int prev_frame_num_offset_t; // prevFrameNumOffset
+    int prev_frame_num_offset_; // prevFrameNumOffset
     int prev_frame_num_; // prevFrameNum
     int prev_has_mmco_5_;
     int curr_has_mmco_5_;
