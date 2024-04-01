@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.7"
+__version__ = "1.7.1"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -58,7 +58,7 @@ print("\nROCm PATH set to -- "+ROCM_PATH+"\n")
 # check ROCm installation
 if os.path.exists(ROCM_PATH):
     print("\nROCm Installation Found -- "+ROCM_PATH+"\n")
-    ERROR_CHECK(os.system('echo ROCm Info -- && '+ROCM_PATH+'/bin/rocminfo'))
+    os.system('echo ROCm Info -- && '+ROCM_PATH+'/bin/rocminfo')
 else:
     print(
         "WARNING: If ROCm installed, set ROCm Path with \"--rocm_path\" option for full installation [Default:/opt/rocm]\n")

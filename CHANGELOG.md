@@ -29,7 +29,7 @@ Documentation for rocDecode is available at
   * rocm-core - `6.1.0.60100-28`
   * amdgpu-core - `1:6.1.60100-1731559`
 * FFMPEG - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.7`
+* rocDecode Setup Script - `V1.7.1`
 
 ## rocDecode 0.5.0
 
