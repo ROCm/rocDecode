@@ -35,6 +35,9 @@ AvcVideoParser::AvcVideoParser() {
     curr_ref_pic_bottom_field_ = 0;
     max_long_term_frame_idx_ = NO_LONG_TERM_FRAME_INDICES;
 
+    framerate_numerator = 0;
+    framerate_denominator = 0;
+
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_, 0, sizeof(AvcPicture));
@@ -1142,6 +1145,15 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
+    // Set frame rate if available
+    if (new_sps_activated_) {
+        frame_rate_.numerator = framerate_numerator;
+        frame_rate_.denominator = framerate_denominator;
+        uint32_t frame_rate_calculated = frame_rate_.numerator / frame_rate_.denominator;
+        std::cout << "DEBUG: framerate numerator = " << frame_rate_.numerator << "\nDEBUG: framerate denominator = " << frame_rate_.denominator << "\n";
+        std::cout << "DEBUG: Frame rate = " << frame_rate_calculated << " fps\n";
+    }
+
     if (p_sps->separate_colour_plane_flag == 1) {
         p_slice_header->colour_plane_id = Parser::ReadBits(p_stream, offset, 2);
     }
@@ -1440,6 +1452,9 @@ void AvcVideoParser::GetVuiParameters(uint8_t *p_stream, size_t &offset, AvcVuiS
         p_vui_params->num_units_in_tick = Parser::ReadBits(p_stream, offset, 32);
         p_vui_params->time_scale = Parser::ReadBits(p_stream, offset, 32);
         p_vui_params->fixed_frame_rate_flag = Parser::GetBit(p_stream, offset);
+    
+        framerate_numerator = p_vui_params->time_scale;
+        framerate_denominator = p_vui_params->num_units_in_tick * 2;
     }
     
     p_vui_params->nal_hrd_parameters_present_flag = Parser::GetBit(p_stream, offset);
