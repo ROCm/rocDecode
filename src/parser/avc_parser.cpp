@@ -1150,8 +1150,6 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         frame_rate_.numerator = framerate_numerator;
         frame_rate_.denominator = framerate_denominator;
         uint32_t frame_rate_calculated = frame_rate_.numerator / frame_rate_.denominator;
-        std::cout << "DEBUG: framerate numerator = " << frame_rate_.numerator << "\nDEBUG: framerate denominator = " << frame_rate_.denominator << "\n";
-        std::cout << "DEBUG: Frame rate = " << frame_rate_calculated << " fps\n";
     }
 
     if (p_sps->separate_colour_plane_flag == 1) {

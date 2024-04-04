@@ -125,7 +125,7 @@ protected:
     int curr_ref_pic_bottom_field_;
     int max_long_term_frame_idx_; // MaxLongTermFrameIdx
 
-    /frame rate
+    //frame rate
     uint32_t framerate_numerator;
     uint32_t framerate_denominator;
 
