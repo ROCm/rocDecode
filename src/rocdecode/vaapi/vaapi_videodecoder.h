@@ -90,6 +90,5 @@ private:
     void GetVisibleDevices(std::vector<int>& visible_devices);
     void GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions);
     void GetNumRenderCardsPerDevice(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
-                                    std::vector<ComputePartition> &current_compute_partitions,
-                                    int &num_render_cards_per_socket, int &offset);
+                                    std::vector<ComputePartition> &current_compute_partitions, int &offset);
 };
