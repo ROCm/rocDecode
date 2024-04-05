@@ -90,7 +90,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
                     offset = decoder_create_info_.device_id * 7;
                 }
             } else {
-                GetNumRenderCardsPerDevice(device_name, decoder_create_info_.device_id, visible_devices, current_compute_partitions, offset);
+                GetDrmNodeOffset(device_name, decoder_create_info_.device_id, visible_devices, current_compute_partitions, offset);
             }
         }
 
@@ -466,7 +466,7 @@ void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition>
     }
 }
 
-void VaapiVideoDecoder::GetNumRenderCardsPerDevice(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
+void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
                                                    std::vector<ComputePartition> &current_compute_partitions, int &offset) {
 
     if (!current_compute_partitions.empty()) {
