@@ -1142,6 +1142,17 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
+    // Set frame rate if available
+    if (new_sps_activated_) {
+        if (p_sps->vui_seq_parameters.timing_info_present_flag) {
+            frame_rate_.numerator = p_sps->vui_seq_parameters.time_scale;
+            frame_rate_.denominator = 2 * p_sps->vui_seq_parameters.num_units_in_tick;
+        } else {
+            frame_rate_.numerator = 0;
+            frame_rate_.denominator = 0;
+        }
+    }
+
     if (p_sps->separate_colour_plane_flag == 1) {
         p_slice_header->colour_plane_id = Parser::ReadBits(p_stream, offset, 2);
     }
