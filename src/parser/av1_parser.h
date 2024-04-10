@@ -59,9 +59,22 @@ public:
         int index;
     } Av1Picture;
 
+    typedef struct {
+        uint32_t offset;
+        uint32_t size;
+    } Av1TileDataInfo;
+
+    typedef struct {
+        uint32_t buffer_id;  // buffer ID in the bitstream buffer pool.
+        uint8_t *buffer_ptr;  // pointer of the tile group data buffer.
+        uint32_t buffer_size;  // total size of the data buffer, may include the header bytes.
+        Av1TileDataInfo tile_data_info[MAX_TILE_ROWS][MAX_TILE_COLS];
+    } Av1TileGroupDataInfo;
+
 protected:
     Av1SequenceHeader seq_header_;
     Av1FrameHeader frame_header_;
+    Av1TileGroupDataInfo tile_group_data_;
 
     int temporal_id_; //  temporal level of the data contained in the OBU
     int spatial_id_;  // spatial level of the data contained in the OBU
@@ -84,21 +97,28 @@ protected:
     int new_fb_index_;
 
     /*! \brief Function to parse a sequence header OBU
-     * \param p_stream Pointer to the bit stream
-     * \param size Byte size of the stream
+     * \param [in] p_stream Pointer to the bit stream
+     * \param [in] size Byte size of the stream
      * \return None
      */
     void ParseSequenceHeader(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse a frame header OBU
-     * \param p_stream Pointer to the bit stream
-     * \param size Byte size of the stream
+     * \param [in] p_stream Pointer to the bit stream
+     * \param [in] size Byte size of the stream
      * \return <tt>ParserResult</tt>
      */
     ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size);
 
+    /*! \brief Function to parse a tile group OBU
+     * \param [in] p_stream Pointer to the bit stream
+     * \param [in] size Byte size of the stream
+     * \return None
+     */
+    void ParseTileGroupInfo(uint8_t *p_stream, size_t size);
+
     /*! \brief Function to parse color config in sequence header
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_seq_header Pointer to sequence header struct
@@ -114,7 +134,7 @@ protected:
     void MarkRefFrames(Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header, uint32_t id_len);
 
     /*! \brief Function to parse frame size
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -124,7 +144,7 @@ protected:
     void FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse super res parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -141,7 +161,7 @@ protected:
     void ComputeImageSize(Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse render size info
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -189,7 +209,7 @@ protected:
     int FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
 
     /*! \brief Function to parse frame size with refs info
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -204,7 +224,7 @@ protected:
     void SetupPastIndependence(Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse tile info
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -221,7 +241,7 @@ protected:
     uint32_t TileLog2(uint32_t blk_size, uint32_t target);
 
     /*! \brief Function to parse quantization parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -231,7 +251,7 @@ protected:
     void QuantizationParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to read delta quantizer
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -240,7 +260,7 @@ protected:
     uint32_t ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to segmentation parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -249,7 +269,7 @@ protected:
     void SegmentationParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse quantizer index delta parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -258,7 +278,7 @@ protected:
     void DeltaQParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse loop filter delta parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -267,7 +287,7 @@ protected:
     void DeltaLFParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse loop filter parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -277,7 +297,7 @@ protected:
     void LoopFilterParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse CDEF parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -287,7 +307,7 @@ protected:
     void CdefParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to loop restoration parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -297,7 +317,7 @@ protected:
     void LrParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse TX mode
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -306,7 +326,7 @@ protected:
     void ReadTxMode(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to skip mode parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
@@ -316,7 +336,7 @@ protected:
     void SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse global motion parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -325,7 +345,7 @@ protected:
     void GlobalMotionParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to calculate global motion parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
@@ -353,7 +373,7 @@ protected:
     int InverseRecenter(int r, int v);
 
     /*! \brief Function to parse film grain parameters
-     * \param p_stream Pointer to the bit stream
+     * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct

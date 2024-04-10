@@ -539,6 +539,59 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     return PARSER_OK;
 }
 
+void Av1VideoParser::ParseTileGroupInfo(uint8_t *p_stream, size_t size) {
+    size_t offset = 0;  // current bit offset
+    Av1SequenceHeader *p_seq_header = &seq_header_;
+    Av1FrameHeader *p_frame_header = &frame_header_;
+    Av1TileGroupDataInfo *p_tile_group = &tile_group_data_;
+    uint32_t num_tiles;
+    uint32_t tile_start_and_end_present_flag = 0;
+    uint32_t tg_start, tg_end;
+    uint32_t header_types = 0;
+    uint32_t tile_cols = p_frame_header->tile_info.tile_cols;
+    uint32_t tile_rows = p_frame_header->tile_info.tile_rows;
+    uint8_t *p_tg_buf = p_stream;
+    uint32_t tg_size = size;
+
+    memset(p_tile_group, 0, sizeof(Av1TileGroupDataInfo));
+    p_tile_group->buffer_ptr = p_tg_buf;
+    p_tile_group->buffer_size = tg_size;
+
+    // First parse the header
+    num_tiles = tile_cols * tile_rows;
+    if (num_tiles > 1) {
+        tile_start_and_end_present_flag = Parser::GetBit(p_stream, offset);
+    }
+    if (num_tiles == 1 || !tile_start_and_end_present_flag) {
+        tg_start = 0;
+        tg_end = num_tiles - 1;
+    } else {
+        uint32_t tile_bits = p_frame_header->tile_info.tile_cols_log2 + p_frame_header->tile_info.tile_rows_log2;
+        tg_start = Parser::ReadBits(p_stream, offset, tile_bits);
+        tg_end = Parser::ReadBits(p_stream, offset, tile_bits);
+    }
+
+    header_types = ((offset + 7) >> 3);
+    p_tg_buf += header_types;
+    tg_size -= header_types;
+    for (int tile_num = tg_start; tile_num <= tg_end; tile_num++) {
+        int tile_row = tile_num / tile_cols;
+        int tile_col = tile_num % tile_cols;
+        int last_tile = tile_num == tg_end;
+        if (last_tile) {
+            p_tile_group->tile_data_info[tile_row][tile_col].size = tg_size;
+            p_tile_group->tile_data_info[tile_row][tile_col].offset = p_tg_buf - p_tile_group->buffer_ptr;
+        } else {
+            uint32_t tile_size_bytes = p_frame_header->tile_info.tile_size_bytes_minus_1 + 1;
+            uint32_t tile_size = ReadLeBytes(p_tg_buf, tile_size_bytes) + 1;
+            p_tile_group->tile_data_info[tile_row][tile_col].size = tile_size;
+            p_tile_group->tile_data_info[tile_row][tile_col].offset = p_tg_buf + tile_size_bytes - p_tile_group->buffer_ptr;
+            tg_size -= tile_size + tile_size_bytes;
+            p_tg_buf += tile_size + tile_size_bytes;
+        }
+    }
+}
+
 void Av1VideoParser::ParseColorConfig(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header) {
     p_seq_header->color_config.bit_depth = 8;
     
