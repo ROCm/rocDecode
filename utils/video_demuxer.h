@@ -44,21 +44,21 @@ extern "C" {
  * @brief Enum for Seek mode
  * 
  */
-typedef enum Seekseek_mode_enum {
+typedef enum SeekModeEnum {
     SEEK_MODE_EXACT_FRAME = 0,
     SEEK_MODE_PREV_KEY_FRAME = 1,
     SEEK_MODE_NUM,
-}SeekMode;
+} SeekMode;
 
 /**
  * @brief Enum for Seek Criteria
  * 
  */
-typedef enum SeekCriteria_enum {
+typedef enum SeekCriteriaEnum {
     SEEK_CRITERIA_FRAME_NUM = 0,
     SEEK_CRITERIA_TIME_STAMP = 1,
     SEEK_CRITERIA_NUM,
-}SeekCriteria;
+} SeekCriteria;
 
 struct PacketData {
     int32_t key;
@@ -80,8 +80,7 @@ public:
         : use_seek_(true), seek_frame_(frame_id), seek_mode_(SEEK_MODE_PREV_KEY_FRAME),
         seek_crit_(SEEK_CRITERIA_FRAME_NUM), out_frame_pts_(0), out_frame_duration_(0), num_frames_decoded_(0U) {}
 
-    VideoSeekContext& operator=(const VideoSeekContext& other)
-    {
+    VideoSeekContext& operator=(const VideoSeekContext& other) {
         use_seek_ = other.use_seek_;
         seek_frame_ = other.seek_frame_;
         seek_mode_ = other.seek_mode_;
@@ -151,7 +150,7 @@ class VideoDemuxer {
         }
 
         int64_t TsFromFrameNumber(int64_t frame_num) {
-            auto const ts_sec = (double)frame_num / frame_rate_;
+            auto const ts_sec = static_cast<double>(frame_num) / frame_rate_;
             return TsFromTime(ts_sec);
         }
 
@@ -294,9 +293,9 @@ VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx
     chroma_format_ = (AVPixelFormat)av_fmt_input_ctx_->streams[av_stream_]->codecpar->format;
     bit_rate_ = av_fmt_input_ctx_->streams[av_stream_]->codecpar->bit_rate;
     if (av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate.den != 0)
-        frame_rate_ = static_cast<double> (av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate.num) / static_cast<double> (av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate.den);
+        frame_rate_ = static_cast<double>(av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate.num) / static_cast<double>(av_fmt_input_ctx_->streams[av_stream_]->r_frame_rate.den);
     if (av_fmt_input_ctx_->streams[av_stream_]->avg_frame_rate.den != 0)
-        avg_frame_rate_ = static_cast<double> (av_fmt_input_ctx_->streams[av_stream_]->avg_frame_rate.num) / static_cast<double> (av_fmt_input_ctx_->streams[av_stream_]->avg_frame_rate.den);
+        avg_frame_rate_ = static_cast<double>(av_fmt_input_ctx_->streams[av_stream_]->avg_frame_rate.num) / static_cast<double>(av_fmt_input_ctx_->streams[av_stream_]->avg_frame_rate.den);
 
     switch (chroma_format_) {
         case AV_PIX_FMT_YUV420P10LE:
@@ -420,17 +419,17 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         int ret = 0;
 
         switch (seek_ctx.seek_crit_) {
-        case SEEK_CRITERIA_FRAME_NUM:
-            timestamp = TsFromFrameNumber(seek_ctx.seek_frame_);
-            ret = av_seek_frame(av_fmt_input_ctx_, av_stream_, timestamp, seek_backward ? AVSEEK_FLAG_BACKWARD | flags : flags);
-            break;
-        case SEEK_CRITERIA_TIME_STAMP:
-            timestamp = TsFromTime(seek_ctx.seek_frame_);
-            ret = av_seek_frame(av_fmt_input_ctx_, av_stream_, timestamp, seek_backward ? AVSEEK_FLAG_BACKWARD | flags : flags);
-            break;
-        default:
-            std::cerr << "ERROR: Invalid seek mode" << std::endl;
-            ret = -1;
+            case SEEK_CRITERIA_FRAME_NUM:
+                timestamp = TsFromFrameNumber(seek_ctx.seek_frame_);
+                ret = av_seek_frame(av_fmt_input_ctx_, av_stream_, timestamp, seek_backward ? AVSEEK_FLAG_BACKWARD | flags : flags);
+                break;
+            case SEEK_CRITERIA_TIME_STAMP:
+                timestamp = TsFromTime(seek_ctx.seek_frame_);
+                ret = av_seek_frame(av_fmt_input_ctx_, av_stream_, timestamp, seek_backward ? AVSEEK_FLAG_BACKWARD | flags : flags);
+                break;
+            default:
+                std::cerr << "ERROR: Invalid seek mode" << std::endl;
+                ret = -1;
         }
 
         if (ret < 0) {
@@ -443,15 +442,15 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         int64_t target_ts = 0;
 
         switch (seek_ctx.seek_crit_) {
-        case SEEK_CRITERIA_FRAME_NUM:
-            target_ts = TsFromFrameNumber(seek_ctx.seek_frame_);
-            break;
-        case SEEK_CRITERIA_TIME_STAMP:
-            target_ts = TsFromTime(seek_ctx.seek_frame_);
-            break;
-        default:
-            std::cerr << "ERROR::Invalid seek criteria" << std::endl;
-            return -1;
+            case SEEK_CRITERIA_FRAME_NUM:
+                target_ts = TsFromFrameNumber(seek_ctx.seek_frame_);
+                break;
+            case SEEK_CRITERIA_TIME_STAMP:
+                target_ts = TsFromTime(seek_ctx.seek_frame_);
+                break;
+            default:
+                std::cerr << "ERROR::Invalid seek criteria" << std::endl;
+                return -1;
         }
 
         if (pkt_data.dts == target_ts) {
@@ -562,7 +561,6 @@ AVFormatContext *VideoDemuxer::CreateFmtContextUtil(const char *input_file_path)
 int VideoDemuxer::ReadPacket(void *data, uint8_t *buf, int buf_size) {
     return ((StreamProvider *)data)->GetData(buf, buf_size);
 }
-
 
 static inline rocDecVideoCodec AVCodec2RocDecVideoCodec(AVCodecID av_codec) {
     switch (av_codec) {
