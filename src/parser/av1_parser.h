@@ -133,6 +133,11 @@ protected:
      */
     void SuperResParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
+    /*! \brief Function to calculate 4x4 block columns and rows of the frame
+     * \param [in] p_frame_header Pointer to frame header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
     void ComputeImageSize(Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse render size info
