@@ -8,13 +8,13 @@ access the video decoding features available on your GPU.
 ## Supported codecs
 
 * H.265 (HEVC) - 8 bit, and 10 bit
+* H.264 (AVC) - 8 bit
 
 ## Prerequisites
 
 * Linux distribution
   * Ubuntu - `20.04` / `22.04`
   * RHEL - `8` / `9`
-  * SLES - `15-SP4`
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
 > [!IMPORTANT] 
@@ -218,9 +218,8 @@ page.
 * Linux
   * Ubuntu - `20.04` / `22.04`
   * RHEL - `8` / `9`
-  * SLES - `15-SP4`
 * ROCm:
-  * rocm-core - `6.1.0.60100-28`
-  * amdgpu-core - `1:6.1.60100-1731559`
+  * rocm-core - `6.1.0.60100-64`
+  * amdgpu-core - `1:6.1.60100-1741643`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.7.1`
