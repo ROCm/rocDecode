@@ -120,7 +120,7 @@ typedef enum {
     kOnly4x4        = 0,
     kTxModeLargest  = 1,
     kTxModeSelect   = 2,
-} TX_Mode;
+} Tx_Mode;
 
 typedef enum {
     kIdentity       = 0, // Warp model is just an identity transform
@@ -236,7 +236,10 @@ typedef struct {
 
 typedef struct {
     uint32_t frame_width_minus_1;
+    uint32_t frame_width; // FrameWidth
     uint32_t frame_height_minus_1;
+    uint32_t frame_height; // FrameHeight
+    uint32_t upscaled_width; // UpscaledWidth
     Av1SuperResParams superres_params;
     uint32_t mi_cols;
     uint32_t mi_rows;
@@ -245,7 +248,9 @@ typedef struct {
 typedef struct {
     uint32_t render_and_frame_size_different;
     uint32_t render_width_minus_1;
+    uint32_t render_width; // RenderWidth
     uint32_t render_height_minus_1;
+    uint32_t render_height; // RenderHeight
 } Av1RenderSize;
 
 typedef struct {
@@ -396,7 +401,7 @@ typedef struct {
     Av1TemporalPointInfo temporal_point_info;
     uint32_t display_frame_id;
     uint32_t frame_type;
-    uint32_t frame_isIntra;
+    uint32_t frame_is_intra;
     uint32_t show_frame;
     uint32_t showable_frame;
     uint32_t error_resilient_mode;
@@ -423,7 +428,7 @@ typedef struct {
     uint32_t gold_frame_idx;
     int32_t  ref_frame_idx[REFS_PER_FRAME];
     uint32_t delta_frame_id_minus_1;
-    uint32_t expectedFrameId[REFS_PER_FRAME];
+    uint32_t expected_frame_id[REFS_PER_FRAME];
     uint32_t allow_high_precision_mv;
     uint32_t is_filter_switchable;
     uint32_t interpolation_filter;
@@ -437,7 +442,7 @@ typedef struct {
     Av1DeltaLFParams delta_lf_params;
     uint32_t coded_lossless;
     uint32_t lossless_array[MAX_SEGMENTS];
-    uint32_t seg_qm__level[3][MAX_SEGMENTS];
+    uint32_t seg_qm_level[3][MAX_SEGMENTS];
     uint32_t all_lossless;
     Av1LoopFilterParams loop_filter_params;
     Av1CdefParams cdef_params;

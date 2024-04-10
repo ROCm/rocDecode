@@ -26,6 +26,7 @@ THE SOFTWARE.
 
 #define OBU_HEADER_SIZE 1
 #define OBU_EXTENSION_SIZE 1
+#define INVALID_INDEX -1  // Invalid buffer index.
 
 class Av1VideoParser : public RocVideoParser {
 public:
@@ -54,8 +55,33 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method
 
+    typedef struct {
+        int index;
+    } Av1Picture;
+
 protected:
     Av1SequenceHeader seq_header_;
+    Av1FrameHeader frame_header_;
+
+    int temporal_id_; //  temporal level of the data contained in the OBU
+    int spatial_id_;  // spatial level of the data contained in the OBU
+
+    // Frame header syntax elements
+    int ref_frame_type_[NUM_REF_FRAMES];
+    int ref_frame_id_[NUM_REF_FRAMES];
+    int ref_order_hint_[NUM_REF_FRAMES];
+    int ref_valid_[NUM_REF_FRAMES];
+
+    // A list of all frame buffers that may be used for reference of the current picture or any
+    // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
+    // not used as reference, the value should be -1.
+    int ref_pic_map_[NUM_REF_FRAMES];
+    int ref_pic_map_next_[NUM_REF_FRAMES];  // for next picture
+
+    // The reference list for the current picture
+    Av1Picture ref_pictures_[REFS_PER_FRAME];
+    // The free frame buffer in DPB pool that the current picutre is decoded into
+    int new_fb_index_;
 
     /*! \brief Function to parse a sequence header OBU
      * \param p_stream Pointer to the bit stream
@@ -63,6 +89,13 @@ protected:
      * \return None
      */
     void ParseSequenceHeader(uint8_t *p_stream, size_t size);
+
+    /*! \brief Function to parse a frame header OBU
+     * \param p_stream Pointer to the bit stream
+     * \param size Byte size of the stream
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse color config in sequence header
      * \param p_stream Pointer to the bit stream
@@ -73,7 +106,258 @@ protected:
      */
     void ParseColorConfig(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header);
 
-    /*! \brief Function to calculate the floor of the base 2 logarithm of the input x
+    /*! \brief Function to mark reference frames
+     * \param [in] p_seq_header Pointer to sequence header
+     * \param [in] p_frame_header Ponter to frame header
+     * \param [in] id_len Current frame id length
+     */
+    void MarkRefFrames(Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header, uint32_t id_len);
+
+    /*! \brief Function to parse frame size
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse super res parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void SuperResParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    void ComputeImageSize(Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse render size info
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void RenderSize(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to compute the distance between two order hints by sign extending the result of subtracting the values.
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [in] a One order hint
+     * \param [in] b The other order hint
+     * \return The order hint distance
+     */
+    int GetRelativeDist(Av1SequenceHeader *p_seq_header, int a, int b);
+
+    /*! \brief Function to compute the elements in the ref_frame_idx array. 7.8. Set frame refs process.
+     * \param [in] p_seq_header Pinter to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to find the latest backward reference
+     * \param [in] shifted_order_hints An array containing the expected output order shifted such that the current
+     *             frame has hint equal to curr_frame_hint
+     * \param [in] used_frame An array marking which reference frames have been used
+     * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     */
+    int FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+
+    /*! \brief Function to find the earliest backward reference
+     * \param [in] shifted_order_hints An array containing the expected output order shifted such that the current
+     *             frame has hint equal to curr_frame_hint
+     * \param [in] used_frame An array marking which reference frames have been used
+     * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     */
+    int FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+
+    /*! \brief Function to find the latest forward reference
+     * \param [in] shifted_order_hints An array containing the expected output order shifted such that the current
+     *             frame has hint equal to curr_frame_hint
+     * \param [in] used_frame An array marking which reference frames have been used
+     * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     */
+    int FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+
+    /*! \brief Function to parse frame size with refs info
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void FrameSizeWithRefs(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to indicates that this frame can be decoded without dependence on previous coded frames. setup_past_independence().
+     * \param [out] p_frame_header Pointer to frame header struct
+     */
+    void SetupPastIndependence(Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse tile info
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to calculate the smallest value for k such that blk_size << k is greater than or equal to target.
+     * \param [in] blk_size Block size
+     * \param [in] target target value
+     * \return 32-bit unsigned
+     */
+    uint32_t TileLog2(uint32_t blk_size, uint32_t target);
+
+    /*! \brief Function to parse quantization parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void QuantizationParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to read delta quantizer
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    uint32_t ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to segmentation parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void SegmentationParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse quantizer index delta parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void DeltaQParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse loop filter delta parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void DeltaLFParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse loop filter parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void LoopFilterParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse CDEF parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void CdefParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to loop restoration parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void LrParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse TX mode
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void ReadTxMode(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to skip mode parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to parse global motion parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void GlobalMotionParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to calculate global motion parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \param [in] type Motion type
+     * \param [in] ref Reference frame
+     * \param [in] idx Parameter index
+     * \return None
+     */
+    void ReadGlobalParam(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header, int type, int ref, int idx);
+
+    /*! \brief Function to decode signed subexp with ref. 5.9.26. decode_signed_subexp_with_ref()
+     */
+    int DecodeSignedSubexpWithRef(const uint8_t *p_stream, size_t &offset, int low, int high, int r);
+
+    /*! \brief Function to decode unsigned subexp with ref. 5.9.27. decode_unsigned_subexp_with_ref()
+     */
+    int DecodeUnsignedSubexpWithRef(const uint8_t *p_stream, size_t &offset, int mx, int r);
+
+    /*! \brief Function to decode subexp. 5.9.28. decode_subexp()
+     */
+    int DecodeSubexp(const uint8_t *p_stream, size_t &offset, int num_syms);
+
+    /*! \brief Function to inverse recenter. 5.9.29. inverse_recenter()
+     */
+    int InverseRecenter(int r, int v);
+
+    /*! \brief Function to parse film grain parameters
+     * \param p_stream Pointer to the bit stream
+     * \param [in] offset Starting bit offset
+     * \param [out] offset Updated bit offset
+     * \param [in] p_seq_header Pointer to sequence header struct
+     * \param [out] p_frame_header Pointer to frame header struct
+     * \return None
+     */
+    void FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+   /*! \brief Function to calculate the floor of the base 2 logarithm of the input x
      * \param [in] x A 32-bit unsigned integer
      * \return the location of the most significant bit in x
      */
