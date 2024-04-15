@@ -591,6 +591,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
                     } else {
                         p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->frame_num;
                     }
+                    p_slice_param->ref_pic_list_1[i].top_field_order_cnt = p_ref_pic->top_field_order_cnt;
+                    p_slice_param->ref_pic_list_1[i].bottom_field_order_cnt = p_ref_pic->bottom_field_order_cnt;
                     p_slice_param->ref_pic_list_1[i].flags = 0;
                     if (p_ref_pic->pic_structure != kFrame) {
                         p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
