@@ -477,6 +477,10 @@ ParserResult AvcVideoParser::SendPicForDecode() {
 
     for (i = buf_index; i < AVC_MAX_DPB_FRAMES; i++) {
         p_pic_param->ref_frames[i].pic_idx = 0xFF;
+        p_pic_param->ref_frames[i].frame_idx = 0;
+        p_pic_param->ref_frames[i].flags = RocdecAvcPicture_FLAGS_INVALID;
+        p_pic_param->ref_frames[i].top_field_order_cnt = 0;
+        p_pic_param->ref_frames[i].bottom_field_order_cnt = 0;
     }
 
     p_pic_param->picture_width_in_mbs_minus1 = p_sps->pic_width_in_mbs_minus1;
@@ -546,6 +550,14 @@ ParserResult AvcVideoParser::SendPicForDecode() {
         for (j = 0; j < 32; j++) {
             p_slice_param->ref_pic_list_0[j].pic_idx = 0xFF;
             p_slice_param->ref_pic_list_1[j].pic_idx = 0xFF;
+            p_slice_param->ref_pic_list_0[j].frame_idx = 0;
+            p_slice_param->ref_pic_list_1[j].frame_idx = 0;
+            p_slice_param->ref_pic_list_0[j].flags = RocdecAvcPicture_FLAGS_INVALID;
+            p_slice_param->ref_pic_list_1[j].flags = RocdecAvcPicture_FLAGS_INVALID;
+            p_slice_param->ref_pic_list_0[j].top_field_order_cnt = 0;
+            p_slice_param->ref_pic_list_1[j].top_field_order_cnt = 0;
+            p_slice_param->ref_pic_list_0[j].bottom_field_order_cnt = 0;
+            p_slice_param->ref_pic_list_1[j].bottom_field_order_cnt = 0;
         }
 
         if (p_slice_header->slice_type == kAvcSliceTypeP || p_slice_header->slice_type == kAvcSliceTypeP_5 || p_slice_header->slice_type == kAvcSliceTypeB || p_slice_header->slice_type == kAvcSliceTypeB_6) {
@@ -579,6 +591,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
                     } else {
                         p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->frame_num;
                     }
+                    p_slice_param->ref_pic_list_1[i].top_field_order_cnt = p_ref_pic->top_field_order_cnt;
+                    p_slice_param->ref_pic_list_1[i].bottom_field_order_cnt = p_ref_pic->bottom_field_order_cnt;
                     p_slice_param->ref_pic_list_1[i].flags = 0;
                     if (p_ref_pic->pic_structure != kFrame) {
                         p_slice_param->ref_pic_list_1[i].flags |= p_ref_pic->pic_structure == kBottomField ? RocdecAvcPicture_FLAGS_BOTTOM_FIELD : RocdecAvcPicture_FLAGS_TOP_FIELD;
@@ -2227,16 +2241,22 @@ ParserResult AvcVideoParser::MarkDecodedRefPics() {
                     break;
 
                     case 4: { // 8.2.5.4.4 Decoding process for MaxLongTermFrameIdx
-                        for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
-                            if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForLongTerm && dpb_buffer_.frame_buffer_list[j].long_term_frame_idx > (p_mmco->max_long_term_frame_idx_plus1 - 1)) {
-                                dpb_buffer_.frame_buffer_list[j].is_reference = kUnusedForReference;
-                                dpb_buffer_.num_long_term--;
-                            }
-                        }
                         if (p_mmco->max_long_term_frame_idx_plus1 == 0) {
                             max_long_term_frame_idx_ = NO_LONG_TERM_FRAME_INDICES;
+                            for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
+                                if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForLongTerm) {
+                                    dpb_buffer_.frame_buffer_list[j].is_reference = kUnusedForReference;
+                                }
+                            }
+                            dpb_buffer_.num_long_term = 0;
                         } else {
                             max_long_term_frame_idx_ = p_mmco->max_long_term_frame_idx_plus1 - 1;
+                            for (int j = 0; j < dpb_buffer_.dpb_size; j++) {
+                                if (dpb_buffer_.frame_buffer_list[j].is_reference == kUsedForLongTerm && dpb_buffer_.frame_buffer_list[j].long_term_frame_idx > max_long_term_frame_idx_) {
+                                    dpb_buffer_.frame_buffer_list[j].is_reference = kUnusedForReference;
+                                    dpb_buffer_.num_long_term--;
+                                }
+                            }
                         }
                     }
                     break;
