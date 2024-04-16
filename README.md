@@ -24,7 +24,7 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0`+ - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0+` - `Libva` is an implementation for VA-API
   ```shell
   sudo apt install libva-dev
   ```
@@ -69,9 +69,7 @@ access the video decoding features available on your GPU.
 
 ### Prerequisites setup script
 
-For your convenience, we provide the setup script,
-[rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py),
-which installs all required dependencies. Run this script only once.
+For your convenience, we provide the setup script, [rocDecode-setup.py](https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py), which installs all required dependencies. Run this script only once.
 
 ```shell
 python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path  - optional (default:/opt/rocm)]
@@ -86,7 +84,7 @@ The installation process uses the following steps:
 
 * Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
 
-* Use either [Package install](#package-install) or [Source install](#source-install) as described below.
+* Use **either** [package install](#package-install) **or** [source install](#source-install) as described below.
 
 ### Package install
 
@@ -228,5 +226,7 @@ page.
 * ROCm:
   * rocm-core - `6.1.0.60100-64`
   * amdgpu-core - `1:6.1.60100-1741643`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* mesa-amdgpu-va-drivers - `1:24.1.0`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V1.7.2`

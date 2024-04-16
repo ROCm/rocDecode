@@ -16,12 +16,15 @@ Tested configurations
 
   * Ubuntu: 20.04/22.04
   * RHEL: 8/9
-  * SLES: 15-SP4
 
 * ROCm
 
   * rocm-core: 6.1.0.60100-28
   * amdgpu-core: 1:6.1.60100-1731559
+
+* libva-dev: 2.7.0-2/2.14.0-1
+
+* mesa-amdgpu-va-drivers: 1:24.1.0
 
 * FFmpeg: 4.2.7/4.4.2-0
 
@@ -39,7 +42,6 @@ Prerequisites
 
   * Ubuntu: 20.04/22.04
   * RHEL: 8/9
-  * SLES: 15-SP4
 
 * `ROCm-supported hardware <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
   (``gfx908`` or higher is required)
@@ -54,19 +56,19 @@ Prerequisites
 
   .. code:: shell
 
-   sudo apt install libva-dev
+    sudo apt install libva-dev
 
 * AMD VA drivers
 
   .. code:: shell
 
-   sudo apt install mesa-amdgpu-va-drivers
+    sudo apt install mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 
   .. code:: shell
 
-   sudo apt install cmake
+    sudo apt install cmake
 
 * `pkg-config <https://en.wikipedia.org/wiki/Pkg-config>`_
 
