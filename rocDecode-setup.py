@@ -138,6 +138,7 @@ coreDebianPackages = [
     'rocm-hip-runtime-dev',
     'libva2',
     'libva-dev',
+    'libdrm-amdgpu1',
     'mesa-amdgpu-va-drivers',
     'vainfo'
 ]
@@ -156,6 +157,7 @@ coreRPMPackages = [
     'rocm-hip-runtime-devel',
     'libva',
     'libva-devel',
+    'libdrm-amdgpu',
     'mesa-amdgpu-dri-drivers',
     'libva-utils'
 ]

@@ -30,6 +30,25 @@ find_package_handle_standard_args(Libva DEFAULT_MSG LIBVA_INCLUDE_DIR LIBVA_LIBR
 mark_as_advanced(LIBVA_INCLUDE_DIR LIBVA_LIBRARY LIBVA_DRM_LIBRARY)
 
 if(Libva_FOUND)
+  # Find VA Version
+  file(READ "${LIBVA_INCLUDE_DIR}/va/va_version.h" VA_VERSION_FILE)
+  string(REGEX MATCH "VA_MAJOR_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_major ${CMAKE_MATCH_1})
+  string(REGEX MATCH "VA_MINOR_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_minor ${CMAKE_MATCH_1})
+  string(REGEX MATCH "VA_MICRO_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_micro ${CMAKE_MATCH_1})
+  message("-- ${White}Found Libva Version: ${va_ver_major}.${va_ver_minor}.${va_ver_micro}${ColourReset}")
+
+  if((${va_ver_major} GREATER_EQUAL 1) AND (${va_ver_minor} GREATER_EQUAL 5))
+    message("-- ${White}\tLibva Version Supported${ColourReset}")
+  else()
+    set(Libva_FOUND FALSE)
+    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+  endif()
+endif()
+
+if(Libva_FOUND)
   if(NOT TARGET Libva::va)
     add_library(Libva::va UNKNOWN IMPORTED)
     set_target_properties(Libva::va PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LIBVA_INCLUDE_DIR}"

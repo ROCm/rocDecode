@@ -29,7 +29,7 @@ access the video decoding features available on your GPU.
   sudo apt install libva-dev mesa-amdgpu-va-drivers
   ```
 > [!NOTE]
-> RPM Packages for `RHEL`/`SLES` - `libva-devel mesa-amdgpu-dri-drivers`
+> RPM Packages for `RHEL`/`SLES` - `libva-devel libdrm-amdgpu mesa-amdgpu-dri-drivers`
 
 * CMake `3.5` or later
 
