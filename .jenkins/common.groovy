@@ -67,7 +67,6 @@ def runTestCommand (platform, project) {
                 """
 
     platform.runCommand(this, command)
-// Unit tests - TBD
 }
 
 def runPackageCommand(platform, project) {

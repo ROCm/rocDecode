@@ -24,13 +24,16 @@ Documentation for rocDecode is available at
 
 ### Tested configurations
 
-* Linux distribution
+* Linux
   * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
 * ROCm:
-  * rocm-core - `6.1.0.60100-28`
-  * amdgpu-core - `1:6.1.60100-1731559`
-* FFMPEG - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.7.1`
+  * rocm-core - `6.1.0.60100-64`
+  * amdgpu-core - `1:6.1.60100-1741643`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* mesa-amdgpu-va-drivers - `1:24.1.0`
+* FFmpeg - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.7.2`
 
 ## rocDecode 0.5.0
 
