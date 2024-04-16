@@ -129,13 +129,15 @@ commonPackages = [
     'wget',
     'unzip',
     'pkg-config',
-    'inxi'
+    'inxi',
+    'rocm-hip-runtime'
 ]
 
 # Debian packages
 coreDebianPackages = [
-    'libva-amdgpu-dev',
-    'libdrm-amdgpu1',
+    'rocm-hip-runtime-dev',
+    'libva2',
+    'libva-dev',
     'mesa-amdgpu-va-drivers',
     'vainfo'
 ]
@@ -151,8 +153,9 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 coreRPMPackages = [
-    'libva-amdgpu-devel',
-    'libdrm-amdgpu',
+    'rocm-hip-runtime-devel',
+    'libva',
+    'libva-devel',
     'mesa-amdgpu-dri-drivers',
     'libva-utils'
 ]
