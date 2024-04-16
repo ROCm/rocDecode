@@ -16,6 +16,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
+                objdump -x /opt/rocm/lib/librocdecode.so | grep NEEDED
                 ldd -v /opt/rocm/lib/librocdecode.so
                 """
 

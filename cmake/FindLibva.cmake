@@ -21,13 +21,32 @@
 #
 ################################################################################
 
-find_library(LIBVA_LIBRARY NAMES va HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 NO_DEFAULT_PATH)
-find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 NO_DEFAULT_PATH)
-find_path(LIBVA_INCLUDE_DIR NAMES va/va.h PATHS /opt/amdgpu/include NO_DEFAULT_PATH)
+find_library(LIBVA_LIBRARY NAMES va HINTS /usr/lib/x86_64-linux-gnu /usr/lib64 /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
+find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /usr/lib/x86_64-linux-gnu /usr/lib64 /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
+find_path(LIBVA_INCLUDE_DIR NAMES va/va.h PATHS /usr/include /opt/amdgpu/include)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Libva DEFAULT_MSG LIBVA_INCLUDE_DIR LIBVA_LIBRARY)
 mark_as_advanced(LIBVA_INCLUDE_DIR LIBVA_LIBRARY LIBVA_DRM_LIBRARY)
+
+if(Libva_FOUND)
+  # Find VA Version
+  file(READ "${LIBVA_INCLUDE_DIR}/va/va_version.h" VA_VERSION_FILE)
+  string(REGEX MATCH "VA_MAJOR_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_major ${CMAKE_MATCH_1})
+  string(REGEX MATCH "VA_MINOR_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_minor ${CMAKE_MATCH_1})
+  string(REGEX MATCH "VA_MICRO_VERSION    ([0-9]*)" _ ${VA_VERSION_FILE})
+  set(va_ver_micro ${CMAKE_MATCH_1})
+  message("-- ${White}Found Libva Version: ${va_ver_major}.${va_ver_minor}.${va_ver_micro}${ColourReset}")
+
+  if((${va_ver_major} GREATER_EQUAL 1) AND (${va_ver_minor} GREATER_EQUAL 5))
+    message("-- ${White}\tLibva Version Supported${ColourReset}")
+  else()
+    set(Libva_FOUND FALSE)
+    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+  endif()
+endif()
 
 if(Libva_FOUND)
   if(NOT TARGET Libva::va)

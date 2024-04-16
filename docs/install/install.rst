@@ -25,7 +25,7 @@ Tested configurations
 
 * FFmpeg: 4.2.7/4.4.2-0
 
-* rocDecode Setup Script: V1.7.1
+* rocDecode Setup Script: V1.7.2
 
 Supported codecs
 ========================================
@@ -50,11 +50,17 @@ Prerequisites
   * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
-* AMD multimedia packages
+* Video Acceleration API Version `1.5.0`+ - `Libva` is an implementation for VA-API
 
   .. code:: shell
 
-   sudo apt install libva-amdgpu-dev libdrm-amdgpu1 mesa-amdgpu-va-drivers
+   sudo apt install libva-dev
+
+* AMD VA drivers
+
+  .. code:: shell
+
+   sudo apt install mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 

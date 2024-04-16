@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.7.1"
+__version__ = "1.7.2"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -90,12 +90,13 @@ linuxSystemInstall = ''
 linuxCMake = 'cmake'
 linuxSystemInstall_check = ''
 linuxFlag = ''
+sudoValidateOption= '-v'
 if "centos" in platfromInfo or "redhat" in platfromInfo or os.path.exists('/usr/bin/yum'):
     linuxSystemInstall = 'yum -y'
     linuxSystemInstall_check = '--nogpgcheck'
     if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
-        linuxCMake = 'cmake3'
-        ERROR_CHECK(os.system(linuxSystemInstall+' install cmake3'))
+        print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
+        exit(-1)
     if not "centos" in platfromInfo or not "redhat" in platfromInfo:
         platfromInfo = platfromInfo+'-redhat'
 elif "Ubuntu" in platfromInfo or os.path.exists('/usr/bin/apt-get'):
@@ -129,12 +130,15 @@ commonPackages = [
     'wget',
     'unzip',
     'pkg-config',
-    'inxi'
+    'inxi',
+    'rocm-hip-runtime'
 ]
 
 # Debian packages
 coreDebianPackages = [
-    'libva-amdgpu-dev',
+    'rocm-hip-runtime-dev',
+    'libva2',
+    'libva-dev',
     'libdrm-amdgpu1',
     'mesa-amdgpu-va-drivers',
     'vainfo'
@@ -151,20 +155,22 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 coreRPMPackages = [
-    'libva-amdgpu-devel',
+    'rocm-hip-runtime-devel',
+    'libva',
+    'libva-devel',
     'libdrm-amdgpu',
     'mesa-amdgpu-dri-drivers',
     'libva-utils'
 ]
 
 # common packages
-ERROR_CHECK(os.system('sudo -v'))
+ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 for i in range(len(commonPackages)):
     ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
             ' '+linuxSystemInstall_check+' install '+ commonPackages[i]))
 
 # rocDecode Core - LibVA Requirements
-ERROR_CHECK(os.system('sudo -v'))
+ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if "Ubuntu" in platfromInfo:
     for i in range(len(coreDebianPackages)):
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
@@ -179,7 +185,7 @@ else:
                 ' '+linuxSystemInstall_check+' install '+ coreRPMPackages[i]))
 
 # rocDecode Dev Requirements
-ERROR_CHECK(os.system('sudo -v'))
+ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if developerInstall == 'ON':
     if "Ubuntu" in platfromInfo:
         for i in range(len(ffmpegDebianPackages)):
