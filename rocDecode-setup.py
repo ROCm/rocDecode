@@ -95,9 +95,8 @@ if "centos" in platfromInfo or "redhat" in platfromInfo or os.path.exists('/usr/
     linuxSystemInstall = 'yum -y'
     linuxSystemInstall_check = '--nogpgcheck'
     if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
-        linuxCMake = 'cmake3'
-        sudoValidateOption= ''
-        ERROR_CHECK(os.system(linuxSystemInstall+' install cmake3'))
+        print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
+        exit(-1)
     if not "centos" in platfromInfo or not "redhat" in platfromInfo:
         platfromInfo = platfromInfo+'-redhat'
 elif "Ubuntu" in platfromInfo or os.path.exists('/usr/bin/apt-get'):
