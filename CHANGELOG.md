@@ -16,10 +16,11 @@ Documentation for rocDecode is available at
 ### Changes
 
 * Dependencies - Updates to core dependencies
+* LibVA Headers - Use public headers
 
 ### Fixes
 
-* 
+* Package deps
 
 ### Tested configurations
 
