@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.7.2"
+__version__ = "1.8.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -98,7 +98,10 @@ if "centos" in platfromInfo or "redhat" in platfromInfo or os.path.exists('/usr/
         print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
         exit(-1)
     if not "centos" in platfromInfo or not "redhat" in platfromInfo:
-        platfromInfo = platfromInfo+'-redhat'
+        if "8" in platform.version():
+            platfromInfo = platfromInfo+'-redhat-8'
+        if "9" in platform.version():
+            platfromInfo = platfromInfo+'-redhat-9'
 elif "Ubuntu" in platfromInfo or os.path.exists('/usr/bin/apt-get'):
     linuxSystemInstall = 'apt-get -y'
     linuxSystemInstall_check = '--allow-unauthenticated'
@@ -111,7 +114,7 @@ elif os.path.exists('/usr/bin/zypper'):
     platfromInfo = platfromInfo+'-SLES'
 else:
     print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
-    print("\nrocDecode Setup Supported on: Ubuntu 20/22; CentOS 7/8; RedHat 8/9; & SLES 15 SP4\n")
+    print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15 SP4\n")
     exit(-1)
 
 # rocDecode Setup
@@ -192,13 +195,7 @@ if developerInstall == 'ON':
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ ffmpegDebianPackages[i]))
     else:
-        if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
-            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                    ' install epel-release'))
-            ERROR_CHECK(os.system('sudo localinstall --nogpgcheck https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm'))
-            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                    ' install ffmpeg ffmpeg-devel'))
-        elif "centos-8" in platfromInfo or "redhat-8" in platfromInfo:
+        if "centos-8" in platfromInfo or "redhat-8" in platfromInfo:
             # el8 x86_64 packages
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                 ' install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm'))
