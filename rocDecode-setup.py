@@ -157,9 +157,9 @@ ffmpegDebianPackages = [
 ]
 
 # RPM Packages
-libvaNameRPM = 'libva'
+libvaNameRPM = libva
 if os.path.exists('/usr/bin/zypper'):
-        libvaNameRPM = 'libva2',
+        libvaNameRPM = libva2
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
     str(libvaNameRPM),
