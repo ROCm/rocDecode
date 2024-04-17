@@ -162,7 +162,7 @@ if os.path.exists('/usr/bin/zypper'):
         libvaNameRPM = 'libva2',
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
-    libvaNameRPM,
+    str(libvaNameRPM),
     'libva-devel',
     'libdrm-amdgpu',
     'mesa-amdgpu-dri-drivers',
