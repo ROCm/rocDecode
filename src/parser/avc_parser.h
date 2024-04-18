@@ -119,6 +119,7 @@ protected:
     int prev_top_field_order_cnt_;
     int prev_frame_num_offset_; // prevFrameNumOffset
     int prev_frame_num_; // prevFrameNum
+    int prev_ref_frame_num_; // PrevRefFrameNum
     int prev_has_mmco_5_;
     int curr_has_mmco_5_;
     int prev_ref_pic_bottom_field_;
@@ -216,6 +217,11 @@ protected:
     /*! \brief Function to calculate picture order count of the current slice. 8.2.1.
      */
     void CalculateCurrPoc();
+
+    /*! \brief Function to check and decode gaps in frame_num. 8.2.5.2.
+     * \return <tt>ParserResult</tt>
+     */
+   ParserResult DecodeFrameNumGaps();
 
     /*! \brief Function to set up the reference picutre lists for each slice. 8.2.4.
      * \param [in] p_slice_info Poiner to slice info struct
