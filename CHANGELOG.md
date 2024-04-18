@@ -33,7 +33,7 @@ Documentation for rocDecode is available at
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.1.0`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.7.2`
+* rocDecode Setup Script - `V1.8.0`
 
 ## rocDecode 0.5.0
 
