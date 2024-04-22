@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -247,10 +248,13 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
 
 int main(int argc, char **argv) {
 
-    std::string input_file_path, output_file_path;
+    std::string input_file_path, output_file_path, md5_file_path;
+    std::fstream ref_md5_file;
     bool dump_output_frames = false;
     bool convert_to_rgb = false;
     int device_id = 0;
+    bool b_generate_md5 = false;
+    bool b_md5_check = false;
     Rect crop_rect = {};
     Dim resize_dim = {};
     Rect *p_crop_rect = nullptr;
@@ -293,6 +297,22 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-d");
             }
             device_id = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-md5")) {
+            if (i == argc) {
+                ShowHelpAndExit("-md5");
+            }
+            b_generate_md5 = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-md5_check")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-md5_check");
+            }
+            b_generate_md5 = true;
+            b_md5_check = true;
+            md5_file_path = argv[i];
             continue;
         }
         if (!strcmp(argv[i], "-crop")) {
@@ -358,6 +378,13 @@ int main(int argc, char **argv) {
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
                                     std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
 
+        if (b_generate_md5) {
+            viddec.InitMd5();
+        }
+        if (b_md5_check) {
+            ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
+        }
+
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
             demuxer.Demux(&p_video, &n_video_bytes, &pts);
@@ -374,6 +401,9 @@ int main(int argc, char **argv) {
             int last_index = 0;
             for (int i = 0; i < n_frames_returned; i++) {
                 p_frame = viddec.GetFrame(&pts);
+                if (b_generate_md5) {
+                    viddec.UpdateMd5ForFrame(p_frame, surf_info);
+                }
                 // allocate extra device memories to use double-buffering for keeping two decoded frames
                 if (frame_buffers[0] == nullptr) {
                     for (int i = 0; i < frame_buffers_size; i++) {
@@ -437,6 +467,39 @@ int main(int argc, char **argv) {
             }
             std::cout << info_message << total_dec_time / n_frame << std::endl;
             std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+        }
+        if (b_generate_md5) {
+            uint8_t *digest;
+            viddec.FinalizeMd5(&digest);
+            std::cout << "MD5 message digest: ";
+            for (int i = 0; i < 16; i++) {
+                std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
+            }
+            std::cout << std::endl;
+
+            if (b_md5_check) {
+                char ref_md5_string[33], c2[2];
+                uint8_t ref_md5[16];
+                std::string str;
+
+                for (int i = 0; i < 16; i++) {
+                    int c;
+                    ref_md5_file.get(c2[0]);
+                    ref_md5_file.get(c2[1]);
+                    str = c2;
+                    c = std::stoi(str, nullptr, 16);
+                    ref_md5[i] = c;
+                }
+                if (memcmp(digest, ref_md5, 16) == 0) {
+                    std::cout << "MD5 digest matches the reference MD5 digest: ";
+                } else {
+                    std::cout << "MD5 digest does not match the reference MD5 digest: ";
+                }
+                ref_md5_file.seekg(0, std::ios_base::beg);
+                ref_md5_file.getline(ref_md5_string, 33);
+                std::cout << ref_md5_string << std::endl;
+                ref_md5_file.close();
+            }
         }
         if (resize_surf_info != nullptr) {
             delete resize_surf_info;
