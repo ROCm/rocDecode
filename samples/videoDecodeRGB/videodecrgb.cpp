@@ -55,8 +55,9 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
-    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
-
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
+    << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
+    << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl;
     exit(0);
 }
 
