@@ -194,7 +194,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     // Start decode process
                     if (num_slices_ == 0) {
                         if (p_slice_header->field_pic_flag) {
-                            second_field_ = (pic_count_ & 1) ? 1 : 0;
+                            second_field_ = pic_count_ & 1;
                         } else {
                             second_field_ = 0;
                         }
