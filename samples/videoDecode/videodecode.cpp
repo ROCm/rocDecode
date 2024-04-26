@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
                 // use VideoSeekContext class to seek to given frame number
                 video_seek_ctx.seek_frame_ = seek_to_frame;
                 video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
-                video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
+                video_seek_ctx.seek_mode_ = SEEK_MODE_EXACT_FRAME;
                 demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
                 pts = video_seek_ctx.out_frame_pts_;
                 std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
                 // use VideoSeekContext class to seek to given timestamp
                 video_seek_ctx.seek_frame_ = seek_to_frame;
                 video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
-                video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
+                video_seek_ctx.seek_mode_ = SEEK_MODE_EXACT_FRAME;
                 demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
                 pts = video_seek_ctx.out_frame_pts_;
                 std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << std::endl;

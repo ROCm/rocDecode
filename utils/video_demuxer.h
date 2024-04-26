@@ -432,7 +432,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         }
 
         if (ret < 0) {
-            throw std::runtime_error("ERROR: seeking for frame: ");
+            throw std::runtime_error("ERROR: seeking for frame");
         }
     };
 
@@ -479,8 +479,12 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
 
             // We've gone too far and need to seek backwards;
             if (seek_done > 0) {
-                tmp_ctx.seek_frame_--;
-                seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
+                if (tmp_ctx.seek_frame_) {  //needed to avoid infinite loop
+                    tmp_ctx.seek_frame_--;
+                    seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
+                } else {
+                    break;
+                }
             }
             // Need to read more frames until we reach requested number;
             else if (seek_done < 0) {
