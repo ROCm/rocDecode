@@ -205,6 +205,7 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
+        bool first_frame = true;
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
@@ -228,7 +229,7 @@ int main(int argc, char **argv) {
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            if (seek_mode == 1 && !n_frame) {
+            if (seek_mode == 1 && first_frame) {
                 // use VideoSeekContext class to seek to given frame number
                 video_seek_ctx.seek_frame_ = seek_to_frame;
                 video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
@@ -236,7 +237,8 @@ int main(int argc, char **argv) {
                 demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
                 pts = video_seek_ctx.out_frame_pts_;
                 std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
-            } else if (seek_mode == 2 && !n_frame) {
+                first_frame = false;
+            } else if (seek_mode == 2 && first_frame) {
                 // use VideoSeekContext class to seek to given timestamp
                 video_seek_ctx.seek_frame_ = seek_to_frame;
                 video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
@@ -244,9 +246,10 @@ int main(int argc, char **argv) {
                 demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
                 pts = video_seek_ctx.out_frame_pts_;
                 std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << std::endl;
+                first_frame = false;
             } else {
                 demuxer.Demux(&pvideo, &n_video_bytes, &pts);
-            } 
+            }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
@@ -275,6 +278,7 @@ int main(int argc, char **argv) {
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
                 break;
             }
+
         } while (n_video_bytes);
         
         n_frame += viddec.GetNumOfFlushedFrames();
