@@ -143,7 +143,6 @@ class VideoDemuxer {
         int64_t TsFromTime(double ts_sec) {
             // Convert integer timestamp representation to AV_TIME_BASE and switch to fixed_point
             auto const ts_tbu = llround(ts_sec * AV_TIME_BASE);
-
             // Rescale the timestamp to value represented in stream base units;
             AVRational time_factor = {1, AV_TIME_BASE};
             return av_rescale_q(ts_tbu, time_factor, av_fmt_input_ctx_->streams[av_stream_]->time_base);
@@ -239,26 +238,26 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
         *video_size = packet_filtered_->size;
         if (pts)
             *pts = (int64_t) (packet_filtered_->pts * default_time_scale_ * time_base_);
-        } else {
-           if (is_mpeg4_ && (frame_count_ == 0)) {
-               int ext_data_size = av_fmt_input_ctx_->streams[av_stream_]->codecpar->extradata_size;
-               if (ext_data_size > 0) {
-                    data_with_header_ = (uint8_t *)av_malloc(ext_data_size + packet_->size - 3 * sizeof(uint8_t));
-                    if (!data_with_header_) {
-                        std::cerr << "ERROR: av_malloc failed!" << std::endl;
-                        return false;
-                    }
-                    memcpy(data_with_header_, av_fmt_input_ctx_->streams[av_stream_]->codecpar->extradata, ext_data_size);
-                    memcpy(data_with_header_ + ext_data_size, packet_->data + 3, packet_->size - 3 * sizeof(uint8_t));
-                    *video = data_with_header_;
-                    *video_size = ext_data_size + packet_->size - 3 * sizeof(uint8_t);
+    } else {
+        if (is_mpeg4_ && (frame_count_ == 0)) {
+            int ext_data_size = av_fmt_input_ctx_->streams[av_stream_]->codecpar->extradata_size;
+            if (ext_data_size > 0) {
+                data_with_header_ = (uint8_t *)av_malloc(ext_data_size + packet_->size - 3 * sizeof(uint8_t));
+                if (!data_with_header_) {
+                    std::cerr << "ERROR: av_malloc failed!" << std::endl;
+                    return false;
                 }
-            } else {
-                *video = packet_->data;
-                *video_size = packet_->size;
+                memcpy(data_with_header_, av_fmt_input_ctx_->streams[av_stream_]->codecpar->extradata, ext_data_size);
+                memcpy(data_with_header_ + ext_data_size, packet_->data + 3, packet_->size - 3 * sizeof(uint8_t));
+                *video = data_with_header_;
+                *video_size = ext_data_size + packet_->size - 3 * sizeof(uint8_t);
             }
-            if (pts)
-                *pts = (int64_t)(packet_->pts * default_time_scale_ * time_base_);
+        } else {
+            *video = packet_->data;
+            *video_size = packet_->size;
+        }
+        if (pts)
+            *pts = (int64_t)(packet_->pts * default_time_scale_ * time_base_);
     }
     frame_count_++;
     return true;
@@ -394,7 +393,7 @@ VideoDemuxer::VideoDemuxer(AVFormatContext *av_fmt_input_ctx) : av_fmt_input_ctx
     }
 }
 
-bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* video_size) {    
+bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* video_size) {
     /* !!! IMPORTANT !!!
         * Across this function, packet decode timestamp (DTS) values are used to
         * compare given timestamp against. This is done because DTS values shall
@@ -473,7 +472,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
 
         int seek_done = 0;
         do {
-            if (!Demux(pp_video, video_size)) {
+            if (!Demux(pp_video, video_size, &pkt_data.pts)) {
                 break;
             }
             seek_done = is_seek_done(pkt_data, seek_ctx);
@@ -495,8 +494,8 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
 
     // Seek for closest key frame in the past;
     auto seek_for_prev_key_frame = [&](PacketData& pkt_data, VideoSeekContext& seek_ctx) {
-        seek_frame(seek_ctx.seek_crit_, AVSEEK_FLAG_BACKWARD);
-        Demux(pp_video, video_size);
+        seek_frame(seek_ctx, AVSEEK_FLAG_BACKWARD);
+        Demux(pp_video, video_size, &pkt_data.pts);
         seek_ctx.out_frame_pts_ = pkt_data.pts;
         seek_ctx.out_frame_duration_ = pkt_data.duration;
     };
