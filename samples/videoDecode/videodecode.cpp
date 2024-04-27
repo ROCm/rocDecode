@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
                 video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
                 demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
                 pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << std::endl;
+                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
                 first_frame = false;
             } else {
                 demuxer.Demux(&pvideo, &n_video_bytes, &pts);
