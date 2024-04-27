@@ -63,6 +63,7 @@ void DumpRGBImage(std::string outputfileName, void* pdevMem, OutputSurfaceInfo *
     if (fpOut == nullptr) {
         fpOut = fopen(outputfileName.c_str(), "wb");
     }
+    
     uint8_t *hstPtr = nullptr;
     hstPtr = new uint8_t [rgb_image_size];
     hipError_t hip_status = hipSuccess;
@@ -160,7 +161,7 @@ std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
-        OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec) {
+        OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec, bool b_generate_md5) {
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
@@ -239,6 +240,10 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
             else
                 viddec.SaveFrameToFile(output_file_path, out_frame, p_surf_info);
         }
+        if(b_generate_md5){
+            viddec.UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
+        }
+        
 
         cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
@@ -264,6 +269,7 @@ int main(int argc, char **argv) {
     int rgb_width;
     uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
+    bool b_generate_md5 = false;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -327,6 +333,13 @@ int main(int argc, char **argv) {
             e_output_format = (OutputFormatEnum)(it - st_output_format_name.begin());
             continue;
         }
+        if (!strcmp(argv[i], "-md5")) {
+            if (i == argc) {
+                ShowHelpAndExit("-md5");
+            }
+            b_generate_md5 = true;
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
 
@@ -345,6 +358,10 @@ int main(int argc, char **argv) {
         std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
         std::cout << "info: decoding started, please wait!" << std::endl;
 
+        if (b_generate_md5) {
+            viddec.InitMd5();
+        }
+
         int n_video_bytes = 0, n_frames_returned = 0, n_frame = 0;
         uint8_t *p_video = nullptr;
         uint8_t *p_frame = nullptr;
@@ -356,7 +373,7 @@ int main(int argc, char **argv) {
         convert_to_rgb = e_output_format != native;
         std::atomic<bool> continue_processing(true);
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec));
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), b_generate_md5);
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
@@ -440,6 +457,39 @@ int main(int argc, char **argv) {
         }
         if (resize_surf_info != nullptr) {
             delete resize_surf_info;
+        }
+        if (b_generate_md5) {
+            uint8_t *digest;
+            viddec.FinalizeMd5(&digest);
+            std::cout << "MD5 message digest: ";
+            for (int i = 0; i < 16; i++) {
+                std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
+            }
+            std::cout << std::endl;
+
+            /*if (b_md5_check) {
+                char ref_md5_string[33], c2[2];
+                uint8_t ref_md5[16];
+                std::string str;
+
+                for (int i = 0; i < 16; i++) {
+                    int c;
+                    ref_md5_file.get(c2[0]);
+                    ref_md5_file.get(c2[1]);
+                    str = c2;
+                    c = std::stoi(str, nullptr, 16);
+                    ref_md5[i] = c;
+                }
+                if (memcmp(digest, ref_md5, 16) == 0) {
+                    std::cout << "MD5 digest matches the reference MD5 digest: ";
+                } else {
+                    std::cout << "MD5 digest does not match the reference MD5 digest: ";
+                }
+                ref_md5_file.seekg(0, std::ios_base::beg);
+                ref_md5_file.getline(ref_md5_string, 33);
+                std::cout << ref_md5_string << std::endl;
+                ref_md5_file.close();
+            }*/
         }
     } catch (const std::exception &ex) {
         std::cout << ex.what() << std::endl;

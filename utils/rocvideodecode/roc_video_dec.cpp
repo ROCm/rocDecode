@@ -989,6 +989,24 @@ void RocVideoDecoder::InitMd5() {
     av_md5_init(md5_ctx_);
 }
 
+void RocVideoDecoder::UpdateMd5ForDataBuffer(void *pDevMem, int rgb_image_size){
+    uint8_t *hstPtr = nullptr;
+    hstPtr = new uint8_t [rgb_image_size];
+    hipError_t hip_status = hipSuccess;
+    hip_status = hipMemcpyDtoH((void *)hstPtr, pDevMem, rgb_image_size);
+    if (hip_status != hipSuccess) {
+        std::cout << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
+        delete [] hstPtr;
+        return;
+    }
+
+    av_md5_update(md5_ctx_, hstPtr, rgb_image_size);
+
+    if(hstPtr){
+        delete [] hstPtr;
+    }
+}
+
 void RocVideoDecoder::UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_info) {
     int i;
     uint8_t *hst_ptr = nullptr;
