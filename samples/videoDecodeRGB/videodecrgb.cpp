@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -252,7 +253,10 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
 
 int main(int argc, char **argv) {
 
-    std::string input_file_path, output_file_path;
+    std::string input_file_path, output_file_path, md5_file_path;
+    std::fstream ref_md5_file;
+    bool b_generate_md5 = false;
+    bool b_md5_check = false;
     bool dump_output_frames = false;
     bool convert_to_rgb = false;
     int device_id = 0;
@@ -269,7 +273,7 @@ int main(int argc, char **argv) {
     int rgb_width;
     uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
-    bool b_generate_md5 = false;
+    
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -340,6 +344,15 @@ int main(int argc, char **argv) {
             b_generate_md5 = true;
             continue;
         }
+        if (!strcmp(argv[i], "-md5_check")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-md5_check");
+            }
+            b_generate_md5 = true;
+            b_md5_check = true;
+            md5_file_path = argv[i];
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
 
@@ -360,6 +373,9 @@ int main(int argc, char **argv) {
 
         if (b_generate_md5) {
             viddec.InitMd5();
+        }
+        if (b_md5_check) {
+            ref_md5_file.open(md5_file_path.c_str(), std::ios::in);            
         }
 
         int n_video_bytes = 0, n_frames_returned = 0, n_frame = 0;
@@ -467,7 +483,7 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
 
-            /*if (b_md5_check) {
+            if (b_md5_check) {
                 char ref_md5_string[33], c2[2];
                 uint8_t ref_md5[16];
                 std::string str;
@@ -489,7 +505,7 @@ int main(int argc, char **argv) {
                 ref_md5_file.getline(ref_md5_string, 33);
                 std::cout << ref_md5_string << std::endl;
                 ref_md5_file.close();
-            }*/
+            }
         }
     } catch (const std::exception &ex) {
         std::cout << ex.what() << std::endl;
