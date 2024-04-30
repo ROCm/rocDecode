@@ -182,6 +182,7 @@ class VideoDemuxer {
         uint32_t bit_depth_ = 0;
         uint32_t byte_per_pixel_ = 0;
         uint32_t bit_rate_ = 0;
+        int64_t pkt_dts_ = 0;    // used for Seek Exact frame
 };
 
 VideoDemuxer::~VideoDemuxer() {
@@ -236,6 +237,7 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
         }
         *video = packet_filtered_->data;
         *video_size = packet_filtered_->size;
+        pkt_dts_ = packet_filtered_->dts;
         if (pts)
             *pts = (int64_t) (packet_filtered_->pts * default_time_scale_ * time_base_);
     } else {
@@ -452,11 +454,10 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
                 return -1;
         }
 
-            //TODO: set pkt_data.dts before comparing
-        if (pkt_data.dts == target_ts) {
+        if (pkt_dts_ == target_ts) {
             return 0;
         }
-        else if (pkt_data.dts > target_ts) {
+        else if (pkt_dts_ > target_ts) {
             return 1;
         }
         else {
@@ -468,30 +469,25 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         * Note that decoder may not be able to decode such frame; */
     auto seek_for_exact_frame = [&](PacketData& pkt_data, VideoSeekContext& seek_ctx) {
         // Repetititive seek until seek condition is satisfied;
-        VideoSeekContext tmp_ctx(seek_ctx);
+        VideoSeekContext tmp_ctx(seek_ctx.seek_frame_);
         seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
 
         int seek_done = 0;
         do {
-            if (!Demux(pp_video, video_size)) {
-                throw std::runtime_error("ERROR: seeking for frame");
-                //break;
+            if (!Demux(pp_video, video_size, &pkt_data.pts)) {
+                break;
             }
             seek_done = is_seek_done(pkt_data, seek_ctx);
 
             // We've gone too far and need to seek backwards;
             if (seek_done > 0) {
-                if (tmp_ctx.seek_frame_) {  //needed to avoid infinite loop
-                    tmp_ctx.seek_frame_--;
-                    seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
-                } else {
-                    break;
-                }
+                tmp_ctx.seek_frame_--;
+                seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
             }
             // Need to read more frames until we reach requested number;
             else if (seek_done < 0) {
-                throw std::runtime_error("ERROR: Cannot seek for frame");
-                //continue;
+                tmp_ctx.seek_frame_++;
+                seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
             }
         } while (seek_done != 0);
 
@@ -505,7 +501,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         Demux(pp_video, video_size, &pkt_data.pts);
         seek_ctx.num_frames_decoded_ = static_cast<uint64_t>(pkt_data.pts / 1000 * frame_rate_);
         seek_ctx.out_frame_pts_ = pkt_data.pts;
-        seek_ctx.out_frame_duration_ = static_cast<int64_t>(pkt_data.pts / 1000 * seek_ctx.seek_frame_);
+        seek_ctx.out_frame_duration_ = static_cast<int64_t>(pkt_data.pts / 1000);
     };
 
     PacketData pktData;
