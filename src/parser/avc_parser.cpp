@@ -1982,8 +1982,8 @@ ParserResult AvcVideoParser::DecodeFrameNumGaps() {
 
 // 8.2.4
 static inline int ComparePicNumDesc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int pic_num_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_num;
-    int pic_num_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_num;
+    int pic_num_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->pic_num;
+    int pic_num_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->pic_num;
 
     if (pic_num_1 < pic_num_2) {
         return 1;
@@ -1995,8 +1995,8 @@ static inline int ComparePicNumDesc(const void *p_pic_info_1, const void *p_pic_
 }
 
 static inline int ComparePocDesc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int poc_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_order_cnt;
-    int poc_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_order_cnt;
+    int poc_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->pic_order_cnt;
+    int poc_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->pic_order_cnt;
 
     if (poc_1 < poc_2) {
         return 1;
@@ -2008,8 +2008,8 @@ static inline int ComparePocDesc(const void *p_pic_info_1, const void *p_pic_inf
 }
 
 static inline int ComparePocAsc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int poc_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->pic_order_cnt;
-    int poc_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->pic_order_cnt;
+    int poc_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->pic_order_cnt;
+    int poc_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->pic_order_cnt;
 
     if (poc_1 < poc_2) {
         return -1;
@@ -2021,8 +2021,8 @@ static inline int ComparePocAsc(const void *p_pic_info_1, const void *p_pic_info
 }
 
 static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int long_term_pic_num_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->long_term_pic_num;
-    int long_term_pic_num_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->long_term_pic_num;
+    int long_term_pic_num_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->long_term_pic_num;
+    int long_term_pic_num_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->long_term_pic_num;
 
     if (long_term_pic_num_1 < long_term_pic_num_2) {
         return -1;
@@ -2034,8 +2034,8 @@ static inline int CompareLongTermPicNumAsc(const void *p_pic_info_1, const void 
 }
 
 static inline int CompareFrameNumWrapDesc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int frame_num_wrap_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->frame_num_wrap;
-    int frame_num_wrap_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->frame_num_wrap;
+    int frame_num_wrap_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->frame_num_wrap;
+    int frame_num_wrap_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->frame_num_wrap;
 
     if (frame_num_wrap_1 < frame_num_wrap_2) {
         return 1;
@@ -2047,8 +2047,8 @@ static inline int CompareFrameNumWrapDesc(const void *p_pic_info_1, const void *
 }
 
 static inline int CompareLongTermFrameIdxAsc(const void *p_pic_info_1, const void *p_pic_info_2) {
-    int long_term_frame_idx_1 = ((AvcVideoParser::AvcPicture*)p_pic_info_1)->long_term_frame_idx;
-    int long_term_frame_idx_2 = ((AvcVideoParser::AvcPicture*)p_pic_info_2)->long_term_frame_idx;
+    int long_term_frame_idx_1 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_1))->long_term_frame_idx;
+    int long_term_frame_idx_2 = (reinterpret_cast<const AvcVideoParser::AvcPicture*>(p_pic_info_2))->long_term_frame_idx;
 
     if (long_term_frame_idx_1 < long_term_frame_idx_2) {
         return -1;
