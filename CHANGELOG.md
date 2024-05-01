@@ -17,6 +17,7 @@ Documentation for rocDecode is available at
 
 * Dependencies - Updates to core dependencies
 * LibVA Headers - Use public headers
+* mesa-amdgpu-va-drivers - RPM Package available on RPM from ROCm 6.2
 
 ### Fixes
 
@@ -33,7 +34,7 @@ Documentation for rocDecode is available at
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.1.0`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.8.0`
+* rocDecode Setup Script - `V2.0.0`
 
 ## rocDecode 0.5.0
 

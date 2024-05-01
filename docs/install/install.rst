@@ -28,7 +28,7 @@ Tested configurations
 
 * FFmpeg: 4.2.7/4.4.2-0
 
-* rocDecode Setup Script: V1.7.2
+* rocDecode Setup Script: V2.0.0
 
 Supported codecs
 ========================================

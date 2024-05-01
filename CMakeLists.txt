@@ -193,7 +193,7 @@ if(HIP_FOUND AND Libva_FOUND)
 
   # Set the dependent packages - TBD: mesa-amdgpu-va-drivers should bring libdrm-amdgpu, but unavailable on RPM
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva, libdrm-amdgpu, mesa-amdgpu-dri-drivers")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva, libdrm-amdgpu, mesa-amdgpu-va-drivers")
   # Set the dev dependent packages
   set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
