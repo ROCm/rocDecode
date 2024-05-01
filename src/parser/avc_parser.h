@@ -128,10 +128,13 @@ protected:
     int curr_ref_pic_bottom_field_;
     int max_long_term_frame_idx_; // MaxLongTermFrameIdx
 
-    // DPB
-    AvcPicture curr_pic_;
+    // Field picture info
+    uint32_t field_pic_count_;
     int second_field_;
     int first_field_pic_idx_;
+
+    // DPB
+    AvcPicture curr_pic_;
     DecodedPictureBuffer dpb_buffer_;
 
     /*! \brief Function to notify decoder about video format change (new SPS) through callback

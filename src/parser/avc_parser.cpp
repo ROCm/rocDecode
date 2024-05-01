@@ -39,6 +39,7 @@ AvcVideoParser::AvcVideoParser() {
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_, 0, sizeof(AvcPicture));
+    field_pic_count_ = 0;
     second_field_ = 0;
     first_field_pic_idx_ = 0;
     InitDpb();
@@ -195,10 +196,12 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     // Start decode process
                     if (num_slices_ == 0) {
                         if (p_slice_header->field_pic_flag) {
-                            second_field_ = pic_count_ & 1;
+                            second_field_ = field_pic_count_ & 1;
+                            field_pic_count_++;
                         } else {
                             second_field_ = 0;
                         }
+
                         // Use the data directly from demuxer without copying
                         pic_stream_data_ptr_ = pic_data_buffer_ptr_ + curr_start_code_offset_;
                         // Picture stream data size is calculated as the diff between the frame end and the first slice offset.
@@ -270,6 +273,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 
                 case kAvcNalTypeEnd_Of_Stream: {
                     pic_count_ = 0;
+                    field_pic_count_ = 0;
                     break;
                 }
 
@@ -2568,7 +2572,7 @@ ParserResult AvcVideoParser::CheckDpbAndOutput() {
 
 ParserResult AvcVideoParser::FindFreeBufInDpb() {
     int i;
-    if (!second_field_) {
+    if (curr_pic_.pic_structure == kFrame || !second_field_) {
         if (dpb_buffer_.dpb_fullness == dpb_buffer_.dpb_size) {
             if (BumpPicFromDpb() != PARSER_OK) {
                     return PARSER_FAIL;
@@ -2916,6 +2920,14 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
                 dpb_buffer_.num_short_term++;
             } else if (curr_pic_.is_reference == kUsedForLongTerm) {
                 dpb_buffer_.num_long_term++;
+            }
+
+            AvcSeqParameterSet *p_sps = &sps_list_[active_sps_id_];
+            if (p_sps->frame_mbs_only_flag == 0) { // picture adaptive frame-field (PICAFF)
+                dpb_buffer_.field_pic_list[i * 2] = curr_pic_;
+                dpb_buffer_.field_pic_list[i * 2].pic_structure = kTopField;
+                dpb_buffer_.field_pic_list[i * 2 + 1] = curr_pic_;
+                dpb_buffer_.field_pic_list[i * 2 + 1].pic_structure = kBottomField;
             }
         }
         else {
