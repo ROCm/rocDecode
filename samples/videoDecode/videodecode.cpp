@@ -52,7 +52,11 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
+    << "-seek_criteria - Demux seek criteria & value - optional; default - 0,0; "
+    << "[0: no seek; 1: SEEK_CRITERIA_FRAME_NUM, frame number; 2: SEEK_CRITERIA_TIME_STAMP, frame number (time calculated internally)]" << std::endl
+    << "-seek_mode - Seek to previous key frame or exact - optional; default - 0"
+    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl;
     exit(0);
 }
 
@@ -73,6 +77,9 @@ int main(int argc, char **argv) {
     ReconfigParams reconfig_params = { 0 };
     ReconfigDumpFileStruct reconfig_user_struct = { 0 };
     uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
+    // seek options
+    uint64_t seek_to_frame = 0;
+    int seek_criteria = 0, seek_mode = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -163,6 +170,23 @@ int main(int argc, char **argv) {
             b_flush_frames_during_reconfig = atoi(argv[i]) ? true : false;
             continue;
         }
+        if (!strcmp(argv[i], "-seek_criteria")) {
+            if (++i == argc || 2 != sscanf(argv[i], "%d,%lu", &seek_criteria, &seek_to_frame)) {
+                ShowHelpAndExit("-seek_criteria");
+            }
+            if (0 > seek_criteria || seek_criteria >= 3)
+                ShowHelpAndExit("-seek_criteria");
+            continue;
+        }
+        if (!strcmp(argv[i], "-seek_mode")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-seek_mode");
+            }
+            seek_mode = atoi(argv[i]);
+            if (seek_mode != 0 && seek_mode != 1)
+                ShowHelpAndExit("-seek_mode");
+            continue;
+        }
 
         ShowHelpAndExit(argv[i]);
     }
@@ -171,6 +195,7 @@ int main(int argc, char **argv) {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
         VideoDemuxer demuxer(input_file_path.c_str());
+        VideoSeekContext video_seek_ctx;
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
 
@@ -191,6 +216,7 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
+        bool first_frame = true;
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
@@ -214,13 +240,33 @@ int main(int argc, char **argv) {
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+            if (seek_criteria == 1 && first_frame) {
+                // use VideoSeekContext class to seek to given frame number
+                video_seek_ctx.seek_frame_ = seek_to_frame;
+                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
+                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                pts = video_seek_ctx.out_frame_pts_;
+                std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
+                first_frame = false;
+            } else if (seek_criteria == 2 && first_frame) {
+                // use VideoSeekContext class to seek to given timestamp
+                video_seek_ctx.seek_frame_ = seek_to_frame;
+                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
+                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                pts = video_seek_ctx.out_frame_pts_;
+                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
+                first_frame = false;
+            } else {
+                demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+            }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
             n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
-            
+
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
@@ -243,6 +289,7 @@ int main(int argc, char **argv) {
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
                 break;
             }
+
         } while (n_video_bytes);
         
         n_frame += viddec.GetNumOfFlushedFrames();
