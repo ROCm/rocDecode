@@ -135,8 +135,6 @@ protected:
 
     // DPB
     AvcPicture curr_pic_;
-    int second_field_;
-    int first_field_pic_idx_;
     DecodedPictureBuffer dpb_buffer_;
 
     /*! \brief Function to notify decoder about video format change (new SPS) through callback
