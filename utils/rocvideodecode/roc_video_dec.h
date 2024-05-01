@@ -332,6 +332,8 @@ class RocVideoDecoder {
          */
         void InitMd5();
 
+        void UpdateMd5ForDataBuffer(void *pDevMem, int rgb_image_size);
+
         /**
          * @brief Helper function to dump decoded output surface to file
          *
