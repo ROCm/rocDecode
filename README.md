@@ -35,8 +35,6 @@ access the video decoding features available on your GPU.
   ```shell
   sudo apt install mesa-amdgpu-va-drivers
   ```
-> [!NOTE]
-> RPM Packages for `RHEL`/`SLES` - `libdrm-amdgpu mesa-amdgpu-dri-drivers`
 
 * CMake `3.5` or later
 
@@ -62,6 +60,9 @@ access the video decoding features available on your GPU.
 >  ```shell
 >  sudo apt install libstdc++-12-dev
 >  ```
+>
+> * Additional RPM Packages required for `RHEL`/`SLES` - `libdrm-amdgpu`
+
 
 >[!NOTE]
 > * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
@@ -229,4 +230,4 @@ page.
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.1.0`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V1.8.0`
+* rocDecode Setup Script - `V2.0.0`

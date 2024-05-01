@@ -28,7 +28,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "1.8.0"
+__version__ = "2.0.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -165,7 +165,7 @@ coreRPMPackages = [
     str(libvaNameRPM),
     'libva-devel',
     'libdrm-amdgpu',
-    'mesa-amdgpu-dri-drivers',
+    'mesa-amdgpu-va-drivers',
     'libva-utils'
 ]
 
