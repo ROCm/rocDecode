@@ -26,6 +26,8 @@ Tested configurations
 
 * mesa-amdgpu-va-drivers: 1:24.1.0
 
+* mesa-amdgpu-dri-drivers - `24.1.0.60200`
+
 * FFmpeg: 4.2.7/4.4.2-0
 
 * rocDecode Setup Script: V2.0.0
@@ -90,8 +92,10 @@ Prerequisites
 
 .. note::
 
-  All package installs are shown with the ``apt`` package manager. Use the appropriate package
+  * All package installs are shown with the ``apt`` package manager. Use the appropriate package
   manager for your operating system.
+
+  * Additional RPM Packages required for `RHEL`/`SLES` - `libdrm-amdgpu mesa-amdgpu-dri-drivers`
 
 Prerequisites setup script
 ----------------------------------------------------------------------------------------------------------
