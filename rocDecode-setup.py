@@ -22,6 +22,7 @@ import os
 import sys
 import argparse
 import platform
+import traceback
 if sys.version_info[0] < 3:
     import commands
 else:
@@ -37,6 +38,7 @@ def ERROR_CHECK(call):
     status = call
     if(status != 0):
         print('ERROR_CHECK failed with status:'+str(status))
+        traceback.print_stack()
         exit(status)
 
 # Arguments
@@ -181,10 +183,11 @@ if "Ubuntu" in platfromInfo:
     for i in range(len(coreDebianPackages)):
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                 ' '+linuxSystemInstall_check+' install '+ coreDebianPackages[i]))
-    if "22.04" in platform.version():
-        for i in range(len(coreDebianU22Packages)):
-            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
-                ' '+linuxSystemInstall_check+' install '+ coreDebianU22Packages[i]))
+    with open('/etc/os-release') as f:
+        if '22' in f.read():
+            for i in range(len(coreDebianU22Packages)):
+                ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+                    ' '+linuxSystemInstall_check+' install '+ coreDebianU22Packages[i]))
 else:
     for i in range(len(coreRPMPackages)):
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
