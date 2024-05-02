@@ -99,6 +99,8 @@ protected:
         uint32_t num_long_term; // numLongTerm;
         AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
         // Corresponding fields of a frame in frame_buffer_list: for frame index i, the field indexes are i * 2 (first field) and i * 2 + 1 (second field)
+        uint32_t num_short_term_ref_fields;
+        uint32_t num_long_term_ref_fields;
         AvcPicture field_pic_list[AVC_MAX_DPB_FIELDS];
         uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
@@ -245,7 +247,7 @@ protected:
      * \param [out] num_fields_filled Number of reference fields filled in RefPicListX
      * \return None
      */
-    void FillFieldRefList(AvcPicture *ref_frame_list_x, int num_ref_frames, int ref_type, int curr_field_parity, AvcPicture *ref_pic_list_x, int *num_fields_filled);
+    void FillFieldRefList(AvcPicture *ref_frame_list_x, int num_ref_frames, int ref_type, int curr_field_parity, AvcPicture *ref_pic_list_x, uint32_t *num_fields_filled);
 
     /*! \brief Function to modify a reference picture list.
      * \param [in/out] ref_pic_list_x The reference picture list to be modified
