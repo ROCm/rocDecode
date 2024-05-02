@@ -168,6 +168,7 @@ coreRPMPackages = [
     'libva-devel',
     'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
+    'mesa-amdgpu-dri-drivers',
     'libva-utils'
 ]
 
