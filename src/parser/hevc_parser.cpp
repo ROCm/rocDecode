@@ -1267,6 +1267,7 @@ void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
         }
     }
     p_vps->vps_extension_flag = Parser::GetBit(nalu, offset);
+    p_vps->is_received = 1;
 
 #if DBGINFO
     PrintVps(p_vps);
@@ -1394,6 +1395,7 @@ void HevcVideoParser::ParseSps(uint8_t *nalu, size_t size) {
         ParseVui(&sps_ptr->vui_parameters, sps_ptr->sps_max_sub_layers_minus1, nalu, size, offset);
     }
     sps_ptr->sps_extension_flag = Parser::GetBit(nalu, offset);
+    sps_ptr->is_received = 1;
 
 #if DBGINFO
     PrintSps(sps_ptr);
@@ -1512,6 +1514,8 @@ void HevcVideoParser::ParsePps(uint8_t *nalu, size_t size) {
         pps_ptr->log2_sao_offset_scale_chroma = Parser::ExpGolomb::ReadUe(nalu, offset);
     }
 
+    pps_ptr->is_received = 1;
+
 #if DBGINFO
     PrintPps(pps_ptr);
 #endif // DBGINFO
@@ -1534,6 +1538,10 @@ bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegH
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
     temp_sh.slice_pic_parameter_set_id = p_slice_header->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &m_pps_[m_active_pps_id_];
+    if ( pps_ptr->is_received == 0) {
+        ERR("Empty PPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
     if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
         sps_ptr = &m_sps_[m_active_sps_id_];
@@ -1543,7 +1551,15 @@ bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegH
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     sps_ptr = &m_sps_[m_active_sps_id_];
+    if (sps_ptr->is_received == 0) {
+        ERR("Empty SPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
     m_active_vps_id_ = sps_ptr->sps_video_parameter_set_id;
+    if (m_vps_[m_active_vps_id_].is_received == 0) {
+        ERR("Empty VPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
 
     // Check video dimension change
     if ( pic_width_ != sps_ptr->pic_width_in_luma_samples || pic_height_ != sps_ptr->pic_height_in_luma_samples) {

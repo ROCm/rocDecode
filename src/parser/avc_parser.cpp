@@ -1180,9 +1180,17 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
     // Set active SPS and PPS for the current slice
     active_pps_id_ = p_slice_header->pic_parameter_set_id;
     p_pps = &pps_list_[active_pps_id_];
+    if (p_pps->is_received == 0) {
+        ERR("Empty PPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
     if (active_sps_id_ != p_pps->seq_parameter_set_id) {
         active_sps_id_ = p_pps->seq_parameter_set_id;
         p_sps = &sps_list_[active_sps_id_];
+        if ( p_sps->is_received == 0) {
+            ERR("Empty SPS is referred.");
+            return PARSER_WRONG_STATE;
+        }
         // Re-set DPB size.
         dpb_buffer_.dpb_size = p_sps->max_num_ref_frames + 3;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > AVC_MAX_DPB_FRAMES ? AVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
