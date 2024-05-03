@@ -337,7 +337,8 @@ typedef struct {
 
 /*! \brief Structure for Video Parameter Set
  */
-typedef struct{
+typedef struct {
+    uint32_t is_received;                                // received with vps_video_parameter_set_id
     uint32_t vps_video_parameter_set_id;                 //u(4)
     uint32_t vps_base_layer_internal_flag;               //u(1)
     uint32_t vps_base_layer_available_flag;              //u(1)
@@ -377,6 +378,7 @@ typedef struct{
 /*! \brief Structure for Sequence Parameter Set
  */
 typedef struct {
+    uint32_t is_received;                                // received with sps_seq_parameter_set_id
     uint32_t sps_video_parameter_set_id;                 //u(4)
     uint32_t sps_max_sub_layers_minus1;                  //u(3)
     bool sps_temporal_id_nesting_flag;                   //u(1)
@@ -443,6 +445,7 @@ typedef struct {
 /*! \brief  Structure for Picture Parameter Set
  */
 typedef struct {
+    uint32_t is_received;                                // received with pps_pic_parameter_set_id
     uint32_t pps_pic_parameter_set_id;                   //ue(v)
     uint32_t pps_seq_parameter_set_id;                   //ue(v)
     bool dependent_slice_segments_enabled_flag;          //u(1)
