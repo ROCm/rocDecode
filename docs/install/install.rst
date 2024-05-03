@@ -54,7 +54,7 @@ Prerequisites
   * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
-* Video Acceleration API Version `1.5.0`+ - `Libva` is an implementation for VA-API
+* Video Acceleration API Version ``1.5.0`` or later - ``Libva`` is an implementation for VA-API
 
   .. code:: shell
 
