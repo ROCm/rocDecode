@@ -84,18 +84,23 @@ Prerequisites
 
     sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
 
-* If using Ubuntu 22.04, you must install ``libstdc++-12-dev``
-
-  .. code:: shell
-
-    sudo apt install libstdc++-12-dev
-
 .. note::
 
   * All package installs are shown with the ``apt`` package manager. Use the appropriate package
   manager for your operating system.
 
-  * Additional RPM Packages required for `RHEL`/`SLES` - `libdrm-amdgpu mesa-amdgpu-dri-drivers`
+  * On ``Ubuntu 22.04`` - Additional package required: ``libstdc++-12-dev``
+
+  .. code:: shell
+
+    sudo apt install libstdc++-12-dev
+
+  * On ``RHEL`` / ``SLES`` - Additional packages required: ``libdrm-amdgpu`` and ``mesa-amdgpu-dri-drivers``
+
+  .. code:: shell
+
+    sudo apt install libdrm-amdgpu mesa-amdgpu-dri-drivers
+
 
 Prerequisites setup script
 ----------------------------------------------------------------------------------------------------------
