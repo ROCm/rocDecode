@@ -81,8 +81,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         // Clear DPB output/display buffer number
         dpb_buffer_.num_output_pics = 0;
 
-        bool status = ParsePictureData(p_data->payload, p_data->payload_size);
-        if (!status) {
+        if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
         }
@@ -550,8 +549,9 @@ int HevcVideoParser::OutputDecodedPictures() {
     return PARSER_OK;
 }
 
-bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
-    int ret = PARSER_OK;
+ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
+    ParserResult ret = PARSER_OK;
+    ParserResult ret2;
 
     pic_data_buffer_ptr_ = (uint8_t*)p_stream;
     pic_data_size_ = pic_data_size;
@@ -568,7 +568,7 @@ bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_dat
         ret = GetNalUnit();
         if (ret == PARSER_NOT_FOUND) {
             ERR(STR("Error: no start code found in the frame data."));
-            return false;
+            return ret;
         }
 
         // Parse the NAL unit
@@ -629,7 +629,9 @@ bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_dat
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 5), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     HevcSliceSegHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
-                    ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header);
+                    if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
+                        return ret2;
+                    }
 
                     // Start decode process
                     if (num_slices_ == 0) {
@@ -726,7 +728,7 @@ bool HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_dat
         }
     } while (1);
 
-    return true;
+    return PARSER_OK;
 }
 
 void HevcVideoParser::ParsePtl(HevcProfileTierLevel *ptl, bool profile_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size, size_t& offset) {
@@ -1521,7 +1523,7 @@ void HevcVideoParser::ParsePps(uint8_t *nalu, size_t size) {
 #endif // DBGINFO
 }
 
-bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header) {
+ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header) {
     HevcPicParamSet *pps_ptr = nullptr;
     HevcSeqParamSet *sps_ptr = nullptr;
     size_t offset = 0;
@@ -1841,7 +1843,7 @@ bool HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegH
     PrintSliceSegHeader(p_slice_header);
 #endif // DBGINFO
 
-    return false;
+    return PARSER_OK;
 }
 
 bool HevcVideoParser::IsIdrPic(HevcNalUnitHeader *nal_header_ptr) {
