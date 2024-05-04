@@ -55,14 +55,17 @@ access the video decoding features available on your GPU.
   ```
 
 > [!IMPORTANT] 
-> * If using Ubuntu 22.04, you must install `libstdc++-12-dev`
+> * On `Ubuntu 22.04` - Additional package required: `libstdc++-12-dev`
 >
 >  ```shell
 >  sudo apt install libstdc++-12-dev
 >  ```
 >
-> * Additional RPM Packages required for `RHEL`/`SLES` - `libdrm-amdgpu mesa-amdgpu-dri-drivers`
-
+> * On `RHEL`/`SLES` - Additional packages required: `libdrm-amdgpu` and `mesa-amdgpu-dri-drivers`
+>
+>  ```shell
+>  sudo yum install libdrm-amdgpu mesa-amdgpu-dri-drivers
+>  ```
 
 >[!NOTE]
 > * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
