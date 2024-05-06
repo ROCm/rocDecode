@@ -273,9 +273,9 @@ protected:
      * \param [in] nalu A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
      * \param [out] p_slice_header Pointer to the slice header struct
-     * \return True is successful, else false
+     * \return <tt>ParserResult</tt>
      */
-    bool ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header);
+    ParserResult ParseSliceHeader(uint8_t *nalu, size_t size, HevcSliceSegHeader *p_slice_header);
 
     /*! \brief Function to calculate the picture order count of the current picture. Once per picutre. (8.3.1)
      */
@@ -322,9 +322,9 @@ protected:
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] pic_data_size Size of the input stream
-     * \return True is successful, else false
+     * \return <tt>ParserResult</tt>
      */
-    bool ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size);
+    ParserResult ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size);
 
 #if DBGINFO
     void PrintVps(HevcVideoParamSet *vps_ptr);

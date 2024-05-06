@@ -168,13 +168,19 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
         return ROCDEC_INVALID_PARAMETER;
     }
     va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
-    uint8_t surface_format;
+    uint32_t surface_format;
     switch (decoder_create_info_.chroma_format) {
         case rocDecVideoChromaFormat_Monochrome:
             surface_format = VA_RT_FORMAT_YUV400;
             break;
         case rocDecVideoChromaFormat_420:
-            surface_format = VA_RT_FORMAT_YUV420;
+            if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                surface_format = VA_RT_FORMAT_YUV420_10;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
+                surface_format = VA_RT_FORMAT_YUV420_12;
+            } else {
+                surface_format = VA_RT_FORMAT_YUV420;
+            }
             break;
         case rocDecVideoChromaFormat_422:
             surface_format = VA_RT_FORMAT_YUV422;

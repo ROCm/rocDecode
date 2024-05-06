@@ -87,8 +87,8 @@ protected:
         AvcSliceHeader slice_header;
         uint32_t slice_data_offset; // offset in the slice data buffer of this slice
         uint32_t slice_data_size; // slice data size in bytes
-        AvcPicture ref_list_0_[AVC_MAX_REF_FRAME_NUM];
-        AvcPicture ref_list_1_[AVC_MAX_REF_FRAME_NUM];
+        AvcPicture ref_list_0_[AVC_MAX_REF_PICTURE_NUM];
+        AvcPicture ref_list_1_[AVC_MAX_REF_PICTURE_NUM];
     } AvcSliceInfo;
 
     /*! \brief Decoded picture buffer
@@ -98,6 +98,10 @@ protected:
         uint32_t num_short_term; // numShortTerm;
         uint32_t num_long_term; // numLongTerm;
         AvcPicture frame_buffer_list[AVC_MAX_DPB_FRAMES];
+        // Corresponding fields of a frame in frame_buffer_list: for frame index i, the field indexes are i * 2 (first field) and i * 2 + 1 (second field)
+        uint32_t num_short_term_ref_fields;
+        uint32_t num_long_term_ref_fields;
+        AvcPicture field_pic_list[AVC_MAX_DPB_FIELDS];
         uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         uint32_t num_output_pics;  // number of pictures that are output after the decode call
@@ -125,6 +129,11 @@ protected:
     int prev_ref_pic_bottom_field_;
     int curr_ref_pic_bottom_field_;
     int max_long_term_frame_idx_; // MaxLongTermFrameIdx
+
+    // Field picture info
+    uint32_t field_pic_count_;
+    int second_field_;
+    int first_field_pic_idx_;
 
     // DPB
     AvcPicture curr_pic_;
@@ -228,6 +237,17 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SetupReflist(AvcSliceInfo *p_slice_info);
+
+    /*! \brief Function to perform initialisation process for reference picture lists in fields. 8.2.4.2.5.
+     * \param [in] ref_frame_list_x The reference frame lists refFrameListXShortTerm (with X may be 0 or 1) or refFrameListLongTerm
+     * \param [in] num_ref_frames The number of sorted reference frames in the list
+     * \param [in] ref_type The reference type: short term or long term
+     * \param [in] curr_field_parity The parity of the current field
+     * \param [out] ref_pic_list_x Pointer to the derived reference picture list RefPicListX
+     * \param [out] num_fields_filled Number of reference fields filled in RefPicListX
+     * \return None
+     */
+    void FillFieldRefList(AvcPicture *ref_frame_list_x, int num_ref_frames, int ref_type, int curr_field_parity, AvcPicture *ref_pic_list_x, uint32_t *num_fields_filled);
 
     /*! \brief Function to modify a reference picture list.
      * \param [in/out] ref_pic_list_x The reference picture list to be modified

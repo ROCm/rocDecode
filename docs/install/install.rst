@@ -26,9 +26,11 @@ Tested configurations
 
 * mesa-amdgpu-va-drivers: 1:24.1.0
 
+* mesa-amdgpu-dri-drivers - `24.1.0.60200`
+
 * FFmpeg: 4.2.7/4.4.2-0
 
-* rocDecode Setup Script: V1.7.2
+* rocDecode Setup Script: V2.0.0
 
 Supported codecs
 ========================================
@@ -52,7 +54,7 @@ Prerequisites
   * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
 
-* Video Acceleration API Version `1.5.0`+ - `Libva` is an implementation for VA-API
+* Video Acceleration API Version ``1.5.0`` or later - ``Libva`` is an implementation for VA-API
 
   .. code:: shell
 
@@ -82,16 +84,23 @@ Prerequisites
 
     sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
 
-* If using Ubuntu 22.04, you must install ``libstdc++-12-dev``
+.. note::
+
+  * All package installs are shown with the ``apt`` package manager. Use the appropriate package
+  manager for your operating system.
+
+  * On ``Ubuntu 22.04`` - Additional package required: ``libstdc++-12-dev``
 
   .. code:: shell
 
     sudo apt install libstdc++-12-dev
 
-.. note::
+  * On ``RHEL`` / ``SLES`` - Additional packages required: ``libdrm-amdgpu`` and ``mesa-amdgpu-dri-drivers``
 
-  All package installs are shown with the ``apt`` package manager. Use the appropriate package
-  manager for your operating system.
+  .. code:: shell
+
+    sudo apt install libdrm-amdgpu mesa-amdgpu-dri-drivers
+
 
 Prerequisites setup script
 ----------------------------------------------------------------------------------------------------------
