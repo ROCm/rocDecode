@@ -498,7 +498,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         } while (seek_done != 0);
 
         seek_ctx.out_frame_pts_ = pkt_data.pts;
-        seek_ctx.out_frame_duration_ = pkt_data.duration;
+        seek_ctx.out_frame_duration_ = pkt_data.duration = pkt_duration_;
     };
 
     // Seek for closest key frame in the past;
@@ -507,7 +507,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         Demux(pp_video, video_size, &pkt_data.pts);
         seek_ctx.num_frames_decoded_ = static_cast<uint64_t>(pkt_data.pts / 1000 * frame_rate_);
         seek_ctx.out_frame_pts_ = pkt_data.pts;
-        seek_ctx.out_frame_duration_ = static_cast<int64_t>(pkt_data.pts / 1000);
+        seek_ctx.out_frame_duration_ = pkt_data.duration = pkt_duration_;
     };
 
     PacketData pktData;
