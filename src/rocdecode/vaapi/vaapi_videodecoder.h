@@ -29,7 +29,11 @@ THE SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
-#include <filesystem>
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
+    #include <filesystem>
+#else
+    #include <experimental/filesystem>
+#endif
 #include <va/va.h>
 #include <va/va_drm.h>
 #include <va/va_drmcommon.h>

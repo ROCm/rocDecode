@@ -168,13 +168,19 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
         return ROCDEC_INVALID_PARAMETER;
     }
     va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
-    uint8_t surface_format;
+    uint32_t surface_format;
     switch (decoder_create_info_.chroma_format) {
         case rocDecVideoChromaFormat_Monochrome:
             surface_format = VA_RT_FORMAT_YUV400;
             break;
         case rocDecVideoChromaFormat_420:
-            surface_format = VA_RT_FORMAT_YUV420;
+            if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                surface_format = VA_RT_FORMAT_YUV420_10;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
+                surface_format = VA_RT_FORMAT_YUV420_12;
+            } else {
+                surface_format = VA_RT_FORMAT_YUV420;
+            }
             break;
         case rocDecVideoChromaFormat_422:
             surface_format = VA_RT_FORMAT_YUV422;
@@ -408,22 +414,8 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
     }
     VASurfaceStatus surface_status;
     CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-    while (surface_status != VASurfaceReady) {
-        VAStatus va_status = vaSyncSurface(va_display_, va_surface_ids_[pic_idx]);
-        /* Current implementation of vaSyncSurface() does not block indefinitely (contrary to VA-API spec), it returns
-         * VA_STATUS_ERROR_TIMEDOUT error when it blocks for a certain amount of time. Although time out can come from
-         * various reasons, we treat it as non-fatal and contiue waiting.
-         */
-        if (va_status != VA_STATUS_SUCCESS) {
-            if (va_status == 0x26 /*VA_STATUS_ERROR_TIMEDOUT*/) {
-                CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-            } else {
-                std::cout << "vaSyncSurface() failed with error code: 0x" << std::hex << va_status << std::dec << "', status: " << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;
-                return ROCDEC_RUNTIME_ERROR;
-            }
-        } else {
-            break;
-        }
+    if (surface_status != VASurfaceReady) {
+        CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
     }
     return ROCDEC_SUCCESS;
 }

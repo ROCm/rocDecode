@@ -109,6 +109,11 @@ if(HIP_FOUND AND Libva_FOUND)
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
 
+  #filesystem: c++ compilers less than equal to 8.5 need explicit link with stdc++fs
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL "8.5")
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
+  endif()
+
   # local include files
   include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
   # source files
