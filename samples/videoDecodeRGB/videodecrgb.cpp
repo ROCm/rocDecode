@@ -43,11 +43,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "colorspace_kernels.h"
 #include "resize_kernels.h"
+#include "video_post_process.h"
 
-FILE *fpOut = nullptr;
-enum OutputFormatEnum {
-    native = 0, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64
-};
+//FILE *fpOut = nullptr;
 std::vector<std::string> st_output_format_name = {"native", "bgr", "bgr48", "rgb", "rgb48", "bgra", "bgra64", "rgba", "rgba64"};
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -56,104 +54,10 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
+    << "-resize WxH - (where W is resize width and H is resize height) optional; default: no resize " << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
 
     exit(0);
-}
-
-void DumpRGBImage(std::string outputfileName, void* pdevMem, OutputSurfaceInfo *surf_info, int rgb_image_size) {
-    if (fpOut == nullptr) {
-        fpOut = fopen(outputfileName.c_str(), "wb");
-    }
-    uint8_t *hstPtr = nullptr;
-    hstPtr = new uint8_t [rgb_image_size];
-    hipError_t hip_status = hipSuccess;
-    hip_status = hipMemcpyDtoH((void *)hstPtr, pdevMem, rgb_image_size);
-    if (hip_status != hipSuccess) {
-        std::cout << "ERROR: hipMemcpyDtoH failed! (" << hip_status << ")" << std::endl;
-        delete [] hstPtr;
-        return;
-    }
-    if (fpOut) {
-        fwrite(hstPtr, 1, rgb_image_size, fpOut);
-    }
-
-    if (hstPtr != nullptr) {
-        delete [] hstPtr;
-        hstPtr = nullptr;
-    }
-}
-
-void ColorConvertYUV2RGB(uint8_t *p_src, OutputSurfaceInfo *surf_info, uint8_t *rgb_dev_mem_ptr, OutputFormatEnum e_output_format, hipStream_t hip_stream) {
-    
-    int  rgb_width = (surf_info->output_width + 1) & ~1;    // has to be a multiple of 2 for hip colorconvert kernels
-    // todo:: get color standard from the decoder
-    if (surf_info->surface_format == rocDecVideoSurfaceFormat_YUV444) {
-        if (e_output_format == bgr)
-          YUV444ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgra)
-          YUV444ToColor32<BGRA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb)
-          YUV444ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgba)
-          YUV444ToColor32<RGBA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-    } else if (surf_info->surface_format == rocDecVideoSurfaceFormat_NV12) {
-        if (e_output_format == bgr)
-          Nv12ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgra)
-          Nv12ToColor32<BGRA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb)
-          Nv12ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgba)
-          Nv12ToColor32<RGBA32>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 4 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-    }
-    if (surf_info->surface_format == rocDecVideoSurfaceFormat_YUV444_16Bit) {
-        if (e_output_format == bgr)
-          YUV444P16ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb)
-          YUV444P16ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgr48)
-          YUV444P16ToColor48<BGR48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb48)
-          YUV444P16ToColor48<RGB48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgra64)
-          YUV444P16ToColor64<BGRA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgba64)
-          YUV444P16ToColor64<RGBA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
-                                surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-    } else if (surf_info->surface_format == rocDecVideoSurfaceFormat_P016) {
-        if (e_output_format == bgr)
-          P016ToColor24<BGR24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb)
-          P016ToColor24<RGB24>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 3 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgr48)
-          P016ToColor48<BGR48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgb48)
-          P016ToColor48<RGB48>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 6 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == bgra64)
-          P016ToColor64<BGRA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-        else if (e_output_format == rgba64)
-          P016ToColor64<RGBA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
-                              surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
-    }
 }
 
 constexpr int frame_buffers_size = 2;
@@ -162,7 +66,8 @@ std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
-        OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames, std::string &output_file_path, RocVideoDecoder &viddec, bool b_generate_md5) {
+        OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
+        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, bool b_generate_md5) {
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
@@ -233,11 +138,11 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                     return;
                 }
             }
-            ColorConvertYUV2RGB(out_frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
+            post_proc.ColorConvertYUV2RGB(out_frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
         }
         if (dump_output_frames) {
             if (convert_to_rgb)
-                DumpRGBImage(output_file_path, p_rgb_dev_mem, p_surf_info, rgb_image_size);
+                viddec.SaveFrameToFile(output_file_path, p_rgb_dev_mem, p_surf_info, rgb_image_size);
             else
                 viddec.SaveFrameToFile(output_file_path, out_frame, p_surf_info);
         }
@@ -360,6 +265,7 @@ int main(int argc, char **argv) {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect);
+        VideoPostProcess post_process;
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
@@ -389,7 +295,7 @@ int main(int argc, char **argv) {
         convert_to_rgb = e_output_format != native;
         std::atomic<bool> continue_processing(true);
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), b_generate_md5);
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), b_generate_md5);
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
@@ -450,10 +356,6 @@ int main(int argc, char **argv) {
                 std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
                 return -1;
             }
-        }
-        if (fpOut) {
-          fclose(fpOut);
-          fpOut = nullptr;
         }
         for (int i = 0; i < frame_buffers_size; i++) {
             hip_status = hipFree(frame_buffers[i]);

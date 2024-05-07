@@ -884,9 +884,10 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
 }
 
 
-void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info) {
+void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size) {
     uint8_t *hst_ptr = nullptr;
-    uint64_t output_image_size = surf_info->output_surface_size_in_bytes;
+    bool is_rgb = (rgb_image_size != 0);
+    uint64_t output_image_size = is_rgb ? rgb_image_size : surf_info->output_surface_size_in_bytes;
     if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL || surf_info->mem_type == OUT_SURFACE_MEM_DEV_COPIED) {
         if (hst_ptr == nullptr) {
             hst_ptr = new uint8_t [output_image_size];
@@ -901,10 +902,6 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
     } else
         hst_ptr = static_cast<uint8_t *> (surf_mem);
 
-    uint8_t *tmp_hst_ptr = hst_ptr;
-    if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-        tmp_hst_ptr += ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + (disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel;
-    }
     
     if (current_output_filename.empty()) {
         current_output_filename = output_file_name;
@@ -936,39 +933,47 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         fp_out_ = fopen(output_file_name.c_str(), "wb");
     }
     if (fp_out_) {
-        int img_width = surf_info->output_width;
-        int img_height = surf_info->output_height;
-        int output_stride =  surf_info->output_pitch;
-        if (img_width * surf_info->bytes_per_pixel == output_stride && img_height == surf_info->output_vstride) {
-            fwrite(hst_ptr, 1, output_image_size, fp_out_);
-        } else {
-            uint32_t width = surf_info->output_width * surf_info->bytes_per_pixel;
-            if (surf_info->bit_depth <= 16) {
-                for (int i = 0; i < surf_info->output_height; i++) {
-                    fwrite(tmp_hst_ptr, 1, width, fp_out_);
-                    tmp_hst_ptr += output_stride;
-                }
-                // dump chroma
-                uint8_t *uv_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
-                if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-                    uv_hst_ptr += (num_chroma_planes_ == 1) ? (((disp_rect_.top + crop_rect_.top) >> 1) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel):
-                    ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
-                }
-                for (int i = 0; i < chroma_height_; i++) {
-                    fwrite(uv_hst_ptr, 1, width, fp_out_);
-                    uv_hst_ptr += output_stride;
-                }
-                if (num_chroma_planes_ == 2) {
-                    uv_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
+        if (!is_rgb) {
+            uint8_t *tmp_hst_ptr = hst_ptr;
+            if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
+                tmp_hst_ptr += ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + (disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel;
+            }
+            int img_width = surf_info->output_width;
+            int img_height = surf_info->output_height;
+            int output_stride =  surf_info->output_pitch;
+            if (img_width * surf_info->bytes_per_pixel == output_stride && img_height == surf_info->output_vstride) {
+                fwrite(hst_ptr, 1, output_image_size, fp_out_);
+            } else {
+                uint32_t width = surf_info->output_width * surf_info->bytes_per_pixel;
+                if (surf_info->bit_depth <= 16) {
+                    for (int i = 0; i < surf_info->output_height; i++) {
+                        fwrite(tmp_hst_ptr, 1, width, fp_out_);
+                        tmp_hst_ptr += output_stride;
+                    }
+                    // dump chroma
+                    uint8_t *uv_hst_ptr = hst_ptr + output_stride * surf_info->output_vstride;
                     if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-                        uv_hst_ptr += ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
+                        uv_hst_ptr += (num_chroma_planes_ == 1) ? (((disp_rect_.top + crop_rect_.top) >> 1) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel):
+                        ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
                     }
                     for (int i = 0; i < chroma_height_; i++) {
                         fwrite(uv_hst_ptr, 1, width, fp_out_);
                         uv_hst_ptr += output_stride;
                     }
-                }
-            } 
+                    if (num_chroma_planes_ == 2) {
+                        uv_hst_ptr = hst_ptr + output_stride * (surf_info->output_vstride + chroma_vstride_);
+                        if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
+                            uv_hst_ptr += ((disp_rect_.top + crop_rect_.top) * surf_info->output_pitch) + ((disp_rect_.left + crop_rect_.left) * surf_info->bytes_per_pixel);
+                        }
+                        for (int i = 0; i < chroma_height_; i++) {
+                            fwrite(uv_hst_ptr, 1, width, fp_out_);
+                            uv_hst_ptr += output_stride;
+                        }
+                    }
+                } 
+            }
+        } else {
+            fwrite(hst_ptr, 1, rgb_image_size, fp_out_);
         }
     }
 
