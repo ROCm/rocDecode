@@ -319,8 +319,9 @@ class RocVideoDecoder {
          * @param output_file_name  - Output file name
          * @param dev_mem           - pointer to surface memory
          * @param surf_info         - surface info
+         * @param rgb_image_size    - image size for rgb (optional). A non_zero value indicates the surf_mem holds an rgb interleaved image and the entire size will be dumped to file
          */
-        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info);
+        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
 
         /**
          * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
