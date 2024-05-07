@@ -74,6 +74,10 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                       ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+    #filesystem: c++ compilers less than equal to 8.5 need explicit link with stdc++fs
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL "8.5")
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
+    endif()
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
