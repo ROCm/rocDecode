@@ -59,7 +59,7 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
     }
 }
 
-rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
+rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
     //Before initializing the VAAPI, first check to see if the requested codec config is supported
@@ -73,11 +73,33 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string gcn_arch_name) {
     std::size_t pos = gcn_arch_name.find_first_of(":");
     std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
 
-    // There are 8 renderDXXX per physical device on gfx940/gfx941/gfx942
-    int num_render_cards_per_device = ((gcn_arch_name_base.compare("gfx940") == 0) ||
-                                       (gcn_arch_name_base.compare("gfx941") == 0) ||
-                                       (gcn_arch_name_base.compare("gfx942") == 0)) ? 8 : 1;
-    std::string drm_node = "/dev/dri/renderD" + std::to_string(128 + decoder_create_info_.device_id * num_render_cards_per_device);
+    std::vector<int> visible_devices;
+    GetVisibleDevices(visible_devices);
+
+    int offset = 0;
+    if (gcn_arch_name_base.compare("gfx940") == 0 ||
+        gcn_arch_name_base.compare("gfx941") == 0 ||
+        gcn_arch_name_base.compare("gfx942") == 0) {
+            std::vector<ComputePartition> current_compute_partitions;
+            GetCurrentComputePartition(current_compute_partitions);
+            if (current_compute_partitions.empty()) {
+                //if the current_compute_partitions is empty then the default SPX mode is assumed.
+                if (decoder_create_info_.device_id < visible_devices.size()) {
+                    offset = visible_devices[decoder_create_info_.device_id] * 7;
+                } else {
+                    offset = decoder_create_info_.device_id * 7;
+                }
+            } else {
+                GetDrmNodeOffset(device_name, decoder_create_info_.device_id, visible_devices, current_compute_partitions, offset);
+            }
+        }
+
+    std::string drm_node = "/dev/dri/renderD";
+    if (decoder_create_info_.device_id < visible_devices.size()) {
+        drm_node += std::to_string(128 + offset + visible_devices[decoder_create_info_.device_id]);
+    } else {
+        drm_node += std::to_string(128 + offset + decoder_create_info_.device_id);
+    }
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to initilize the VAAPI.");
@@ -404,4 +426,98 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
         }
     }
     return ROCDEC_SUCCESS;
+}
+
+void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
+    char *visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    if (visible_devices != nullptr) {
+        char *token = std::strtok(visible_devices,",");
+        while (token != nullptr) {
+            visible_devices_vetor.push_back(std::atoi(token));
+            token = std::strtok(nullptr,",");
+        }
+    std::sort(visible_devices_vetor.begin(), visible_devices_vetor.end());
+    }
+}
+
+void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
+    std::string search_path = "/sys/devices/";
+    std::string partition_file = "current_compute_partition";
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(search_path)) {
+        if (entry.path().filename() == partition_file) {
+            std::ifstream file(entry.path());
+            if (file.is_open()) {
+                std::string partition;
+                std::getline(file, partition);
+                if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
+                    current_compute_partitions.push_back(kSpx);
+                } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
+                    current_compute_partitions.push_back(kDpx);
+                } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
+                    current_compute_partitions.push_back(kTpx);
+                } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
+                    current_compute_partitions.push_back(kQpx);
+                } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
+                    current_compute_partitions.push_back(kCpx);
+                }
+                file.close();
+            }
+        }
+    }
+}
+
+void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
+                                                   std::vector<ComputePartition> &current_compute_partitions, int &offset) {
+
+    if (!current_compute_partitions.empty()) {
+        switch (current_compute_partitions[0]) {
+            case kSpx:
+                if (device_id < visible_devices.size()) {
+                    offset = visible_devices[device_id] * 7;
+                } else {
+                    offset = device_id * 7;
+                }
+                break;
+            case kDpx:
+                if (device_id < visible_devices.size()) {
+                    offset = (visible_devices[device_id] / 2) * 6;
+                } else {
+                    offset = (device_id / 2) * 6;
+                }
+                break;
+            case kTpx:
+                // Please note that although there are only 6 XCCs per socket on MI300A,
+                // there are two dummy render nodes added by the driver.
+                // This needs to be taken into account when creating drm_node on each socket in TPX mode.
+                if (device_id < visible_devices.size()) {
+                    offset = (visible_devices[device_id] / 3) * 5;
+                } else {
+                    offset = (device_id / 3) * 5;
+                }
+                break;
+            case kQpx:
+                if (device_id < visible_devices.size()) {
+                    offset = (visible_devices[device_id] / 4) * 4;
+                } else {
+                    offset = (device_id / 4) * 4;
+                }
+                break;
+            case kCpx:
+                // Please note that both MI300A and MI300X have the same gfx_arch_name which is
+                // gfx942. Therefore we cannot use the gfx942 to identify MI300A.
+                // instead use the device name and look for MI300A
+                // Also, as explained aboe in the TPX mode section, we need to be taken into account
+                // the extra two dummy nodes when creating drm_node on each socket in CPX mode as well.
+                std::string mi300a = "MI300A";
+                size_t found_mi300a = device_name.find(mi300a);
+                if (found_mi300a != std::string::npos) {
+                    if (device_id < visible_devices.size()) {
+                        offset = (visible_devices[device_id] / 6) * 2;
+                    } else {
+                        offset = (device_id / 6) * 2;
+                    }
+                }
+                break;
+        }
+    }
 }

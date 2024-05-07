@@ -3,7 +3,39 @@
 Documentation for rocDecode is available at
 [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased) rocDecode 0.5.0
+## rocDecode 0.6.0 (Unreleased)
+
+## Additions
+
+* FFMPEG V5.X Support
+
+## Optimizations
+
+* Setup Script - Error Check install
+
+### Changes
+
+* Dependencies - Updates to core dependencies
+* LibVA Headers - Use public headers
+
+### Fixes
+
+* Package deps
+
+### Tested configurations
+
+* Linux
+  * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+* ROCm:
+  * rocm-core - `6.1.0.60100-64`
+  * amdgpu-core - `1:6.1.60100-1741643`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* mesa-amdgpu-va-drivers - `1:24.1.0`
+* FFmpeg - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V1.8.0`
+
+## rocDecode 0.5.0
 
 ### Changes
 

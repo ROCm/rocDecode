@@ -142,10 +142,10 @@ int main(int argc, char **argv) {
             continue;
         }
         if (!strcmp(argv[i], "-crop")) {
-            if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.l, &crop_rect.t, &crop_rect.r, &crop_rect.b)) {
+            if (++i == argc || 4 != sscanf(argv[i], "%d,%d,%d,%d", &crop_rect.left, &crop_rect.top, &crop_rect.right, &crop_rect.bottom)) {
                 ShowHelpAndExit("-crop");
             }
-            if ((crop_rect.r - crop_rect.l) % 2 == 1 || (crop_rect.b - crop_rect.t) % 2 == 1) {
+            if ((crop_rect.right - crop_rect.left) % 2 == 1 || (crop_rect.bottom - crop_rect.top) % 2 == 1) {
                 std::cout << "output crop rectangle must have width and height of even numbers" << std::endl;
                 exit(1);
             }
