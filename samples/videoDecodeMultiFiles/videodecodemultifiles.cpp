@@ -144,8 +144,8 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
         } else if (!strcmp(param, "flush")) {
             file_data.b_flush_last_frames = atoi(value) ? true : false;
         } else if (!strcmp(param, "crop")) {
-            sscanf(value, "%d,%d,%d,%d", &file_data.crop_rect.l, &file_data.crop_rect.t, &file_data.crop_rect.r, &file_data.crop_rect.b);
-            if ((file_data.crop_rect.r - file_data.crop_rect.l) % 2 == 1 || (file_data.crop_rect.b - file_data.crop_rect.t) % 2 == 1) {
+            sscanf(value, "%d,%d,%d,%d", &file_data.crop_rect.left, &file_data.crop_rect.top, &file_data.crop_rect.right, &file_data.crop_rect.bottom);
+            if ((file_data.crop_rect.right - file_data.crop_rect.left) % 2 == 1 || (file_data.crop_rect.bottom - file_data.crop_rect.top) % 2 == 1) {
                 std::cout << "Cropping rect must have width and height of even numbers" << std::endl;
                 exit(1);
             }

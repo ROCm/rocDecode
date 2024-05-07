@@ -8,11 +8,11 @@ rocDecode documentation
 
 rocDecode provides APIs, utilities, and samples that you can use to easily access the video decoding
 features of your media engines (VCNs). It also allows interoperability with other compute engines on
-the GPU using Video Acceleration API (VA-API)/HIP.
+the GPU using Video Acceleration API (VA-API)/HIP. To learn more, see :doc:`what-is-rocDecode`
 
-You can access rocDecode code on our `GitHub repository <https://github.com/ROCm/rocDecode>`_.
+You can access rocDecode code on the `GitHub repository <https://github.com/ROCm/rocDecode>`_.
 
-Our documentation is structured as follows:
+The documentation is structured as follows:
 
 .. grid:: 2
   :gutter: 3
@@ -24,9 +24,9 @@ Our documentation is structured as follows:
 
   .. grid-item-card:: API reference
 
+    * :doc:`API library <../doxygen/html/files>`
     * :doc:`Functions <../doxygen/html/globals>`
     * :doc:`Data structures <../doxygen/html/annotated>`
-    * :doc:`File list <../doxygen/html/files>`
 
   .. grid-item-card:: How to
 

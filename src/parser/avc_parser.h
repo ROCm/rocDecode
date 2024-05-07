@@ -117,8 +117,9 @@ protected:
     int prev_pic_order_cnt_msb_; // prevPicOrderCntMsb
     int prev_pic_order_cnt_lsb_; // prevPicOrderCntLsb
     int prev_top_field_order_cnt_;
-    int prev_frame_num_offset_t; // prevFrameNumOffset
+    int prev_frame_num_offset_; // prevFrameNumOffset
     int prev_frame_num_; // prevFrameNum
+    int prev_ref_frame_num_; // PrevRefFrameNum
     int prev_has_mmco_5_;
     int curr_has_mmco_5_;
     int prev_ref_pic_bottom_field_;
@@ -172,9 +173,9 @@ protected:
     /*! \brief Function to parse Picture Parameter Set 
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] size Size of the input stream
-     * \return No return value
+     * \return <tt>ParserResult</tt>
      */
-    void ParsePps(uint8_t *p_stream, size_t stream_size_in_byte);
+    ParserResult ParsePps(uint8_t *p_stream, size_t stream_size_in_byte);
 
     /*! \brief Function to parse slice header
      * \param p_stream The pointer to the input bit stream
@@ -216,6 +217,11 @@ protected:
     /*! \brief Function to calculate picture order count of the current slice. 8.2.1.
      */
     void CalculateCurrPoc();
+
+    /*! \brief Function to check and decode gaps in frame_num. 8.2.5.2.
+     * \return <tt>ParserResult</tt>
+     */
+   ParserResult DecodeFrameNumGaps();
 
     /*! \brief Function to set up the reference picutre lists for each slice. 8.2.4.
      * \param [in] p_slice_info Poiner to slice info struct

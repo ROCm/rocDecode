@@ -16,16 +16,19 @@ Tested configurations
 
   * Ubuntu: 20.04/22.04
   * RHEL: 8/9
-  * SLES: 15-SP4
 
 * ROCm
 
   * rocm-core: 6.1.0.60100-28
   * amdgpu-core: 1:6.1.60100-1731559
 
+* libva-dev: 2.7.0-2/2.14.0-1
+
+* mesa-amdgpu-va-drivers: 1:24.1.0
+
 * FFmpeg: 4.2.7/4.4.2-0
 
-* rocDecode Setup Script: V1.4
+* rocDecode Setup Script: V1.7.2
 
 Supported codecs
 ========================================
@@ -39,7 +42,6 @@ Prerequisites
 
   * Ubuntu: 20.04/22.04
   * RHEL: 8/9
-  * SLES: 15-SP4
 
 * `ROCm-supported hardware <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
   (``gfx908`` or higher is required)
@@ -47,14 +49,26 @@ Prerequisites
 * Install ROCm 6.1.0 or later with
   `amdgpu-install <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html>`_
 
-  * Run: ``--usecase=multimediasdk,rocm --no-32``
+  * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
+
+* Video Acceleration API Version `1.5.0`+ - `Libva` is an implementation for VA-API
+
+  .. code:: shell
+
+    sudo apt install libva-dev
+
+* AMD VA drivers
+
+  .. code:: shell
+
+    sudo apt install mesa-amdgpu-va-drivers
 
 * CMake 3.5 or later
 
   .. code:: shell
 
-   sudo apt install cmake
+    sudo apt install cmake
 
 * `pkg-config <https://en.wikipedia.org/wiki/Pkg-config>`_
 
@@ -252,10 +266,10 @@ architecture.
 .. csv-table::
   :header: "GPU Architecture", "VCN Generation", "Number of VCNs", "H.265/HEVC", "Max width, Max height - H.265", "H.264/AVC", "Max width, Max height - H.264"
 
-  "gfx908 - MI1xx", "VCN 2.5.0", "2", "Yes", "4096, 2176", "No", "4096, 2160"
-  "gfx90a - MI2xx", "VCN 2.6.0", "2", "Yes", "4096, 2176", "No", "4096, 2160"
-  "gfx940, gfx942 - MI3xx", "VCN 3.0", "3", "Yes", "7680, 4320", "No", "4096, 2176"
-  "gfx941 - MI3xx", "VCN 3.0", "4", "Yes", "7680, 4320", "No", "4096, 2176"
-  "gfx1030, gfx1031, gfx1032 - Navi2x", "VCN 3.x", "2", "Yes", "7680, 4320", "No", "4096, 2176"
-  "gfx1100, gfx1102 - Navi3x", "VCN 4.0", "2", "Yes", "7680, 4320", "No", "4096, 2176"
-  "gfx1101 - Navi3x", "VCN 4.0", "1", "Yes", "7680, 4320", "No", "4096, 2176"
+  "gfx908 - MI1xx", "VCN 2.5.0", "2", "Yes", "4096, 2176", "Yes", "4096, 2160"
+  "gfx90a - MI2xx", "VCN 2.6.0", "2", "Yes", "4096, 2176", "Yes", "4096, 2160"
+  "gfx940, gfx942 - MI3xx", "VCN 3.0", "3", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx941 - MI3xx", "VCN 3.0", "4", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx1030, gfx1031, gfx1032 - Navi2x", "VCN 3.x", "2", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx1100, gfx1102 - Navi3x", "VCN 4.0", "2", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx1101 - Navi3x", "VCN 4.0", "1", "Yes", "7680, 4320", "Yes", "4096, 2176"
