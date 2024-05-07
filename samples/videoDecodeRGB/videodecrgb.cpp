@@ -45,7 +45,6 @@ THE SOFTWARE.
 #include "resize_kernels.h"
 #include "video_post_process.h"
 
-//FILE *fpOut = nullptr;
 std::vector<std::string> st_output_format_name = {"native", "bgr", "bgr48", "rgb", "rgb48", "bgra", "bgra64", "rgba", "rgba64"};
 
 void ShowHelpAndExit(const char *option = NULL) {
