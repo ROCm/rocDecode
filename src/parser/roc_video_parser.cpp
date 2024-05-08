@@ -67,6 +67,15 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
     return ROCDEC_SUCCESS;
 }
 
+void RocVideoParser::InitDecBufPool() {
+    for (int i = 0; i < dec_buf_pool_size_; i++) {
+        decode_buffer_pool_[i].surface_idx = i;
+        decode_buffer_pool_[i].use_status = 0;
+        output_pic_list_[i] = 0xFF;
+    }
+    num_output_pics_ = 0;
+}
+
 ParserResult RocVideoParser::GetNalUnit() {
     bool start_code_found = false;
 

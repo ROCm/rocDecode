@@ -119,8 +119,8 @@ protected:
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
 
-        uint32_t num_output_pics;  // number of pictures that are output after the decode call
-        uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
+        // Jefftest uint32_t num_output_pics;  // number of pictures that are output after the decode call
+        // Jefftest uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     // Data members of HEVC class
@@ -310,9 +310,9 @@ protected:
 
     /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture
      *         bumping is done if needed. C.5.2.3.
-     * \return Code in ParserResult form.
+     * \return <tt>ParserResult</tt>
      */
-    int FindFreeBufAndMark();
+    ParserResult FindFreeBufAndMark();
 
     /*! \brief Function to bump one picture out of DPB. C.5.2.4.
      * \return Code in ParserResult form.

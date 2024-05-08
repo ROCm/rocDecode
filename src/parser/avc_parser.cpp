@@ -50,7 +50,20 @@ AvcVideoParser::~AvcVideoParser() {
 }
 
 rocDecStatus AvcVideoParser::Initialize(RocdecParserParams *p_params) {
-    return RocVideoParser::Initialize(p_params);
+    rocDecStatus ret = RocVideoParser::Initialize(p_params);
+    if (ret != ROCDEC_SUCCESS) {
+        return ret;
+    }
+
+    dec_buf_pool_size_ = parser_params_.max_num_decode_surfaces;
+    if (dec_buf_pool_size_ < AVC_MAX_DPB_FRAMES + parser_params_.max_display_delay) {
+        dec_buf_pool_size_ = AVC_MAX_DPB_FRAMES + parser_params_.max_display_delay;
+    }
+    decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
+    output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
+    InitDecBufPool();
+
+    return ROCDEC_SUCCESS;
 }
 
 rocDecStatus AvcVideoParser::UnInitialize() {
@@ -299,7 +312,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.bit_depth_luma_minus8 = p_sps->bit_depth_luma_minus8;
     video_format_params_.bit_depth_chroma_minus8 = p_sps->bit_depth_chroma_minus8;
     video_format_params_.progressive_sequence = p_sps->frame_mbs_only_flag ? 1 : 0;
-    video_format_params_.min_num_decode_surfaces = dpb_buffer_.dpb_size;
+    video_format_params_.min_num_decode_surfaces = dec_buf_pool_size_; // Jefftest dpb_buffer_.dpb_size;
     video_format_params_.coded_width = pic_width_;
     video_format_params_.coded_height = pic_height_;
     video_format_params_.chroma_format = static_cast<rocDecVideoChromaFormat>(p_sps->chroma_format_idc);

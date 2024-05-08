@@ -39,9 +39,9 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
     // create rocdec videoparser
     RocdecParserParams parser_params = {};
     parser_params.codec_type = codec_id_;
-    parser_params.max_num_decode_surfaces = 1;
+    parser_params.max_num_decode_surfaces = MAX_DPB_FRAMES + DISPLAY_DELAY;
     parser_params.clock_rate = clk_rate;
-    parser_params.max_display_delay = 0;
+    parser_params.max_display_delay = DISPLAY_DELAY;
     parser_params.user_data = this;
     parser_params.pfn_sequence_callback = HandleVideoSequenceProc;
     parser_params.pfn_decode_picture = HandlePictureDecodeProc;

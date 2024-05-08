@@ -27,6 +27,9 @@ THE SOFTWARE.
 #include "rocparser.h"
 #include "../commons.h"
 
+// Jefftest
+#define NewBufManage 1
+
 typedef enum ParserResult {
     PARSER_OK                                   = 0,
     PARSER_FAIL                                    ,
@@ -95,6 +98,11 @@ public:
     virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
 
 protected:
+    typedef struct {
+        uint32_t surface_idx;       // VA surface index
+        uint32_t use_status;        // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+    } DecodeFrameBuffer;
+
     RocdecParserParams parser_params_ = {};
 
     /*! \brief callback function pointers for the parser
@@ -108,6 +116,14 @@ protected:
     uint32_t pic_width_;
     uint32_t pic_height_;
     bool new_sps_activated_;
+
+    // Decoded buffer pool
+    uint32_t dec_buf_pool_size_;        /* Number of decoded frame surfaces in the pool which are recycled. The size should be greater
+                                           than or equal to DPB size (normally greater to guarantee smooth operations). The value is
+                                           set to max_num_decode_surfaces from the decoder but parser checks and increases if needed. */
+    std::vector<DecodeFrameBuffer> decode_buffer_pool_;
+    uint32_t num_output_pics_;  // number of pictures that are ready to be ouput
+    std::vector<uint32_t> output_pic_list_; // sorted output frame index to decode_buffer_pool_
 
     Rational frame_rate_;
 
@@ -161,6 +177,10 @@ protected:
      * \return No return value
      */
     void ParseSeiMessage(uint8_t *nalu, size_t size);
+
+    /*! \brief Function to initialize the decoded buffer pool
+     */
+    void InitDecBufPool();
 };
 
 // helpers

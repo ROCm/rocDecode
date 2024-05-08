@@ -50,7 +50,10 @@ extern "C" {
  * \brief AMD The rocDecode video decoder for AMD’s GPUs.
  */
 
-#define MAX_FRAME_NUM     16
+#define MAX_FRAME_NUM       16
+#define MAX_DPB_FRAMES      16
+#define DISPLAY_DELAY       2
+
 typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 
 typedef enum SeiAvcHevcPayloadType_enum {
