@@ -1,6 +1,6 @@
 .. meta::
   :description: rocDecode documentation and API reference library
-  :keywords: rocDecode, ROCm, API, documentation
+  :keywords: rocDecode, ROCm, API, documentation, video, decode, decoding, acceleration
 
 ********************************************************************
 rocDecode documentation
@@ -10,9 +10,7 @@ rocDecode provides APIs, utilities, and samples that you can use to easily acces
 features of your media engines (VCNs). It also allows interoperability with other compute engines on
 the GPU using Video Acceleration API (VA-API)/HIP. To learn more, see :doc:`what-is-rocDecode`
 
-You can access rocDecode code on the `GitHub repository <https://github.com/ROCm/rocDecode>`_.
-
-The documentation is structured as follows:
+The code is open and hosted at: `<https://github.com/ROCm/rocDecode>`_.
 
 .. grid:: 2
   :gutter: 3
@@ -22,11 +20,15 @@ The documentation is structured as follows:
     * :doc:`Quick-start <./install/quick-start>`
     * :doc:`rocDecode installation <./install/install>`
 
-  .. grid-item-card:: API reference
 
-    * :doc:`API library <../doxygen/html/files>`
-    * :doc:`Functions <../doxygen/html/globals>`
-    * :doc:`Data structures <../doxygen/html/annotated>`
+The documentation is structured as follows:
+
+.. grid:: 2
+  :gutter: 3
+
+  .. grid-item-card:: Tutorials
+
+    * `GitHub samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
 
   .. grid-item-card:: How to
 
@@ -35,10 +37,13 @@ The documentation is structured as follows:
   .. grid-item-card:: Conceptual
 
      * :doc:`Video decoding pipeline <./conceptual/video-decoding-pipeline>`
+  
+  .. grid-item-card:: Reference
 
-  .. grid-item-card:: Tutorials
-
-    * `GitHub samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
+    * :doc:`API library <../doxygen/html/files>`
+    * :doc:`Functions <../doxygen/html/globals>`
+    * :doc:`Data structures <../doxygen/html/annotated>`
+  
 
 To contribute to the documentation, refer to
 `Contributing to ROCm <https://rocm.docs.amd.com/en/latest/contribute/contributing.html>`_.

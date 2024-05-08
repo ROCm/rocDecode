@@ -86,8 +86,7 @@ Prerequisites
 
 .. note::
 
-  * All package installs are shown with the ``apt`` package manager. Use the appropriate package
-  manager for your operating system.
+  * All package installs are shown with the ``apt`` package manager. Use the appropriate package manager for your operating system.
 
   * On ``Ubuntu 22.04`` - Additional package required: ``libstdc++-12-dev``
 
