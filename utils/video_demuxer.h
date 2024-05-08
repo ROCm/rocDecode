@@ -182,7 +182,9 @@ class VideoDemuxer {
         uint32_t bit_depth_ = 0;
         uint32_t byte_per_pixel_ = 0;
         uint32_t bit_rate_ = 0;
-        int64_t pkt_dts_ = 0;    // used for Seek Exact frame
+        // used for Seek Exact frame
+        int64_t pkt_dts_ = 0;
+        int64_t pkt_duration_ = 0;
 };
 
 VideoDemuxer::~VideoDemuxer() {
@@ -237,9 +239,12 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
         }
         *video = packet_filtered_->data;
         *video_size = packet_filtered_->size;
-        pkt_dts_ = packet_filtered_->dts;
-        if (pts)
+        if (packet_filtered_->dts != AV_NOPTS_VALUE)
+            pkt_dts_ = packet_filtered_->dts;
+        if (pts) {
             *pts = (int64_t) (packet_filtered_->pts * default_time_scale_ * time_base_);
+            pkt_duration_ = packet_filtered_->duration;
+        }
     } else {
         if (is_mpeg4_ && (frame_count_ == 0)) {
             int ext_data_size = av_fmt_input_ctx_->streams[av_stream_]->codecpar->extradata_size;
@@ -481,8 +486,9 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
 
             // We've gone too far and need to seek backwards;
             if (seek_done > 0) {
-                tmp_ctx.seek_frame_--;
-                seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
+                if ((tmp_ctx.seek_frame_--) >= 0) {
+                    seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
+                }
             }
             // Need to read more frames until we reach requested number;
             else if (seek_done < 0) {
@@ -492,7 +498,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         } while (seek_done != 0);
 
         seek_ctx.out_frame_pts_ = pkt_data.pts;
-        seek_ctx.out_frame_duration_ = pkt_data.duration;
+        seek_ctx.out_frame_duration_ = pkt_data.duration = pkt_duration_;
     };
 
     // Seek for closest key frame in the past;
@@ -501,7 +507,7 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         Demux(pp_video, video_size, &pkt_data.pts);
         seek_ctx.num_frames_decoded_ = static_cast<uint64_t>(pkt_data.pts / 1000 * frame_rate_);
         seek_ctx.out_frame_pts_ = pkt_data.pts;
-        seek_ctx.out_frame_duration_ = static_cast<int64_t>(pkt_data.pts / 1000);
+        seek_ctx.out_frame_duration_ = pkt_data.duration = pkt_duration_;
     };
 
     PacketData pktData;
