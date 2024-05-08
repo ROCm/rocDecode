@@ -203,10 +203,17 @@ void ParseCommandLine(std::string &input_folder_path, std::string &output_folder
                 ShowHelpAndExit("-o");
             }
             output_folder_path = argv[i];
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
             if (std::filesystem::is_directory(output_folder_path)) {
                 std::filesystem::remove_all(output_folder_path);
             }
             std::filesystem::create_directory(output_folder_path);
+#else
+            if (std::experimental::filesystem::is_directory(output_folder_path)) {
+                std::experimental::filesystem::remove_all(output_folder_path);
+            }
+            std::experimental::filesystem::create_directory(output_folder_path);
+#endif
             b_dump_output_frames = true;
             continue;
         }
@@ -233,7 +240,11 @@ int main(int argc, char **argv) {
     ParseCommandLine(input_folder_path, output_folder_path, device_id, n_thread, b_dump_output_frames, mem_type, argc, argv);
 
     try {
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
         for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
+#else
+        for (const auto& entry : std::experimental::filesystem::directory_iterator(input_folder_path)) {
+#endif
             input_file_names.push_back(entry.path());
             num_files++;
         }
