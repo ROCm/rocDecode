@@ -89,6 +89,11 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     else()
       target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=1)
     endif()
+    ADD_CUSTOM_COMMAND(TARGET ${PROJECT_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E env
+      "LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64/:/usr/local/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+    )
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)
