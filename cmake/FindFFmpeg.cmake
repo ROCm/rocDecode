@@ -122,7 +122,30 @@ else()
   )
   mark_as_advanced(AVUTIL_LIBRARY)
 
-  if(AVCODEC_LIBRARY AND AVFORMAT_LIBRARY)
+    # SWSCALE  
+    find_path(SWSCALE_INCLUDE_DIR 
+    NAMES libswscale/swscale.h
+    PATHS ${_FFMPEG_SWSCALE_INCLUDE_DIRS}
+      /usr/include/x86_64-linux-gnu
+      /usr/local/include
+      /usr/include
+      /opt/local/include
+      /sw/include
+    PATH_SUFFIXES ffmpeg libav sw
+  )
+  mark_as_advanced(SWSCALE_INCLUDE_DIR)
+  find_library(SWSCALE_LIBRARY
+    NAMES swscale
+    PATHS ${_FFMPEG_SWSCALE_LIBRARY_DIRS}
+      /usr/lib/x86_64-linux-gnu
+      /usr/local/lib
+      /usr/lib
+      /opt/local/lib
+      /sw/lib
+  )
+  mark_as_advanced(SWSCALE_LIBRARY)
+
+  if(AVCODEC_LIBRARY AND AVFORMAT_LIBRARY AND AVUTIL_LIBRARY AND SWSCALE_LIBRARY)
     set(FFMPEG_FOUND TRUE)
   endif()
   
@@ -143,6 +166,7 @@ else()
       ${AVCODEC_LIBRARY}
       ${AVFORMAT_LIBRARY}
       ${AVUTIL_LIBRARY}
+      ${SWSCALE_LIBRARY}
       CACHE INTERNAL ""
     )
   endif()
