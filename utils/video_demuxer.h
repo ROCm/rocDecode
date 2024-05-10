@@ -239,8 +239,11 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
         }
         *video = packet_filtered_->data;
         *video_size = packet_filtered_->size;
-        if (packet_filtered_->dts != AV_NOPTS_VALUE)
+        if (packet_filtered_->dts != AV_NOPTS_VALUE) {
             pkt_dts_ = packet_filtered_->dts;
+        } else {
+            pkt_dts_ = packet_filtered_->pts;
+        }
         if (pts) {
             *pts = (int64_t) (packet_filtered_->pts * default_time_scale_ * time_base_);
             pkt_duration_ = packet_filtered_->duration;
@@ -263,8 +266,15 @@ bool VideoDemuxer::Demux(uint8_t **video, int *video_size, int64_t *pts) {
             *video = packet_->data;
             *video_size = packet_->size;
         }
-        if (pts)
+        if (packet_->dts != AV_NOPTS_VALUE) {
+            pkt_dts_ = packet_->dts;
+        } else {
+            pkt_dts_ = packet_->pts;
+        }
+        if (pts) {
             *pts = (int64_t)(packet_->pts * default_time_scale_ * time_base_);
+            pkt_duration_ = packet_->duration;
+        }
     }
     frame_count_++;
     return true;
@@ -461,11 +471,9 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
 
         if (pkt_dts_ == target_ts) {
             return 0;
-        }
-        else if (pkt_dts_ > target_ts) {
+        } else if (pkt_dts_ > target_ts) {
             return 1;
-        }
-        else {
+        } else {
             return -1;
         };
     };
@@ -480,21 +488,20 @@ bool VideoDemuxer::Seek(VideoSeekContext& seek_ctx, uint8_t** pp_video, int* vid
         int seek_done = 0;
         do {
             if (!Demux(pp_video, video_size, &pkt_data.pts)) {
-                break;
+                throw std::runtime_error("ERROR: Demux failed trying to seek for specified frame number/timestamp");
             }
             seek_done = is_seek_done(pkt_data, seek_ctx);
-
-            // We've gone too far and need to seek backwards;
-            if (seek_done > 0) {
+            //TODO: one last condition, check for a target too high than available for timestamp
+            if (seek_done > 0) { // We've gone too far and need to seek backwards;
                 if ((tmp_ctx.seek_frame_--) >= 0) {
                     seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
                 }
-            }
-            // Need to read more frames until we reach requested number;
-            else if (seek_done < 0) {
+            } else if (seek_done < 0) { // Need to read more frames until we reach requested number;
                 tmp_ctx.seek_frame_++;
                 seek_frame(tmp_ctx, AVSEEK_FLAG_ANY);
             }
+            if (tmp_ctx.seek_frame_ == seek_ctx.seek_frame_) // if frame 'N' is too far and frame 'N-1' is too less from target. Avoids infinite loop between N & N-1 
+                break;
         } while (seek_done != 0);
 
         seek_ctx.out_frame_pts_ = pkt_data.pts;
