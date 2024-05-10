@@ -103,6 +103,17 @@ class VideoPostProcess {
                 else if (e_output_format == rgba64)
                 P016ToColor64<RGBA64>(p_src, surf_info->output_pitch, static_cast<uint8_t *>(rgb_dev_mem_ptr), 8 * rgb_width, surf_info->output_width, 
                                     surf_info->output_height, surf_info->output_vstride, 0, hip_stream);
+            }   
+        };
+        uint32_t GetRgbStride(OutputFormatEnum e_output_format, OutputSurfaceInfo *surf_info) {
+            uint32_t rgb_stride;
+            uint32_t  rgb_width = (surf_info->output_width + 1) & ~1; // has to be a multiple of 2 for hip colorconvert kernels
+            if (surf_info->bit_depth == 8) {
+                rgb_stride = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * 3 : rgb_width * 4;        // bgr/bgra/rgb/rgba
+            } else {
+                rgb_stride = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * 3 : 
+                        ((e_output_format == bgr48) || (e_output_format == rgb48)) ? rgb_width * 6 : rgb_width * 8;
             }
+            return rgb_stride;
         };
 };
