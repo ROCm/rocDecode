@@ -98,6 +98,8 @@ protected:
      */
     typedef struct {
         int     pic_idx;  // picture index or id
+        // Jefftest
+        int     dec_buf_idx;  // frame index in decode buffer pool
         // POC info
         int32_t pic_order_cnt;  // PicOrderCnt
         int32_t prev_poc_lsb;  // prevPicOrderCntLsb
@@ -307,6 +309,8 @@ protected:
      * \return Code in ParserResult form.
      */
     int MarkOutputPictures();
+
+    ParserResult FindFreeInDecBufPool();
 
     /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture
      *         bumping is done if needed. C.5.2.3.

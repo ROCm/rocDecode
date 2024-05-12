@@ -99,8 +99,10 @@ public:
 
 protected:
     typedef struct {
-        uint32_t surface_idx;       // VA surface index
-        uint32_t use_status;        // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t surface_idx;           // VA surface index
+        uint32_t dec_use_status;        // 0 = not used for decode (bumped out of DPB); 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t disp_use_status;       // 0 = displayed or not need for display; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t pic_order_cnt; // Jefftest
     } DecodeFrameBuffer;
 
     RocdecParserParams parser_params_ = {};
