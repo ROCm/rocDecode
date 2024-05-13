@@ -119,15 +119,8 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
         }
 
         if (convert_to_rgb) {
-            int rgb_width;
-            if (p_surf_info->bit_depth == 8) {
-                rgb_width = (p_surf_info->output_width + 1) & ~1; // has to be a multiple of 2 for hip colorconvert kernels
-                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * p_surf_info->output_height * 3 : rgb_width * p_surf_info->output_height * 4;
-            } else {
-                rgb_width = (p_surf_info->output_width + 1) & ~1;
-                rgb_image_size = ((e_output_format == bgr) || (e_output_format == rgb)) ? rgb_width * p_surf_info->output_height * 3 : ((e_output_format == bgr48) || (e_output_format == rgb48)) ? 
-                                                        rgb_width * p_surf_info->output_height * 6 : rgb_width * p_surf_info->output_height * 8;
-            }
+            uint32_t rgb_stride = post_proc.GetRgbStride(e_output_format, p_surf_info);
+            rgb_image_size = p_surf_info->output_height * rgb_stride;
             if (p_rgb_dev_mem == nullptr) {
                 hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
                 if (hip_status != hipSuccess) {
