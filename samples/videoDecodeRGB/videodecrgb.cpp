@@ -119,7 +119,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
         }
 
         if (convert_to_rgb) {
-            u_int32_t rgb_stride = post_proc.GetRgbStride(e_output_format, p_surf_info);
+            uint32_t rgb_stride = post_proc.GetRgbStride(e_output_format, p_surf_info);
             rgb_image_size = p_surf_info->output_height * rgb_stride;
             if (p_rgb_dev_mem == nullptr) {
                 hip_status = hipMalloc(&p_rgb_dev_mem, rgb_image_size);
