@@ -337,6 +337,8 @@ protected:
     void PrintSliceSegHeader(HevcSliceSegHeader *slice_header_ptr);
     void PrintStRps(HevcShortTermRps *rps_ptr);
     void PrintLtRefInfo(HevcLongTermRps *lt_info_ptr);
+    void PrintDpb();
+    void PrintVappiBufInfo();
 #endif // DBGINFO
 
 private:
