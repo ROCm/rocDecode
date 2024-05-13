@@ -91,7 +91,7 @@ rocDecStatus HevcVideoParser::UnInitialize() {
 
 rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
-        printf("Frame %d: =====================================================\n", pic_count_); // Jefftest
+        //printf("Frame %d: =====================================================\n", pic_count_); // Jefftest
         if (pic_count_ == 20) {
             pic_count_ = 20;
         }
@@ -580,7 +580,7 @@ int HevcVideoParser::OutputDecodedPictures() {
     disp_info.progressive_frame = m_sps_[m_active_sps_id_].profile_tier_level.general_progressive_source_flag;
     disp_info.top_field_first = 1;
 
-    printf("OutputDecodedPictures(): num_output_pics_ = %d\n", num_output_pics_);
+    //printf("OutputDecodedPictures(): num_output_pics_ = %d\n", num_output_pics_); // Jefftest
     // Jefftest for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
     for (int i = 0; i < num_output_pics_; i++) {
         // Jefftest disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
@@ -589,7 +589,7 @@ int HevcVideoParser::OutputDecodedPictures() {
         pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
         // Jefftest
         decode_buffer_pool_[output_pic_list_[i]].disp_use_status = 0;
-        printf("POC = %d, surface_idx = %d\n", decode_buffer_pool_[output_pic_list_[i]].pic_order_cnt, decode_buffer_pool_[output_pic_list_[i]].surface_idx); // Jefftest
+        //printf("POC = %d, surface_idx = %d\n", decode_buffer_pool_[output_pic_list_[i]].pic_order_cnt, decode_buffer_pool_[output_pic_list_[i]].surface_idx); // Jefftest
     }
 
     // Jefftest dpb_buffer_.num_output_pics = 0;
@@ -1605,8 +1605,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
     if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
         sps_ptr = &m_sps_[m_active_sps_id_];
-        // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
+        // Re-set DPB size.
+        // Jefftest We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1; // Jefftest2 3;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
@@ -1626,8 +1627,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
         // Take care of the case where a new SPS replaces the old SPS with the same id but with different dimensions
-        // Re-set DPB size. We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 3;
+        // Re-set DPB size.
+        // Jefftest We add 2 addition buffers to avoid overwritting buffer needed for output in certain cases.
+        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1; // Jefftest2 3;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
@@ -2387,7 +2389,8 @@ ParserResult HevcVideoParser::FindFreeBufAndMark() {
     uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
 
     // Conditional bumping (when max_num_reorder_pics > 0) to avoid synchronous job submission while keeping in conformance with the spec.
-    while (max_num_reorder_pics > 0 && dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
+    // Jefftest2 while (max_num_reorder_pics > 0 && dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
+    while ( dpb_buffer_.num_pics_needed_for_output > max_num_reorder_pics) {
         if (BumpPicFromDpb() != PARSER_OK) {
             return PARSER_FAIL;
         }
