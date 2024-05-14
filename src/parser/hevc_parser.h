@@ -358,7 +358,7 @@ private:
     /*! \brief Callback function to output decoded pictures from DPB for post-processing.
      * \return Return code in ParserResult form
      */
-    int OutputDecodedPictures();
+    int OutputDecodedPictures(int flush);
 
     bool IsIdrPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsCraPic(HevcNalUnitHeader *nal_header_ptr);
