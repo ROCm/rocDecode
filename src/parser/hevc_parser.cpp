@@ -99,6 +99,11 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             SendSeiMsgPayload();
         }
 
+        // Error handling: if there is no slice data, return gracefully.
+        if (num_slices_ == 0) {
+            return ROCDEC_SUCCESS;
+        }
+
         // Decode the picture
         if (SendPicForDecode() != PARSER_OK) {
             ERR(STR("Failed to decode!"));
