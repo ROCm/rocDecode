@@ -2335,12 +2335,12 @@ ParserResult HevcVideoParser::FindFreeInDecBufPool() {
     }
 
     curr_pic_info_.dec_buf_idx = dec_buf_index;
-    decode_buffer_pool_[dec_buf_index].dec_use_status = 3;
+    /* Jefftest5 decode_buffer_pool_[dec_buf_index].dec_use_status = 3;
     // Jefftest4 if (curr_pic_info_.pic_output_flag) {
     if (pfn_display_picture_cb_ && curr_pic_info_.pic_output_flag) {
         decode_buffer_pool_[dec_buf_index].disp_use_status = 3;
     }
-    decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_info_.pic_order_cnt;
+    decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_info_.pic_order_cnt;*/
     return PARSER_OK;
 }
 
