@@ -2336,7 +2336,8 @@ ParserResult HevcVideoParser::FindFreeInDecBufPool() {
 
     curr_pic_info_.dec_buf_idx = dec_buf_index;
     decode_buffer_pool_[dec_buf_index].dec_use_status = 3;
-    if (curr_pic_info_.pic_output_flag) {
+    // Jefftest4 if (curr_pic_info_.pic_output_flag) {
+    if (pfn_display_picture_cb_ && curr_pic_info_.pic_output_flag) {
         decode_buffer_pool_[dec_buf_index].disp_use_status = 3;
     }
     decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_info_.pic_order_cnt;
@@ -2412,7 +2413,8 @@ ParserResult HevcVideoParser::FindFreeBufAndMark() {
     // Jefftest
     // Mark as used in decode buffer pool
     decode_buffer_pool_[curr_pic_info_.dec_buf_idx].dec_use_status = 3;
-    if (curr_pic_info_.pic_output_flag) {
+    // Jefftest4 if (curr_pic_info_.pic_output_flag) {
+    if (pfn_display_picture_cb_ && curr_pic_info_.pic_output_flag) {
         decode_buffer_pool_[curr_pic_info_.dec_buf_idx].disp_use_status = 3;
     }
     decode_buffer_pool_[curr_pic_info_.dec_buf_idx].pic_order_cnt = curr_pic_info_.pic_order_cnt;
@@ -2534,17 +2536,20 @@ int HevcVideoParser::BumpPicFromDpb() {
     }
 
     // Insert into output/display picture list
-    // Jefftest if (dpb_buffer_.num_output_pics >= HEVC_MAX_DPB_FRAMES) {
-    if (num_output_pics_ >= HEVC_MAX_DPB_FRAMES) {
-        ERR("Error! DPB output buffer list overflow!");
-        return PARSER_OUT_OF_RANGE;
-    } else {
-        // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx;
-        // Jefftest output_pic_list_[num_output_pics_] = min_poc_pic_idx;
-        output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].dec_buf_idx;
-        //decode_buffer_pool_[output_pic_list_[num_output_pics_]].pic_order_cnt = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_order_cnt;
-        // Jefftest dpb_buffer_.num_output_pics++;
-        num_output_pics_++;
+    // Jefftest4
+    if (pfn_display_picture_cb_) {
+        // Jefftest if (dpb_buffer_.num_output_pics >= HEVC_MAX_DPB_FRAMES) {
+        if (num_output_pics_ >= HEVC_MAX_DPB_FRAMES) {
+            ERR("Error! DPB output buffer list overflow!");
+            return PARSER_OUT_OF_RANGE;
+        } else {
+            // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx;
+            // Jefftest output_pic_list_[num_output_pics_] = min_poc_pic_idx;
+            output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].dec_buf_idx;
+            //decode_buffer_pool_[output_pic_list_[num_output_pics_]].pic_order_cnt = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_order_cnt;
+            // Jefftest dpb_buffer_.num_output_pics++;
+            num_output_pics_++;
+        }
     }
 
     return PARSER_OK;
