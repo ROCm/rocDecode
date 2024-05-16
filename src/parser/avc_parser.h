@@ -153,10 +153,11 @@ protected:
      */
     ParserResult SendPicForDecode();
 
-    /*! \brief Function to output decoded pictures from DPB for post-processing.
-     * \return Return code in ParserResult form
+    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
+     * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
+     * \return <tt>ParserResult</tt>
      */
-    ParserResult OutputDecodedPictures();
+    ParserResult OutputDecodedPictures(bool no_delay);
 
     /*! \brief Callback function to send parsed SEI playload to decoder.
      */

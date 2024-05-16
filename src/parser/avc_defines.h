@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 #define AVC_MAX_REF_FRAME_NUM                           16
 #define AVC_MAX_REF_PICTURE_NUM                         32
-#define AVC_MAX_DPB_FRAMES                              18
+#define AVC_MAX_DPB_FRAMES                              16 // Jefftest2
 #define AVC_MAX_DPB_FIELDS                              AVC_MAX_DPB_FRAMES * 2
 
 #define AVC_MACRO_BLOCK_SIZE                            16

@@ -128,7 +128,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         // Output decoded pictures from DPB if any are ready
         // Jefftest if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
         if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
-            if (OutputDecodedPictures(0) != PARSER_OK) {
+            if (OutputDecodedPictures(false) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
         }
@@ -572,17 +572,17 @@ int HevcVideoParser::SendPicForDecode() {
     }
 }
 
-int HevcVideoParser::OutputDecodedPictures(int flush) {
+ParserResult HevcVideoParser::OutputDecodedPictures(bool no_delay) {
     RocdecParserDispInfo disp_info = {0};
     disp_info.progressive_frame = m_sps_[m_active_sps_id_].profile_tier_level.general_progressive_source_flag;
     disp_info.top_field_first = 1;
 
     // Jefftest3
 #if 1
-    int disp_delay = flush == 0 ? parser_params_.max_display_delay : 0;
+    int disp_delay = no_delay ? 0 : parser_params_.max_display_delay;
     if (num_output_pics_ > disp_delay) {
         int num_disp = num_output_pics_ - disp_delay;
-        //printf("OutputDecodedPictures(): num_output_pics_ = %d, flush = %d\n", num_output_pics_, flush); // Jefftest
+        //printf("OutputDecodedPictures(): num_output_pics_ = %d, no_delay = %d\n", num_output_pics_, no_delay); // Jefftest
         // Jefftest for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
         for (int i = 0; i < num_disp; i++) {
             // Jefftest disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
@@ -2249,7 +2249,7 @@ int HevcVideoParser::FlushDpb() {
     }
         // Jefftest if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
         if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
-            if (OutputDecodedPictures(1) != PARSER_OK) {
+            if (OutputDecodedPictures(true) != PARSER_OK) {
                 return PARSER_FAIL;
             }
         }
@@ -2274,9 +2274,9 @@ int HevcVideoParser::MarkOutputPictures() {
             }
         }
 
-        // Jefftest3
+        // We can still have remaining undisplayed frames due to display delay feature
         if (num_output_pics_) {
-            OutputDecodedPictures(1);
+            OutputDecodedPictures(true);
         }
         EmptyDpb();
     } else {

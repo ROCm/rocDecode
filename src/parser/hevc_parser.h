@@ -359,9 +359,10 @@ private:
     int SendPicForDecode();
 
     /*! \brief Callback function to output decoded pictures from DPB for post-processing.
-     * \return Return code in ParserResult form
+     * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
+     * \return <tt>ParserResult</tt>
      */
-    int OutputDecodedPictures(int flush);
+    ParserResult OutputDecodedPictures(bool no_delay);
 
     bool IsIdrPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsCraPic(HevcNalUnitHeader *nal_header_ptr);
