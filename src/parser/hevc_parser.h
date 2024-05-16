@@ -310,6 +310,9 @@ protected:
      */
     int MarkOutputPictures();
 
+    /*! \brief Function to find a free buffer in the decode buffer pool
+     *  \return <tt>ParserResult</tt>
+     */
     ParserResult FindFreeInDecBufPool();
 
     /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture

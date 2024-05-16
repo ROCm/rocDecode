@@ -92,9 +92,6 @@ rocDecStatus HevcVideoParser::UnInitialize() {
 rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         //printf("Frame %d: =====================================================\n", pic_count_); // Jefftest
-        if (pic_count_ == 96) {
-            pic_count_ = 96;
-        }
         // Clear DPB output/display buffer number
         // Jefftest dpb_buffer_.num_output_pics = 0;
         // Jefftest3 num_output_pics_ = 0;
@@ -2546,7 +2543,6 @@ int HevcVideoParser::BumpPicFromDpb() {
             // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx;
             // Jefftest output_pic_list_[num_output_pics_] = min_poc_pic_idx;
             output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].dec_buf_idx;
-            //decode_buffer_pool_[output_pic_list_[num_output_pics_]].pic_order_cnt = dpb_buffer_.frame_buffer_list[min_poc_pic_idx].pic_order_cnt;
             // Jefftest dpb_buffer_.num_output_pics++;
             num_output_pics_++;
         }
@@ -2967,6 +2963,14 @@ void HevcVideoParser::PrintDpb() {
     for(i = 0; i < dec_buf_pool_size_; i++) {
         DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
         MSG("Decode buffer " << i << ": surface_idx = " << p_dec_buf->surface_idx << ", dec_use_status = " << p_dec_buf->dec_use_status << ", disp_use_status = " << p_dec_buf->disp_use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+    }
+    MSG("num_output_pics_ = " << num_output_pics_);
+    if (num_output_pics_) {
+        MSG("output_pic_list:");
+        for (i = 0; i < num_output_pics_; i++) {
+            MSG_NO_NEWLINE(output_pic_list_[i] << ", ");
+        }
+        MSG("");
     }
 }
 

@@ -42,6 +42,7 @@ AvcVideoParser::AvcVideoParser() {
     field_pic_count_ = 0;
     second_field_ = 0;
     first_field_pic_idx_ = 0;
+    first_field_dec_buf_idx_ = 0;
 
     InitDpb();
 }
@@ -72,8 +73,9 @@ rocDecStatus AvcVideoParser::UnInitialize() {
 
 rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
+        //printf("Frame %d: =====================================================\n", pic_count_); // Jefftest
         // Clear DPB output/display buffer number
-        dpb_buffer_.num_output_pics = 0;
+        // Jefftest dpb_buffer_.num_output_pics = 0;
 
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
             ERR(STR("Parser failed!"));
@@ -99,7 +101,8 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         }
 
         // Output decoded pictures from DPB if any are ready in case of frame_num gaps.
-        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+        // Jefftest if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+        if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
             if (OutputDecodedPictures() != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
@@ -250,6 +253,10 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     }
 
                     if (num_slices_ == 0) {
+                        // Jefftest1
+                        if ((ret2 = FindFreeInDecBufPool()) != PARSER_OK) {
+                            return ret2;
+                        }
                         // Find a free buffer in DPB for the current picture. Due to the current 1-1 mapping of DPB and 
                         // decoded buffer pool at VAAP level, we need to get a surface from DPB for the current picture to be 
                         // decoded into.
@@ -421,7 +428,8 @@ void AvcVideoParser::SendSeiMsgPayload() {
     sei_message_info_params_.sei_message_count = sei_message_count_;
     sei_message_info_params_.sei_message = sei_message_list_.data();
     sei_message_info_params_.sei_data = (void*)sei_payload_buf_;
-    sei_message_info_params_.picIdx = curr_pic_.pic_idx;
+    // Jefftest1 sei_message_info_params_.picIdx = curr_pic_.pic_idx;
+    sei_message_info_params_.picIdx = curr_pic_.dec_buf_idx;
 
     // callback function with RocdecSeiMessageInfo params filled out
     if (pfn_get_sei_message_cb_) pfn_get_sei_message_cb_(parser_params_.user_data, &sei_message_info_params_);
@@ -454,7 +462,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
 
     dec_pic_params_.pic_width = pic_width_;
     dec_pic_params_.pic_height = pic_height_;
-    dec_pic_params_.curr_pic_idx = curr_pic_.pic_idx;
+    // Jefftest1 dec_pic_params_.curr_pic_idx = curr_pic_.pic_idx;
+    dec_pic_params_.curr_pic_idx = curr_pic_.dec_buf_idx;
     dec_pic_params_.field_pic_flag = p_slice_header->field_pic_flag;
     dec_pic_params_.bottom_field_flag = p_slice_header->bottom_field_flag;
     dec_pic_params_.second_field = second_field_;
@@ -470,7 +479,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     RocdecAvcPicParams *p_pic_param = &dec_pic_params_.pic_params.avc;
 
     // Current picture
-    p_pic_param->curr_pic.pic_idx = curr_pic_.pic_idx;
+    // Jefftest1 p_pic_param->curr_pic.pic_idx = curr_pic_.pic_idx;
+    p_pic_param->curr_pic.pic_idx = curr_pic_.dec_buf_idx;
     if (curr_pic_.is_reference == kUsedForLongTerm) {
         p_pic_param->curr_pic.frame_idx = curr_pic_.long_term_pic_num;
     } else {
@@ -492,7 +502,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
         if (p_slice_header->field_pic_flag == 0) { // frame picture
             AvcPicture *p_ref_pic = &dpb_buffer_.frame_buffer_list[i];
             if (p_ref_pic->is_reference != kUnusedForReference) {
-                p_pic_param->ref_frames[buf_index].pic_idx = p_ref_pic->pic_idx;
+                // Jefftest1 p_pic_param->ref_frames[buf_index].pic_idx = p_ref_pic->pic_idx;
+                p_pic_param->ref_frames[buf_index].pic_idx = p_ref_pic->dec_buf_idx;
                 if ( p_ref_pic->is_reference == kUsedForLongTerm) {
                     p_pic_param->ref_frames[buf_index].frame_idx = p_ref_pic->long_term_pic_num;
                 } else {
@@ -513,7 +524,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
             for (int j = 0; j < 2; j++) {
                 AvcPicture *p_field_pic = &dpb_buffer_.field_pic_list[i * 2 + j];
                 if (p_field_pic->is_reference != kUnusedForReference) {
-                    p_ref_frame->pic_idx = p_field_pic->pic_idx;
+                    // Jefftest1 p_ref_frame->pic_idx = p_field_pic->pic_idx;
+                    p_ref_frame->pic_idx = p_field_pic->dec_buf_idx;
                     if (p_field_pic->is_reference == kUsedForLongTerm) {
                         p_ref_frame->frame_idx = p_field_pic->long_term_frame_idx;
                     } else {
@@ -624,7 +636,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
             for (i = 0; i <= p_slice_info->slice_header.num_ref_idx_l0_active_minus1; i++) {
                 AvcPicture *p_ref_pic = &p_slice_info->ref_list_0_[i];
                 if (p_ref_pic->is_reference != kUnusedForReference) {
-                    p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->pic_idx;
+                    // Jefftest1 p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->pic_idx;
+                    p_slice_param->ref_pic_list_0[i].pic_idx = p_ref_pic->dec_buf_idx;
                     if ( p_ref_pic->is_reference == kUsedForLongTerm) {
                         p_slice_param->ref_pic_list_0[i].frame_idx = p_ref_pic->long_term_pic_num;
                     } else {
@@ -645,7 +658,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
             for (i = 0; i <= p_slice_info->slice_header.num_ref_idx_l1_active_minus1; i++) {
                 AvcPicture *p_ref_pic = &p_slice_info->ref_list_1_[i];
                 if (p_ref_pic->is_reference != kUnusedForReference) {
-                    p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->pic_idx;
+                    // Jefftest1 p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->pic_idx;
+                    p_slice_param->ref_pic_list_1[i].pic_idx = p_ref_pic->dec_buf_idx;
                     if ( p_ref_pic->is_reference == kUsedForLongTerm) {
                         p_slice_param->ref_pic_list_1[i].frame_idx = p_ref_pic->long_term_pic_num;
                     } else {
@@ -727,12 +741,20 @@ ParserResult AvcVideoParser::OutputDecodedPictures() {
     disp_info.progressive_frame = sps_list_[active_sps_id_].frame_mbs_only_flag;
     disp_info.top_field_first = slice_info_list_[0].slice_header.bottom_field_flag && (pic_count_ & 1);
 
-    for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
-        disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
+    //printf("OutputDecodedPictures(): num_output_pics_ = %d\n", num_output_pics_); // Jefftest
+    // Jefftest for (int i = 0; i < dpb_buffer_.num_output_pics; i++) {
+    for (int i = 0; i < num_output_pics_; i++) {
+        // Jefftest disp_info.picture_index = dpb_buffer_.frame_buffer_list[dpb_buffer_.output_pic_list[i]].pic_idx;
+        // Jefftest1 disp_info.picture_index = dpb_buffer_.frame_buffer_list[output_pic_list_[i]].pic_idx;
+        disp_info.picture_index = decode_buffer_pool_[output_pic_list_[i]].surface_idx;
         pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
+        // Jefftest1
+        decode_buffer_pool_[output_pic_list_[i]].disp_use_status = 0;
+        //printf("POC = %d, surface_idx = %d\n", decode_buffer_pool_[output_pic_list_[i]].pic_order_cnt, decode_buffer_pool_[output_pic_list_[i]].surface_idx); // Jefftest
     }
 
-    dpb_buffer_.num_output_pics = 0;
+    // Jefftest dpb_buffer_.num_output_pics = 0;
+    num_output_pics_ = 0;
     return PARSER_OK;
 }
 
@@ -1657,7 +1679,7 @@ void AvcVideoParser::InitDpb() {
     dpb_buffer_.num_short_term_ref_fields = 0;
     dpb_buffer_.num_long_term_ref_fields = 0;
     dpb_buffer_.num_pics_needed_for_output = 0;
-    dpb_buffer_.num_output_pics = 0;
+    // Jefftest dpb_buffer_.num_output_pics = 0;
 }
 
 // 8.2.1 Decoding process for picture order count
@@ -2579,11 +2601,39 @@ ParserResult AvcVideoParser::CheckDpbAndOutput() {
         }
     }
     // Output decoded pictures from DPB if any are ready
-    if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+    // Jefftest if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+    if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
         if (OutputDecodedPictures() != PARSER_OK) {
             return PARSER_FAIL;
         }
     }
+    return PARSER_OK;
+}
+
+// Jefftest1
+ParserResult AvcVideoParser::FindFreeInDecBufPool() {
+    int dec_buf_index;
+
+    if (curr_pic_.pic_structure == kFrame || !second_field_) {
+        // Find a free buffer in decode buffer pool
+        for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
+            if (decode_buffer_pool_[dec_buf_index].dec_use_status == 0 && decode_buffer_pool_[dec_buf_index].disp_use_status == 0) {
+                break;
+            }
+        }
+        if (dec_buf_index == dec_buf_pool_size_) {
+            ERR("Could not find a free buffer in decode buffer pool.");
+            return PARSER_NOT_FOUND;
+        }
+
+        curr_pic_.dec_buf_idx = dec_buf_index;
+        if ( curr_pic_.pic_structure != kFrame) {
+                first_field_dec_buf_idx_ = dec_buf_index;
+        }
+    } else {
+        curr_pic_.dec_buf_idx = first_field_dec_buf_idx_;
+    }
+
     return PARSER_OK;
 }
 
@@ -2995,12 +3045,16 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
         if (dpb_buffer_.num_pics_needed_for_output > 0) {
             dpb_buffer_.num_pics_needed_for_output--;
             // Insert into output/display picture list
-            if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+            // Jefftest if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+            if (num_output_pics_ >= AVC_MAX_DPB_FRAMES) {
                 ERR("Error! DPB output buffer list overflow!");
                 return PARSER_OUT_OF_RANGE;
             } else {
-                dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_ref;
-                dpb_buffer_.num_output_pics++;
+                // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_ref;
+                // Jefftest1 output_pic_list_[num_output_pics_] = min_poc_pic_idx_ref;
+                output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx_ref].dec_buf_idx;
+                // Jefftest dpb_buffer_.num_output_pics++;
+                num_output_pics_++;
             }
         }
         min_poc_ref = 0x7FFFFFFF;
@@ -3021,16 +3075,22 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
         }
 
         // Insert into output/display picture list
-        if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+        // Jefftest if (dpb_buffer_.num_output_pics >= AVC_MAX_DPB_FRAMES) {
+        if (num_output_pics_ >= AVC_MAX_DPB_FRAMES) {
             ERR("Error! DPB output buffer list overflow!");
             return PARSER_OUT_OF_RANGE;
         } else {
-            dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_no_ref;
-            dpb_buffer_.num_output_pics++;
+            // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_no_ref;
+            // Jefftest1 output_pic_list_[num_output_pics_] = min_poc_pic_idx_no_ref;
+            output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].dec_buf_idx;
+            // Jefftest dpb_buffer_.num_output_pics++;
+            num_output_pics_++;
         }
     }
     // Remove it from DPB.
     dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].use_status = 0;
+    // Jefftest1
+    decode_buffer_pool_[dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].dec_buf_idx].dec_use_status = 0;
     if (dpb_buffer_.dpb_fullness > 0 ) {
         dpb_buffer_.dpb_fullness--;
     }
@@ -3094,6 +3154,14 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
                 }
             }
         }
+
+        // Jefftest1
+        // Mark as used in decode buffer pool
+        decode_buffer_pool_[curr_pic_.dec_buf_idx].dec_use_status = 3;
+        if (pfn_display_picture_cb_ && curr_pic_.pic_output_flag) {
+            decode_buffer_pool_[curr_pic_.dec_buf_idx].disp_use_status = 3;
+        }
+        decode_buffer_pool_[curr_pic_.dec_buf_idx].pic_order_cnt = curr_pic_.pic_order_cnt;
     } else {
         ERR("Could not find the reserved frame buffer for the current picture in DPB.");
         return PARSER_FAIL;
@@ -3117,7 +3185,8 @@ ParserResult AvcVideoParser::FlushDpb() {
                 return PARSER_FAIL;
             }
         }
-        if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+        // Jefftest if (pfn_display_picture_cb_ && dpb_buffer_.num_output_pics > 0) {
+        if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
             if (OutputDecodedPictures() != PARSER_OK) {
                 return PARSER_FAIL;
             }
@@ -3353,11 +3422,10 @@ void AvcVideoParser::PrintDpb() {
     MSG("second_field_ = " << second_field_);
     MSG("num_pics_needed_for_output = " << dpb_buffer_.num_pics_needed_for_output);
     MSG("dpb_fullness = " << dpb_buffer_.dpb_fullness);
-    MSG("num_output_pics = " << dpb_buffer_.num_output_pics);
     MSG("Frame buffer store:");
     for (i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
         AvcPicture *p_buf = &dpb_buffer_.frame_buffer_list[i];
-        MSG("Frame buffer " << i << ": pic_idx = " << p_buf->pic_idx << ", pic_structure = " << p_buf->pic_structure << ", pic_order_cnt = " << p_buf->pic_order_cnt << ", top_field_order_cnt = " << p_buf->top_field_order_cnt << ", bottom_field_order_cnt = " << p_buf->bottom_field_order_cnt << ", frame_num = " << p_buf->frame_num << ", frame_num_wrap = " << p_buf->frame_num_wrap << ", pic_num = " << p_buf->pic_num << ", long_term_pic_num = " << p_buf->long_term_pic_num << ", long_term_frame_idx = " << p_buf->long_term_frame_idx << ", is_reference = " << p_buf->is_reference << ", use_status = " << p_buf->use_status << ", pic_output_flag = " << p_buf->pic_output_flag);
+        MSG("Frame buffer " << i << ": pic_idx = " << p_buf->pic_idx << ", dec_buf_idx = " << p_buf->dec_buf_idx << ", pic_structure = " << p_buf->pic_structure << ", pic_order_cnt = " << p_buf->pic_order_cnt << ", top_field_order_cnt = " << p_buf->top_field_order_cnt << ", bottom_field_order_cnt = " << p_buf->bottom_field_order_cnt << ", frame_num = " << p_buf->frame_num << ", frame_num_wrap = " << p_buf->frame_num_wrap << ", pic_num = " << p_buf->pic_num << ", long_term_pic_num = " << p_buf->long_term_pic_num << ", long_term_frame_idx = " << p_buf->long_term_frame_idx << ", is_reference = " << p_buf->is_reference << ", use_status = " << p_buf->use_status << ", pic_output_flag = " << p_buf->pic_output_flag);
     }
     MSG("");
     MSG("Field picture store:");
@@ -3366,12 +3434,20 @@ void AvcVideoParser::PrintDpb() {
         MSG("Field picture " << i << ": pic_idx = " << p_buf->pic_idx << ", pic_structure = " << p_buf->pic_structure << ", pic_order_cnt = " << p_buf->pic_order_cnt << ", top_field_order_cnt = " << p_buf->top_field_order_cnt << ", bottom_field_order_cnt = " << p_buf->bottom_field_order_cnt << ", frame_num = " << p_buf->frame_num << ", frame_num_wrap = " << p_buf->frame_num_wrap << ", pic_num = " << p_buf->pic_num << ", long_term_pic_num = " << p_buf->long_term_pic_num << ", long_term_frame_idx = " << p_buf->long_term_frame_idx << ", is_reference = " << p_buf->is_reference << ", use_status = " << p_buf->use_status << ", pic_output_flag = " << p_buf->pic_output_flag);
     }
     MSG("");
-    if (dpb_buffer_.num_output_pics) {
+
+
+    MSG("Decode buffer pool:");
+    for(i = 0; i < dec_buf_pool_size_; i++) {
+        DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
+        MSG("Decode buffer " << i << ": surface_idx = " << p_dec_buf->surface_idx << ", dec_use_status = " << p_dec_buf->dec_use_status << ", disp_use_status = " << p_dec_buf->disp_use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+    }
+    MSG("num_output_pics_ = " << num_output_pics_);
+    if (num_output_pics_) {
         MSG("output_pic_list:");
-        for (i = 0; i < dpb_buffer_.num_output_pics; i++) {
-            MSG_NO_NEWLINE(dpb_buffer_.output_pic_list[i] << ", ");
+        for (i = 0; i < num_output_pics_; i++) {
+            MSG_NO_NEWLINE(output_pic_list_[i] << ", ");
         }
-    MSG("");
+        MSG("");
     }
 }
 

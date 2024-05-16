@@ -60,6 +60,8 @@ public:
 
     typedef struct {
         int      pic_idx;  // picture index or id
+        // Jefftest
+        int      dec_buf_idx;  // frame index in decode buffer pool
         PictureStructure pic_structure;
         int32_t  pic_order_cnt;
         int32_t  top_field_order_cnt;
@@ -134,6 +136,7 @@ protected:
     uint32_t field_pic_count_;
     int second_field_;
     int first_field_pic_idx_;
+    int first_field_dec_buf_idx_; // Jefftest1
 
     // DPB
     AvcPicture curr_pic_;
@@ -262,6 +265,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult CheckDpbAndOutput();
+
+    /*! \brief Function to find a free buffer in the decode buffer pool
+     *  \return <tt>ParserResult</tt>
+     */
+    ParserResult FindFreeInDecBufPool();
 
     /*! \brief Function to find a free buffer in DPB for the current picture
      * \return <tt>ParserResult</tt>
