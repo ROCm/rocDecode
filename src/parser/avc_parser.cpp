@@ -3083,9 +3083,12 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
             } else */{
                 // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_ref;
                 // Jefftest1 output_pic_list_[num_output_pics_] = min_poc_pic_idx_ref;
+                // Jefftest4
+            if (pfn_display_picture_cb_) {
                 output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx_ref].dec_buf_idx;
                 // Jefftest dpb_buffer_.num_output_pics++;
                 num_output_pics_++;
+            }
             }
         }
         min_poc_ref = 0x7FFFFFFF;
@@ -3113,9 +3116,12 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
         } else */{
             // Jefftest dpb_buffer_.output_pic_list[dpb_buffer_.num_output_pics] = min_poc_pic_idx_no_ref;
             // Jefftest1 output_pic_list_[num_output_pics_] = min_poc_pic_idx_no_ref;
+        // Jefftest4
+        if (pfn_display_picture_cb_) {
             output_pic_list_[num_output_pics_] = dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].dec_buf_idx;
             // Jefftest dpb_buffer_.num_output_pics++;
             num_output_pics_++;
+        }
         }
     }
     // Remove it from DPB.
