@@ -157,7 +157,7 @@ protected:
      * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
      * \return <tt>ParserResult</tt>
      */
-    ParserResult OutputDecodedPictures(bool no_delay);
+    // Jefftest6 ParserResult OutputDecodedPictures(bool no_delay);
 
     /*! \brief Callback function to send parsed SEI playload to decoder.
      */

@@ -78,6 +78,31 @@ void RocVideoParser::InitDecBufPool() {
     num_output_pics_ = 0;
 }
 
+ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
+    RocdecParserDispInfo disp_info = {0};
+    disp_info.progressive_frame = 1; // not used
+    disp_info.top_field_first = 1; // not used
+
+    int disp_delay = no_delay ? 0 : parser_params_.max_display_delay;
+    if (num_output_pics_ > disp_delay) {
+        int num_disp = num_output_pics_ - disp_delay;
+        for (int i = 0; i < num_disp; i++) {
+            disp_info.picture_index = decode_buffer_pool_[output_pic_list_[i]].surface_idx;
+            pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
+            decode_buffer_pool_[output_pic_list_[i]].disp_use_status = 0;
+        }
+
+        num_output_pics_ = disp_delay;
+        // Shift the remaining frames to the top
+        if (num_output_pics_) {
+            for (int i = 0; i < num_output_pics_; i++) {
+                output_pic_list_[i] = output_pic_list_[i + num_disp];
+            }
+        }
+    }
+    return PARSER_OK;
+}
+
 ParserResult RocVideoParser::GetNalUnit() {
     bool start_code_found = false;
 

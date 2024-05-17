@@ -740,6 +740,8 @@ ParserResult AvcVideoParser::SendPicForDecode() {
     }
 }
 
+// Jefftest6
+#if 0
 ParserResult AvcVideoParser::OutputDecodedPictures(bool no_delay) {
     RocdecParserDispInfo disp_info = {0};
     disp_info.progressive_frame = sps_list_[active_sps_id_].frame_mbs_only_flag;
@@ -788,6 +790,7 @@ ParserResult AvcVideoParser::OutputDecodedPictures(bool no_delay) {
 #endif
     return PARSER_OK;
 }
+#endif
 
 AvcNalUnitHeader AvcVideoParser::ParseNalUnitHeader(uint8_t header_byte) {
     size_t bit_offset = 0;

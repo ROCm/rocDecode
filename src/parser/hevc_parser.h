@@ -362,7 +362,7 @@ private:
      * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
      * \return <tt>ParserResult</tt>
      */
-    ParserResult OutputDecodedPictures(bool no_delay);
+    // Jefftest6 ParserResult OutputDecodedPictures(bool no_delay);
 
     bool IsIdrPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsCraPic(HevcNalUnitHeader *nal_header_ptr);

@@ -158,6 +158,12 @@ protected:
     uint32_t            sei_payload_buf_size_;
     uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
 
+    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
+     * \param [in] no_delay Indicator to override the display delay parameter wth no delay
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult OutputDecodedPictures(bool no_delay);
+
     /*! \brief Function to get the NAL Unit data
      * \return Returns OK if successful, else error code
      */

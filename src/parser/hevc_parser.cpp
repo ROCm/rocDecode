@@ -572,6 +572,8 @@ int HevcVideoParser::SendPicForDecode() {
     }
 }
 
+// Jefftest6
+#if 0
 ParserResult HevcVideoParser::OutputDecodedPictures(bool no_delay) {
     RocdecParserDispInfo disp_info = {0};
     disp_info.progressive_frame = m_sps_[m_active_sps_id_].profile_tier_level.general_progressive_source_flag;
@@ -621,6 +623,7 @@ ParserResult HevcVideoParser::OutputDecodedPictures(bool no_delay) {
 #endif
     return PARSER_OK;
 }
+#endif
 
 ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t pic_data_size) {
     ParserResult ret = PARSER_OK;
