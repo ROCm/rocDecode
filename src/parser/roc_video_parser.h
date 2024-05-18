@@ -27,9 +27,6 @@ THE SOFTWARE.
 #include "rocparser.h"
 #include "../commons.h"
 
-// Jefftest
-#define NewBufManage 1
-
 typedef enum ParserResult {
     PARSER_OK                                   = 0,
     PARSER_FAIL                                    ,
@@ -117,7 +114,7 @@ protected:
         uint32_t surface_idx;           // VA surface index
         uint32_t dec_use_status;        // 0 = not used for decode (bumped out of DPB); 1 = top used; 2 = bottom used; 3 = both fields or frame used
         uint32_t disp_use_status;       // 0 = displayed or not need for display; 1 = top used; 2 = bottom used; 3 = both fields or frame used
-        uint32_t pic_order_cnt; // Jefftest
+        uint32_t pic_order_cnt;
     } DecodeFrameBuffer;
     uint32_t dec_buf_pool_size_;        /* Number of decoded frame surfaces in the pool which are recycled. The size should be greater
                                            than or equal to DPB size (normally greater to guarantee smooth operations). The value is

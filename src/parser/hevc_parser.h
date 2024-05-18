@@ -98,7 +98,6 @@ protected:
      */
     typedef struct {
         int     pic_idx;  // picture index or id
-        // Jefftest
         int     dec_buf_idx;  // frame index in decode buffer pool
         // POC info
         int32_t pic_order_cnt;  // PicOrderCnt
@@ -120,9 +119,6 @@ protected:
         uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
-
-        // Jefftest uint32_t num_output_pics;  // number of pictures that are output after the decode call
-        // Jefftest uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     // Data members of HEVC class
@@ -357,12 +353,6 @@ private:
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
-
-    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
-     * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
-     * \return <tt>ParserResult</tt>
-     */
-    // Jefftest6 ParserResult OutputDecodedPictures(bool no_delay);
 
     bool IsIdrPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsCraPic(HevcNalUnitHeader *nal_header_ptr);

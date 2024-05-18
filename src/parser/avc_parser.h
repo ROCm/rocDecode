@@ -60,7 +60,6 @@ public:
 
     typedef struct {
         int      pic_idx;  // picture index or id
-        // Jefftest
         int      dec_buf_idx;  // frame index in decode buffer pool
         PictureStructure pic_structure;
         int32_t  pic_order_cnt;
@@ -136,7 +135,7 @@ protected:
     uint32_t field_pic_count_;
     int second_field_;
     int first_field_pic_idx_;
-    int first_field_dec_buf_idx_; // Jefftest1
+    int first_field_dec_buf_idx_;
 
     // DPB
     AvcPicture curr_pic_;
@@ -152,12 +151,6 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SendPicForDecode();
-
-    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
-     * \param [in] no_delay Indicator to override the display delay parameter wth no delay 
-     * \return <tt>ParserResult</tt>
-     */
-    // Jefftest6 ParserResult OutputDecodedPictures(bool no_delay);
 
     /*! \brief Callback function to send parsed SEI playload to decoder.
      */
