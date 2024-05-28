@@ -18,7 +18,7 @@ The code is open and hosted at `<https://github.com/ROCm/rocDecode>`_.
 
   .. grid-item-card:: Install
 
-    * :doc:`Quick-start <./install/quick-start>`
+    * :doc:`Quick start <./install/quick-start>`
     * :doc:`rocDecode installation <./install/install>`
 
 
