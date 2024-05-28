@@ -21,7 +21,7 @@ subtrees:
 - caption: How to
   entries:
   - file: how-to/using-rocdecode.rst
-    title: Use rocDecode
+    title: Using rocDecode
 
 - caption: Conceptual
   entries:

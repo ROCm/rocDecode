@@ -33,7 +33,7 @@ The documentation is structured as follows:
 
   .. grid-item-card:: How to
 
-    * :doc:`Use rocDecode <how-to/using-rocdecode>`
+    * :doc:`Using rocDecode <how-to/using-rocdecode>`
 
   .. grid-item-card:: Conceptual
 
