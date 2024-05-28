@@ -3,7 +3,7 @@
   :keywords: install, rocDecode, AMD, ROCm
 
 ********************************************************************
-rocDecode quick-start installation
+rocDecode quick start installation
 ********************************************************************
 
 To install the rocDecode runtime with minimum requirements, follow these steps:

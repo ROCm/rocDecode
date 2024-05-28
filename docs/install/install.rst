@@ -52,7 +52,7 @@ Prerequisites
   `amdgpu-install <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html>`_
 
   * Run: ``--usecase=rocm``
-  * To install rocDecode with minimum requirements, follow the :doc:`quick-start instructions <./quick-start>`
+  * To install rocDecode with minimum requirements, follow the :doc:`quick start instructions <./quick-start>`
 
 * Video Acceleration API Version ``1.5.0`` or later - ``Libva`` is an implementation for VA-API
 
