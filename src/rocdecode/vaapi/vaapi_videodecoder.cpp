@@ -435,28 +435,32 @@ void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_veto
 void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
     std::string search_path = "/sys/devices/";
     std::string partition_file = "current_compute_partition";
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(search_path)) {
-#else
-    for (const auto& entry : std::experimental::filesystem::recursive_directory_iterator(search_path)) {
-#endif
-        if (entry.path().filename() == partition_file) {
-            std::ifstream file(entry.path());
-            if (file.is_open()) {
-                std::string partition;
-                std::getline(file, partition);
-                if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
-                    current_compute_partitions.push_back(kSpx);
-                } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
-                    current_compute_partitions.push_back(kDpx);
-                } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
-                    current_compute_partitions.push_back(kTpx);
-                } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
-                    current_compute_partitions.push_back(kQpx);
-                } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
-                    current_compute_partitions.push_back(kCpx);
+    std::error_code ec;
+    if (fs::exists(search_path)) {
+        for (auto it = fs::recursive_directory_iterator(search_path, fs::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); ) {
+            try {
+                if (it->path().filename() == partition_file) {
+                    std::ifstream file(it->path());
+                    if (file.is_open()) {
+                        std::string partition;
+                        std::getline(file, partition);
+                        if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
+                            current_compute_partitions.push_back(kSpx);
+                        } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
+                            current_compute_partitions.push_back(kDpx);
+                        } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
+                            current_compute_partitions.push_back(kTpx);
+                        } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
+                            current_compute_partitions.push_back(kQpx);
+                        } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
+                            current_compute_partitions.push_back(kCpx);
+                        }
+                        file.close();
+                    }
                 }
-                file.close();
+                ++it;
+            } catch (fs::filesystem_error& e) {
+                it.increment(ec);
             }
         }
     }
