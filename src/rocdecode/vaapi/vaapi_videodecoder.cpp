@@ -436,13 +436,8 @@ void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition>
     std::string search_path = "/sys/devices/";
     std::string partition_file = "current_compute_partition";
     std::error_code ec;
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-    if (std::filesystem::exists(search_path)) {
-        for (auto it = std::filesystem::recursive_directory_iterator(search_path, std::filesystem::directory_options::skip_permission_denied); it != std::filesystem::recursive_directory_iterator(); ) {
-#else
-    if (std::experimental::filesystem::exists(search_path)) {
-        for (auto it = std::experimental::filesystem::recursive_directory_iterator(search_path, std::experimental::filesystem::directory_options::skip_permission_denied); it != std::experimental::filesystem::recursive_directory_iterator(); ) {
-#endif
+    if (fs::exists(search_path)) {
+        for (auto it = fs::recursive_directory_iterator(search_path, fs::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); ) {
             try {
                 if (it->path().filename() == partition_file) {
                     std::ifstream file(it->path());
@@ -464,11 +459,7 @@ void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition>
                     }
                 }
                 ++it;
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-            } catch (std::filesystem::filesystem_error& e) {
-#else
-            } catch (std::experimental::filesystem::filesystem_error& e) {
-#endif
+            } catch (fs::filesystem_error& e) {
                 it.increment(ec);
             }
         }
