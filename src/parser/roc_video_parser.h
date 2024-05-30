@@ -78,6 +78,7 @@ typedef struct {
 #define INIT_SLICE_LIST_NUM 16 // initial slice information/parameter struct list size
 #define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
 #define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
+#define DECODE_BUF_POOL_EXTENSION 2
 
 /**
  * @brief Base class for video parsing
@@ -154,6 +155,11 @@ protected:
     uint8_t             *sei_payload_buf_;  // buffer to store SEI playload. Allocated at run time.
     uint32_t            sei_payload_buf_size_;
     uint32_t            sei_payload_size_;  // total SEI payload size of the current frame
+
+    /*! \brief Function to check the initially set (by decoder) decode buffer pool size and adjust if needed
+     *  \param dpb_size The DPB buffer size of the current sequence
+     */
+    void CheckAndAdjustDecBufPoolSize(int dpb_size);
 
     /*! \brief Callback function to output decoded pictures from DPB for post-processing.
      * \param [in] no_delay Indicator to override the display delay parameter wth no delay

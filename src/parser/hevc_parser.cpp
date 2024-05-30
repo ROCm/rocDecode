@@ -68,20 +68,7 @@ HevcVideoParser::~HevcVideoParser() {
 }
 
 rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
-    rocDecStatus ret = RocVideoParser::Initialize(p_params);
-    if (ret != ROCDEC_SUCCESS) {
-        return ret;
-    }
-
-    dec_buf_pool_size_ = parser_params_.max_num_decode_surfaces;
-    if (dec_buf_pool_size_ < HEVC_MAX_DPB_FRAMES + parser_params_.max_display_delay) {
-        dec_buf_pool_size_ = HEVC_MAX_DPB_FRAMES + parser_params_.max_display_delay;
-    }
-    decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
-    output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
-    InitDecBufPool();
-
-    return ROCDEC_SUCCESS;
+    return RocVideoParser::Initialize(p_params);
 }
 
 rocDecStatus HevcVideoParser::UnInitialize() {
@@ -1588,6 +1575,11 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+    }
+
+    // Check and adjust decode buffer pool size if needed
+    if (new_sps_activated_) {
+        CheckAndAdjustDecBufPoolSize(dpb_buffer_.dpb_size);
     }
 
     // Set frame rate if available

@@ -23,9 +23,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
-              const Rect *p_crop_rect, bool extract_user_sei_Message, int max_width, int max_height, uint32_t clk_rate) :
+              const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
-              b_extract_sei_message_(extract_user_sei_Message), max_width_ (max_width), max_height_(max_height) {
+              b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -39,10 +39,9 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
     // create rocdec videoparser
     RocdecParserParams parser_params = {};
     parser_params.codec_type = codec_id_;
-    // Note this is tunable
-    parser_params.max_num_decode_surfaces = MAX_DPB_FRAMES + DISPLAY_DELAY;
+    parser_params.max_num_decode_surfaces = 1; // let the parser to determine the decode buffer pool size
     parser_params.clock_rate = clk_rate;
-    parser_params.max_display_delay = DISPLAY_DELAY;
+    parser_params.max_display_delay = disp_delay_;
     parser_params.user_data = this;
     parser_params.pfn_sequence_callback = HandleVideoSequenceProc;
     parser_params.pfn_decode_picture = HandlePictureDecodeProc;

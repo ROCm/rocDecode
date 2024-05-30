@@ -51,8 +51,6 @@ extern "C" {
  */
 
 #define MAX_FRAME_NUM       16
-#define MAX_DPB_FRAMES      16
-#define DISPLAY_DELAY       2
 
 typedef int (ROCDECAPI *PFNRECONFIGUEFLUSHCALLBACK)(void *, uint32_t, void *);
 
@@ -180,7 +178,7 @@ class RocVideoDecoder {
        * @param force_zero_latency 
        */
         RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
-                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, int max_width = 0, int max_height = 0,
+                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         ~RocVideoDecoder();
         
@@ -429,6 +427,7 @@ class RocVideoDecoder {
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
         bool b_extract_sei_message_ = false;
         bool b_force_zero_latency_ = false;
+        uint32_t disp_delay_;
         ReconfigParams *p_reconfig_params_ = nullptr;
         int32_t num_frames_flushed_during_reconfig_ = 0;
         hipDeviceProp_t hip_dev_prop_;

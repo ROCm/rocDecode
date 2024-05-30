@@ -24,6 +24,9 @@ THE SOFTWARE.
 #include "avc_parser.h"
 
 AvcVideoParser::AvcVideoParser() {
+    active_sps_id_ = -1;
+    active_pps_id_ = -1;
+
     prev_pic_order_cnt_msb_ = 0;
     prev_pic_order_cnt_lsb_ = 0;
     prev_top_field_order_cnt_ = 0;
@@ -51,20 +54,7 @@ AvcVideoParser::~AvcVideoParser() {
 }
 
 rocDecStatus AvcVideoParser::Initialize(RocdecParserParams *p_params) {
-    rocDecStatus ret = RocVideoParser::Initialize(p_params);
-    if (ret != ROCDEC_SUCCESS) {
-        return ret;
-    }
-
-    dec_buf_pool_size_ = parser_params_.max_num_decode_surfaces;
-    if (dec_buf_pool_size_ < AVC_MAX_DPB_FRAMES + parser_params_.max_display_delay) {
-        dec_buf_pool_size_ = AVC_MAX_DPB_FRAMES + parser_params_.max_display_delay;
-    }
-    decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
-    output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
-    InitDecBufPool();
-
-    return ROCDEC_SUCCESS;
+    return RocVideoParser::Initialize(p_params);
 }
 
 rocDecStatus AvcVideoParser::UnInitialize() {
@@ -1206,6 +1196,11 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         dpb_buffer_.dpb_size = p_sps->max_num_ref_frames + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > AVC_MAX_DPB_FRAMES ? AVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+    }
+
+    // Check and adjust decode buffer pool size if needed
+    if (new_sps_activated_) {
+        CheckAndAdjustDecBufPoolSize(dpb_buffer_.dpb_size);
     }
 
     // Set frame rate if available
