@@ -784,7 +784,7 @@ typedef struct _RocdecHevcIQMatrix {
 
 /** \brief Segmentation Information for AV1
   */
-typedef struct _RocdecSegmentationStructAV1 {
+typedef struct _RocdecAv1SegmentationStruct {
     union {
         struct {
             /** Indicates whether segmentation map related syntax elements
@@ -853,11 +853,11 @@ typedef struct _RocdecSegmentationStructAV1 {
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
 
-} RocdecSegmentationStructAV1;
+} RocdecAv1SegmentationStruct;
 
 /** \brief Film Grain Information for AV1
  */
-typedef struct _RocdecFilmGrainStructAV1 {
+typedef struct _RocdecAv1FilmGrainStruct {
     union {
         struct {
             /** \brief Specify whether or not film grain is applied on current frame.
@@ -905,7 +905,7 @@ typedef struct _RocdecFilmGrainStructAV1 {
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
 
-} RocdecFilmGrainStructAV1;
+} RocdecAv1FilmGrainStruct;
 
 typedef enum {
     /** identity transformation, 0-parameter */
@@ -920,7 +920,7 @@ typedef enum {
     RocdecAv1TransformationCount
 } RocdecAv1TransformationType;
 
-typedef struct _RocdecWarpedMotionParamsAV1 {
+typedef struct _RocdecAv1WarpedMotionParams {
 
     /** \brief Specify the type of warped motion */
     RocdecAv1TransformationType wmtype;
@@ -938,7 +938,7 @@ typedef struct _RocdecWarpedMotionParamsAV1 {
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
 
-} RocdecWarpedMotionParamsAV1;
+} RocdecAv1WarpedMotionParams;
 
 /***********************************************************/
 //! \struct RocdecAv1PicParams
@@ -1081,8 +1081,8 @@ typedef struct _RocdecAV1PicParams {
     uint8_t primary_ref_frame;
     uint8_t order_hint;
 
-    RocdecSegmentationStructAV1 seg_info;
-    RocdecFilmGrainStructAV1 film_grain_info;
+    RocdecAv1SegmentationStruct seg_info;
+    RocdecAv1FilmGrainStruct film_grain_info;
 
     /** \brief tile structure
      *  When uniform_tile_spacing_flag == 1, width_in_sbs_minus_1[] and
@@ -1322,7 +1322,7 @@ typedef struct _RocdecAV1PicParams {
 
     /** \brief global motion
      */
-    RocdecWarpedMotionParamsAV1 wm[7];
+    RocdecAv1WarpedMotionParams wm[7];
 
     /**@}*/
 
