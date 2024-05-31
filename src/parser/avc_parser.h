@@ -60,6 +60,7 @@ public:
 
     typedef struct {
         int      pic_idx;  // picture index or id
+        int      dec_buf_idx;  // frame index in decode buffer pool
         PictureStructure pic_structure;
         int32_t  pic_order_cnt;
         int32_t  top_field_order_cnt;
@@ -70,7 +71,7 @@ public:
         int32_t  long_term_pic_num; // LongTermPicNum
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
         uint32_t is_reference;
-        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t use_status;    // refer to FrameBufUseStatus
         uint32_t pic_output_flag;  // OutputFlag
     } AvcPicture;
 
@@ -134,6 +135,7 @@ protected:
     uint32_t field_pic_count_;
     int second_field_;
     int first_field_pic_idx_;
+    int first_field_dec_buf_idx_;
 
     // DPB
     AvcPicture curr_pic_;
@@ -149,11 +151,6 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SendPicForDecode();
-
-    /*! \brief Function to output decoded pictures from DPB for post-processing.
-     * \return Return code in ParserResult form
-     */
-    ParserResult OutputDecodedPictures();
 
     /*! \brief Callback function to send parsed SEI playload to decoder.
      */
@@ -262,6 +259,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult CheckDpbAndOutput();
+
+    /*! \brief Function to find a free buffer in the decode buffer pool
+     *  \return <tt>ParserResult</tt>
+     */
+    ParserResult FindFreeInDecBufPool();
 
     /*! \brief Function to find a free buffer in DPB for the current picture
      * \return <tt>ParserResult</tt>

@@ -98,6 +98,7 @@ protected:
      */
     typedef struct {
         int     pic_idx;  // picture index or id
+        int     dec_buf_idx;  // frame index in decode buffer pool
         // POC info
         int32_t pic_order_cnt;  // PicOrderCnt
         int32_t prev_poc_lsb;  // prevPicOrderCntLsb
@@ -107,7 +108,7 @@ protected:
 
         uint32_t pic_output_flag;  // PicOutputFlag
         uint32_t is_reference;
-        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t use_status;    // refer to FrameBufUseStatus
     } HevcPicInfo;
 
     /*! \brief Decoded picture buffer
@@ -118,9 +119,6 @@ protected:
         uint32_t num_pics_needed_for_output;  // number of pictures in DPB that need to be output
         uint32_t dpb_fullness;  // number of pictures in DPB
         HevcPicInfo frame_buffer_list[HEVC_MAX_DPB_FRAMES];
-
-        uint32_t num_output_pics;  // number of pictures that are output after the decode call
-        uint32_t output_pic_list[HEVC_MAX_DPB_FRAMES]; // sorted output picuture index to frame_buffer_list[]
     } DecodedPictureBuffer;
 
     // Data members of HEVC class
@@ -308,11 +306,16 @@ protected:
      */
     int MarkOutputPictures();
 
+    /*! \brief Function to find a free buffer in the decode buffer pool
+     *  \return <tt>ParserResult</tt>
+     */
+    ParserResult FindFreeInDecBufPool();
+
     /*! \brief Function to find a free buffer in DPB for the current picture and mark it. Additional picture
      *         bumping is done if needed. C.5.2.3.
-     * \return Code in ParserResult form.
+     * \return <tt>ParserResult</tt>
      */
-    int FindFreeBufAndMark();
+    ParserResult FindFreeInDpbAndMark();
 
     /*! \brief Function to bump one picture out of DPB. C.5.2.4.
      * \return Code in ParserResult form.
@@ -333,6 +336,8 @@ protected:
     void PrintSliceSegHeader(HevcSliceSegHeader *slice_header_ptr);
     void PrintStRps(HevcShortTermRps *rps_ptr);
     void PrintLtRefInfo(HevcLongTermRps *lt_info_ptr);
+    void PrintDpb();
+    void PrintVappiBufInfo();
 #endif // DBGINFO
 
 private:
@@ -348,11 +353,6 @@ private:
      * \return Return code in ParserResult form
      */
     int SendPicForDecode();
-
-    /*! \brief Callback function to output decoded pictures from DPB for post-processing.
-     * \return Return code in ParserResult form
-     */
-    int OutputDecodedPictures();
 
     bool IsIdrPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsCraPic(HevcNalUnitHeader *nal_header_ptr);

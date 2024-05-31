@@ -9,11 +9,26 @@ subtrees:
 - caption: Install
   entries:
   - file: install/quick-start.rst
-    title: Quick-start
+    title: Quick start
   - file: install/install.md
     title: Installation guide
 
-- caption: API reference
+- caption: Tutorials
+  entries:
+  - url: https://github.com/ROCm/rocDecode/tree/develop/samples
+    title: GitHub samples
+
+- caption: How to
+  entries:
+  - file: how-to/using-rocdecode.rst
+    title: Using rocDecode
+
+- caption: Conceptual
+  entries:
+  - file: conceptual/video-decoding-pipeline.rst
+    title: Video decoding pipeline
+
+- caption: Reference
   entries:
   - file: doxygen/html/files
     title: API library
@@ -21,21 +36,6 @@ subtrees:
     title: Functions
   - file: doxygen/html/annotated
     title: Data structures
-
-- caption: How to
-  entries:
-  - file: how-to/using-rocdecode.rst
-    title: Use rocDecode
-
-- caption: Conceptual
-  entries:
-  - file: conceptual/video-decoding-pipeline.rst
-    title: Video decoding pipeline
-
-- caption: Tutorials
-  entries:
-  - url: https://github.com/ROCm/rocDecode/tree/develop/samples
-    title: GitHub samples
 
 - caption: About
   entries:

@@ -783,11 +783,16 @@ typedef struct _RocdecHevcIQMatrix {
 } RocdecHevcIQMatrix;
 
 /** \brief Segmentation Information for AV1
+<<<<<<< HEAD
  */
+=======
+  */
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 typedef struct _RocdecSegmentationStructAV1 {
     union {
         struct {
             /** Indicates whether segmentation map related syntax elements
+<<<<<<< HEAD
              *  are present or not for current frame. If equal to 0,
              *  the segmentation map related syntax elements are
              *  not present for the current frame and the control flags of
@@ -795,29 +800,55 @@ typedef struct _RocdecSegmentationStructAV1 {
              *  feature_mask[] are not valid and shall be ignored by accelerator.
              */
             uint32_t enabled : 1;
+=======
+            *  are present or not for current frame. If equal to 0,
+            *  the segmentation map related syntax elements are
+            *  not present for the current frame and the control flags of
+            *  segmentation map related tables feature_data[][], and
+            *  feature_mask[] are not valid and shall be ignored by accelerator.
+            */
+            uint32_t         enabled                                     : 1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
             /** Value 1 indicates that the segmentation map are updated
              *  during the decoding of this frame.
              *  Value 0 means that the segmentation map from the previous
              *  frame is used.
              */
+<<<<<<< HEAD
             uint32_t update_map : 1;
+=======
+            uint32_t         update_map                                  : 1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
             /** Value 1 indicates that the updates to the segmentation map
              *  are coded relative to the existing segmentation map.
              *  Value 0 indicates that the new segmentation map is coded
              *  without reference to the existing segmentation map.
              */
+<<<<<<< HEAD
             uint32_t temporal_update : 1;
+=======
+            uint32_t         temporal_update                             : 1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
             /** Value 1 indicates that new parameters are about to be
              *  specified for each segment.
              *  Value 0 indicates that the segmentation parameters
              *  should keep their existing values.
              */
+<<<<<<< HEAD
             uint32_t update_data : 1;
 
             /** \brief Reserved bytes for future use, must be zero */
             uint32_t reserved : 28;
         } bits;
         uint32_t value;
+=======
+            uint32_t         update_data                                 : 1;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint32_t         reserved                                    : 28;
+        } bits;
+        uint32_t             value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } segment_info_fields;
 
     /** \brief Segmentation parameters for current frame.
@@ -841,22 +872,37 @@ typedef struct _RocdecSegmentationStructAV1 {
      *  The limit is defined in Segmentation_Feature_Max[ SEG_LVL_MAX ] = {
      *  255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0 }
      */
+<<<<<<< HEAD
     int16_t feature_data[8][8];
+=======
+    int16_t                 feature_data[8][8];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief indicates if a feature is enabled or not.
      *  Each bit field itself is the feature_id. Index is segment_id.
      *  feature_mask[segment_id] & (1 << feature_id) equal to 1 specify that the feature of
      *  feature_id for segment of segment_id is enabled, otherwise disabled.
      */
+<<<<<<< HEAD
     uint8_t feature_mask[8];
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
+=======
+    uint8_t                 feature_mask[8];
+
+    /** \brief Reserved bytes for future use, must be zero */
+    uint32_t                reserved[4];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
 } RocdecSegmentationStructAV1;
 
 /** \brief Film Grain Information for AV1
+<<<<<<< HEAD
  */
+=======
+  */
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 typedef struct _RocdecFilmGrainStructAV1 {
     union {
         struct {
@@ -864,6 +910,7 @@ typedef struct _RocdecFilmGrainStructAV1 {
              *  If set to 0, all the rest parameters should be set to zero
              *  and ignored.
              */
+<<<<<<< HEAD
             uint32_t apply_grain : 1;
             uint32_t chroma_scaling_from_luma : 1;
             uint32_t grain_scaling_minus_8 : 2;
@@ -904,11 +951,54 @@ typedef struct _RocdecFilmGrainStructAV1 {
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
+=======
+            uint32_t        apply_grain                                 : 1;
+            uint32_t        chroma_scaling_from_luma                    : 1;
+            uint32_t        grain_scaling_minus_8                       : 2;
+            uint32_t        ar_coeff_lag                                : 2;
+            uint32_t        ar_coeff_shift_minus_6                      : 2;
+            uint32_t        grain_scale_shift                           : 2;
+            uint32_t        overlap_flag                                : 1;
+            uint32_t        clip_to_restricted_range                    : 1;
+            /** \brief Reserved bytes for future use, must be zero */
+            uint32_t        reserved                                    : 20;
+        } bits;
+        uint32_t            value;
+    } film_grain_info_fields;
+
+    uint16_t                grain_seed;
+    /*  value range [0..14] */
+    uint8_t                 num_y_points;
+    uint8_t                 point_y_value[14];
+    uint8_t                 point_y_scaling[14];
+    /*  value range [0..10] */
+    uint8_t                 num_cb_points;
+    uint8_t                 point_cb_value[10];
+    uint8_t                 point_cb_scaling[10];
+    /*  value range [0..10] */
+    uint8_t                 num_cr_points;
+    uint8_t                 point_cr_value[10];
+    uint8_t                 point_cr_scaling[10];
+    /*  value range [-128..127] */
+    int8_t                  ar_coeffs_y[24];
+    int8_t                  ar_coeffs_cb[25];
+    int8_t                  ar_coeffs_cr[25];
+    uint8_t                 cb_mult;
+    uint8_t                 cb_luma_mult;
+    uint16_t                cb_offset;
+    uint8_t                 cr_mult;
+    uint8_t                 cr_luma_mult;
+    uint16_t                cr_offset;
+
+    /** \brief Reserved bytes for future use, must be zero */
+    uint32_t                reserved[4];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
 } RocdecFilmGrainStructAV1;
 
 typedef enum {
     /** identity transformation, 0-parameter */
+<<<<<<< HEAD
     RocdecAv1TransformationIdentity = 0,
     /** translational motion, 2-parameter */
     RocdecAv1TransformationTranslation = 1,
@@ -916,6 +1006,15 @@ typedef enum {
     RocdecAv1TransformationRotzoom = 2,
     /** affine, 6-parameter */
     RocdecAv1TransformationAffine = 3,
+=======
+    RocdecAv1TransformationIdentity           = 0,
+    /** translational motion, 2-parameter */
+    RocdecAv1TransformationTranslation        = 1,
+    /** simplified affine with rotation + zoom only, 4-parameter */
+    RocdecAv1TransformationRotzoom            = 2,
+    /** affine, 6-parameter */
+    RocdecAv1TransformationAffine             = 3,
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     /** transformation count */
     RocdecAv1TransformationCount
 } RocdecAv1TransformationType;
@@ -923,13 +1022,18 @@ typedef enum {
 typedef struct _RocdecWarpedMotionParamsAV1 {
 
     /** \brief Specify the type of warped motion */
+<<<<<<< HEAD
     RocdecAv1TransformationType wmtype;
+=======
+    RocdecAv1TransformationType  wmtype;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Specify warp motion parameters
      *  wm.wmmat[] corresponds to gm_params[][] in spec.
      *  Details in AV1 spec section 5.9.24 or refer to libaom code
      *  https://aomedia.googlesource.com/aom/+/refs/heads/master/av1/decoder/decodeframe.c
      */
+<<<<<<< HEAD
     int32_t wmmat[8];
 
     /* valid or invalid on affine set */
@@ -937,6 +1041,15 @@ typedef struct _RocdecWarpedMotionParamsAV1 {
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
+=======
+    int32_t                 wmmat[8];
+
+    /* valid or invalid on affine set */
+    uint8_t  invalid;
+
+    /** \brief Reserved bytes for future use, must be zero */
+    uint32_t                reserved[4];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
 } RocdecWarpedMotionParamsAV1;
 
@@ -952,9 +1065,15 @@ typedef struct _RocdecAV1PicParams {
 
     /** \brief AV1 bit stream profile
      */
+<<<<<<< HEAD
     uint8_t profile;
 
     uint8_t order_hint_bits_minus_1;
+=======
+    uint8_t                 profile;
+
+    uint8_t                 order_hint_bits_minus_1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief bit depth index
      *  value range [0..2]
@@ -962,6 +1081,7 @@ typedef struct _RocdecAV1PicParams {
      *  1 - bit depth 10;
      *  2 - bit depth 12;
      */
+<<<<<<< HEAD
     uint8_t bit_depth_idx;
 
     /** \brief corresponds to AV1 spec variable of the same name. */
@@ -990,6 +1110,36 @@ typedef struct _RocdecAV1PicParams {
             uint32_t film_grain_params_present : 1;
             /** \brief Reserved bytes for future use, must be zero */
             uint32_t reserved : 16;
+=======
+    uint8_t                 bit_depth_idx;
+
+    /** \brief corresponds to AV1 spec variable of the same name. */
+    uint8_t                 matrix_coefficients;
+
+    union {
+        struct {
+            uint32_t        still_picture                               : 1;
+            uint32_t        use_128x128_superblock                      : 1;
+            uint32_t        enable_filter_intra                         : 1;
+            uint32_t        enable_intra_edge_filter                    : 1;
+
+            /** read_compound_tools */
+            uint32_t        enable_interintra_compound                  : 1;
+            uint32_t        enable_masked_compound                      : 1;
+
+            uint32_t        enable_dual_filter                          : 1;
+            uint32_t        enable_order_hint                           : 1;
+            uint32_t        enable_jnt_comp                             : 1;
+            uint32_t        enable_cdef                                 : 1;
+            uint32_t        mono_chrome                                 : 1;
+            uint32_t        color_range                                 : 1;
+            uint32_t        subsampling_x                               : 1;
+            uint32_t        subsampling_y                               : 1;
+            uint32_t        chroma_sample_position                      : 1;
+            uint32_t        film_grain_params_present                   : 1;
+            /** \brief Reserved bytes for future use, must be zero */
+            uint32_t        reserved                                    : 16;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
         } fields;
         uint32_t value;
     } seq_info_fields;
@@ -999,19 +1149,31 @@ typedef struct _RocdecAV1PicParams {
 
     /** \brief buffer description of decoded current picture
      */
+<<<<<<< HEAD
     int current_frame;
+=======
+    int             current_frame;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief display buffer of current picture
      *  Used for film grain applied decoded picture.
      *  Valid only when apply_grain equals 1.
      */
+<<<<<<< HEAD
     int current_display_picture;
+=======
+    int             current_display_picture;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief number of anchor frames for large scale tile
      *  This parameter gives the number of entries of anchor_frames_list[].
      *  Value range [0..128].
      */
+<<<<<<< HEAD
     uint8_t anchor_frames_num;
+=======
+    uint8_t         anchor_frames_num;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief anchor frame list for large scale tile
      *  For large scale tile applications, the anchor frames could come from
@@ -1031,22 +1193,36 @@ typedef struct _RocdecAV1PicParams {
      *  until it is not shown in the list.
      *  This number of entries of the list is given by parameter anchor_frames_num.
      */
+<<<<<<< HEAD
     int *anchor_frames_list;
+=======
+    int             *anchor_frames_list;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Picture resolution minus 1
      *  Picture original resolution. If SuperRes is enabled,
      *  this is the upscaled resolution.
      *  value range [0..65535]
      */
+<<<<<<< HEAD
     uint16_t frame_width_minus1;
     uint16_t frame_height_minus1;
+=======
+    uint16_t        frame_width_minus1;
+    uint16_t        frame_height_minus1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Output frame buffer size in unit of tiles
      *  Valid only when large_scale_tile equals 1.
      *  value range [0..65535]
      */
+<<<<<<< HEAD
     uint16_t output_frame_width_in_tiles_minus_1;
     uint16_t output_frame_height_in_tiles_minus_1;
+=======
+    uint16_t        output_frame_width_in_tiles_minus_1;
+    uint16_t        output_frame_height_in_tiles_minus_1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Surface indices of reference frames in DPB.
      *
@@ -1057,7 +1233,11 @@ typedef struct _RocdecAV1PicParams {
      *  pointing problematic index to an alternative frame buffer.
      *  Driver is not responsible to validate reference frames' id.
      */
+<<<<<<< HEAD
     int ref_frame_map[8];
+=======
+    int             ref_frame_map[8];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Reference frame indices.
      *
@@ -1069,7 +1249,11 @@ typedef struct _RocdecAV1PicParams {
      *  enum{INTRA_FRAME = 0, LAST_FRAME, LAST2_FRAME, LAST3_FRAME, GOLDEN_FRAME,
      *  BWDREF_FRAME, ALTREF2_FRAME, ALTREF_FRAME};
      */
+<<<<<<< HEAD
     uint8_t ref_frame_idx[7];
+=======
+    uint8_t         ref_frame_idx[7];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief primary reference frame index
      *  Index into ref_frame_idx[], specifying which reference frame contains
@@ -1078,36 +1262,61 @@ typedef struct _RocdecAV1PicParams {
      *  no primary reference frame.
      *  value range [0..7]
      */
+<<<<<<< HEAD
     uint8_t primary_ref_frame;
     uint8_t order_hint;
 
     RocdecSegmentationStructAV1 seg_info;
     RocdecFilmGrainStructAV1 film_grain_info;
+=======
+    uint8_t         primary_ref_frame;
+    uint8_t         order_hint;
+
+    RocdecSegmentationStructAV1 seg_info;
+    RocdecFilmGrainStructAV1    film_grain_info;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief tile structure
      *  When uniform_tile_spacing_flag == 1, width_in_sbs_minus_1[] and
      *  height_in_sbs_minus_1[] should be ignored, which will be generated
      *  by driver based on tile_cols and tile_rows.
      */
+<<<<<<< HEAD
     uint8_t tile_cols;
     uint8_t tile_rows;
+=======
+    uint8_t         tile_cols;
+    uint8_t         tile_rows;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /* The width/height of a tile minus 1 in units of superblocks. Though the
      * maximum number of tiles is 64, since ones of the last tile are computed
      * from ones of the other tiles and frame_width/height, they are not
      * necessarily specified.
      */
+<<<<<<< HEAD
     uint16_t width_in_sbs_minus_1[63];
     uint16_t height_in_sbs_minus_1[63];
+=======
+    uint16_t        width_in_sbs_minus_1[63];
+    uint16_t        height_in_sbs_minus_1[63];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief number of tiles minus 1 in large scale tile list
      *  Same as AV1 semantic element.
      *  Valid only when large_scale_tiles == 1.
      */
+<<<<<<< HEAD
     uint16_t tile_count_minus_1;
 
     /* specify the tile index for context updating */
     uint16_t context_update_tile_id;
+=======
+    uint16_t        tile_count_minus_1;
+
+    /* specify the tile index for context updating */
+    uint16_t        context_update_tile_id;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     union {
         struct {
@@ -1124,6 +1333,7 @@ typedef struct _RocdecAV1PicParams {
              *  refresh_frame_flags, etc. appropriately. And driver will convert it
              *  to INTER_FRAME.
              */
+<<<<<<< HEAD
             uint32_t frame_type : 2;
             uint32_t show_frame : 1;
             uint32_t showable_frame : 1;
@@ -1147,35 +1357,78 @@ typedef struct _RocdecAV1PicParams {
             uint32_t reserved : 15;
         } bits;
         uint32_t value;
+=======
+            uint32_t        frame_type                                  : 2;
+            uint32_t        show_frame                                  : 1;
+            uint32_t        showable_frame                              : 1;
+            uint32_t        error_resilient_mode                        : 1;
+            uint32_t        disable_cdf_update                          : 1;
+            uint32_t        allow_screen_content_tools                  : 1;
+            uint32_t        force_integer_mv                            : 1;
+            uint32_t        allow_intrabc                               : 1;
+            uint32_t        use_superres                                : 1;
+            uint32_t        allow_high_precision_mv                     : 1;
+            uint32_t        is_motion_mode_switchable                   : 1;
+            uint32_t        use_ref_frame_mvs                           : 1;
+            /* disable_frame_end_update_cdf is coded as refresh_frame_context. */
+            uint32_t        disable_frame_end_update_cdf                : 1;
+            uint32_t        uniform_tile_spacing_flag                   : 1;
+            uint32_t        allow_warped_motion                         : 1;
+            /** \brief indicate if current frame in large scale tile mode */
+            uint32_t        large_scale_tile                            : 1;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint32_t        reserved                                    : 15;
+        } bits;
+        uint32_t            value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } pic_info_fields;
 
     /** \brief Supper resolution scale denominator.
      *  When use_superres=1, superres_scale_denominator must be in the range [9..16].
      *  When use_superres=0, superres_scale_denominator must be 8.
      */
+<<<<<<< HEAD
     uint8_t superres_scale_denominator;
+=======
+    uint8_t         superres_scale_denominator;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief Interpolation filter.
      *  value range [0..4]
      */
+<<<<<<< HEAD
     uint8_t interp_filter;
+=======
+    uint8_t         interp_filter;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief luma loop filter levels.
      *  value range [0..63].
      */
+<<<<<<< HEAD
     uint8_t filter_level[2];
+=======
+    uint8_t         filter_level[2];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief chroma loop filter levels.
      *  value range [0..63].
      */
+<<<<<<< HEAD
     uint8_t filter_level_u;
     uint8_t filter_level_v;
+=======
+    uint8_t         filter_level_u;
+    uint8_t         filter_level_v;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     union {
         struct {
             /** \brief flags for reference pictures
              *  same syntax and semantic as those in AV1 code
              */
+<<<<<<< HEAD
             uint8_t sharpness_level : 3;
             uint8_t mode_ref_delta_enabled : 1;
             uint8_t mode_ref_delta_update : 1;
@@ -1184,25 +1437,44 @@ typedef struct _RocdecAV1PicParams {
             uint8_t reserved : 3;
         } bits;
         uint8_t value;
+=======
+            uint8_t         sharpness_level                             : 3;
+            uint8_t         mode_ref_delta_enabled                      : 1;
+            uint8_t         mode_ref_delta_update                       : 1;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint8_t         reserved                                    : 3;
+        } bits;
+        uint8_t             value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } loop_filter_info_fields;
 
     /** \brief The adjustment needed for the filter level based on
      *  the chosen reference frame.
      *  value range [-64..63].
      */
+<<<<<<< HEAD
     int8_t ref_deltas[8];
+=======
+    int8_t          ref_deltas[8];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief The adjustment needed for the filter level based on
      *  the chosen mode.
      *  value range [-64..63].
      */
+<<<<<<< HEAD
     int8_t mode_deltas[2];
+=======
+    int8_t          mode_deltas[2];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief quantization
      */
     /** \brief Y AC index
      *  value range [0..255]
      */
+<<<<<<< HEAD
     uint8_t base_qindex;
     /** \brief Y DC delta from Y AC
      *  value range [-64..63]
@@ -1224,16 +1496,44 @@ typedef struct _RocdecAV1PicParams {
      *  value range [-64..63]
      */
     int8_t v_ac_delta_q;
+=======
+    uint8_t         base_qindex;
+    /** \brief Y DC delta from Y AC
+     *  value range [-64..63]
+     */
+    int8_t          y_dc_delta_q;
+    /** \brief U DC delta from Y AC
+     *  value range [-64..63]
+     */
+    int8_t          u_dc_delta_q;
+    /** \brief U AC delta from Y AC
+     *  value range [-64..63]
+     */
+    int8_t          u_ac_delta_q;
+    /** \brief V DC delta from Y AC
+     *  value range [-64..63]
+     */
+    int8_t          v_dc_delta_q;
+    /** \brief V AC delta from Y AC
+     *  value range [-64..63]
+     */
+    int8_t          v_ac_delta_q;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief quantization_matrix
      */
     union {
         struct {
+<<<<<<< HEAD
             uint16_t using_qmatrix : 1;
+=======
+            uint16_t        using_qmatrix                               : 1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
             /** \brief qm level
              *  value range [0..15]
              *  Invalid if using_qmatrix equals 0.
              */
+<<<<<<< HEAD
             uint16_t qm_y : 4;
             uint16_t qm_u : 4;
             uint16_t qm_v : 4;
@@ -1242,12 +1542,23 @@ typedef struct _RocdecAV1PicParams {
             uint16_t reserved : 3;
         } bits;
         uint16_t value;
+=======
+            uint16_t        qm_y                                        : 4;
+            uint16_t        qm_u                                        : 4;
+            uint16_t        qm_v                                        : 4;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint16_t        reserved                                    : 3;
+        } bits;
+        uint16_t            value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } qmatrix_fields;
 
     union {
         struct {
             /** \brief delta_q parameters
              */
+<<<<<<< HEAD
             uint32_t delta_q_present_flag : 1;
             uint32_t log2_delta_q_res : 2;
 
@@ -1259,10 +1570,24 @@ typedef struct _RocdecAV1PicParams {
             /** \brief CONFIG_LOOPFILTER_LEVEL
              */
             uint32_t delta_lf_multi : 1;
+=======
+            uint32_t        delta_q_present_flag                        : 1;
+            uint32_t        log2_delta_q_res                            : 2;
+
+            /** \brief delta_lf parameters
+             */
+            uint32_t        delta_lf_present_flag                       : 1;
+            uint32_t        log2_delta_lf_res                           : 2;
+
+            /** \brief CONFIG_LOOPFILTER_LEVEL
+             */
+            uint32_t        delta_lf_multi                              : 1;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
             /** \brief read_tx_mode
              *  value range [0..2]
              */
+<<<<<<< HEAD
             uint32_t tx_mode : 2;
 
             /* AV1 frame reference mode semantic */
@@ -1276,14 +1601,35 @@ typedef struct _RocdecAV1PicParams {
             uint32_t reserved : 20;
         } bits;
         uint32_t value;
+=======
+            uint32_t        tx_mode                                     : 2;
+
+            /* AV1 frame reference mode semantic */
+            uint32_t        reference_select                            : 1;
+
+            uint32_t        reduced_tx_set_used                         : 1;
+
+            uint32_t        skip_mode_present                           : 1;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint32_t        reserved                                    : 20;
+        } bits;
+        uint32_t            value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } mode_control_fields;
 
     /** \brief CDEF parameters
      */
     /*  value range [0..3]  */
+<<<<<<< HEAD
     uint8_t cdef_damping_minus_3;
     /*  value range [0..3]  */
     uint8_t cdef_bits;
+=======
+    uint8_t                 cdef_damping_minus_3;
+    /*  value range [0..3]  */
+    uint8_t                 cdef_bits;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** Encode cdef strength:
      *
@@ -1300,14 +1646,21 @@ typedef struct _RocdecAV1PicParams {
      * are corresponding to LIBAOM variables cm->cdef_strengths[] & cm->cdef_uv_strengths[] respectively.
      */
     /*  value range [0..63]  */
+<<<<<<< HEAD
     uint8_t cdef_y_strengths[8];
     /*  value range [0..63]  */
     uint8_t cdef_uv_strengths[8];
+=======
+    uint8_t                 cdef_y_strengths[8];
+    /*  value range [0..63]  */
+    uint8_t                 cdef_uv_strengths[8];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief loop restoration parameters
      */
     union {
         struct {
+<<<<<<< HEAD
             uint16_t yframe_restoration_type : 2;
             uint16_t cbframe_restoration_type : 2;
             uint16_t crframe_restoration_type : 2;
@@ -1318,6 +1671,18 @@ typedef struct _RocdecAV1PicParams {
             uint16_t reserved : 7;
         } bits;
         uint16_t value;
+=======
+            uint16_t        yframe_restoration_type                     : 2;
+            uint16_t        cbframe_restoration_type                    : 2;
+            uint16_t        crframe_restoration_type                    : 2;
+            uint16_t        lr_unit_shift                               : 2;
+            uint16_t        lr_uv_shift                                 : 1;
+
+            /** \brief Reserved bytes for future use, must be zero */
+            uint16_t        reserved                                    : 7;
+        } bits;
+        uint16_t            value;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
     } loop_restoration_fields;
 
     /** \brief global motion
@@ -1327,7 +1692,11 @@ typedef struct _RocdecAV1PicParams {
     /**@}*/
 
     /** \brief Reserved bytes for future use, must be zero */
+<<<<<<< HEAD
     uint32_t reserved[8];
+=======
+    uint32_t                reserved[8];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 } RocdecAv1PicParams;
 
 /***********************************************************/
@@ -1345,6 +1714,7 @@ typedef struct _RocdecAv1SliceParams {
      *  It uses the name slice_data_size to be consistent with other codec,
      *  but actually means tile_data_size.
      */
+<<<<<<< HEAD
     uint32_t slice_data_size;
     /**
      * offset to the first byte of the data buffer.
@@ -1357,22 +1727,47 @@ typedef struct _RocdecAv1SliceParams {
 
     uint16_t tile_row;
     uint16_t tile_column;
+=======
+    uint32_t                slice_data_size;
+    /** 
+     * offset to the first byte of the data buffer.
+     */
+    uint32_t                slice_data_offset;
+    /**
+     * see VA_SLICE_DATA_FLAG_XXX definitions
+     */
+    uint32_t                slice_data_flag;
+
+    uint16_t                tile_row;
+    uint16_t                tile_column;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief anchor frame index for large scale tile.
      *  index into an array AnchorFrames of the frames that the tile uses
      *  for prediction.
      *  valid only when large_scale_tile equals 1.
      */
+<<<<<<< HEAD
     uint8_t anchor_frame_idx;
+=======
+    uint8_t                 anchor_frame_idx;
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 
     /** \brief tile index in the tile list.
      *  Valid only when large_scale_tile is enabled.
      *  Driver uses this field to decide the tile output location.
      */
+<<<<<<< HEAD
     uint16_t tile_idx_in_tile_list;
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
+=======
+    uint16_t                tile_idx_in_tile_list;
+
+    /** \brief Reserved bytes for future use, must be zero */
+    uint32_t                reserved[4];
+>>>>>>> 33f541bacac36a5083454beb14f44a09e21eae18
 } RocdecAv1SliceParams;
 
 /******************************************************************************************/
