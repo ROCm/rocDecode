@@ -852,7 +852,6 @@ typedef struct _RocdecAv1SegmentationStruct {
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
-
 } RocdecAv1SegmentationStruct;
 
 /** \brief Film Grain Information for AV1
@@ -904,7 +903,6 @@ typedef struct _RocdecAv1FilmGrainStruct {
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
-
 } RocdecAv1FilmGrainStruct;
 
 typedef enum {
@@ -937,7 +935,6 @@ typedef struct _RocdecAv1WarpedMotionParams {
 
     /** \brief Reserved bytes for future use, must be zero */
     uint32_t reserved[4];
-
 } RocdecAv1WarpedMotionParams;
 
 /***********************************************************/
