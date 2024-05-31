@@ -919,7 +919,6 @@ typedef enum {
 } RocdecAv1TransformationType;
 
 typedef struct _RocdecAv1WarpedMotionParams {
-
     /** \brief Specify the type of warped motion */
     RocdecAv1TransformationType wmtype;
 
