@@ -108,7 +108,7 @@ protected:
 
         uint32_t pic_output_flag;  // PicOutputFlag
         uint32_t is_reference;
-        uint32_t use_status;  // 0 = empty; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t use_status;    // refer to FrameBufUseStatus
     } HevcPicInfo;
 
     /*! \brief Decoded picture buffer
@@ -315,7 +315,7 @@ protected:
      *         bumping is done if needed. C.5.2.3.
      * \return <tt>ParserResult</tt>
      */
-    ParserResult FindFreeBufAndMark();
+    ParserResult FindFreeInDpbAndMark();
 
     /*! \brief Function to bump one picture out of DPB. C.5.2.4.
      * \return Code in ParserResult form.

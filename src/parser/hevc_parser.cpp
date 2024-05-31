@@ -677,7 +677,7 @@ ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t
                         }
 
                         // C.5.2.3. Find a free buffer in DPB and mark as used. (After 8.3.2.)
-                        if (FindFreeBufAndMark() != PARSER_OK) {
+                        if (FindFreeInDpbAndMark() != PARSER_OK) {
                             return PARSER_FAIL;
                         }
 
@@ -2133,7 +2133,7 @@ void HevcVideoParser::InitDpb() {
         dpb_buffer_.frame_buffer_list[i].pic_idx = i;
         dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
         dpb_buffer_.frame_buffer_list[i].pic_output_flag = 0;
-        dpb_buffer_.frame_buffer_list[i].use_status = 0;
+        dpb_buffer_.frame_buffer_list[i].use_status = kNotUsed;
     }
     dpb_buffer_.dpb_size = 0;
     dpb_buffer_.dpb_fullness = 0;
@@ -2144,9 +2144,8 @@ void HevcVideoParser::EmptyDpb() {
     for (int i = 0; i < HEVC_MAX_DPB_FRAMES; i++) {
         dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
         dpb_buffer_.frame_buffer_list[i].pic_output_flag = 0;
-        dpb_buffer_.frame_buffer_list[i].use_status = 0;
-        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].dec_use_status = 0;
-        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].disp_use_status = 0;
+        dpb_buffer_.frame_buffer_list[i].use_status = kNotUsed;
+        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].use_status = kNotUsed;
     }
     dpb_buffer_.dpb_fullness = 0;
     dpb_buffer_.num_pics_needed_for_output = 0;
@@ -2196,8 +2195,8 @@ int HevcVideoParser::MarkOutputPictures() {
     } else {
         for (i = 0; i < HEVC_MAX_DPB_FRAMES; i++) {
             if (dpb_buffer_.frame_buffer_list[i].is_reference == kUnusedForReference && dpb_buffer_.frame_buffer_list[i].pic_output_flag == 0 && dpb_buffer_.frame_buffer_list[i].use_status) {
-                dpb_buffer_.frame_buffer_list[i].use_status = 0;
-                decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].dec_use_status = 0;
+                dpb_buffer_.frame_buffer_list[i].use_status = kNotUsed;
+                decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
                 if (dpb_buffer_.dpb_fullness > 0) {
                     dpb_buffer_.dpb_fullness--;
                 } else {
@@ -2235,7 +2234,7 @@ ParserResult HevcVideoParser::FindFreeInDecBufPool() {
 
     // Find a free buffer in decode buffer pool
     for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
-        if (decode_buffer_pool_[dec_buf_index].dec_use_status == 0 && decode_buffer_pool_[dec_buf_index].disp_use_status == 0) {
+        if (decode_buffer_pool_[dec_buf_index].use_status == kNotUsed) {
             break;
         }
     }
@@ -2247,14 +2246,14 @@ ParserResult HevcVideoParser::FindFreeInDecBufPool() {
     return PARSER_OK;
 }
 
-ParserResult HevcVideoParser::FindFreeBufAndMark() {
+ParserResult HevcVideoParser::FindFreeInDpbAndMark() {
     int i, j;
 
     // Look for an empty buffer in DPB with longest decode history (lowest decode count)
     uint32_t min_decode_order_count = 0xFFFFFFFF;
     int index = dpb_buffer_.dpb_size;
     for (i = 0; i < dpb_buffer_.dpb_size; i++) {
-        if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
+        if (dpb_buffer_.frame_buffer_list[i].use_status == kNotUsed) {
             if (dpb_buffer_.frame_buffer_list[i].decode_order_count < min_decode_order_count) {
                 min_decode_order_count = dpb_buffer_.frame_buffer_list[i].decode_order_count;
                 index = i;
@@ -2277,7 +2276,7 @@ ParserResult HevcVideoParser::FindFreeBufAndMark() {
     dpb_buffer_.frame_buffer_list[index].decode_order_count = curr_pic_info_.decode_order_count;
     dpb_buffer_.frame_buffer_list[index].pic_output_flag = curr_pic_info_.pic_output_flag;
     dpb_buffer_.frame_buffer_list[index].is_reference = kUsedForShortTerm;
-    dpb_buffer_.frame_buffer_list[index].use_status = 3;
+    dpb_buffer_.frame_buffer_list[index].use_status = kFrameUsedForDecode;
 
     if (dpb_buffer_.frame_buffer_list[index].pic_output_flag) {
         dpb_buffer_.num_pics_needed_for_output++;
@@ -2285,9 +2284,9 @@ ParserResult HevcVideoParser::FindFreeBufAndMark() {
     dpb_buffer_.dpb_fullness++;
 
     // Mark as used in decode buffer pool
-    decode_buffer_pool_[curr_pic_info_.dec_buf_idx].dec_use_status = 3;
+    decode_buffer_pool_[curr_pic_info_.dec_buf_idx].use_status |= kFrameUsedForDecode;
     if (pfn_display_picture_cb_ && curr_pic_info_.pic_output_flag) {
-        decode_buffer_pool_[curr_pic_info_.dec_buf_idx].disp_use_status = 3;
+        decode_buffer_pool_[curr_pic_info_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
     }
     decode_buffer_pool_[curr_pic_info_.dec_buf_idx].pic_order_cnt = curr_pic_info_.pic_order_cnt;
 
@@ -2332,8 +2331,8 @@ int HevcVideoParser::BumpPicFromDpb() {
 
     // If it is not used for reference, empty it.
     if (dpb_buffer_.frame_buffer_list[min_poc_pic_idx].is_reference == kUnusedForReference) {
-        dpb_buffer_.frame_buffer_list[min_poc_pic_idx].use_status = 0;
-        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[min_poc_pic_idx].dec_buf_idx].dec_use_status = 0;
+        dpb_buffer_.frame_buffer_list[min_poc_pic_idx].use_status = kNotUsed;
+        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[min_poc_pic_idx].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
         if (dpb_buffer_.dpb_fullness > 0 ) {
             dpb_buffer_.dpb_fullness--;
         }
@@ -2764,7 +2763,7 @@ void HevcVideoParser::PrintDpb() {
     MSG("Decode buffer pool:");
     for(i = 0; i < dec_buf_pool_size_; i++) {
         DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
-        MSG("Decode buffer " << i << ": surface_idx = " << p_dec_buf->surface_idx << ", dec_use_status = " << p_dec_buf->dec_use_status << ", disp_use_status = " << p_dec_buf->disp_use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
     }
     MSG("num_output_pics_ = " << num_output_pics_);
     if (num_output_pics_) {

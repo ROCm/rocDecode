@@ -74,9 +74,7 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
 
 void RocVideoParser::InitDecBufPool() {
     for (int i = 0; i < dec_buf_pool_size_; i++) {
-        decode_buffer_pool_[i].surface_idx = i;
-        decode_buffer_pool_[i].dec_use_status = 0;
-        decode_buffer_pool_[i].disp_use_status = 0;
+        decode_buffer_pool_[i].use_status = kNotUsed;
         decode_buffer_pool_[i].pic_order_cnt = 0;
         output_pic_list_[i] = 0xFF;
     }
@@ -102,9 +100,9 @@ ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
     if (num_output_pics_ > disp_delay) {
         int num_disp = num_output_pics_ - disp_delay;
         for (int i = 0; i < num_disp; i++) {
-            disp_info.picture_index = decode_buffer_pool_[output_pic_list_[i]].surface_idx;
+            disp_info.picture_index = output_pic_list_[i];
             pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
-            decode_buffer_pool_[output_pic_list_[i]].disp_use_status = 0;
+            decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
         }
 
         num_output_pics_ = disp_delay;

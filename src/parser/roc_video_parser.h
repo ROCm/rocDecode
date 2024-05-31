@@ -80,6 +80,14 @@ typedef struct {
 #define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 #define DECODE_BUF_POOL_EXTENSION 2
 
+enum {
+    kNotUsed = 0,
+    kTopFieldUsedForDecode = 1,
+    kBottomFieldUsedForDecode = 1 << 1,
+    kFrameUsedForDecode = kTopFieldUsedForDecode | kBottomFieldUsedForDecode,
+    kFrameUsedForDisplay = 1 << 2
+} FrameBufUseStatus;
+
 /**
  * @brief Base class for video parsing
  * 
@@ -112,14 +120,15 @@ protected:
 
     // Decoded buffer pool
     typedef struct {
-        uint32_t surface_idx;           // VA surface index
-        uint32_t dec_use_status;        // 0 = not used for decode (bumped out of DPB); 1 = top used; 2 = bottom used; 3 = both fields or frame used
-        uint32_t disp_use_status;       // 0 = displayed or not need for display; 1 = top used; 2 = bottom used; 3 = both fields or frame used
+        uint32_t use_status;    // refer to FrameBufUseStatus
         uint32_t pic_order_cnt;
     } DecodeFrameBuffer;
     uint32_t dec_buf_pool_size_;        /* Number of decoded frame surfaces in the pool which are recycled. The size should be greater
                                            than or equal to DPB size (normally greater to guarantee smooth operations). The value is
                                            set to max_num_decode_surfaces from the decoder but parser checks and increases if needed. */
+    /* This array maps to VA surface array allocated at VA-API layer. A frame in the pool is identified by its index in the array, which
+     * is used to retrieve the VA surface Id.
+     */
     std::vector<DecodeFrameBuffer> decode_buffer_pool_;
     uint32_t num_output_pics_;  // number of pictures that are ready to be ouput
     std::vector<uint32_t> output_pic_list_; // sorted output frame index to decode_buffer_pool_

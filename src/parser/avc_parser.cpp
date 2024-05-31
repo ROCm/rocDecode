@@ -1618,14 +1618,14 @@ void AvcVideoParser::InitDpb() {
     for (int i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
         dpb_buffer_.frame_buffer_list[i].pic_idx = i;
         dpb_buffer_.frame_buffer_list[i].is_reference = kUnusedForReference;
-        dpb_buffer_.frame_buffer_list[i].use_status = 0;
+        dpb_buffer_.frame_buffer_list[i].use_status = kNotUsed;
         dpb_buffer_.frame_buffer_list[i].pic_output_flag = 0;
         dpb_buffer_.field_pic_list[i * 2].pic_idx = i;
         dpb_buffer_.field_pic_list[i * 2 + 1].pic_idx = i;
         dpb_buffer_.field_pic_list[i * 2].is_reference = kUnusedForReference;
         dpb_buffer_.field_pic_list[i * 2 + 1].is_reference = kUnusedForReference;
-        dpb_buffer_.field_pic_list[i * 2].use_status = 0;
-        dpb_buffer_.field_pic_list[i * 2 + 1].use_status = 0;
+        dpb_buffer_.field_pic_list[i * 2].use_status = kNotUsed;
+        dpb_buffer_.field_pic_list[i * 2 + 1].use_status = kNotUsed;
         dpb_buffer_.field_pic_list[i * 2].pic_output_flag = 0;
         dpb_buffer_.field_pic_list[i * 2 + 1].pic_output_flag = 0;
     }
@@ -1953,13 +1953,13 @@ ParserResult AvcVideoParser::DecodeFrameNumGaps() {
             }
 
             for (i = 0; i < dpb_buffer_.dpb_size; i++) {
-                if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
+                if (dpb_buffer_.frame_buffer_list[i].use_status == kNotUsed) {
                     break;
                 }
             }
             if (i < dpb_buffer_.dpb_size) {
                 non_existing_pic.pic_idx = dpb_buffer_.frame_buffer_list[i].pic_idx;
-                non_existing_pic.use_status = 3;
+                non_existing_pic.use_status = kFrameUsedForDecode;
                 dpb_buffer_.frame_buffer_list[i] = non_existing_pic;
                 dpb_buffer_.dpb_fullness++;
                 dpb_buffer_.num_short_term++;
@@ -2571,7 +2571,7 @@ ParserResult AvcVideoParser::FindFreeInDecBufPool() {
     if (curr_pic_.pic_structure == kFrame || !second_field_) {
         // Find a free buffer in decode buffer pool
         for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
-            if (decode_buffer_pool_[dec_buf_index].dec_use_status == 0 && decode_buffer_pool_[dec_buf_index].disp_use_status == 0) {
+            if (decode_buffer_pool_[dec_buf_index].use_status == kNotUsed) {
                 break;
             }
         }
@@ -2601,18 +2601,18 @@ ParserResult AvcVideoParser::FindFreeBufInDpb() {
         }
 
         for (i = 0; i < dpb_buffer_.dpb_size; i++) {
-            if (dpb_buffer_.frame_buffer_list[i].use_status == 0) {
+            if (dpb_buffer_.frame_buffer_list[i].use_status == kNotUsed) {
                 break;
             }
         }
         if (i < dpb_buffer_.dpb_size) {
             curr_pic_.pic_idx = dpb_buffer_.frame_buffer_list[i].pic_idx;
             if (curr_pic_.pic_structure == kFrame) {
-                curr_pic_.use_status = 3;
+                curr_pic_.use_status = kFrameUsedForDecode;
             } else if (curr_pic_.pic_structure == kTopField) {
-                curr_pic_.use_status = 1;
+                curr_pic_.use_status = kTopFieldUsedForDecode;
             } else {
-                curr_pic_.use_status = 2;
+                curr_pic_.use_status = kBottomFieldUsedForDecode;
             }
         } else {
             ERR("Could not find any free frame buffer in DPB.");
@@ -2625,9 +2625,9 @@ ParserResult AvcVideoParser::FindFreeBufInDpb() {
     } else {
         curr_pic_.pic_idx = first_field_pic_idx_;
         if (curr_pic_.pic_structure == kTopField) {
-            curr_pic_.use_status = 1;
+            curr_pic_.use_status = kTopFieldUsedForDecode;
         } else {
-            curr_pic_.use_status = 2;
+            curr_pic_.use_status = kBottomFieldUsedForDecode;
         }
     }
 
@@ -3038,8 +3038,8 @@ ParserResult AvcVideoParser::BumpPicFromDpb() {
         }
     }
     // Remove it from DPB and mark unused for decode in decode buffer pool
-    dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].use_status = 0;
-    decode_buffer_pool_[dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].dec_buf_idx].dec_use_status = 0;
+    dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].use_status = kNotUsed;
+    decode_buffer_pool_[dpb_buffer_.frame_buffer_list[min_poc_pic_idx_no_ref].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
     if (dpb_buffer_.dpb_fullness > 0 ) {
         dpb_buffer_.dpb_fullness--;
     }
@@ -3091,7 +3091,7 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
                 }
                 dpb_buffer_.frame_buffer_list[i].pic_order_cnt = dpb_buffer_.frame_buffer_list[i].top_field_order_cnt <= dpb_buffer_.frame_buffer_list[i].bottom_field_order_cnt ? dpb_buffer_.frame_buffer_list[i].top_field_order_cnt : dpb_buffer_.frame_buffer_list[i].bottom_field_order_cnt;
                 dpb_buffer_.frame_buffer_list[i].pic_output_flag = curr_pic_.pic_output_flag;
-                dpb_buffer_.frame_buffer_list[i].use_status = 3;
+                dpb_buffer_.frame_buffer_list[i].use_status = kFrameUsedForDecode;
                 if (dpb_buffer_.frame_buffer_list[i].pic_output_flag) {
                     dpb_buffer_.num_pics_needed_for_output++;
                 }
@@ -3105,9 +3105,9 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
         }
 
         // Mark as used in decode buffer pool
-        decode_buffer_pool_[curr_pic_.dec_buf_idx].dec_use_status = 3;
+        decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDecode;
         if (pfn_display_picture_cb_ && curr_pic_.pic_output_flag) {
-            decode_buffer_pool_[curr_pic_.dec_buf_idx].disp_use_status = 3;
+            decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
         }
         decode_buffer_pool_[curr_pic_.dec_buf_idx].pic_order_cnt = curr_pic_.pic_order_cnt;
     } else {
@@ -3144,11 +3144,10 @@ ParserResult AvcVideoParser::FlushDpb() {
 
     // Empty DPB
     for (int i = 0; i < AVC_MAX_DPB_FRAMES; i++) {
-        dpb_buffer_.frame_buffer_list[i].use_status = 0;
-        dpb_buffer_.field_pic_list[i * 2].use_status = 0;
-        dpb_buffer_.field_pic_list[i * 2 + 1].use_status = 0;
-        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].dec_use_status = 0;
-        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].disp_use_status = 0;
+        dpb_buffer_.frame_buffer_list[i].use_status = kNotUsed;
+        dpb_buffer_.field_pic_list[i * 2].use_status = kNotUsed;
+        dpb_buffer_.field_pic_list[i * 2 + 1].use_status = kNotUsed;
+        decode_buffer_pool_[dpb_buffer_.frame_buffer_list[i].dec_buf_idx].use_status = kNotUsed;
     }
     return PARSER_OK;
 }
@@ -3397,7 +3396,7 @@ void AvcVideoParser::PrintDpb() {
     MSG("Decode buffer pool:");
     for(i = 0; i < dec_buf_pool_size_; i++) {
         DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
-        MSG("Decode buffer " << i << ": surface_idx = " << p_dec_buf->surface_idx << ", dec_use_status = " << p_dec_buf->dec_use_status << ", disp_use_status = " << p_dec_buf->disp_use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
     }
     MSG("num_output_pics_ = " << num_output_pics_);
     if (num_output_pics_) {
