@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 
 #include <iostream>
+#include <iomanip>
 #include <unistd.h>
 #include <vector>
 #include <string>

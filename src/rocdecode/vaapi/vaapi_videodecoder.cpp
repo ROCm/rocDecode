@@ -443,7 +443,11 @@ void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_veto
 void VaapiVideoDecoder::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
     std::string search_path = "/sys/devices/";
     std::string partition_file = "current_compute_partition";
+#if __cplusplus >= 201703L && __has_include(<filesystem>)
     for (const auto& entry : std::filesystem::recursive_directory_iterator(search_path)) {
+#else
+    for (const auto& entry : std::experimental::filesystem::recursive_directory_iterator(search_path)) {
+#endif
         if (entry.path().filename() == partition_file) {
             std::ifstream file(entry.path());
             if (file.is_open()) {
