@@ -71,7 +71,7 @@ public:
         int32_t  long_term_pic_num; // LongTermPicNum
         uint32_t long_term_frame_idx; // LongTermFrameIdx: long term reference frame/field identifier
         uint32_t is_reference;
-        uint32_t use_status;
+        uint32_t use_status;    // refer to FrameBufUseStatus
         uint32_t pic_output_flag;  // OutputFlag
     } AvcPicture;
 
