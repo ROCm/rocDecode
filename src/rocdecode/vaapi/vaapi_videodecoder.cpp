@@ -152,6 +152,9 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
         case rocDecVideoCodec_AVC:
             va_profile_ = VAProfileH264Main;
             break;
+        case rocDecVideoCodec_AV1:
+            va_profile_ = VAProfileAV1Profile0;
+            break;
         default:
             ERR("The codec type is not supported.");
             return ROCDEC_NOT_SUPPORTED;
@@ -296,6 +299,30 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
 
             if ((pic_params_size != sizeof(VAPictureParameterBufferH264)) || (iq_matrix_size != sizeof(VAIQMatrixBufferH264)) || (slice_params_size != sizeof(VASliceParameterBufferH264))) {
                     ERR("AVC data_buffer parameter_size not matching vaapi parameter buffer size.");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
+            break;
+        }
+
+        case rocDecVideoCodec_AV1: {
+            pPicParams->pic_params.av1.current_frame = curr_surface_id;
+            for (int i = 0; i < 8; i++) {
+                if (pPicParams->pic_params.av1.ref_frame_idx[i] != 0xFF) {
+                    if (pPicParams->pic_params.av1.ref_frame_idx[i] >= va_surface_ids_.size() || pPicParams->pic_params.av1.ref_frame_idx[i] < 0) {
+                        ERR("Reference frame index exceeded the VAAPI surface pool limit.");
+                        return ROCDEC_INVALID_PARAMETER;
+                    }
+                    pPicParams->pic_params.av1.ref_frame_idx[i] = va_surface_ids_[pPicParams->pic_params.av1.ref_frame_idx[i]];
+                }
+            }
+            pic_params_ptr = (void*)&pPicParams->pic_params.av1;
+            pic_params_size = sizeof(RocdecAv1PicParams);
+
+            slice_params_ptr = (void*)pPicParams->slice_params.av1;
+            slice_params_size = sizeof(RocdecAv1SliceParams);
+
+            if ((pic_params_size != sizeof(VADecPictureParameterBufferAV1)) || (slice_params_size != sizeof(VASliceParameterBufferAV1))) {
+                    ERR("AV1 data_buffer parameter_size not matching vaapi parameter buffer size.");
                     return ROCDEC_RUNTIME_ERROR;
             }
             break;
