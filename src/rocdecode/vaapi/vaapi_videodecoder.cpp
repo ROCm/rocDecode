@@ -306,15 +306,27 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
 
         case rocDecVideoCodec_AV1: {
             pPicParams->pic_params.av1.current_frame = curr_surface_id;
+
+            if (pPicParams->pic_params.av1.current_display_picture != 0xFF) {
+                pPicParams->pic_params.av1.current_display_picture = va_surface_ids_[pPicParams->pic_params.av1.current_display_picture];
+            }
+
+            if (pPicParams->pic_params.av1.anchor_frames_num != 0xFF) {
+                for (int i = 0; i < pPicParams->pic_params.av1.anchor_frames_num; i++) {
+                    pPicParams->pic_params.av1.anchor_frames_list[i] = va_surface_ids_[pPicParams->pic_params.av1.anchor_frames_list[i]];
+                }
+            }
+
             for (int i = 0; i < 8; i++) {
-                if (pPicParams->pic_params.av1.ref_frame_idx[i] != 0xFF) {
-                    if (pPicParams->pic_params.av1.ref_frame_idx[i] >= va_surface_ids_.size() || pPicParams->pic_params.av1.ref_frame_idx[i] < 0) {
+                if (pPicParams->pic_params.av1.ref_frame_map[i] != 0xFF) {
+                    if (pPicParams->pic_params.av1.ref_frame_map[i] >= va_surface_ids_.size() || pPicParams->pic_params.av1.ref_frame_map[i] < 0) {
                         ERR("Reference frame index exceeded the VAAPI surface pool limit.");
                         return ROCDEC_INVALID_PARAMETER;
                     }
-                    pPicParams->pic_params.av1.ref_frame_idx[i] = va_surface_ids_[pPicParams->pic_params.av1.ref_frame_idx[i]];
+                    pPicParams->pic_params.av1.ref_frame_map[i] = va_surface_ids_[pPicParams->pic_params.av1.ref_frame_map[i]];
                 }
             }
+
             pic_params_ptr = (void*)&pPicParams->pic_params.av1;
             pic_params_size = sizeof(RocdecAv1PicParams);
 
