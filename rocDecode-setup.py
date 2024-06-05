@@ -129,8 +129,8 @@ elif "SLES" in os_info_data or os.path.exists('/usr/bin/zypper'):
     linuxSystemInstall_check = '--no-gpg-checks'
     platfromInfo = platfromInfo+'-SLES'
 else:
-    print("\nMIVisionX Setup on "+platfromInfo+" is unsupported\n")
-    print("\nMIVisionX Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
+    print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
+    print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
     exit(-1)
 
 # rocDecode Setup
