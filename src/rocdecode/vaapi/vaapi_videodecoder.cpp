@@ -153,7 +153,12 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
             va_profile_ = VAProfileH264Main;
             break;
         case rocDecVideoCodec_AV1:
-            va_profile_ = VAProfileAV1Profile0;
+            #if VA_CHECK_VERSION(1,6,0)
+                va_profile_ = VAProfileAV1Profile0;
+            #else
+                ERR("AV1 codec type is not supported by libva version.");
+                return ROCDEC_NOT_SUPPORTED;
+            #endif
             break;
         default:
             ERR("The codec type is not supported.");
@@ -303,7 +308,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             }
             break;
         }
-
+#if VA_CHECK_VERSION(1,6,0)
         case rocDecVideoCodec_AV1: {
             pPicParams->pic_params.av1.current_frame = curr_surface_id;
 
@@ -345,6 +350,7 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             }
             break;
         }
+#endif
 
         default: {
             ERR("The codec type is not supported.");
