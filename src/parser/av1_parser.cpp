@@ -44,8 +44,7 @@ rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
         }
-
-      pic_count_++;
+        pic_count_++;
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
         // If no payload and EOS is not set, treated as invalid.
         return ROCDEC_INVALID_PARAMETER;
@@ -110,7 +109,6 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
                 break;
             }
-
             default:
                 break;
         }
@@ -172,7 +170,6 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
     size_t offset = 0;  // current bit offset
 
     memset(p_seq_header, 0, sizeof(Av1SequenceHeader));
-
     p_seq_header->seq_profile = Parser::ReadBits(p_stream, offset, 3);
     p_seq_header->still_picture = Parser::GetBit(p_stream, offset);
     p_seq_header->reduced_still_picture_header = Parser::GetBit(p_stream, offset);
@@ -347,7 +344,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     int i;
 
     memset(p_frame_header, 0, sizeof(Av1FrameHeader));
-
     if (p_seq_header->frame_id_numbers_present_flag) {
         frame_id_len = p_seq_header->additional_frame_id_length_minus_1 + p_seq_header-> delta_frame_id_length_minus_2 + 3;
     }
