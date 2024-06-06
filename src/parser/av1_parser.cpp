@@ -50,33 +50,25 @@ rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         // If no payload and EOS is not set, treated as invalid.
         return ROCDEC_INVALID_PARAMETER;
     }
-
     return ROCDEC_SUCCESS;
 }
 
 ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size) {
     ParserResult ret = PARSER_OK;
-
     pic_data_buffer_ptr_ = (uint8_t*)p_stream;
     pic_data_size_ = pic_data_size;
     curr_byte_offset_ = 0;
 
-    do {
-        if ((ret = ReadObuHeaderAndSize()) == PARSER_EOF ) {
-            break;
-        }
-
+    while (ReadObuHeaderAndSize() != PARSER_EOF) {
         switch (obu_header_.obu_type) {
             case kObuTemporalDelimiter: {
                 seen_frame_header_ = 0;
                 break;
             }
-
             case kObuSequenceHeader: {
                 ParseSequenceHeaderObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
                 break;
             }
-
             case kObuFrameHeader: {
                 if (seen_frame_header_ != 0) {
                     ERR("If obu_type is equal to OBU_FRAME_HEADER, it is a requirement of bitstream conformance that SeenFrameHeader is equal to 0.");
@@ -99,7 +91,6 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 }
                 break;
             }
-
             case kObuFrame: {
                 int bytes_parsed;
                 if ((ret = ParseFrameHeaderObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_, &bytes_parsed)) != PARSER_OK) {
@@ -115,7 +106,6 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 }
                 break;
             }
-
             case kObuTileGroup: {
                 ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
                 break;
@@ -124,14 +114,12 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             default:
                 break;
         }
-    } while (1);
-
+    };
     return PARSER_OK;
 }
 
 ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
     size_t offset = 0;
-
     obu_header_.size = 1;
     if (Parser::GetBit(p_stream, offset) != 0) {
         ERR("Syntax error: obu_forbidden_bit must be set to 0.");
@@ -148,7 +136,6 @@ ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
         ERR("Syntax error: obu_reserved_1bit must be set to 0.");
         return PARSER_INVALID_ARG;
     }
-
     if (obu_header_.obu_extension_flag) {
         obu_header_.size += 1;
         obu_header_.temporal_id = Parser::ReadBits(p_stream, offset, 3);
@@ -163,11 +150,9 @@ ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
 
 ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     ParserResult ret = PARSER_OK;
-
     if (curr_byte_offset_ >= pic_data_size_) {
         return PARSER_EOF;
     }
-
     uint8_t *p_stream = pic_data_buffer_ptr_ + curr_byte_offset_;
     if ((ret = ParseObuHeader(p_stream)) != PARSER_OK) {
         return ret;
@@ -622,13 +607,9 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     }
 
     TileInfo(p_stream, offset, p_seq_header, p_frame_header);
-
     QuantizationParams(p_stream, offset, p_seq_header, p_frame_header);
-
     SegmentationParams(p_stream, offset, p_frame_header);
-
     DeltaQParams(p_stream, offset, p_frame_header);
-
     DeltaLFParams(p_stream, offset, p_frame_header);
 
     if (p_frame_header->primary_ref_frame == PRIMARY_REF_NONE) {
@@ -662,11 +643,8 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     p_frame_header->all_lossless = p_frame_header->coded_lossless && (p_frame_header->frame_size.frame_width == p_frame_header->frame_size.upscaled_width);
 
     LoopFilterParams(p_stream, offset, p_seq_header, p_frame_header);
-
     CdefParams(p_stream, offset, p_seq_header, p_frame_header);
-
     LrParams(p_stream, offset, p_seq_header, p_frame_header);
-
     ReadTxMode(p_stream, offset, p_frame_header);
 
     // frame_reference_mode()
@@ -687,7 +665,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     p_frame_header->reduced_tx_set = Parser::GetBit(p_stream, offset);
 
     GlobalMotionParams(p_stream, offset, p_frame_header);
-
     FilmGrainParams(p_stream, offset, p_seq_header, p_frame_header);
 
     // Update reference frames
@@ -698,7 +675,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     }
 
     *p_bytes_parsed = (offset + 7) >> 3;
-
     return PARSER_OK;
 }
 
@@ -860,27 +836,23 @@ void Av1VideoParser::FrameSize(const uint8_t *p_stream, size_t &offset, Av1Seque
         p_frame_header->frame_size.frame_width = p_seq_header->max_frame_width_minus_1 + 1;
         p_frame_header->frame_size.frame_height = p_seq_header->max_frame_height_minus_1 + 1;
     }
-
     SuperResParams(p_stream, offset, p_seq_header, p_frame_header);
     ComputeImageSize(p_frame_header);
 }
 
 void Av1VideoParser::SuperResParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
     uint32_t super_res_denom;
-
     if (p_seq_header->enable_superres) {
         p_frame_header->frame_size.superres_params.use_superres = Parser::GetBit(p_stream, offset);
     } else {
         p_frame_header->frame_size.superres_params.use_superres = 0;
     }
-
     if (p_frame_header->frame_size.superres_params.use_superres) {
         p_frame_header->frame_size.superres_params.coded_denom = Parser::ReadBits(p_stream, offset, SUPERRES_DENOM_BITS);
         super_res_denom = p_frame_header->frame_size.superres_params.coded_denom + SUPERRES_DENOM_MIN;
     } else {
         super_res_denom = SUPERRES_NUM;
     }
-
     p_frame_header->frame_size.upscaled_width = p_frame_header->frame_size.frame_width;
     p_frame_header->frame_size.frame_width = (p_frame_header->frame_size.upscaled_width * SUPERRES_NUM + (super_res_denom / 2)) / super_res_denom;
 }
@@ -1066,7 +1038,6 @@ void Av1VideoParser::SetupPastIndependence(Av1FrameHeader *p_frame_header) {
         }
     }
     // Block level: PrevSegmentIds[ row ][ col ] is set equal to 0 for row = 0..MiRows-1 and col = 0..MiCols-1.
-
     for (int ref = kLastFrame; ref <= kAltRefFrame; ref++) {
         p_frame_header->global_motion_params.gm_type[ref] = kIdentity;
         for (int i = 0; i < 6; i++) {
@@ -1204,8 +1175,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
 
 uint32_t Av1VideoParser::TileLog2(uint32_t blk_size, uint32_t target) {
     uint32_t k;
-    for (k = 0; (blk_size << k) < target; k++ ) {
-    }
+    for (k = 0; (blk_size << k) < target; k++ ) {}
     return k;
 }
 
@@ -1586,7 +1556,6 @@ void Av1VideoParser::GlobalMotionParams(const uint8_t *p_stream, size_t &offset,
             p_frame_header->global_motion_params.gm_params[ref][i] = ( ( i % 3 == 2 ) ? 1 << WARPEDMODEL_PREC_BITS : 0 );
         }
     }
-
     if (p_frame_header->frame_is_intra) {
         return;
     }
@@ -1617,7 +1586,6 @@ void Av1VideoParser::GlobalMotionParams(const uint8_t *p_stream, size_t &offset,
                 p_frame_header->global_motion_params.gm_params[ref][5] = p_frame_header->global_motion_params.gm_params[ref][2];
             }
         }
-
         if ( type >= kTranslation ) {
             ReadGlobalParam(p_stream, offset, p_frame_header, type, ref, 0);
             ReadGlobalParam(p_stream, offset, p_frame_header, type, ref, 1);
@@ -1638,7 +1606,6 @@ void Av1VideoParser::ReadGlobalParam(const uint8_t *p_stream, size_t &offset, Av
             prec_bits = GM_TRANS_PREC_BITS;
         }
     }
-
     int prec_diff = WARPEDMODEL_PREC_BITS - prec_bits;
     int round = (idx % 3) == 2 ? (1 << WARPEDMODEL_PREC_BITS) : 0;
     int sub = (idx % 3) == 2 ? (1 << prec_bits) : 0;
