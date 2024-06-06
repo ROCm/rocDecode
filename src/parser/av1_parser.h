@@ -102,6 +102,8 @@ protected:
     // The free frame buffer in DPB pool that the current picutre is decoded into
     int new_fb_index_;
 
+    uint32_t prev_gm_params_[NUM_REF_FRAMES][6];
+
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
      * \param [in] pic_data_size Size of the input stream
@@ -318,6 +320,14 @@ protected:
      * \return None
      */
     void DeltaLFParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to return the quantizer index for the current block
+     *  \param [in] p_frame_header Pointer to frame header struct
+     *  \param [in] ignore_delta_q Indicator to ignore the Q index delta
+     *  \param [in] segment_id Segment id
+     *  \return Quantizer index
+     */
+    int GetQIndex(Av1FrameHeader *p_frame_header, int ignore_delta_q, int segment_id);
 
     /*! \brief Function to parse loop filter parameters
      * \param [in] p_stream Pointer to the bit stream
