@@ -42,6 +42,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
+    p_dec->SetDecoderSessionID(0);
     auto start_time = std::chrono::high_resolution_clock::now();
 
     do {
@@ -52,9 +53,9 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-
+    auto session_overhead = p_dec->GetDecoderSessionOverHead(0);
     // Calculate average decoding time
-    total_dec_time = time_per_decode;
+    total_dec_time = time_per_decode - session_overhead;
     double average_decoding_time = total_dec_time / n_frame;
     double n_fps = 1000 / average_decoding_time;
     *pn_fps = n_fps;

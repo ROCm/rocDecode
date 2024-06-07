@@ -52,6 +52,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
 
 
 RocVideoDecoder::~RocVideoDecoder() {
+    START_TIMER
     if (curr_sei_message_ptr_) {
         delete curr_sei_message_ptr_;
         curr_sei_message_ptr_ = nullptr;
@@ -100,6 +101,8 @@ RocVideoDecoder::~RocVideoDecoder() {
         fp_out_ = nullptr;
     }
 
+    STOP_TIMER("Session Deinitialization Time: ")
+    RocVideoDecoder::AddDecoderSessionOverHead(RocVideoDecoder::GetDecoderSessionID(), elapsed_time);
 }
 
 static const char * GetVideoCodecString(rocDecVideoCodec e_codec) {
@@ -247,6 +250,7 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
 */
 int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
+    START_TIMER
     input_video_info_str_.str("");
     input_video_info_str_.clear();
     input_video_info_str_ << "Input Video Information" << std::endl
@@ -415,6 +419,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     std::cout << input_video_info_str_.str();
 
     ROCDEC_API_CALL(rocDecCreateDecoder(&roc_decoder_, &videoDecodeCreateInfo));
+    STOP_TIMER("Session Initialization Time: ");
+    RocVideoDecoder::AddDecoderSessionOverHead(RocVideoDecoder::GetDecoderSessionID(), elapsed_time);
     return num_decode_surfaces;
 }
 
@@ -587,7 +593,6 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     std::cout << input_video_info_str_.str();
 
     is_decoder_reconfigured_ = true;
-
     return 1;
 }
 
