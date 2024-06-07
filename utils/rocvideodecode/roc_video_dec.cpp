@@ -102,7 +102,7 @@ RocVideoDecoder::~RocVideoDecoder() {
     }
 
     STOP_TIMER("Session Deinitialization Time: ")
-    RocVideoDecoder::AddDecoderSessionOverHead(RocVideoDecoder::GetDecoderSessionID(), elapsed_time);
+    AddDecoderSessionOverHead(GetDecoderSessionID(), elapsed_time);
 }
 
 static const char * GetVideoCodecString(rocDecVideoCodec e_codec) {
@@ -420,7 +420,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     ROCDEC_API_CALL(rocDecCreateDecoder(&roc_decoder_, &videoDecodeCreateInfo));
     STOP_TIMER("Session Initialization Time: ");
-    RocVideoDecoder::AddDecoderSessionOverHead(RocVideoDecoder::GetDecoderSessionID(), elapsed_time);
+    AddDecoderSessionOverHead(GetDecoderSessionID(), elapsed_time);
     return num_decode_surfaces;
 }
 
