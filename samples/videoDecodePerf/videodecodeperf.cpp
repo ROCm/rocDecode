@@ -37,11 +37,12 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "common.h"
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, int thread_id) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
+    std::thread::id thread_id = std::this_thread::get_id();
     p_dec->SetDecoderSessionID(thread_id);
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i], i));
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i]));
         }
 
         for (int i = 0; i < n_thread; i++) {

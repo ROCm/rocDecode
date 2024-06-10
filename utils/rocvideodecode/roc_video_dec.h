@@ -358,12 +358,12 @@ class RocVideoDecoder {
          */
         int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
 
-        void SetDecoderSessionID(int session_id) { decoder_session_id_ = session_id; }
-        int GetDecoderSessionID() { return decoder_session_id_; }
+        void SetDecoderSessionID(std::thread::id session_id) { decoder_session_id_ = session_id; }
+        std::thread::id GetDecoderSessionID() { return decoder_session_id_; }
 
         // Session overhead refers to decoder initialization and deinitialization time
-        void AddDecoderSessionOverHead(int session_id, double duration) { session_overhead_[session_id] += duration; }
-        int64_t GetDecoderSessionOverHead(int session_id) { return session_overhead_[session_id]; }
+        void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
+        int64_t GetDecoderSessionOverHead(std::thread::id session_id) { return session_overhead_[session_id]; }
 
     private:
         /**
@@ -488,6 +488,6 @@ class RocVideoDecoder {
         bool is_decoder_reconfigured_ = false;
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;
-        int decoder_session_id_ = 0; // Decoder session identifier. Used to gather session level stats.
-        std::unordered_map<int, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
+        std::thread::id decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
+        std::unordered_map<std::thread::id, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
 };
