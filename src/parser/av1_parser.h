@@ -72,9 +72,15 @@ public:
     } Av1TileGroupDataInfo;
 
 protected:
+    Av1ObuHeader obu_header_;
+    uint64_t obu_size_; // current OBU size in byte, not including header and size bytes
+    uint32_t obu_byte_offset_; // current OBU byte offset, not including header and obu_size syntax elements
+
+    uint32_t seen_frame_header_; // SeenFrameHeader
     Av1SequenceHeader seq_header_;
     Av1FrameHeader frame_header_;
     Av1TileGroupDataInfo tile_group_data_;
+    uint32_t tile_num_;
 
     int temporal_id_; //  temporal level of the data contained in the OBU
     int spatial_id_;  // spatial level of the data contained in the OBU
@@ -96,26 +102,55 @@ protected:
     // The free frame buffer in DPB pool that the current picutre is decoded into
     int new_fb_index_;
 
-    /*! \brief Function to parse a sequence header OBU
+    uint32_t prev_gm_params_[NUM_REF_FRAMES][6];
+
+    /*! \brief Function to parse one picture bit stream received from the demuxer.
+     * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
+     * \param [in] pic_data_size Size of the input stream
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size);
+
+    /*! \brief Function to parse an OBU header
+     * \param [in] p_stream Pointer to the bit stream
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult ParseObuHeader(const uint8_t *p_stream);
+
+    /*! \brief Function to parse an OBU header and size
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult ReadObuHeaderAndSize();
+
+    /*! \brief Function to parse a sequence header OBU. 5.5.
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
      * \return None
      */
-    void ParseSequenceHeader(uint8_t *p_stream, size_t size);
+    void ParseSequenceHeaderObu(uint8_t *p_stream, size_t size);
+
+    /*! \brief Function to parse a frame header OBU. 5.9.
+     * \param [in] p_stream Pointer to the bit stream
+     * \param [in] size Byte size of the stream
+     * \param [out] p_bytes_parsed Number of bytes that have been parsed
+     * \return None
+     */
+    ParserResult ParseFrameHeaderObu(uint8_t *p_stream, size_t size, int *p_bytes_parsed);
 
     /*! \brief Function to parse a frame header OBU
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
+     * \param [out] p_bytes_parsed Number of bytes that have been parsed
      * \return <tt>ParserResult</tt>
      */
-    ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size);
+    ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size, int *p_bytes_parsed);
 
     /*! \brief Function to parse a tile group OBU
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
      * \return None
      */
-    void ParseTileGroupInfo(uint8_t *p_stream, size_t size);
+    void ParseTileGroupObu(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse color config in sequence header
      * \param [in] p_stream Pointer to the bit stream
@@ -286,6 +321,14 @@ protected:
      */
     void DeltaLFParams(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
+    /*! \brief Function to return the quantizer index for the current block
+     *  \param [in] p_frame_header Pointer to frame header struct
+     *  \param [in] ignore_delta_q Indicator to ignore the Q index delta
+     *  \param [in] segment_id Segment id
+     *  \return Quantizer index
+     */
+    int GetQIndex(Av1FrameHeader *p_frame_header, int ignore_delta_q, int segment_id);
+
     /*! \brief Function to parse loop filter parameters
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
@@ -434,11 +477,11 @@ protected:
      * \param [out] p_num_bytes_read Number of bytes read
      * \return The unsigned value
      */
-    inline uint32_t ReadLeb128(const uint8_t *p_stream, uint32_t *p_num_bytes_read) {
+    inline uint64_t ReadLeb128(const uint8_t *p_stream, uint32_t *p_num_bytes_read) {
         uint32_t value = 0;
         *p_num_bytes_read = 0;
         uint32_t len;
-        for (len = 0; len < 4; ++len) {
+        for (len = 0; len < 8; ++len) {
             value |= (p_stream[len] & 0x7F) << (len * 7);
             if ((p_stream[len] & 0x80) == 0) {
                 ++len;
