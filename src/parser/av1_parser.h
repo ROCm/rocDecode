@@ -430,12 +430,13 @@ protected:
      * \return the location of the most significant bit in x
      */
     inline uint32_t FloorLog2(uint32_t x) {
+        uint32_t saved_x = x;
         uint32_t s = 0;
         while (x != 0) {
             x = x >> 1;
             s++;
         }
-        return x ? s - 1 : 0;
+        return saved_x ? s - 1 : 0;
     }
 
     /*! \brief Function to read variable length unsigned n-bit number appearing directly in the bitstream. 4.10.3. uvlc().
