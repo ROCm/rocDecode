@@ -360,7 +360,13 @@ class RocVideoDecoder {
 
         // Session overhead refers to decoder initialization and deinitialization time
         void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
-        double GetDecoderSessionOverHead(std::thread::id session_id) { return session_overhead_[session_id]; }
+        double GetDecoderSessionOverHead(std::thread::id session_id) {
+            if (session_overhead_.find(session_id) != session_overhead_.end()) {
+                return session_overhead_[session_id];
+            } else {
+                return 0;
+            }
+         }
 
     private:
         /**
