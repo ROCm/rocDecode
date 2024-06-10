@@ -489,5 +489,5 @@ class RocVideoDecoder {
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;
         int decoder_session_id_ = 0; // Decoder session identifier. Used to gather session level stats.
-        std::unordered_map<int, int64_t> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
+        std::unordered_map<int, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
 };
