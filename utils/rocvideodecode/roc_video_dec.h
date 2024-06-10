@@ -358,9 +358,6 @@ class RocVideoDecoder {
          */
         int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
 
-        void SetDecoderSessionID(std::thread::id session_id) { decoder_session_id_ = session_id; }
-        std::thread::id GetDecoderSessionID() { return decoder_session_id_; }
-
         // Session overhead refers to decoder initialization and deinitialization time
         void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
         double GetDecoderSessionOverHead(std::thread::id session_id) { return session_overhead_[session_id]; }
