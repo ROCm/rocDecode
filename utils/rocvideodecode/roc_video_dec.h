@@ -434,7 +434,7 @@ class RocVideoDecoder {
         std::chrono::_V2::system_clock::time_point StartTimer();
 
         /**
-         * @brief Function to get stop time
+         * @brief Function to get elapsed time
          * 
          */
         double StopTimer(const std::chrono::_V2::system_clock::time_point &start_time);
