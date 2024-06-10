@@ -37,12 +37,12 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "common.h"
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, int thread_id) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
-    p_dec->SetDecoderSessionID(0);
+    p_dec->SetDecoderSessionID(thread_id);
     auto start_time = std::chrono::high_resolution_clock::now();
 
     do {
@@ -53,7 +53,8 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-    auto session_overhead = p_dec->GetDecoderSessionOverHead(0);
+    auto session_overhead = p_dec->GetDecoderSessionOverHead(thread_id);
+    std::cout << session_overhead << std::endl;
     // Calculate average decoding time
     total_dec_time = time_per_decode - session_overhead;
     double average_decoding_time = total_dec_time / n_frame;
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i]));
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i], i));
         }
 
         for (int i = 0; i < n_thread; i++) {
