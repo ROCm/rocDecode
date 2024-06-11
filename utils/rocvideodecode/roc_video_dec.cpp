@@ -52,6 +52,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
 
 
 RocVideoDecoder::~RocVideoDecoder() {
+    auto start_time = StartTimer();
     if (curr_sei_message_ptr_) {
         delete curr_sei_message_ptr_;
         curr_sei_message_ptr_ = nullptr;
@@ -100,6 +101,8 @@ RocVideoDecoder::~RocVideoDecoder() {
         fp_out_ = nullptr;
     }
 
+    double elapsed_time = StopTimer(start_time);
+    AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
 }
 
 static const char * GetVideoCodecString(rocDecVideoCodec e_codec) {
@@ -247,6 +250,7 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
 */
 int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
+    auto start_time = StartTimer();
     input_video_info_str_.str("");
     input_video_info_str_.clear();
     input_video_info_str_ << "Input Video Information" << std::endl
@@ -415,6 +419,8 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     std::cout << input_video_info_str_.str();
 
     ROCDEC_API_CALL(rocDecCreateDecoder(&roc_decoder_, &videoDecodeCreateInfo));
+    double elapsed_time = StopTimer(start_time);
+    AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
     return num_decode_surfaces;
 }
 
@@ -587,7 +593,6 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     std::cout << input_video_info_str_.str();
 
     is_decoder_reconfigured_ = true;
-
     return 1;
 }
 
@@ -1124,4 +1129,12 @@ bool RocVideoDecoder::InitHIP(int device_id) {
     HIP_API_CALL(hipGetDeviceProperties(&hip_dev_prop_, device_id));
     HIP_API_CALL(hipStreamCreate(&hip_stream_));
     return true;
+}
+
+std::chrono::_V2::system_clock::time_point RocVideoDecoder::StartTimer() {
+    return std::chrono::_V2::system_clock::now();
+}
+
+double RocVideoDecoder::StopTimer(const std::chrono::_V2::system_clock::time_point &start_time) {
+    return std::chrono::duration<double, std::milli>(std::chrono::_V2::system_clock::now() - start_time).count();
 }

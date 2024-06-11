@@ -34,6 +34,8 @@ THE SOFTWARE.
 #include <stdexcept>
 #include <exception>
 #include <cstring>
+#include <unordered_map>
+#include <chrono>
 #include <hip/hip_runtime.h>
 extern "C" {
 #include "libavutil/md5.h"
@@ -75,7 +77,6 @@ typedef enum OutputSurfaceMemoryType_enum {
 #define INFO(X) ;
 #endif
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
-
 
 class RocVideoDecodeException : public std::exception {
 public:
@@ -357,8 +358,17 @@ class RocVideoDecoder {
          */
         int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
 
+        // Session overhead refers to decoder initialization and deinitialization time
+        void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
+        double GetDecoderSessionOverHead(std::thread::id session_id) {
+            if (session_overhead_.find(session_id) != session_overhead_.end()) {
+                return session_overhead_[session_id];
+            } else {
+                return 0;
+            }
+         }
+
     private:
-        int decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
          */
@@ -420,6 +430,18 @@ class RocVideoDecoder {
          */
         bool InitHIP(int device_id);
 
+        /**
+         * @brief Function to get start time
+         * 
+         */
+        std::chrono::_V2::system_clock::time_point StartTimer();
+
+        /**
+         * @brief Function to get elapsed time
+         * 
+         */
+        double StopTimer(const std::chrono::_V2::system_clock::time_point &start_time);
+
         int num_devices_;
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
@@ -469,4 +491,6 @@ class RocVideoDecoder {
         bool is_decoder_reconfigured_ = false;
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;
+        std::thread::id decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
+        std::unordered_map<std::thread::id, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
 };
