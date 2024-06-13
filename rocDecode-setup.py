@@ -128,6 +128,10 @@ elif "SLES" in os_info_data or os.path.exists('/usr/bin/zypper'):
     linuxSystemInstall = 'zypper -n'
     linuxSystemInstall_check = '--no-gpg-checks'
     platfromInfo = platfromInfo+'-SLES'
+elif "Mariner" in os_info_data or os.path.exists('/usr/bin/tdnf'):
+    linuxSystemInstall = 'tdnf -y'
+    linuxSystemInstall_check = '--nogpgcheck'
+    platfromInfo = platfromInfo+'-Mariner'
 else:
     print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
     print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
@@ -174,8 +178,11 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 libvaNameRPM = "libva"
-if os.path.exists('/usr/bin/zypper'):
-        libvaNameRPM = "libva2"
+libvaUtilsNameRPM = "libva-utils"
+if "SLES" in os_info_data or "Mariner" in os_info_data:
+    libvaNameRPM = "libva2"
+if "Mariner" in os_info_data:
+    libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
     str(libvaNameRPM),
@@ -183,7 +190,7 @@ coreRPMPackages = [
     'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
     'mesa-amdgpu-dri-drivers',
-    'libva-utils'
+    str(libvaUtilsNameRPM)
 ]
 
 # update
