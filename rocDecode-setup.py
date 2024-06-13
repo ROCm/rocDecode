@@ -161,12 +161,14 @@ coreDebianPackages = [
     'rocm-hip-runtime-dev',
     'libva2',
     'libva-dev',
-    'libdrm-amdgpu1',
-    'mesa-amdgpu-va-drivers',
-    'vainfo'
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
+]
+runtimeDebianPackages = [
+    'libdrm-amdgpu1',
+    'mesa-amdgpu-va-drivers',
+    'vainfo'
 ]
 ffmpegDebianPackages = [
     'ffmpeg',
@@ -177,15 +179,18 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 libvaNameRPM = "libva"
-libvaUtilsNameRPM = "libva-utils"
 if "SLES" in os_info_data or "Mariner" in os_info_data:
     libvaNameRPM = "libva2"
-if "Mariner" in os_info_data:
-    libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
     str(libvaNameRPM),
-    'libva-devel',
+    'libva-devel'
+]
+
+libvaUtilsNameRPM = "libva-utils"
+if "Mariner" in os_info_data:
+    libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
+runtimeRPMPackages = [
     'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
     'mesa-amdgpu-dri-drivers',
