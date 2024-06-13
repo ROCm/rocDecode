@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -45,10 +45,13 @@ def ERROR_CHECK(call):
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocm_path', 	type=str, default='/opt/rocm',
                     help='ROCm Installation Path - optional (default:/opt/rocm) - ROCm Installation Required')
+parser.add_argument('--runtime', 	type=str, default='ON',
+                    help='Install RunTime Dependencies - optional (default:ON) [options:ON/OFF]')
 parser.add_argument('--developer', 	type=str, default='OFF',
                     help='Setup Developer Options - optional (default:OFF) [options:ON/OFF]')
 
 args = parser.parse_args()
+runtimeInstall = args.runtime.upper()
 developerInstall = args.developer.upper()
 
 ROCM_PATH = args.rocm_path
@@ -70,6 +73,10 @@ else:
 if developerInstall not in ('OFF', 'ON'):
     print(
         "ERROR: Developer Option Not Supported - [Supported Options: OFF or ON]\n")
+    exit()
+if runtimeInstall not in ('OFF', 'ON'):
+    print(
+        "ERROR: Runtime Option Not Supported - [Supported Options: OFF or ON]\n")
     exit()
 
 # get platfrom info
@@ -132,6 +139,7 @@ elif "Mariner" in os_info_data:
     linuxSystemInstall = 'tdnf -y'
     linuxSystemInstall_check = '--nogpgcheck'
     platfromInfo = platfromInfo+'-Mariner'
+    runtimeInstall = 'OFF'
 else:
     print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
     print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
@@ -206,7 +214,7 @@ for i in range(len(commonPackages)):
     ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
             ' '+linuxSystemInstall_check+' install '+ commonPackages[i]))
 
-# rocDecode Core - LibVA Requirements
+# rocDecode Core - Requirements
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if "Ubuntu" in platfromInfo:
     for i in range(len(coreDebianPackages)):
@@ -221,7 +229,19 @@ else:
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                 ' '+linuxSystemInstall_check+' install '+ coreRPMPackages[i]))
 
-# rocDecode Dev Requirements
+# rocDecode runTime - Requirements
+ERROR_CHECK(os.system('sudo '+sudoValidateOption))
+if runtimeInstall == 'ON':
+    if "Ubuntu" in platfromInfo:
+        for i in range(len(runtimeDebianPackages)):
+            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+                ' '+linuxSystemInstall_check+' install '+ runtimeDebianPackages[i]))
+    else:
+        for i in range(len(runtimeRPMPackages)):
+            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+                ' '+linuxSystemInstall_check+' install '+ runtimeRPMPackages[i]))
+
+# rocDecode Dev - Requirements
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if developerInstall == 'ON':
     if "Ubuntu" in platfromInfo:

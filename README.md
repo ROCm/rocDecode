@@ -77,6 +77,7 @@ For your convenience, we provide the setup script, [rocDecode-setup.py](https://
 
 ```shell
 python3 rocDecode-setup.py  --rocm_path [ ROCm Installation Path  - optional (default:/opt/rocm)]
+                            --runtime   [ Setup runtime requirements - optional (default:ON) [options:ON/OFF]]
                             --developer [ Setup Developer Options - optional (default:OFF) [options:ON/OFF]]
 ```
 
@@ -234,4 +235,4 @@ page.
 * mesa-amdgpu-va-drivers - `1:24.1.0`
 * mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V2.0.0`
+* rocDecode Setup Script - `V2.1.0`
