@@ -100,7 +100,7 @@ linuxCMake = 'cmake'
 linuxSystemInstall_check = ''
 linuxFlag = ''
 sudoValidateOption= '-v'
-if "centos" in os_info_data or "redhat" in os_info_data or os.path.exists('/usr/bin/yum'):
+if "centos" in os_info_data or "redhat" in os_info_data:
     linuxSystemInstall = 'yum -y'
     linuxSystemInstall_check = '--nogpgcheck'
     if "VERSION_ID=7" in os_info_data:
@@ -112,7 +112,7 @@ if "centos" in os_info_data or "redhat" in os_info_data or os.path.exists('/usr/
         platfromInfo = platfromInfo+'-redhat-9'
     else:
         platfromInfo = platfromInfo+'-redhat-centos-undefined-version'
-elif "Ubuntu" in os_info_data or os.path.exists('/usr/bin/apt-get'):
+elif "Ubuntu" in os_info_data:
     linuxSystemInstall = 'apt-get -y'
     linuxSystemInstall_check = '--allow-unauthenticated'
     linuxFlag = '-S'
@@ -124,11 +124,11 @@ elif "Ubuntu" in os_info_data or os.path.exists('/usr/bin/apt-get'):
         platfromInfo = platfromInfo+'-Ubuntu-24'
     else:
         platfromInfo = platfromInfo+'-Ubuntu-undefined-version'
-elif "SLES" in os_info_data or os.path.exists('/usr/bin/zypper'):
+elif "SLES" in os_info_data:
     linuxSystemInstall = 'zypper -n'
     linuxSystemInstall_check = '--no-gpg-checks'
     platfromInfo = platfromInfo+'-SLES'
-elif "Mariner" in os_info_data or os.path.exists('/usr/bin/tdnf'):
+elif "Mariner" in os_info_data:
     linuxSystemInstall = 'tdnf -y'
     linuxSystemInstall_check = '--nogpgcheck'
     platfromInfo = platfromInfo+'-Mariner'
