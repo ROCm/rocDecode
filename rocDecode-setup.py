@@ -153,7 +153,6 @@ commonPackages = [
     'wget',
     'unzip',
     'pkg-config',
-    'inxi',
     'rocm-hip-runtime'
 ]
 
