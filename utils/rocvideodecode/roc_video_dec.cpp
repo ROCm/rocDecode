@@ -525,8 +525,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
     // Fill output_surface_info_
-    output_surface_info_.output_width = disp_width_;
-    output_surface_info_.output_height = disp_height_;
+    output_surface_info_.output_width = target_width_;
+    output_surface_info_.output_height = target_height_;
     output_surface_info_.output_pitch  = surface_stride_;
     output_surface_info_.output_vstride = (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) ? surface_vstride_ : target_height_;
     output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
