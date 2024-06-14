@@ -8,6 +8,7 @@ Documentation for rocDecode is available at
 ## Additions
 
 * FFMPEG V5.X Support
+* Mariner - Build Support
 
 ## Optimizations
 
@@ -36,7 +37,7 @@ Documentation for rocDecode is available at
 * mesa-amdgpu-va-drivers - `1:24.1.0`
 * mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V2.0.0`
+* rocDecode Setup Script - `V2.1.0`
 
 ## rocDecode 0.5.0
 
