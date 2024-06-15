@@ -1347,6 +1347,9 @@ typedef struct _RocdecAv1SliceParams {
     uint16_t tile_row;
     uint16_t tile_column;
 
+    uint16_t  tg_start;
+    uint16_t  tg_end;
+
     /** \brief anchor frame index for large scale tile.
      *  index into an array AnchorFrames of the frames that the tile uses
      *  for prediction.

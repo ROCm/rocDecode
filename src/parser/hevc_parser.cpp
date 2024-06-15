@@ -84,11 +84,11 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         }
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
-        if (new_sps_activated_) {
+        if (new_seq_activated_) {
             if (FillSeqCallbackFn(&m_sps_[m_active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
-            new_sps_activated_ = false;
+            new_seq_activated_ = false;
         }
 
         // Whenever new sei message found
@@ -1553,7 +1553,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         // Re-set DPB size.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
-        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+        new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     sps_ptr = &m_sps_[m_active_sps_id_];
     if (sps_ptr->is_received == 0) {
@@ -1574,16 +1574,16 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         // Re-set DPB size.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
-        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+        new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
     // Check and adjust decode buffer pool size if needed
-    if (new_sps_activated_) {
+    if (new_seq_activated_) {
         CheckAndAdjustDecBufPoolSize(dpb_buffer_.dpb_size);
     }
 
     // Set frame rate if available
-    if (new_sps_activated_) {
+    if (new_seq_activated_) {
         if (m_vps_[m_active_vps_id_].vps_timing_info_present_flag) {
             frame_rate_.numerator = m_vps_[m_active_vps_id_].vps_time_scale;
             frame_rate_.denominator = m_vps_[m_active_vps_id_].vps_num_units_in_tick;

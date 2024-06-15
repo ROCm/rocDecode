@@ -69,11 +69,11 @@ rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
         }
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
-        if (new_sps_activated_) {
+        if (new_seq_activated_) {
             if (NotifyNewSps(&sps_list_[active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
-            new_sps_activated_ = false;
+            new_seq_activated_ = false;
         }
 
         // Whenever new sei message found
@@ -1181,7 +1181,7 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         // Re-set DPB size.
         dpb_buffer_.dpb_size = p_sps->max_num_ref_frames + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > AVC_MAX_DPB_FRAMES ? AVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
-        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+        new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
     p_sps = &sps_list_[active_sps_id_];
 
@@ -1195,16 +1195,16 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
         // Re-set DPB size.
         dpb_buffer_.dpb_size = p_sps->max_num_ref_frames + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > AVC_MAX_DPB_FRAMES ? AVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
-        new_sps_activated_ = true;  // Note: clear this flag after the actions are taken.
+        new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
 
     // Check and adjust decode buffer pool size if needed
-    if (new_sps_activated_) {
+    if (new_seq_activated_) {
         CheckAndAdjustDecBufPoolSize(dpb_buffer_.dpb_size);
     }
 
     // Set frame rate if available
-    if (new_sps_activated_) {
+    if (new_seq_activated_) {
         if (p_sps->vui_seq_parameters.timing_info_present_flag) {
             frame_rate_.numerator = p_sps->vui_seq_parameters.time_scale;
             frame_rate_.denominator = 2 * p_sps->vui_seq_parameters.num_units_in_tick;
