@@ -59,7 +59,6 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     pic_data_buffer_ptr_ = (uint8_t*)p_stream;
     pic_data_size_ = pic_data_size;
     curr_byte_offset_ = 0;
-    printf("Frame %d: pic_data_size = %d -------------------------\n", pic_count_, pic_data_size); // Jefftest
 
     while (ReadObuHeaderAndSize() != PARSER_EOF) {
         switch (obu_header_.obu_type) {
@@ -116,7 +115,6 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 break;
         }
 
-        // Jefftest
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_seq_activated_) {
             if (NotifyNewSequence(&seq_header_, &frame_header_) != PARSER_OK) {
@@ -127,16 +125,15 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 
         // Submit decode when we have the entire frame data
         if (tile_group_data_.tile_number && tile_group_data_.tg_end == tile_group_data_.num_tiles - 1) {
-            /*if (FindFreeInDecBufPool() != PARSER_OK) {
+            // Temp code for intra testing
+            /* if (FindFreeInDecBufPool() != PARSER_OK) {
                 return PARSER_FAIL;
             }*/
-            printf("Submit decode ....\n"); // Jefftest
             if (SendPicForDecode() != PARSER_OK) {
-            ERR(STR("Failed to decode!"));
-            return PARSER_FAIL;
+                ERR(STR("Failed to decode!"));
+                return PARSER_FAIL;
             }
 
-            // Temp code for intra testing
             memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
             pic_count_++;
         }
@@ -238,7 +235,7 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     p_pic_param->seq_info_fields.fields.film_grain_params_present = p_seq_header->film_grain_params_present;
 
     p_pic_param->current_frame = curr_pic_.dec_buf_idx;
-    p_pic_param->current_display_picture = 0xFF; // Todo for FG
+    p_pic_param->current_display_picture = curr_pic_.dec_buf_idx; // Todo for FG
     p_pic_param->anchor_frames_num = 0;
     p_pic_param->anchor_frames_list = nullptr;
 
@@ -410,6 +407,10 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     }
     dec_pic_params_.slice_params.av1 = tile_param_list_.data();
 
+#if DBGINFO
+    PrintVaapiParams();
+#endif // DBGINFO
+
     if (pfn_decode_picture_cb_(parser_params_.user_data, &dec_pic_params_) == 0) {
         ERR("Decode error occurred.");
         return PARSER_FAIL;
@@ -480,7 +481,6 @@ ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     obu_size_ = ReadLeb128(p_stream, &bytes_read);
     obu_byte_offset_ = curr_byte_offset_ + bytes_read;
     curr_byte_offset_ = obu_byte_offset_ + obu_size_;
-    printf("OBU type = %d, OBU size = %lu (%lu), obu_byte_offset_ = %d, curr_byte_offset_ = %d\n", obu_header_.obu_type, obu_size_, (obu_header_.size + bytes_read + obu_size_), obu_byte_offset_, curr_byte_offset_);  // Jefftest
     return PARSER_OK;
 }
 
@@ -885,7 +885,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         }
     }
 
-    // Jefftest
     if ( pic_width_ != p_frame_header->frame_size.frame_width || pic_height_ != p_frame_header->frame_size.frame_height) {
         pic_width_ = p_frame_header->frame_size.frame_width;
         pic_height_ = p_frame_header->frame_size.frame_height;
@@ -1005,16 +1004,16 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     Av1FrameHeader *p_frame_header = &frame_header_;
     Av1TileGroupDataInfo *p_tile_group = &tile_group_data_;
     uint32_t tile_start_and_end_present_flag = 0;
-    uint32_t header_types = 0;
+    uint32_t header_bytes = 0;
     uint32_t tile_cols = p_frame_header->tile_info.tile_cols;
     uint32_t tile_rows = p_frame_header->tile_info.tile_rows;
     uint8_t *p_tg_buf = p_stream;
     uint32_t tg_size = size;
 
-    p_tile_group->buffer_ptr = p_tg_buf;
-    p_tile_group->buffer_size = tg_size;
-    pic_stream_data_ptr_ = p_tg_buf; // Todo: deal with multiple tile group OBUs
-    pic_stream_data_size_ = tg_size;
+    pic_stream_data_ptr_ = p_stream; // Todo: deal with multiple tile group OBUs
+    pic_stream_data_size_ = size;
+    p_tile_group->buffer_ptr = p_stream;
+    p_tile_group->buffer_size = size;
 
     // First parse the header
     p_tile_group->num_tiles = tile_cols * tile_rows;
@@ -1030,9 +1029,9 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         p_tile_group->tg_end = Parser::ReadBits(p_stream, offset, tile_bits);
     }
 
-    header_types = ((offset + 7) >> 3);
-    p_tg_buf += header_types;
-    tg_size -= header_types;
+    header_bytes = ((offset + 7) >> 3);
+    p_tg_buf += header_bytes;
+    tg_size -= header_bytes;
     for (int tile_num = p_tile_group->tg_start; tile_num <= p_tile_group->tg_end; tile_num++) {
         p_tile_group->tile_data_info[tile_num].tile_row = tile_num / tile_cols;
         p_tile_group->tile_data_info[tile_num].tile_col = tile_num % tile_cols;
@@ -1153,6 +1152,8 @@ void Av1VideoParser::FrameSize(const uint8_t *p_stream, size_t &offset, Av1Seque
         p_frame_header->frame_size.frame_height_minus_1 = Parser::ReadBits(p_stream, offset, p_seq_header->frame_height_bits_minus_1 + 1);
         p_frame_header->frame_size.frame_height = p_frame_header->frame_size.frame_height_minus_1 + 1;
     } else {
+        p_frame_header->frame_size.frame_width_minus_1 = p_seq_header->max_frame_width_minus_1;
+        p_frame_header->frame_size.frame_height_minus_1 = p_seq_header->max_frame_height_minus_1;
         p_frame_header->frame_size.frame_width = p_seq_header->max_frame_width_minus_1 + 1;
         p_frame_header->frame_size.frame_height = p_seq_header->max_frame_height_minus_1 + 1;
     }
@@ -1420,7 +1421,6 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
                 break;
             }
         }
-
         tile_width_sb = (sb_cols + (1 << p_frame_header->tile_info.tile_cols_log2) - 1) >> p_frame_header->tile_info.tile_cols_log2;
         i = 0;
         for (start_sb = 0; start_sb < sb_cols; start_sb += tile_width_sb) {
@@ -1440,7 +1440,6 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
                 break;
             }
         }
-
         tile_height_sb = (sb_rows + (1 << p_frame_header->tile_info.tile_rows_log2) - 1) >> p_frame_header->tile_info.tile_rows_log2;
         i = 0;
         for (start_sb = 0; start_sb < sb_rows; start_sb += tile_height_sb ) {
@@ -1449,6 +1448,15 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
         }
         p_frame_header->tile_info.mi_row_starts[i] = p_frame_header->frame_size.mi_rows;
         p_frame_header->tile_info.tile_rows = i;
+
+        for (i = 0; i < p_frame_header->tile_info.tile_cols - 1; i++) {
+            p_frame_header->tile_info.width_in_sbs_minus_1[i] = tile_width_sb - 1;
+        }
+        p_frame_header->tile_info.width_in_sbs_minus_1[i] = sb_cols - (p_frame_header->tile_info.tile_cols - 1) * tile_width_sb - 1;
+        for (i = 0; i < p_frame_header->tile_info.tile_rows - 1; i++) {
+            p_frame_header->tile_info.height_in_sbs_minus_1[i] = tile_height_sb - 1;
+        }
+        p_frame_header->tile_info.height_in_sbs_minus_1[i] = sb_rows - (p_frame_header->tile_info.tile_rows - 1) * tile_height_sb - 1;
     } else {
         int widest_tile_sb = 0;
         start_sb = 0;
@@ -2155,3 +2163,251 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
     p_frame_header->film_grain_params.overlap_flag = Parser::GetBit(p_stream, offset);
     p_frame_header->film_grain_params.clip_to_restricted_range = Parser::GetBit(p_stream, offset);
 }
+
+void Av1VideoParser::PrintVaapiParams() {
+    int i, j;
+    MSG("=======================");
+    MSG("VAAPI parameter Info: ");
+    MSG("=======================");
+    MSG("pic_width = " << dec_pic_params_.pic_width);
+    MSG("pic_height = " << dec_pic_params_.pic_height);
+    MSG("curr_pic_idx = " << dec_pic_params_.curr_pic_idx);
+    MSG("field_pic_flag = " << dec_pic_params_.field_pic_flag);
+    MSG("bottom_field_flag = " << dec_pic_params_.bottom_field_flag);
+    MSG("second_field = " << dec_pic_params_.second_field);
+    MSG("bitstream_data_len = " << dec_pic_params_.bitstream_data_len);
+    MSG("num_slices = " << dec_pic_params_.num_slices);
+    MSG("ref_pic_flag = " << dec_pic_params_.ref_pic_flag);
+    MSG("intra_pic_flag = " << dec_pic_params_.intra_pic_flag);
+
+    MSG("=======================");
+    MSG("Picture parameter Info:");
+    MSG("=======================");
+    RocdecAv1PicParams *p_pic_param = &dec_pic_params_.pic_params.av1;
+    MSG("profile = " << static_cast<uint32_t>(p_pic_param->profile));
+    MSG("matrix_coefficients = " << static_cast<uint32_t>(p_pic_param->matrix_coefficients));
+    MSG("still_picture = " << p_pic_param->seq_info_fields.fields.still_picture);
+    MSG("use_128x128_superblock = " << p_pic_param->seq_info_fields.fields.use_128x128_superblock);
+    MSG("enable_filter_intra = " << p_pic_param->seq_info_fields.fields.enable_filter_intra);
+    MSG("enable_intra_edge_filter = " << p_pic_param->seq_info_fields.fields.enable_intra_edge_filter);
+    MSG("enable_interintra_compound = " << p_pic_param->seq_info_fields.fields.enable_interintra_compound);
+    MSG("enable_masked_compound = " << p_pic_param->seq_info_fields.fields.enable_masked_compound);
+    MSG("enable_dual_filter = " << p_pic_param->seq_info_fields.fields.enable_dual_filter);
+    MSG("enable_order_hint = " << p_pic_param->seq_info_fields.fields.enable_order_hint);
+    MSG("enable_jnt_comp = " << p_pic_param->seq_info_fields.fields.enable_jnt_comp);
+    MSG("enable_cdef = " << p_pic_param->seq_info_fields.fields.enable_cdef);
+    MSG("mono_chrome = " << p_pic_param->seq_info_fields.fields.mono_chrome);
+    MSG("color_range = " << p_pic_param->seq_info_fields.fields.color_range);
+    MSG("subsampling_x = " << p_pic_param->seq_info_fields.fields.subsampling_x);
+    MSG("subsampling_y = " << p_pic_param->seq_info_fields.fields.subsampling_y);
+    MSG("chroma_sample_position = " << p_pic_param->seq_info_fields.fields.chroma_sample_position);
+    MSG("film_grain_params_present = " << p_pic_param->seq_info_fields.fields.film_grain_params_present);
+    MSG("current_frame = " << p_pic_param->current_frame);
+    MSG("current_display_picture = " << p_pic_param->current_display_picture);
+    MSG("anchor_frames_num = " << static_cast<uint32_t>(p_pic_param->anchor_frames_num));
+    MSG("anchor_frames_list = " << p_pic_param->anchor_frames_list);
+    MSG("frame_width_minus1 = " << p_pic_param->frame_width_minus1);
+    MSG("frame_height_minus1 = " << p_pic_param->frame_height_minus1);
+    MSG("output_frame_width_in_tiles_minus_1 = " << p_pic_param->output_frame_width_in_tiles_minus_1);
+    MSG("output_frame_height_in_tiles_minus_1 = " << p_pic_param->output_frame_height_in_tiles_minus_1);
+    MSG_NO_NEWLINE("ref_frame_map[]:");
+    for (i = 0; i < NUM_REF_FRAMES; i++) {
+        MSG_NO_NEWLINE(" " << p_pic_param->ref_frame_map[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("ref_frame_idx[]:");
+    for (i = 0; i < REFS_PER_FRAME; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->ref_frame_idx[i]));
+    }
+    MSG("");
+    MSG("primary_ref_frame = " << static_cast<uint32_t>(p_pic_param->primary_ref_frame));
+    MSG("order_hint = " << static_cast<uint32_t>(p_pic_param->order_hint));
+    MSG("segmentation_enabled = " << p_pic_param->seg_info.segment_info_fields.bits.enabled);
+    MSG("segmentation_update_map = " << p_pic_param->seg_info.segment_info_fields.bits.update_map);
+    MSG("segmentation_temporal_update = " << p_pic_param->seg_info.segment_info_fields.bits.temporal_update);
+    MSG("segmentation_update_data = " << p_pic_param->seg_info.segment_info_fields.bits.update_data);
+    for (i = 0; i < MAX_SEGMENTS; i++) {
+        MSG("Segment " << i << ":");
+        MSG_NO_NEWLINE("feature_data[]:");
+        for (j = 0; j < SEG_LVL_MAX; j++) {
+            MSG_NO_NEWLINE(" " << p_pic_param->seg_info.feature_data[i][j]);
+        }
+        MSG("");
+        MSG("feature_mask = 0x" << std::hex << static_cast<uint32_t>(p_pic_param->seg_info.feature_mask[i]));
+        MSG_NO_NEWLINE(std::dec);
+    }
+    MSG("apply_grain = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.apply_grain);
+    MSG("chroma_scaling_from_luma = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.chroma_scaling_from_luma);
+    MSG("grain_scaling_minus_8 = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.grain_scaling_minus_8);
+    MSG("ar_coeff_lag = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.ar_coeff_lag);
+    MSG("ar_coeff_shift_minus_6 = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.ar_coeff_shift_minus_6);
+    MSG("grain_scale_shift = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.grain_scale_shift);
+    MSG("overlap_flag = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.overlap_flag);
+    MSG("clip_to_restricted_range = " << p_pic_param->film_grain_info.film_grain_info_fields.bits.clip_to_restricted_range);
+    MSG("grain_seed = " << p_pic_param->film_grain_info.grain_seed);
+    MSG("num_y_points = " << static_cast<uint32_t>(p_pic_param->film_grain_info.num_y_points));
+    MSG_NO_NEWLINE("point_y_value[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_y_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_y_value[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("point_y_scaling[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_y_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_y_scaling[i]));
+    }
+    MSG("");
+    MSG("num_cb_points = " << static_cast<uint32_t>(p_pic_param->film_grain_info.num_cb_points));
+    MSG_NO_NEWLINE("point_cb_value[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_cb_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_cb_value[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("point_cb_scaling[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_cb_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_cb_scaling[i]));
+    }
+    MSG("");
+    MSG("num_cr_points = " << static_cast<uint32_t>(p_pic_param->film_grain_info.num_cr_points));
+    MSG_NO_NEWLINE("point_cr_value[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_cr_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_cr_value[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("point_cr_scaling[]:");
+    for (i = 0; i < p_pic_param->film_grain_info.num_cr_points; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->film_grain_info.point_cr_scaling[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("ar_coeffs_y[]:");
+    for (i = 0; i < 24; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<int>(p_pic_param->film_grain_info.ar_coeffs_y[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("ar_coeffs_cb[]:");
+    for (i = 0; i < 25; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<int>(p_pic_param->film_grain_info.ar_coeffs_cb[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("ar_coeffs_cr[]:");
+    for (i = 0; i < 25; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<int>(p_pic_param->film_grain_info.ar_coeffs_cr[i]));
+    }
+    MSG("");
+    MSG("cb_mult = " << static_cast<uint32_t>(p_pic_param->film_grain_info.cb_mult));
+    MSG("cb_luma_mult = " << static_cast<uint32_t>(p_pic_param->film_grain_info.cb_luma_mult));
+    MSG("cb_offset = " << p_pic_param->film_grain_info.cb_offset);
+    MSG("cr_mult = " << static_cast<uint32_t>(p_pic_param->film_grain_info.cr_mult));
+    MSG("cr_luma_mult = " << static_cast<uint32_t>(p_pic_param->film_grain_info.cr_luma_mult));
+    MSG("cr_offset = " << p_pic_param->film_grain_info.cr_offset);
+    MSG("tile_cols = " << static_cast<uint32_t>(p_pic_param->tile_cols));
+    MSG("tile_rows = " << static_cast<uint32_t>(p_pic_param->tile_rows));
+    MSG_NO_NEWLINE("width_in_sbs_minus_1[]:");
+    for (i = 0; i < p_pic_param->tile_cols; i++) {
+        MSG_NO_NEWLINE(" " << p_pic_param->width_in_sbs_minus_1[i]);
+    }
+    MSG("");
+    MSG_NO_NEWLINE("height_in_sbs_minus_1[]:");
+    for (i = 0; i < p_pic_param->tile_rows; i++) {
+        MSG_NO_NEWLINE(" " << p_pic_param->height_in_sbs_minus_1[i]);
+    }
+    MSG("");
+    MSG("tile_count_minus_1 = " << p_pic_param->tile_count_minus_1);
+    MSG("context_update_tile_id = " << p_pic_param->context_update_tile_id);
+    MSG("frame_type = " << p_pic_param->pic_info_fields.bits.frame_type);
+    MSG("show_frame = " << p_pic_param->pic_info_fields.bits.show_frame);
+    MSG("showable_frame = " << p_pic_param->pic_info_fields.bits.showable_frame);
+    MSG("error_resilient_mode = " << p_pic_param->pic_info_fields.bits.error_resilient_mode);
+    MSG("disable_cdf_update = " << p_pic_param->pic_info_fields.bits.disable_cdf_update);
+    MSG("allow_screen_content_tools = " << p_pic_param->pic_info_fields.bits.allow_screen_content_tools);
+    MSG("force_integer_mv = " << p_pic_param->pic_info_fields.bits.force_integer_mv);
+    MSG("allow_intrabc = " << p_pic_param->pic_info_fields.bits.allow_intrabc);
+    MSG("use_superres = " << p_pic_param->pic_info_fields.bits.use_superres);
+    MSG("allow_high_precision_mv = " << p_pic_param->pic_info_fields.bits.allow_high_precision_mv);
+    MSG("is_motion_mode_switchable = " << p_pic_param->pic_info_fields.bits.is_motion_mode_switchable);
+    MSG("use_ref_frame_mvs = " << p_pic_param->pic_info_fields.bits.use_ref_frame_mvs);
+    MSG("disable_frame_end_update_cdf = " << p_pic_param->pic_info_fields.bits.disable_frame_end_update_cdf);
+    MSG("uniform_tile_spacing_flag = " << p_pic_param->pic_info_fields.bits.uniform_tile_spacing_flag);
+    MSG("allow_warped_motion = " << p_pic_param->pic_info_fields.bits.allow_warped_motion);
+    MSG("large_scale_tile = " << p_pic_param->pic_info_fields.bits.large_scale_tile);
+    MSG("superres_scale_denominator = " << static_cast<uint32_t>(p_pic_param->superres_scale_denominator));
+    MSG("interp_filter = " << static_cast<uint32_t>(p_pic_param->interp_filter));
+    MSG("filter_level[] = " << static_cast<uint32_t>(p_pic_param->filter_level[0]) <<", " << static_cast<uint32_t>(p_pic_param->filter_level[1]));
+    MSG("filter_level_u = " << static_cast<uint32_t>(p_pic_param->filter_level_u));
+    MSG("filter_level_v = " << static_cast<uint32_t>(p_pic_param->filter_level_v));
+    MSG("sharpness_level = " << static_cast<uint32_t>(p_pic_param->loop_filter_info_fields.bits.sharpness_level));
+    MSG("mode_ref_delta_enabled = " << static_cast<uint32_t>(p_pic_param->loop_filter_info_fields.bits.mode_ref_delta_enabled));
+    MSG("mode_ref_delta_update = " << static_cast<uint32_t>(p_pic_param->loop_filter_info_fields.bits.mode_ref_delta_update));
+    MSG_NO_NEWLINE("ref_deltas[]:");
+    for (i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<int>(p_pic_param->ref_deltas[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("mode_deltas[]:");
+    for (i = 0; i < 2; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<int>(p_pic_param->mode_deltas[i]));
+    }
+    MSG("");
+    MSG("base_qindex = " << static_cast<uint32_t>(p_pic_param->base_qindex));
+    MSG("y_dc_delta_q = " << static_cast<int>(p_pic_param->y_dc_delta_q));
+    MSG("u_dc_delta_q = " << static_cast<int>(p_pic_param->u_dc_delta_q));
+    MSG("u_ac_delta_q = " << static_cast<int>(p_pic_param->u_ac_delta_q));
+    MSG("v_dc_delta_q = " << static_cast<int>(p_pic_param->v_dc_delta_q));
+    MSG("v_ac_delta_q = " << static_cast<int>(p_pic_param->v_ac_delta_q));
+    MSG("using_qmatrix = " << p_pic_param->qmatrix_fields.bits.using_qmatrix);
+    MSG("qm_y = " << p_pic_param->qmatrix_fields.bits.qm_y);
+    MSG("qm_u = " << p_pic_param->qmatrix_fields.bits.qm_u);
+    MSG("qm_v = " << p_pic_param->qmatrix_fields.bits.qm_v);
+    MSG("delta_q_present_flag = " << p_pic_param->mode_control_fields.bits.delta_q_present_flag);
+    MSG("log2_delta_q_res = " << p_pic_param->mode_control_fields.bits.log2_delta_q_res);
+    MSG("delta_lf_present_flag = " << p_pic_param->mode_control_fields.bits.delta_lf_present_flag);
+    MSG("log2_delta_lf_res = " << p_pic_param->mode_control_fields.bits.log2_delta_lf_res);
+    MSG("delta_lf_multi = " << p_pic_param->mode_control_fields.bits.delta_lf_multi);
+    MSG("tx_mode = " << p_pic_param->mode_control_fields.bits.tx_mode);
+    MSG("reference_select = " << p_pic_param->mode_control_fields.bits.reference_select);
+    MSG("reduced_tx_set_used = " << p_pic_param->mode_control_fields.bits.reduced_tx_set_used);
+    MSG("skip_mode_present = " << p_pic_param->mode_control_fields.bits.skip_mode_present);
+    MSG("cdef_damping_minus_3 = " << static_cast<uint32_t>(p_pic_param->cdef_damping_minus_3));
+    MSG("cdef_bits = " << static_cast<uint32_t>(p_pic_param->cdef_bits));
+    MSG_NO_NEWLINE("cdef_y_strengths[]:");
+    for (int i = 0; i < 8; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->cdef_y_strengths[i]));
+    }
+    MSG("");
+    MSG_NO_NEWLINE("cdef_uv_strengths[]:");
+    for (int i = 0; i < 8; i++) {
+        MSG_NO_NEWLINE(" " << static_cast<uint32_t>(p_pic_param->cdef_uv_strengths[i]));
+    }
+    MSG("");
+    MSG("yframe_restoration_type = " << p_pic_param->loop_restoration_fields.bits.yframe_restoration_type);
+    MSG("cbframe_restoration_type = " << p_pic_param->loop_restoration_fields.bits.cbframe_restoration_type);
+    MSG("crframe_restoration_type = " << p_pic_param->loop_restoration_fields.bits.crframe_restoration_type);
+    MSG("lr_unit_shift = " << p_pic_param->loop_restoration_fields.bits.lr_unit_shift);
+    MSG("lr_uv_shift = " << p_pic_param->loop_restoration_fields.bits.lr_uv_shift);
+    for (i = kLastFrame; i <= kAltRefFrame; i++) {
+        MSG("wm[" << i - 1 << "]:");
+        MSG("invalid = " << static_cast<uint32_t>(p_pic_param->wm[i - 1].invalid) << ", wmtype = " <<  p_pic_param->wm[i - 1].wmtype);
+        MSG_NO_NEWLINE("wmmat[]:");
+        for (int j = 0; j < 6; j++) {
+            MSG_NO_NEWLINE(" " << p_pic_param->wm[i - 1].wmmat[j]);
+        }
+        MSG("");
+    }
+
+    MSG("=======================");
+    MSG("Tile group parameter Info: ");
+    MSG("=======================");
+    for (int i = 0; i < tile_group_data_.num_tiles; i++) {
+        MSG("Tile number " << i << ":");
+        RocdecAv1SliceParams *p_tile_param = &dec_pic_params_.slice_params.av1[i];
+        MSG("slice_data_size = " << p_tile_param->slice_data_size);
+        MSG("slice_data_offset = " << p_tile_param->slice_data_offset);
+        MSG("slice_data_flag = " << p_tile_param->slice_data_flag);
+        MSG("tile_row = " << p_tile_param->tile_row);
+        MSG("tile_column = " << p_tile_param->tile_column);
+        MSG("tg_start = " << p_tile_param->tg_start);
+        MSG("tg_end = " << p_tile_param->tg_end);
+        MSG("anchor_frame_idx = " << static_cast<int>(p_tile_param->anchor_frame_idx));
+        MSG("tile_idx_in_tile_list = " << p_tile_param->tile_idx_in_tile_list);
+    }
+}
+

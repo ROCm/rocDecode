@@ -594,4 +594,8 @@ protected:
         uint32_t extra_bit = Parser::GetBit(p_stream, bit_offset);
         return (v << 1) - m + extra_bit;
     }
+
+    /*! \brief Function to log VAAPI parameters
+     */
+    void PrintVaapiParams();
 };
