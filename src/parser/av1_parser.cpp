@@ -2164,6 +2164,7 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
     p_frame_header->film_grain_params.clip_to_restricted_range = Parser::GetBit(p_stream, offset);
 }
 
+#if DBGINFO
 void Av1VideoParser::PrintVaapiParams() {
     int i, j;
     MSG("=======================");
@@ -2410,4 +2411,4 @@ void Av1VideoParser::PrintVaapiParams() {
         MSG("tile_idx_in_tile_list = " << p_tile_param->tile_idx_in_tile_list);
     }
 }
-
+#endif // DBGINFO

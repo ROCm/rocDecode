@@ -595,7 +595,9 @@ protected:
         return (v << 1) - m + extra_bit;
     }
 
+#if DBGINFO
     /*! \brief Function to log VAAPI parameters
      */
     void PrintVaapiParams();
+#endif // DBGINFO
 };
