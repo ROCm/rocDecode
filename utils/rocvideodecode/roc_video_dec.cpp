@@ -431,13 +431,14 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
  * @return true : success
  * @return false : fail
  */
-bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params) {
+bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_recofig_flush) {
     if (!p_reconfig_params) {
         std::cerr << "ERROR: Invalid reconfig struct passed! "<< std::endl;
         return false;
     }
     //save it
     p_reconfig_params_ = p_reconfig_params;
+    b_force_recofig_flush_ = b_force_recofig_flush;
     return true;
 }
 
@@ -466,7 +467,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
                                      p_video_format->display_area.top == disp_rect_.top &&
                                      p_video_format->display_area.left == disp_rect_.left &&
                                      p_video_format->display_area.right == disp_rect_.right);
-    if (!is_decode_res_changed && !is_display_rect_changed) {
+
+    if (!is_decode_res_changed && !is_display_rect_changed && !b_force_recofig_flush_) {
         return 1;
     }
 
@@ -932,7 +934,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
             }
         }
         is_decoder_reconfigured_ = false;
-    }
+    } 
 
     if (fp_out_ == nullptr) {
         fp_out_ = fopen(output_file_name.c_str(), "wb");
