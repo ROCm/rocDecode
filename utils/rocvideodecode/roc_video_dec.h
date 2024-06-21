@@ -265,7 +265,7 @@ class RocVideoDecoder {
          * @return true : success
          * @return false : fail
          */
-        bool SetReconfigParams(ReconfigParams *p_reconfig_params);
+        bool SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_recofig_flush = false);
         /**
          * @brief this function decodes a frame and returns the number of frames avalable for display
          * 
@@ -427,6 +427,7 @@ class RocVideoDecoder {
         bool b_extract_sei_message_ = false;
         bool b_force_zero_latency_ = false;
         ReconfigParams *p_reconfig_params_ = nullptr;
+        bool b_force_recofig_flush_ = false;
         int32_t num_frames_flushed_during_reconfig_ = 0;
         hipDeviceProp_t hip_dev_prop_;
         hipStream_t hip_stream_;
