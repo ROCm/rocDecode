@@ -126,7 +126,8 @@ struct SeqInfo {
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, std::atomic_bool &decoding_complete, int &seek_mode, bool &b_dump_output_frames, SeqInfo &seq_info, std::string *p_output_file_name, OutputSurfaceMemoryType mem_type) {
     
-    int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
+    int n_video_bytes = 0, n_frame_returned = 0;
+    int64_t n_frame = 0;
     uint8_t *p_video = nullptr, *p_frame = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
@@ -152,15 +153,18 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     auto start_time = std::chrono::high_resolution_clock::now();
     int n_frames_skipped = 0, n_frame_seq = 0, num_seq = 0;
     int next_frame_num = 0;
+    bool seq_start = true;
     std::string seq_output_file_name = p_output_file_name[num_seq];
     do {
-        if (seek_mode && !seq_frame_start[num_seq]) {
+        if (seek_mode && seq_start) {
             // todo:: reconfigure before seeking
             video_seek_ctx.seek_frame_ = seq_frame_start[num_seq];
             video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
             video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
             demuxer->Seek(video_seek_ctx, &p_video, &n_video_bytes);
             pts = video_seek_ctx.out_frame_pts_;
+            n_frame = static_cast<int64_t> (pts * demuxer->GetFrameRate());
+            seq_start = false;
         } else {
             demuxer->Demux(&p_video, &n_video_bytes, &pts);
         }
@@ -185,6 +189,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
         n_frame += n_frame_returned;
         if (n_frame_seq == seq_info.seq_length) {
             n_frame_seq = 0; //reset for next sequence
+            seq_start = true;
             num_seq ++;
             if (num_seq < seq_info.batch_size) {
                 next_frame_num = seq_frame_start[num_seq];
