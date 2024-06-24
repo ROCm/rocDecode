@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -45,10 +45,13 @@ def ERROR_CHECK(call):
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocm_path', 	type=str, default='/opt/rocm',
                     help='ROCm Installation Path - optional (default:/opt/rocm) - ROCm Installation Required')
+parser.add_argument('--runtime', 	type=str, default='ON',
+                    help='Install RunTime Dependencies - optional (default:ON) [options:ON/OFF]')
 parser.add_argument('--developer', 	type=str, default='OFF',
                     help='Setup Developer Options - optional (default:OFF) [options:ON/OFF]')
 
 args = parser.parse_args()
+runtimeInstall = args.runtime.upper()
 developerInstall = args.developer.upper()
 
 ROCM_PATH = args.rocm_path
@@ -71,6 +74,10 @@ if developerInstall not in ('OFF', 'ON'):
     print(
         "ERROR: Developer Option Not Supported - [Supported Options: OFF or ON]\n")
     exit()
+if runtimeInstall not in ('OFF', 'ON'):
+    print(
+        "ERROR: Runtime Option Not Supported - [Supported Options: OFF or ON]\n")
+    exit()
 
 # get platfrom info
 platfromInfo = platform.platform()
@@ -87,36 +94,55 @@ else:
     if sudoLocation != '/usr/bin/sudo':
         status, userName = subprocess.getstatusoutput("whoami")
 
+# check os version
+os_info_data = 'NOT Supported'
+if os.path.exists('/etc/os-release'):
+    with open('/etc/os-release', 'r') as os_file:
+        os_info_data = os_file.read().replace('\n', ' ')
+        os_info_data = os_info_data.replace('"', '')
+
 # setup for Linux
 linuxSystemInstall = ''
 linuxCMake = 'cmake'
 linuxSystemInstall_check = ''
 linuxFlag = ''
 sudoValidateOption= '-v'
-if "centos" in platfromInfo or "redhat" in platfromInfo or os.path.exists('/usr/bin/yum'):
+if "centos" in os_info_data or "redhat" in os_info_data:
     linuxSystemInstall = 'yum -y'
     linuxSystemInstall_check = '--nogpgcheck'
-    if "centos-7" in platfromInfo or "redhat-7" in platfromInfo:
-        print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
-        exit(-1)
-    if not "centos" in platfromInfo or not "redhat" in platfromInfo:
-        if "8" in platform.version():
-            platfromInfo = platfromInfo+'-redhat-8'
-        if "9" in platform.version():
-            platfromInfo = platfromInfo+'-redhat-9'
-elif "Ubuntu" in platfromInfo or os.path.exists('/usr/bin/apt-get'):
+    if "VERSION_ID=7" in os_info_data:
+        linuxCMake = 'cmake3'
+        platfromInfo = platfromInfo+'-redhat-7'
+    elif "VERSION_ID=8" in os_info_data:
+        platfromInfo = platfromInfo+'-redhat-8'
+    elif "VERSION_ID=9" in os_info_data:
+        platfromInfo = platfromInfo+'-redhat-9'
+    else:
+        platfromInfo = platfromInfo+'-redhat-centos-undefined-version'
+elif "Ubuntu" in os_info_data:
     linuxSystemInstall = 'apt-get -y'
     linuxSystemInstall_check = '--allow-unauthenticated'
     linuxFlag = '-S'
-    if not "Ubuntu" in platfromInfo:
-        platfromInfo = platfromInfo+'-Ubuntu'
-elif os.path.exists('/usr/bin/zypper'):
+    if "VERSION_ID=20" in os_info_data:
+        platfromInfo = platfromInfo+'-Ubuntu-20'
+    elif "VERSION_ID=22" in os_info_data:
+        platfromInfo = platfromInfo+'-Ubuntu-22'
+    elif "VERSION_ID=24" in os_info_data:
+        platfromInfo = platfromInfo+'-Ubuntu-24'
+    else:
+        platfromInfo = platfromInfo+'-Ubuntu-undefined-version'
+elif "SLES" in os_info_data:
     linuxSystemInstall = 'zypper -n'
     linuxSystemInstall_check = '--no-gpg-checks'
     platfromInfo = platfromInfo+'-SLES'
+elif "Mariner" in os_info_data:
+    linuxSystemInstall = 'tdnf -y'
+    linuxSystemInstall_check = '--nogpgcheck'
+    platfromInfo = platfromInfo+'-Mariner'
+    runtimeInstall = 'OFF'
 else:
     print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
-    print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15 SP4\n")
+    print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
     exit(-1)
 
 # rocDecode Setup
@@ -135,7 +161,6 @@ commonPackages = [
     'wget',
     'unzip',
     'pkg-config',
-    'inxi',
     'rocm-hip-runtime'
 ]
 
@@ -144,12 +169,14 @@ coreDebianPackages = [
     'rocm-hip-runtime-dev',
     'libva2',
     'libva-dev',
-    'libdrm-amdgpu1',
-    'mesa-amdgpu-va-drivers',
-    'vainfo'
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
+]
+runtimeDebianPackages = [
+    'libdrm-amdgpu1',
+    'mesa-amdgpu-va-drivers',
+    'vainfo'
 ]
 ffmpegDebianPackages = [
     'ffmpeg',
@@ -160,17 +187,26 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 libvaNameRPM = "libva"
-if os.path.exists('/usr/bin/zypper'):
-        libvaNameRPM = "libva2"
+if "SLES" in os_info_data or "Mariner" in os_info_data:
+    libvaNameRPM = "libva2"
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
     str(libvaNameRPM),
-    'libva-devel',
+    'libva-devel'
+]
+
+libvaUtilsNameRPM = "libva-utils"
+if "Mariner" in os_info_data:
+    libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
+runtimeRPMPackages = [
     'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
     'mesa-amdgpu-dri-drivers',
-    'libva-utils'
+    str(libvaUtilsNameRPM)
 ]
+
+# update
+ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +' '+linuxSystemInstall_check+' update'))
 
 # common packages
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
@@ -178,23 +214,34 @@ for i in range(len(commonPackages)):
     ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
             ' '+linuxSystemInstall_check+' install '+ commonPackages[i]))
 
-# rocDecode Core - LibVA Requirements
+# rocDecode Core - Requirements
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if "Ubuntu" in platfromInfo:
     for i in range(len(coreDebianPackages)):
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                 ' '+linuxSystemInstall_check+' install '+ coreDebianPackages[i]))
-    with open('/etc/os-release') as f:
-        if '22' in f.read():
-            for i in range(len(coreDebianU22Packages)):
-                ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+    if "VERSION_ID=22" in os_info_data:
+        for i in range(len(coreDebianU22Packages)):
+            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ coreDebianU22Packages[i]))
 else:
     for i in range(len(coreRPMPackages)):
         ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                 ' '+linuxSystemInstall_check+' install '+ coreRPMPackages[i]))
 
-# rocDecode Dev Requirements
+# rocDecode runTime - Requirements
+ERROR_CHECK(os.system('sudo '+sudoValidateOption))
+if runtimeInstall == 'ON':
+    if "Ubuntu" in platfromInfo:
+        for i in range(len(runtimeDebianPackages)):
+            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+                ' '+linuxSystemInstall_check+' install '+ runtimeDebianPackages[i]))
+    else:
+        for i in range(len(runtimeRPMPackages)):
+            ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
+                ' '+linuxSystemInstall_check+' install '+ runtimeRPMPackages[i]))
+
+# rocDecode Dev - Requirements
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
 if developerInstall == 'ON':
     if "Ubuntu" in platfromInfo:

@@ -57,14 +57,63 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
         return ROCDEC_NOT_INITIALIZED;
     }
     // Initialize callback function pointers
-    pfn_sequece_cb_         = pParams->pfn_sequence_callback;             /**< Called before decoding frames and/or whenever there is a fmt change */
+    pfn_sequece_cb_         = pParams->pfn_sequence_callback;     /**< Called before decoding frames and/or whenever there is a fmt change */
     pfn_decode_picture_cb_  = pParams->pfn_decode_picture;        /**< Called when a picture is ready to be decoded (decode order)         */
-    pfn_display_picture_cb_ = pParams->pfn_display_picture;      /**< Called whenever a picture is ready to be displayed (display order)  */
-    pfn_get_sei_message_cb_ = pParams->pfn_get_sei_msg;       /**< Called when all SEI messages are parsed for particular frame        */
+    pfn_display_picture_cb_ = pParams->pfn_display_picture;       /**< Called whenever a picture is ready to be displayed (display order)  */
+    pfn_get_sei_message_cb_ = pParams->pfn_get_sei_msg;           /**< Called when all SEI messages are parsed for particular frame        */
 
     parser_params_ = *pParams;
 
+    dec_buf_pool_size_ = parser_params_.max_num_decode_surfaces;
+    decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
+    output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
+    InitDecBufPool();
+
     return ROCDEC_SUCCESS;
+}
+
+void RocVideoParser::InitDecBufPool() {
+    for (int i = 0; i < dec_buf_pool_size_; i++) {
+        decode_buffer_pool_[i].use_status = kNotUsed;
+        decode_buffer_pool_[i].pic_order_cnt = 0;
+        output_pic_list_[i] = 0xFF;
+    }
+    num_output_pics_ = 0;
+}
+
+void RocVideoParser::CheckAndAdjustDecBufPoolSize(int dpb_size) {
+    int min_dec_buf_pool_size = dpb_size + (parser_params_.max_display_delay > DECODE_BUF_POOL_EXTENSION ? parser_params_.max_display_delay : DECODE_BUF_POOL_EXTENSION);
+    if ( dec_buf_pool_size_ < min_dec_buf_pool_size) {
+        dec_buf_pool_size_ = min_dec_buf_pool_size;
+        decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
+        output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
+        InitDecBufPool();
+    }
+}
+
+ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
+    RocdecParserDispInfo disp_info = {0};
+    disp_info.progressive_frame = 1; // not used
+    disp_info.top_field_first = 1; // not used
+
+    int disp_delay = no_delay ? 0 : parser_params_.max_display_delay;
+    if (num_output_pics_ > disp_delay) {
+        int num_disp = num_output_pics_ - disp_delay;
+        for (int i = 0; i < num_disp; i++) {
+            disp_info.picture_index = output_pic_list_[i];
+            pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
+            decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
+        }
+
+        num_output_pics_ = disp_delay;
+        // Shift the remaining frames to the top
+        if (num_output_pics_) {
+            for (int i = 0; i < num_output_pics_; i++) {
+                output_pic_list_[i] = output_pic_list_[i + num_disp];
+            }
+        }
+    }
+    return PARSER_OK;
 }
 
 ParserResult RocVideoParser::GetNalUnit() {

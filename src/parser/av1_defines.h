@@ -56,6 +56,7 @@ THE SOFTWARE.
 #define SUPERRES_DENOM_BITS 3  // Number of bits sent to specify denominator of upscaling ratio
 
 #define MAX_SEGMENTS 8  // Number of segments allowed in segmentation map
+#define SEG_LVL_ALT_Q 0  // Index for quantizer segment feature
 #define SEG_LVL_REF_FRAME 5  // Index for reference frame segment feature
 #define SEG_LVL_MAX 8  // Number of segment features
 
@@ -333,7 +334,7 @@ typedef struct {
 typedef struct {
     uint32_t frame_restoration_type[3];
     uint32_t uses_lr;
-    uint32_t lr_type;
+    uint32_t lr_type[3];
     uint32_t lr_unit_shift;
     uint32_t lr_unit_extra_shift;
     uint32_t loop_restoration_size[3];
@@ -357,7 +358,6 @@ typedef struct {
 typedef struct {
     uint32_t gm_type[NUM_REF_FRAMES];
     uint32_t gm_params[NUM_REF_FRAMES][6];
-    uint32_t prev_gm_params[NUM_REF_FRAMES][6];
     uint32_t is_global;
     uint32_t is_rot_zoom;
     uint32_t is_translation;
