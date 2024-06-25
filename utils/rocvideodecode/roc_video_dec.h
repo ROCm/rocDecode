@@ -267,7 +267,7 @@ class RocVideoDecoder {
          * @return true : success
          * @return false : fail
          */
-        bool SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_recofig_flush = false);
+        bool SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_reconfig_flush = false);
         /**
          * @brief this function decodes a frame and returns the number of frames avalable for display
          * 
