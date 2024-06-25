@@ -27,14 +27,15 @@ make -j
 ## Run
 
 ```shell
-./videodecode -i <input video file [required]> 
-              -o <output path to save decoded YUV frames [optional]> 
+./videodecode -i <Input file/folder Path [required]> 
+              -o <Output folder to dump sequences - dumps output if requested [optional]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
-              -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
-              -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
-              -sei <extract SEI messages [optional]>
-              -md5 <generate MD5 message digest on the decoded YUV image sequence [optional]>
-              -md5_check MD5_File_Path <generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file [optional]>
+              -b <batch_size - specify the number of sequences to be decoded [optional - default:1]>
+              -step <frame interval between each sequence [optional - default:1]> 
+              -stride <distance between consective frames in a sequence [optional - default:1]>
+              -l <Number of frames in each sequence [optional - default:1]>
+              -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default:1]>
+              -seek_mode <option for seeking (0: no seek 1: seek to prev key frame) [optional - default: 0]>
               -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
               -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/3 : OUT_SURFACE_MEM_NOT_MAPPED]>
 ```

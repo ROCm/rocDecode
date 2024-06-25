@@ -165,6 +165,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
             pts = video_seek_ctx.out_frame_pts_;
             n_frame = static_cast<int64_t> (pts * demuxer->GetFrameRate());
             seq_start = false;
+            // todo::Flush frames from decoder
         } else {
             demuxer->Demux(&p_video, &n_video_bytes, &pts);
         }
