@@ -431,14 +431,14 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
  * @return true : success
  * @return false : fail
  */
-bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_recofig_flush) {
+bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_reconfig_flush) {
     if (!p_reconfig_params) {
         std::cerr << "ERROR: Invalid reconfig struct passed! "<< std::endl;
         return false;
     }
     //save it
     p_reconfig_params_ = p_reconfig_params;
-    b_force_recofig_flush_ = b_force_recofig_flush;
+    b_force_recofig_flush_ = b_force_reconfig_flush;
     return true;
 }
 

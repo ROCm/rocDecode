@@ -27,7 +27,7 @@ make -j
 ## Run
 
 ```shell
-./videodecode -i <Input file/folder Path [required]> 
+./videotosequence -i <Input file/folder Path [required]> 
               -o <Output folder to dump sequences - dumps output if requested [optional]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
               -b <batch_size - specify the number of sequences to be decoded [optional - default:1]>
