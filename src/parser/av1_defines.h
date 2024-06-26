@@ -71,6 +71,11 @@ THE SOFTWARE.
 #define GM_TRANS_PREC_BITS 6  // Number of fractional bits for sending translational warp model coefficients
 #define GM_TRANS_ONLY_PREC_BITS 3  // Number of fractional bits used for pure translational warps
 
+#define DIV_LUT_BITS 8 // Number of fractional bits for lookup in divisor lookup table
+#define DIV_LUT_PREC_BITS 14 // Number of fractional bits of entries in divisor lookup table
+#define DIV_LUT_NUM 257 // Number of entries in divisor lookup table
+#define WARP_PARAM_REDUCE_BITS 6 // Rounding bitwidth for the parameters to the shear process
+
 typedef enum  {
     kObuSequenceHeader          = 1,
     kObuTemporalDelimiter       = 2,
@@ -233,6 +238,7 @@ typedef struct {
 typedef struct {
     uint32_t use_superres;
     uint32_t coded_denom;
+    uint32_t super_res_denom;
 } Av1SuperResParams;
 
 typedef struct {
@@ -264,8 +270,8 @@ typedef struct {
     int32_t  mi_row_starts[MAX_TILE_ROWS + 1];
     int32_t  tile_cols;
     int32_t  tile_rows;
-    uint32_t width_in_sbs_minus_1;
-    uint32_t height_in_sbs_minus_1;
+    uint32_t width_in_sbs_minus_1[MAX_TILE_COLS];
+    uint32_t height_in_sbs_minus_1[MAX_TILE_ROWS];
     uint32_t context_update_tile_id;
     uint32_t tile_size_bytes_minus_1;
 } Av1TileInfoSyntx;
@@ -356,8 +362,9 @@ typedef struct {
 } Av1SkipModeParams;
 
 typedef struct {
-    uint32_t gm_type[NUM_REF_FRAMES];
-    uint32_t gm_params[NUM_REF_FRAMES][6];
+    uint8_t  gm_invalid[NUM_REF_FRAMES];
+    uint8_t  gm_type[NUM_REF_FRAMES];
+    int32_t  gm_params[NUM_REF_FRAMES][6];
     uint32_t is_global;
     uint32_t is_rot_zoom;
     uint32_t is_translation;
@@ -455,15 +462,3 @@ typedef struct {
     Av1GlobalMotionParams global_motion_params;
     Av1FilmGrainParams film_grain_params;
 } Av1FrameHeader;
-
-typedef struct {
-    uint32_t offset;
-    uint32_t size;
-} Av1TileDataInfo;
-
-typedef struct {
-    uint32_t buffer_id;  // buffer ID in the bitstream buffer pool.
-    uint8_t *buffer_ptr;  // pointer of the tile group data buffer.
-    uint32_t buffer_size;  // total size of the data buffer, may include the header bytes.
-    Av1TileDataInfo tile_data_info[MAX_TILE_ROWS][MAX_TILE_COLS];
-} Av1TileGroupDataInfo;

@@ -75,7 +75,7 @@ typedef struct {
 
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 #define RBSP_BUF_SIZE 1024  // enough to parse any parameter sets or slice headers
-#define INIT_SLICE_LIST_NUM 16 // initial slice information/parameter struct list size
+#define INIT_SLICE_LIST_NUM 16 // initial slice/tile information/parameter struct list size
 #define INIT_SEI_MESSAGE_COUNT 16  // initial SEI message count
 #define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 #define DECODE_BUF_POOL_EXTENSION 2
@@ -116,7 +116,7 @@ protected:
     uint32_t pic_count_;  // decoded picture count for the current bitstream
     uint32_t pic_width_;
     uint32_t pic_height_;
-    bool new_sps_activated_;
+    bool new_seq_activated_;
 
     // Decoded buffer pool
     typedef struct {

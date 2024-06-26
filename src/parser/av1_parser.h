@@ -56,20 +56,28 @@ public:
     virtual rocDecStatus UnInitialize();     // derived method
 
     typedef struct {
-        int index;
-    } Av1Picture;
-
-    typedef struct {
-        uint32_t offset;
-        uint32_t size;
+        uint32_t tile_offset;
+        uint32_t tile_size;
+        uint32_t tile_col;
+        uint32_t tile_row;
     } Av1TileDataInfo;
 
     typedef struct {
-        uint32_t buffer_id;  // buffer ID in the bitstream buffer pool.
-        uint8_t *buffer_ptr;  // pointer of the tile group data buffer.
+        uint8_t *buffer_ptr;  // pointer of the current tile group data.
         uint32_t buffer_size;  // total size of the data buffer, may include the header bytes.
-        Av1TileDataInfo tile_data_info[MAX_TILE_ROWS][MAX_TILE_COLS];
+        uint32_t num_tiles;
+        uint32_t tg_start; // tg_start of the current tile group
+        uint32_t tg_end; // tg_end of the current tile group
+        uint32_t tile_number; // current tile number (counting from 0 to num_tiles - 1)
+        Av1TileDataInfo tile_data_info[MAX_TILE_ROWS * MAX_TILE_COLS];
     } Av1TileGroupDataInfo;
+
+    typedef struct {
+        int      pic_idx;
+        int      dec_buf_idx;  // frame index in decode buffer pool
+        uint32_t use_status;    // refer to FrameBufUseStatus
+        uint32_t pic_output_flag;  // OutputFlag
+    } Av1Picture;
 
 protected:
     Av1ObuHeader obu_header_;
@@ -80,7 +88,7 @@ protected:
     Av1SequenceHeader seq_header_;
     Av1FrameHeader frame_header_;
     Av1TileGroupDataInfo tile_group_data_;
-    uint32_t tile_num_;
+    std::vector<RocdecAv1SliceParams> tile_param_list_;
 
     int temporal_id_; //  temporal level of the data contained in the OBU
     int spatial_id_;  // spatial level of the data contained in the OBU
@@ -97,6 +105,8 @@ protected:
     int ref_pic_map_[NUM_REF_FRAMES];
     int ref_pic_map_next_[NUM_REF_FRAMES];  // for next picture
 
+    Av1Picture curr_pic_;
+
     // The reference list for the current picture
     Av1Picture ref_pictures_[REFS_PER_FRAME];
     // The free frame buffer in DPB pool that the current picutre is decoded into
@@ -110,6 +120,23 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size);
+
+    /*! \brief Function to notify decoder about new sequence format through callback
+     * \param [in] p_seq_header Pointer to the current sequence header
+     * \param [in] p_frame_header Ponter to the current frame header
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult NotifyNewSequence(Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult SendPicForDecode();
+
+    /*! \brief Function to find a free buffer in the decode buffer pool
+     *  \return <tt>ParserResult</tt>
+     */
+    ParserResult FindFreeInDecBufPool();
 
     /*! \brief Function to parse an OBU header
      * \param [in] p_stream Pointer to the bit stream
@@ -415,6 +442,21 @@ protected:
      */
     int InverseRecenter(int r, int v);
 
+    /*! \brief Function to check the validness of an array of warp parameters. 7.11.3.6.
+     *  \param [in] p_warp_params Pointer to the warp parameters
+     *  \return 1: valid; 0: invalid
+     */
+    int ShearParamsValidation(int32_t *p_warp_params);
+
+    /*! \brief Function to calculate variables div_shift and div_shift that can be used to perform an approximate division by d
+     *         via multiplying by div_factor and shifting right by div_shift.
+     *  \param [in] d Input variable d
+     *  \param [out] div_shift The output shift value
+     *  \param [out] div_factor The ouput factor value
+     *  \return None
+     */
+    void ResolveDivisor(int d, int *div_shift, int *div_factor);
+
     /*! \brief Function to parse film grain parameters
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] offset Starting bit offset
@@ -425,7 +467,28 @@ protected:
      */
     void FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
-   /*! \brief Function to calculate the floor of the base 2 logarithm of the input x
+    /*! \brief Function to round a number to 2^n
+     *  \param [in] x The number to be rounded
+     *  \param [in] n The exponent
+     *  \return The rounded value
+     */
+    inline uint64_t Round2(uint64_t x, int n) {
+        if (n == 0) {
+            return x;
+        }
+        return ((x + ((uint64_t)1 << (n - 1))) >> n);
+    }
+
+    /*! \brief Function to round a signed number to 2^n
+     *  \param [in] x The number to be rounded
+     *  \param [in] n The exponent
+     *  \return The rounded value
+     */
+    inline int64_t Round2Signed(int64_t x, int n) {
+        return ((x < 0) ? -((int64_t)Round2(-x, n)) : (int64_t)Round2(x, n));
+    }
+
+    /*! \brief Function to calculate the floor of the base 2 logarithm of the input x
      * \param [in] x A 32-bit unsigned integer
      * \return the location of the most significant bit in x
      */
@@ -531,4 +594,10 @@ protected:
         uint32_t extra_bit = Parser::GetBit(p_stream, bit_offset);
         return (v << 1) - m + extra_bit;
     }
+
+#if DBGINFO
+    /*! \brief Function to log VAAPI parameters
+     */
+    void PrintVaapiParams();
+#endif // DBGINFO
 };
