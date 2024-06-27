@@ -202,7 +202,10 @@ if(HIP_FOUND AND Libva_FOUND)
   # Set the dependent packages - TBD: mesa-amdgpu-va-drivers should bring libdrm-amdgpu, and parts of mesa-amdgpu-dri-drivers but unavailable on RPM
   set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
   set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
-  if(SLES_FOUND OR MARINER_FOUND)
+  if(SLES_FOUND)
+    set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva2, libdrm-amdgpu, (mesa-amdgpu-va-drivers or mesa-amdgpu-dri-drivers or Mesa-libva)")
+  endif()
+  if(MARINER_FOUND)
     set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva2, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
   endif()
   # Set the dev dependent packages
