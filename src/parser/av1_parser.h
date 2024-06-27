@@ -75,9 +75,27 @@ public:
     typedef struct {
         int      pic_idx;
         int      dec_buf_idx;  // frame index in decode buffer pool
+        uint32_t current_frame_id;
+        uint32_t order_hint;
+        uint32_t frame_type;
         uint32_t use_status;    // refer to FrameBufUseStatus
-        uint32_t pic_output_flag;  // OutputFlag
+        uint32_t show_frame;
     } Av1Picture;
+
+    /*! \brief Decoded picture buffer
+     */
+    typedef struct {
+        Av1Picture frame_store[BUFFER_POOL_MAX_SIZE]; // BufferPool
+        int dec_ref_count[BUFFER_POOL_MAX_SIZE]; // DecoderRefCount
+        // A list of all frame buffers that may be used for reference of the current picture or any
+        // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
+        // not used as reference, the value should be -1.
+        int virtual_buffer_index[NUM_REF_FRAMES]; // VBI
+        int ref_frame_type[NUM_REF_FRAMES];
+        int ref_frame_id[NUM_REF_FRAMES];
+        int ref_order_hint[NUM_REF_FRAMES];
+        int ref_valid[NUM_REF_FRAMES];
+    } DecodedPictureBuffer;
 
 protected:
     Av1ObuHeader obu_header_;
@@ -93,24 +111,8 @@ protected:
     int temporal_id_; //  temporal level of the data contained in the OBU
     int spatial_id_;  // spatial level of the data contained in the OBU
 
-    // Frame header syntax elements
-    int ref_frame_type_[NUM_REF_FRAMES];
-    int ref_frame_id_[NUM_REF_FRAMES];
-    int ref_order_hint_[NUM_REF_FRAMES];
-    int ref_valid_[NUM_REF_FRAMES];
-
-    // A list of all frame buffers that may be used for reference of the current picture or any
-    // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
-    // not used as reference, the value should be -1.
-    int ref_pic_map_[NUM_REF_FRAMES];
-    int ref_pic_map_next_[NUM_REF_FRAMES];  // for next picture
-
+    DecodedPictureBuffer dpb_buffer_;
     Av1Picture curr_pic_;
-
-    // The reference list for the current picture
-    Av1Picture ref_pictures_[REFS_PER_FRAME];
-    // The free frame buffer in DPB pool that the current picutre is decoded into
-    int new_fb_index_;
 
     uint32_t prev_gm_params_[NUM_REF_FRAMES][6];
 
@@ -133,10 +135,30 @@ protected:
      */
     ParserResult SendPicForDecode();
 
+    /*! Function to initialize the local DPB (BufferPool)
+     *  \return None
+     */
+     void InitDpb();
+
+    /*! \brief Function to send out the remaining pictures that need for output in decode frame buffer.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult FlushDpb();
+
+    /*! \brief Function to do reference frame update process. 7.20.
+     *  \return None
+     */
+    void UpdateRefFrames();
+
     /*! \brief Function to find a free buffer in the decode buffer pool
      *  \return <tt>ParserResult</tt>
      */
     ParserResult FindFreeInDecBufPool();
+
+    /*! \brief Function to find a free buffer in DPB for the current picture and mark it.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult FindFreeInDpbAndMark();
 
     /*! \brief Function to parse an OBU header
      * \param [in] p_stream Pointer to the bit stream

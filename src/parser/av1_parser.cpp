@@ -27,14 +27,21 @@ Av1VideoParser::Av1VideoParser() {
     seen_frame_header_ = 0;
     tile_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_, 0, sizeof(Av1Picture));
+    memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
     memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
+    InitDpb();
 }
 
 Av1VideoParser::~Av1VideoParser() {
 }
 
 rocDecStatus Av1VideoParser::Initialize(RocdecParserParams *p_params) {
-    return RocVideoParser::Initialize(p_params);
+    rocDecStatus ret;
+    if ((ret = RocVideoParser::Initialize(p_params)) != ROCDEC_SUCCESS) {
+        return ret;
+    }
+    CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE);
+    return ROCDEC_SUCCESS;
 }
 
 rocDecStatus Av1VideoParser::UnInitialize() {
@@ -50,6 +57,11 @@ rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
         // If no payload and EOS is not set, treated as invalid.
         return ROCDEC_INVALID_PARAMETER;
+    }
+    if (p_data->flags & ROCDEC_PKT_ENDOFSTREAM) {
+        if (FlushDpb() != PARSER_OK) {
+            return ROCDEC_RUNTIME_ERROR;
+        }
     }
     return ROCDEC_SUCCESS;
 }
@@ -117,24 +129,36 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_seq_activated_) {
-            if (NotifyNewSequence(&seq_header_, &frame_header_) != PARSER_OK) {
-                return PARSER_FAIL;
+            if ((ret = NotifyNewSequence(&seq_header_, &frame_header_)) != PARSER_OK) {
+                return ret;
             }
             new_seq_activated_ = false;
         }
 
         // Submit decode when we have the entire frame data
         if (tile_group_data_.tile_number && tile_group_data_.tg_end == tile_group_data_.num_tiles - 1) {
-            // Temp code for intra testing
-            /* if (FindFreeInDecBufPool() != PARSER_OK) {
-                return PARSER_FAIL;
-            }*/
-            if (SendPicForDecode() != PARSER_OK) {
+            if ((ret = FindFreeInDecBufPool()) != PARSER_OK) {
+                return ret;
+            }
+            if ((ret = FindFreeInDpbAndMark()) != PARSER_OK) {
+                return ret;
+            }
+            if ((ret = SendPicForDecode()) != PARSER_OK) {
                 ERR(STR("Failed to decode!"));
-                return PARSER_FAIL;
+                return ret;
             }
 
+            UpdateRefFrames();
+
+            dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
             memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
+
+            // Output decoded pictures from DPB if any are ready
+            if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
+                if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
+                    return ret;
+                }
+            }
             pic_count_++;
         }
     };
@@ -241,14 +265,18 @@ ParserResult Av1VideoParser::SendPicForDecode() {
 
     p_pic_param->frame_width_minus1 = p_frame_header->frame_size.frame_width_minus_1;
     p_pic_param->frame_height_minus1 = p_frame_header->frame_size.frame_height_minus_1;
-    p_pic_param->output_frame_width_in_tiles_minus_1 = 0; // Todo for tile list OBU
-    p_pic_param->output_frame_height_in_tiles_minus_1 = 0; // Todo for tile list OBU
+    p_pic_param->output_frame_width_in_tiles_minus_1 = 0; // Todo for large scale tile
+    p_pic_param->output_frame_height_in_tiles_minus_1 = 0; // Todo for large scale tile
     
-    for (i = 0; i < NUM_REF_FRAMES; i++) { // Todo for inter frames
-        p_pic_param->ref_frame_map[i] = 0xFF;
+    for (i = 0; i < NUM_REF_FRAMES; i++) {
+        if (dpb_buffer_.virtual_buffer_index[i] != -1) {
+        p_pic_param->ref_frame_map[i] = dpb_buffer_.frame_store[dpb_buffer_.virtual_buffer_index[i]].dec_buf_idx;
+        } else {
+            p_pic_param->ref_frame_map[i] = 0xFF;
+        }
     }
-    for (i = 0; i < REFS_PER_FRAME; i++) { // Todo for inter frames
-        p_pic_param->ref_frame_idx[i] = 0xFF;
+    for (i = 0; i < REFS_PER_FRAME; i++) {
+        p_pic_param->ref_frame_idx[i] = frame_header_.ref_frame_idx[i];
     }
     p_pic_param->primary_ref_frame = p_frame_header->primary_ref_frame;
     p_pic_param->order_hint = p_frame_header->order_hint;
@@ -310,7 +338,7 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     for (i = 0; i < p_pic_param->tile_rows; i++) {
         p_pic_param->height_in_sbs_minus_1[i] = p_frame_header->tile_info.height_in_sbs_minus_1[i];
     }
-    p_pic_param->tile_count_minus_1 = 0; // Todo for tile list OBU
+    p_pic_param->tile_count_minus_1 = 0; // Todo for large scale tile
     p_pic_param->context_update_tile_id = p_frame_header->tile_info.context_update_tile_id;
 
     p_pic_param->pic_info_fields.bits.frame_type = p_frame_header->frame_type;
@@ -328,7 +356,7 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     p_pic_param->pic_info_fields.bits.disable_frame_end_update_cdf = p_frame_header->disable_frame_end_update_cdf;
     p_pic_param->pic_info_fields.bits.uniform_tile_spacing_flag = p_frame_header->tile_info.uniform_tile_spacing_flag;
     p_pic_param->pic_info_fields.bits.allow_warped_motion = p_frame_header->allow_warped_motion;
-    p_pic_param->pic_info_fields.bits.large_scale_tile = 0; // Todo for tile list OBU
+    p_pic_param->pic_info_fields.bits.large_scale_tile = 0;
 
     p_pic_param->superres_scale_denominator = p_frame_header->frame_size.superres_params.super_res_denom;
     p_pic_param->interp_filter = p_frame_header->interpolation_filter;
@@ -402,8 +430,8 @@ ParserResult Av1VideoParser::SendPicForDecode() {
         p_tile_param->tile_column = p_tile_info->tile_col;
         p_tile_param->tg_start = tile_group_data_.tg_start;
         p_tile_param->tg_end = tile_group_data_.tg_end;
-        p_tile_param->anchor_frame_idx = 0; // // Todo for tile list OBU 
-        p_tile_param->tile_idx_in_tile_list = 0; // // Todo for tile list OBU 
+        p_tile_param->anchor_frame_idx = 0; // Todo for large scale tile
+        p_tile_param->tile_idx_in_tile_list = 0; // Todo large scale tile 
     }
     dec_pic_params_.slice_params.av1 = tile_param_list_.data();
 
@@ -419,6 +447,41 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     }
 }
 
+void Av1VideoParser::UpdateRefFrames() {
+    for (int i = 0; i < NUM_REF_FRAMES; i++) {
+        if ((frame_header_.refresh_frame_flags >> i) & 1) {
+            dpb_buffer_.ref_valid[i] = 1;
+            dpb_buffer_.ref_frame_id[i] = curr_pic_.current_frame_id;
+            dpb_buffer_.ref_frame_type[i] = curr_pic_.frame_type;
+            dpb_buffer_.ref_order_hint[i] = curr_pic_.order_hint;
+            if (dpb_buffer_.virtual_buffer_index[i] != -1) {
+                dpb_buffer_.dec_ref_count[dpb_buffer_.virtual_buffer_index[i]]--;
+            }
+            dpb_buffer_.virtual_buffer_index[i] = curr_pic_.pic_idx;
+            dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]++;
+        }
+    }
+}
+
+void Av1VideoParser::InitDpb() {
+    int i;
+    for (i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
+        dpb_buffer_.dec_ref_count[i] = 0;
+    }
+    for (i = 0; i < NUM_REF_FRAMES; i++) {
+        dpb_buffer_.virtual_buffer_index[i] = -1;
+    }
+}
+
+ParserResult Av1VideoParser::FlushDpb() {
+    if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
+        if (OutputDecodedPictures(true) != PARSER_OK) {
+            return PARSER_FAIL;
+        }
+    }
+    return PARSER_OK;
+}
+
 ParserResult Av1VideoParser::FindFreeInDecBufPool() {
     int dec_buf_index;
     // Find a free buffer in decode buffer pool
@@ -432,6 +495,39 @@ ParserResult Av1VideoParser::FindFreeInDecBufPool() {
         return PARSER_NOT_FOUND;
     }
     curr_pic_.dec_buf_idx = dec_buf_index;
+    return PARSER_OK;
+}
+
+ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
+    int i;
+    for (i = 0; i < BUFFER_POOL_MAX_SIZE; i++ ) {
+        if (dpb_buffer_.dec_ref_count[i] == 0) {
+            break;
+        }
+    }
+    if (i == BUFFER_POOL_MAX_SIZE) {
+        ERR("DPB buffer overflow!");
+        return PARSER_NOT_FOUND;
+    }
+
+    curr_pic_.pic_idx = i;
+    curr_pic_.use_status = kFrameUsedForDecode;
+    dpb_buffer_.frame_store[curr_pic_.pic_idx] = curr_pic_;
+    dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]++;
+    // Mark as used in decode/display buffer pool
+    decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDecode;
+    if (pfn_display_picture_cb_ && curr_pic_.show_frame) {
+        decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
+        // Insert into output/display picture list
+        if (num_output_pics_ >= dec_buf_pool_size_) {
+            ERR("Display list size larger than decode buffer pool size!");
+            return PARSER_OUT_OF_RANGE;
+        } else {
+            output_pic_list_[num_output_pics_] = curr_pic_.dec_buf_idx;
+            num_output_pics_++;
+        }
+    }
+
     return PARSER_OK;
 }
 
@@ -650,6 +746,10 @@ ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size,
             seen_frame_header_ = 1;
         }
     }
+    curr_pic_.show_frame = frame_header_.show_frame;
+    curr_pic_.current_frame_id = frame_header_.current_frame_id;
+    curr_pic_.order_hint = frame_header_.order_hint;
+    curr_pic_.frame_type = frame_header_.frame_type;
     return PARSER_OK;
 }
 
@@ -684,7 +784,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
             if (p_seq_header->frame_id_numbers_present_flag) {
                 p_frame_header->display_frame_id = Parser::ReadBits(p_stream, offset, frame_id_len);
             }
-            p_frame_header->frame_type = ref_frame_type_[p_frame_header->frame_to_show_map_idx];
+            p_frame_header->frame_type = dpb_buffer_.ref_frame_type[p_frame_header->frame_to_show_map_idx];
             if (p_frame_header->frame_type == kKeyFrame) {
                 p_frame_header->refresh_frame_flags = all_frames;
             }
@@ -719,8 +819,8 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
 
     if (p_frame_header->frame_type == kKeyFrame && p_frame_header->show_frame) {
         for (i = 0; i < NUM_REF_FRAMES; i++) {
-            ref_valid_[i] = 0;
-            ref_order_hint_[i] = 0;
+            dpb_buffer_.ref_valid[i] = 0;
+            dpb_buffer_.ref_order_hint[i] = 0;
         }
         for (i = 0; i < REFS_PER_FRAME; i++) {
             p_frame_header->order_hints[kLastFrame + i] = 0;
@@ -795,18 +895,12 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     } else {
         p_frame_header->refresh_frame_flags = Parser::ReadBits(p_stream, offset, 8);
     }
-    // Clear reference list for kKeyFrame
-    if (p_frame_header->frame_type == kKeyFrame) {
-        for (i = 0; i < REFS_PER_FRAME; i++) {
-            ref_pictures_[i].pic_idx = INVALID_INDEX;
-        }
-    }
     if (!p_frame_header->frame_is_intra || p_frame_header->refresh_frame_flags != all_frames) {
         if (p_frame_header->error_resilient_mode && p_seq_header->enable_order_hint) {
             for (i = 0; i < NUM_REF_FRAMES; i++) {
                 p_frame_header->ref_order_hint[i] = Parser::ReadBits(p_stream, offset, p_seq_header->order_hint_bits);
-                if (p_frame_header->ref_order_hint[i] != ref_order_hint_[i]) {
-                    ref_valid_[i] = 0;
+                if (p_frame_header->ref_order_hint[i] != dpb_buffer_.ref_order_hint[i]) {
+                    dpb_buffer_.ref_valid[i] = 0;
                 }
             }
         }
@@ -839,7 +933,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
                 p_frame_header->delta_frame_id_minus_1 = Parser::ReadBits(p_stream, offset, p_seq_header->delta_frame_id_length_minus_2 + 2);
                 uint32_t delta_frame_id = p_frame_header->delta_frame_id_minus_1 + 1;
                 p_frame_header->expected_frame_id[i] = ((p_frame_header->current_frame_id + (1 << frame_id_len) - delta_frame_id ) % (1 << frame_id_len));
-                if (p_frame_header->expected_frame_id[i] != ref_frame_id_[p_frame_header->ref_frame_idx[i]] || ref_valid_[p_frame_header->ref_frame_idx[i]] == 0) {
+                if (p_frame_header->expected_frame_id[i] != dpb_buffer_.ref_frame_id[p_frame_header->ref_frame_idx[i]] || dpb_buffer_.ref_valid[p_frame_header->ref_frame_idx[i]] == 0) {
                     ERR("Syntax Error: Reference buffer frame ID mismatch.\n");
                     return PARSER_INVALID_ARG;
                 }
@@ -875,7 +969,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
 
         for (i = 0; i < REFS_PER_FRAME; i++) {
             uint32_t ref_frame = kLastFrame + i;
-            uint32_t hint = ref_order_hint_[p_frame_header->ref_frame_idx[i]];
+            uint32_t hint = dpb_buffer_.ref_order_hint[p_frame_header->ref_frame_idx[i]];
             p_frame_header->order_hints[ref_frame] = hint;
             if (!p_seq_header->enable_order_hint) {
                 p_frame_header->ref_frame_sign_bias[ref_frame] = 0;
@@ -889,20 +983,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         pic_width_ = p_frame_header->frame_size.frame_width;
         pic_height_ = p_frame_header->frame_size.frame_height;
         new_seq_activated_ = true;
-    }
-
-    // Generate reference map for the next picture
-    int ref_index = 0;
-    for (int mask = p_frame_header->refresh_frame_flags; mask; mask >>= 1) {
-        if (mask & 1) {
-            ref_pic_map_next_[ref_index] = new_fb_index_;
-        } else {
-            ref_pic_map_next_[ref_index] = ref_pic_map_[ref_index];
-        }
-        ++ref_index;
-    }
-    for (; ref_index < NUM_REF_FRAMES; ++ref_index) {
-        ref_pic_map_next_[ref_index] = ref_pic_map_[ref_index];
     }
 
     if (p_seq_header->reduced_still_picture_header || p_frame_header->disable_cdf_update) {
@@ -986,13 +1066,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
 
     GlobalMotionParams(p_stream, offset, p_frame_header);
     FilmGrainParams(p_stream, offset, p_seq_header, p_frame_header);
-
-    // Update reference frames
-    for (i = 0; i < NUM_REF_FRAMES; i++) {
-        if ((p_frame_header->refresh_frame_flags >> i) & 1) {
-            ref_order_hint_[i] = p_frame_header->order_hint;
-        }
-    }
 
     *p_bytes_parsed = (offset + 7) >> 3;
     return PARSER_OK;
@@ -1132,14 +1205,14 @@ void Av1VideoParser::MarkRefFrames(Av1SequenceHeader *p_seq_header, Av1FrameHead
     int diff_len = p_seq_header->delta_frame_id_length_minus_2 + 2;
     for (int i = 0; i < NUM_REF_FRAMES; i++) {
         if (p_frame_header->frame_type == kKeyFrame && p_frame_header->show_frame) {
-            ref_valid_[i] = 0;
+            dpb_buffer_.ref_valid[i] = 0;
         } else if (p_frame_header->current_frame_id > (1 << diff_len)) {
-            if (ref_frame_id_[i] > p_frame_header->current_frame_id || ref_frame_id_[i] < (p_frame_header->current_frame_id - (1 << diff_len))) {
-                ref_valid_[i] = 0;
+            if (dpb_buffer_.ref_frame_id[i] > p_frame_header->current_frame_id || dpb_buffer_.ref_frame_id[i] < (p_frame_header->current_frame_id - (1 << diff_len))) {
+                dpb_buffer_.ref_valid[i] = 0;
             }
         } else {
-            if (ref_frame_id_[i] > p_frame_header->current_frame_id && ref_frame_id_[i] < ((1 << id_len) + p_frame_header->current_frame_id - (1 << diff_len))) {
-                ref_valid_[ i ] = 0;
+            if (dpb_buffer_.ref_frame_id[i] > p_frame_header->current_frame_id && dpb_buffer_.ref_frame_id[i] < ((1 << id_len) + p_frame_header->current_frame_id - (1 << diff_len))) {
+                dpb_buffer_.ref_valid[ i ] = 0;
             }
         }
     }
@@ -1215,7 +1288,7 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
 
     curr_frame_hint = 1 << (p_seq_header->order_hint_bits - 1);
     for (i = 0; i < NUM_REF_FRAMES; i++) {
-        shifted_order_hints[i] = curr_frame_hint + GetRelativeDist(p_seq_header, ref_order_hint_[i], p_frame_header->order_hint);
+        shifted_order_hints[i] = curr_frame_hint + GetRelativeDist(p_seq_header, dpb_buffer_.ref_order_hint[i], p_frame_header->order_hint);
     }
 
     // The kAltRefFrame reference is set to be a backward reference to the frame with highest output order.
@@ -1733,16 +1806,20 @@ void Av1VideoParser::CdefParams(const uint8_t *p_stream, size_t &offset, Av1Sequ
     for (int i = 0; i < (1 << p_frame_header->cdef_params.cdef_bits); i++) {
         p_frame_header->cdef_params.cdef_y_pri_strength[i] = Parser::ReadBits(p_stream, offset, 4);
         p_frame_header->cdef_params.cdef_y_sec_strength[i] = Parser::ReadBits(p_stream, offset, 2);
+        /* Note: cdef_y_sec_strength is to be packed into the lower 2 bits of cdef_y_strengths, same way as in coded stream.
+                 VA-VPI driver or below is expected to do the conditional increment, which we skip here.
         if (p_frame_header->cdef_params.cdef_y_sec_strength[i] == 3) {
             p_frame_header->cdef_params.cdef_y_sec_strength[i] += 1;
-        }
+        }*/
 
         if (p_seq_header->color_config.num_planes > 1) {
             p_frame_header->cdef_params.cdef_uv_pri_strength[i] = Parser::ReadBits(p_stream, offset, 4);
             p_frame_header->cdef_params.cdef_uv_sec_strength[i] = Parser::ReadBits(p_stream, offset, 2);
+            /* Note: cdef_uv_sec_strength is to be packed into the lower 2 bits of cdef_uv_strengths, same way as in coded stream.
+                     VA-VPI driver or below is expected to do the conditional increment, which we skip here.
             if (p_frame_header->cdef_params.cdef_uv_sec_strength[i] == 3) {
                 p_frame_header->cdef_params.cdef_uv_sec_strength[i] += 1;
-            }
+            }*/
         }
     }
 }
@@ -1820,11 +1897,11 @@ void Av1VideoParser::SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1
     } else {
         forward_idx = -1;
         backward_idx = -1;
-        forward_hint = ref_order_hint_[0];  // init value. No effect.
-        backward_hint = ref_order_hint_[1];  // init value. No effect.
+        forward_hint = dpb_buffer_.ref_order_hint[0];  // init value. No effect.
+        backward_hint = dpb_buffer_.ref_order_hint[1];  // init value. No effect.
 
         for (i = 0; i < REFS_PER_FRAME; i++) {
-            ref_hint = ref_order_hint_[p_frame_header->ref_frame_idx[i]];
+            ref_hint = dpb_buffer_.ref_order_hint[p_frame_header->ref_frame_idx[i]];
             if (GetRelativeDist(p_seq_header, ref_hint, p_frame_header->order_hint ) < 0) {
                 if (forward_idx < 0 || GetRelativeDist(p_seq_header, ref_hint, forward_hint) > 0) {
                     forward_idx = i;
@@ -1846,9 +1923,9 @@ void Av1VideoParser::SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1
             p_frame_header->skip_mode_params.skip_mode_frame[1] = kLastFrame + std::max(forward_idx, backward_idx);
         } else {
             second_forward_idx = -1;
-            second_forward_hint = ref_order_hint_[0];  // init value. No effect.
+            second_forward_hint = dpb_buffer_.ref_order_hint[0];  // init value. No effect.
             for (i = 0; i < REFS_PER_FRAME; i++) {
-                ref_hint = ref_order_hint_[p_frame_header->ref_frame_idx[i]];
+                ref_hint = dpb_buffer_.ref_order_hint[p_frame_header->ref_frame_idx[i]];
                 if (GetRelativeDist(p_seq_header, ref_hint, forward_hint ) < 0) {
                     if (second_forward_idx < 0 || GetRelativeDist(p_seq_header, ref_hint, second_forward_hint ) > 0) {
                         second_forward_idx = i;

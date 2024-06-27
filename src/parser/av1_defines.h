@@ -42,9 +42,9 @@ THE SOFTWARE.
 
 #define NUM_REF_FRAMES 8
 #define PRIMARY_REF_NONE 7
-
 #define REFS_PER_FRAME 7  // Number of reference frames that can be used for inter prediction
 #define TOTAL_REFS_PER_FRAME 8  // Number of reference frame types (including intra type)
+#define BUFFER_POOL_MAX_SIZE 10 // Number of frames in buffer pool
 
 #define MAX_TILE_WIDTH 4096  // Maximum width of a tile in units of luma samples
 #define MAX_TILE_AREA 4096 * 2304  // Maximum area of a tile in units of luma samples
