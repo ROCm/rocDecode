@@ -240,6 +240,8 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     // Set up the picture parameter buffer
     RocdecAv1PicParams *p_pic_param = &dec_pic_params_.pic_params.av1;
     p_pic_param->profile = p_seq_header->seq_profile;
+    p_pic_param->order_hint_bits_minus_1 = p_seq_header->order_hint_bits_minus_1;
+    p_pic_param->bit_depth_idx = p_seq_header->color_config.bit_depth == 8 ? 0 : (p_seq_header->color_config.bit_depth == 10 ? 1 : 2);
     p_pic_param->matrix_coefficients = p_seq_header->color_config.matrix_coefficients;
     p_pic_param->seq_info_fields.fields.still_picture = p_seq_header->still_picture;
     p_pic_param->seq_info_fields.fields.use_128x128_superblock = p_seq_header->use_128x128_superblock;
@@ -2263,6 +2265,8 @@ void Av1VideoParser::PrintVaapiParams() {
     MSG("=======================");
     RocdecAv1PicParams *p_pic_param = &dec_pic_params_.pic_params.av1;
     MSG("profile = " << static_cast<uint32_t>(p_pic_param->profile));
+    MSG("order_hint_bits_minus_1 = " << static_cast<uint32_t>(p_pic_param->order_hint_bits_minus_1));
+    MSG("bit_depth_idx = " << static_cast<uint32_t>(p_pic_param->bit_depth_idx));
     MSG("matrix_coefficients = " << static_cast<uint32_t>(p_pic_param->matrix_coefficients));
     MSG("still_picture = " << p_pic_param->seq_info_fields.fields.still_picture);
     MSG("use_128x128_superblock = " << p_pic_param->seq_info_fields.fields.use_128x128_superblock);
