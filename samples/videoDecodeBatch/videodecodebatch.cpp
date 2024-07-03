@@ -125,8 +125,8 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
         n_frame += n_frame_returned;
         if (b_dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
-            if(n_frame){
-                if(!p_dec->GetOutputSurfaceInfo(&surf_info)){
+            if (n_frame_returned) {
+                if (!p_dec->GetOutputSurfaceInfo(&surf_info)) {
                     std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                     break;
                 }
