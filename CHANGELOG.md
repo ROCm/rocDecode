@@ -3,14 +3,14 @@
 Documentation for rocDecode is available at
 [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 0.6.0 (Unreleased)
+## rocDecode 0.6.0
 
-## Additions
+### Additions
 
 * FFMPEG V5.X Support
 * Mariner - Build Support
 
-## Optimizations
+### Optimizations
 
 * Setup Script - Error Check install
 
