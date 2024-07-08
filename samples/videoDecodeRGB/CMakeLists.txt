@@ -56,14 +56,8 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
 endif()
 
-option(BUILD_WITH_AMD_ADVANCE "Build sample for advanced AMD GPU Architecture" OFF)
-message("-- ${Cyan} -D BUILD_WITH_AMD_ADVANCE=${BUILD_WITH_AMD_ADVANCE} [Turn ON/OFF Build for AMD advanced GPUs(default:OFF)]${ColourReset}")
-
 # Set supported GPU Targets
 set(DEFAULT_AMDGPU_TARGETS "gfx908;gfx90a;gfx940;gfx941;gfx942;gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102")
-if (BUILD_WITH_AMD_ADVANCE)
-  set(DEFAULT_AMDGPU_TARGETS ${DEFAULT_AMDGPU_TARGETS} "gfx1200;gfx1201")
-endif()
 
 # Set AMDGPU_TARGETS
 if(DEFINED ENV{AMDGPU_TARGETS})
