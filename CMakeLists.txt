@@ -76,9 +76,6 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
 set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
 
-# rocDecode Default Options
-option(BUILD_WITH_AMD_ADVANCE "Build rocDecode for advanced AMD GPU Architecture" OFF)
-
 # rocDecode Build Type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocDecode Default Build Type" FORCE)
