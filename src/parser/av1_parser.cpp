@@ -124,8 +124,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             case kObuTileGroup: {
                 ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
                 break;
-                    pic_count_++;
-    }
+            }
             default:
                 break;
         }
