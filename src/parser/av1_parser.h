@@ -95,6 +95,12 @@ public:
         int ref_frame_id[NUM_REF_FRAMES];
         int ref_order_hint[NUM_REF_FRAMES];
         int ref_valid[NUM_REF_FRAMES];
+        uint32_t saved_order_hints[NUM_REF_FRAMES][NUM_REF_FRAMES];
+        int32_t saved_gm_params[NUM_REF_FRAMES][NUM_REF_FRAMES][6];
+        int32_t saved_loop_filter_ref_deltas[NUM_REF_FRAMES][TOTAL_REFS_PER_FRAME];
+        int32_t saved_loop_filter_mode_deltas[NUM_REF_FRAMES][2];
+        uint8_t saved_feature_enabled[NUM_REF_FRAMES][MAX_SEGMENTS][SEG_LVL_MAX];
+        int16_t saved_feature_data[NUM_REF_FRAMES][MAX_SEGMENTS][SEG_LVL_MAX];
     } DecodedPictureBuffer;
 
 protected:
@@ -114,7 +120,7 @@ protected:
     DecodedPictureBuffer dpb_buffer_;
     Av1Picture curr_pic_;
 
-    uint32_t prev_gm_params_[NUM_REF_FRAMES][6];
+    int32_t prev_gm_params_[NUM_REF_FRAMES][6];
 
     /*! \brief Function to parse one picture bit stream received from the demuxer.
      * \param [in] p_stream A pointer of <tt>uint8_t</tt> for the input stream to be parsed
@@ -150,6 +156,16 @@ protected:
      */
     void UpdateRefFrames();
 
+    /*! \brief Function to load saved values for a previous reference frame back into the current frame variables. 7.21.
+     *  \return None
+     */
+    void LoadRefFrame();
+
+    /*! \brief Function to wrap up frame decode process. 7.4.
+     * \return <tt>ParserResult</tt>
+     */
+    ParserResult DecodeFrameWrapup();
+
     /*! \brief Function to find a free buffer in the decode buffer pool
      *  \return <tt>ParserResult</tt>
      */
@@ -159,6 +175,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult FindFreeInDpbAndMark();
+
+    /*! \brief Function to check the frame stores that are done decoding and update status in DPB and decode/disp pool.
+     *  \return None.
+     */
+    void CheckAndUpdateDecStatus();
 
     /*! \brief Function to parse an OBU header
      * \param [in] p_stream Pointer to the bit stream
@@ -302,10 +323,15 @@ protected:
      */
     void FrameSizeWithRefs(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
-    /*! \brief Function to indicates that this frame can be decoded without dependence on previous coded frames. setup_past_independence().
+    /*! \brief Function to indicate that this frame can be decoded without dependence on previous coded frames. setup_past_independence() in spec.
      * \param [out] p_frame_header Pointer to frame header struct
      */
     void SetupPastIndependence(Av1FrameHeader *p_frame_header);
+
+    /*! \brief Function to indicate that information from a previous frame may be loaded for use in decoding the current frame. load_previous() in spec.
+     * \param [out] p_frame_header Pointer to frame header struct
+     */
+    void LoadPrevious(Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse tile info
      * \param [in] p_stream Pointer to the bit stream
@@ -621,5 +647,8 @@ protected:
     /*! \brief Function to log VAAPI parameters
      */
     void PrintVaapiParams();
+    /*! \brief Function to log DPB and decode/display buffer pool info
+     */
+    void PrintDpb();
 #endif // DBGINFO
 };

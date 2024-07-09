@@ -28,6 +28,8 @@ Av1VideoParser::Av1VideoParser() {
     tile_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_, 0, sizeof(Av1Picture));
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
+    memset(&seq_header_, 0, sizeof(Av1SequenceHeader));
+    memset(&frame_header_, 0, sizeof(Av1FrameHeader));
     memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
     InitDpb();
 }
@@ -122,7 +124,8 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             case kObuTileGroup: {
                 ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
                 break;
-            }
+                    pic_count_++;
+    }
             default:
                 break;
         }
@@ -135,8 +138,28 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             new_seq_activated_ = false;
         }
 
-        // Submit decode when we have the entire frame data
-        if (tile_group_data_.tile_number && tile_group_data_.tg_end == tile_group_data_.num_tiles - 1) {
+        // Submit decode when we have the entire frame data, or display an existing frame
+        if (frame_header_.show_existing_frame) {
+            int disp_idx = dpb_buffer_.virtual_buffer_index[frame_header_.frame_to_show_map_idx];
+            if (disp_idx == INVALID_INDEX) {
+                ERR("Invalid existing frame index to show.");
+                return PARSER_INVALID_ARG;
+            }
+            if (pfn_display_picture_cb_) {
+                decode_buffer_pool_[dpb_buffer_.frame_store[disp_idx].dec_buf_idx].use_status |= kFrameUsedForDisplay;
+                // Insert into output/display picture list
+                if (num_output_pics_ >= dec_buf_pool_size_) {
+                    ERR("Display list size larger than decode buffer pool size!");
+                    return PARSER_OUT_OF_RANGE;
+                } else {
+                    output_pic_list_[num_output_pics_] = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
+                    num_output_pics_++;
+                }
+            }
+            if ((ret = DecodeFrameWrapup()) != PARSER_OK) {
+                return ret;
+            }
+        } else if (tile_group_data_.tile_number && tile_group_data_.tg_end == tile_group_data_.num_tiles - 1) {
             if ((ret = FindFreeInDecBufPool()) != PARSER_OK) {
                 return ret;
             }
@@ -147,19 +170,12 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 ERR(STR("Failed to decode!"));
                 return ret;
             }
-
-            UpdateRefFrames();
-
             dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
             memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
-
-            // Output decoded pictures from DPB if any are ready
-            if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
-                if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
-                    return ret;
-                }
+            if ((ret = DecodeFrameWrapup()) != PARSER_OK) {
+                return ret;
             }
-            pic_count_++;
+            CheckAndUpdateDecStatus();
         }
     };
     return PARSER_OK;
@@ -271,8 +287,8 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     p_pic_param->output_frame_height_in_tiles_minus_1 = 0; // Todo for large scale tile
     
     for (i = 0; i < NUM_REF_FRAMES; i++) {
-        if (dpb_buffer_.virtual_buffer_index[i] != -1) {
-        p_pic_param->ref_frame_map[i] = dpb_buffer_.frame_store[dpb_buffer_.virtual_buffer_index[i]].dec_buf_idx;
+        if (dpb_buffer_.virtual_buffer_index[i] != INVALID_INDEX) {
+            p_pic_param->ref_frame_map[i] = dpb_buffer_.frame_store[dpb_buffer_.virtual_buffer_index[i]].dec_buf_idx;
         } else {
             p_pic_param->ref_frame_map[i] = 0xFF;
         }
@@ -453,10 +469,30 @@ void Av1VideoParser::UpdateRefFrames() {
     for (int i = 0; i < NUM_REF_FRAMES; i++) {
         if ((frame_header_.refresh_frame_flags >> i) & 1) {
             dpb_buffer_.ref_valid[i] = 1;
-            dpb_buffer_.ref_frame_id[i] = curr_pic_.current_frame_id;
-            dpb_buffer_.ref_frame_type[i] = curr_pic_.frame_type;
-            dpb_buffer_.ref_order_hint[i] = curr_pic_.order_hint;
-            if (dpb_buffer_.virtual_buffer_index[i] != -1) {
+            dpb_buffer_.ref_frame_id[i] = frame_header_.current_frame_id;
+            dpb_buffer_.ref_frame_type[i] = frame_header_.frame_type;
+            dpb_buffer_.ref_order_hint[i] = frame_header_.order_hint;
+            for (int j = 0; j < REFS_PER_FRAME; j++) {
+                dpb_buffer_.saved_order_hints[i][j + kLastFrame] = frame_header_.order_hints[j + kLastFrame];
+            }
+            for (int ref = kLastFrame; ref <= kAltRefFrame; ref++) {
+                for (int j = 0; j < 6; j++) {
+                    dpb_buffer_.saved_gm_params[i][ref][j] = frame_header_.global_motion_params.gm_params[ref][j];
+                }
+            }
+            for (int j = 0; j < TOTAL_REFS_PER_FRAME; j++) {
+                dpb_buffer_.saved_loop_filter_ref_deltas[i][j] = frame_header_.loop_filter_params.loop_filter_ref_deltas[j];
+            }
+            dpb_buffer_.saved_loop_filter_mode_deltas[i][0] = frame_header_.loop_filter_params.loop_filter_mode_deltas[0];
+            dpb_buffer_.saved_loop_filter_mode_deltas[i][1] = frame_header_.loop_filter_params.loop_filter_mode_deltas[1];
+            for (int j = 0; j < MAX_SEGMENTS; j++) {
+                for (int k = 0; k < SEG_LVL_MAX; k++) {
+                    dpb_buffer_.saved_feature_enabled[i][j][k] = frame_header_.segmentation_params.feature_enabled_flags[j][k];
+                    dpb_buffer_.saved_feature_data[i][j][k] = frame_header_.segmentation_params.feature_data[j][k];
+                }
+            }
+
+            if (dpb_buffer_.virtual_buffer_index[i] != INVALID_INDEX) {
                 dpb_buffer_.dec_ref_count[dpb_buffer_.virtual_buffer_index[i]]--;
             }
             dpb_buffer_.virtual_buffer_index[i] = curr_pic_.pic_idx;
@@ -465,13 +501,51 @@ void Av1VideoParser::UpdateRefFrames() {
     }
 }
 
+void Av1VideoParser::LoadRefFrame() {
+    int ref_idx = frame_header_.frame_to_show_map_idx;
+    frame_header_.current_frame_id = dpb_buffer_.ref_frame_id[ref_idx];
+    frame_header_.order_hint = dpb_buffer_.ref_order_hint[ref_idx];
+    for (int j = 0; j < REFS_PER_FRAME; j++) {
+        frame_header_.order_hints[j + kLastFrame] = dpb_buffer_.saved_order_hints[ref_idx][j + kLastFrame];
+    }
+}
+
+ParserResult Av1VideoParser::DecodeFrameWrapup() {
+    ParserResult ret = PARSER_OK;
+    if (frame_header_.show_existing_frame) {
+        // If the existing frame is key frame, load and update ref frames. Note refresh_frame_flags is set to allFrames (0xFF)
+        if ( frame_header_.frame_type == kKeyFrame) {
+            LoadRefFrame();
+            UpdateRefFrames();
+        }
+    } else {
+        // For show_existing_frame = 0 case, post processing filtering is done in HW
+        UpdateRefFrames();
+    }
+    // Output decoded pictures from DPB if any are ready
+    if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
+        if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
+            return ret;
+        }
+    }
+    pic_count_++;
+
+#if DBGINFO
+    PrintDpb();
+#endif // DBGINFO
+    return ret;
+}
+
 void Av1VideoParser::InitDpb() {
     int i;
+    memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
     for (i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
+        dpb_buffer_.frame_store[i].pic_idx = i;
+        dpb_buffer_.frame_store[i].use_status = kNotUsed;
         dpb_buffer_.dec_ref_count[i] = 0;
     }
     for (i = 0; i < NUM_REF_FRAMES; i++) {
-        dpb_buffer_.virtual_buffer_index[i] = -1;
+        dpb_buffer_.virtual_buffer_index[i] = INVALID_INDEX;
     }
 }
 
@@ -518,6 +592,7 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
     dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]++;
     // Mark as used in decode/display buffer pool
     decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDecode;
+    decode_buffer_pool_[curr_pic_.dec_buf_idx].pic_order_cnt = curr_pic_.order_hint;
     if (pfn_display_picture_cb_ && curr_pic_.show_frame) {
         decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
         // Insert into output/display picture list
@@ -531,6 +606,15 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
     }
 
     return PARSER_OK;
+}
+
+void Av1VideoParser::CheckAndUpdateDecStatus() {
+    for (int i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
+        if (dpb_buffer_.frame_store[i].use_status != kNotUsed && dpb_buffer_.dec_ref_count[i] == 0) {
+            dpb_buffer_.frame_store[i].use_status = kNotUsed;
+            decode_buffer_pool_[i].use_status &= ~kFrameUsedForDecode;
+        }
+    }
 }
 
 ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
@@ -742,7 +826,6 @@ ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size,
             return ret;
         }
         if (frame_header_.show_existing_frame) {
-            // decode_frame_wrapup()
             seen_frame_header_ = 0;
         } else {
             seen_frame_header_ = 1;
@@ -796,7 +879,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
                 // load_grain_params(p_frame_header->frame_to_show_map_idx);
                 return PARSER_NOT_IMPLEMENTED;
             }
-
             return PARSER_OK;
         }
 
@@ -1000,7 +1082,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     } else {
         // Todo: check need for implementation
         //load_cdfs();
-        //load_previous();
+        LoadPrevious(p_frame_header);
     }
 
     if (p_frame_header->use_ref_frame_mvs == 1) {
@@ -1128,7 +1210,6 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         if (!frame_header_.disable_frame_end_update_cdf) {
             //frame_end_update_cdf();
         }
-        //decode_frame_wrapup();
         seen_frame_header_ = 0;
     }
 }
@@ -1278,7 +1359,7 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     int ref;
 
     for (i = 0; i < REFS_PER_FRAME; i++) {
-        p_frame_header->ref_frame_idx[i] = -1;
+        p_frame_header->ref_frame_idx[i] = INVALID_INDEX;
     }
     p_frame_header->ref_frame_idx[kLastFrame - kLastFrame] = p_frame_header->last_frame_idx;
     p_frame_header->ref_frame_idx[kGoldenFrame - kLastFrame] = p_frame_header->gold_frame_idx;
@@ -1328,7 +1409,7 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     }
 
     // Finally, any remaining references are set to the reference frame with smallest output order.
-    ref = -1;
+    ref = INVALID_INDEX;
     for (i = 0; i < NUM_REF_FRAMES; i++) {
         int earliest_order_hint = 9999;
         int hint = shifted_order_hints[i];
@@ -1355,7 +1436,7 @@ int Av1VideoParser::GetRelativeDist(Av1SequenceHeader *p_seq_header, int a, int 
 }
 
 int Av1VideoParser::FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
-    int ref = -1;
+    int ref = INVALID_INDEX;
     int hint;
     int latest_order_hint = -9999;
 
@@ -1370,7 +1451,7 @@ int Av1VideoParser::FindLatestBackward(int *shifted_order_hints, int *used_frame
 }
 
 int Av1VideoParser::FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
-    int ref = -1;
+    int ref = INVALID_INDEX;
     int hint;
     int earliest_order_hint = 9999;
 
@@ -1385,7 +1466,7 @@ int Av1VideoParser::FindEarliestBackward(int *shifted_order_hints, int *used_fra
 }
 
 int Av1VideoParser::FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
-    int ref = -1;
+    int ref = INVALID_INDEX;
     int hint;
     int latest_order_hint = -9999;
 
@@ -1432,7 +1513,7 @@ void Av1VideoParser::SetupPastIndependence(Av1FrameHeader *p_frame_header) {
             p_frame_header->segmentation_params.feature_enabled_flags[i][j] = 0;
         }
     }
-    // Block level: PrevSegmentIds[ row ][ col ] is set equal to 0 for row = 0..MiRows-1 and col = 0..MiCols-1.
+    // Block level: PrevSegmentIds[row][col] is set equal to 0 for row = 0..MiRows-1 and col = 0..MiCols-1.
     for (int ref = kLastFrame; ref <= kAltRefFrame; ref++) {
         p_frame_header->global_motion_params.gm_type[ref] = kIdentity;
         for (int i = 0; i < 6; i++) {
@@ -1451,6 +1532,26 @@ void Av1VideoParser::SetupPastIndependence(Av1FrameHeader *p_frame_header) {
     p_frame_header->loop_filter_params.loop_filter_ref_deltas[kAltRef2Frame] = -1;
     p_frame_header->loop_filter_params.loop_filter_mode_deltas[0] = 0;
     p_frame_header->loop_filter_params.loop_filter_mode_deltas[1] = 0;
+}
+
+void Av1VideoParser::LoadPrevious(Av1FrameHeader *p_frame_header) {
+    int prev_frame = p_frame_header->ref_frame_idx[p_frame_header->primary_ref_frame];
+    for (int ref = kLastFrame; ref <= kAltRefFrame; ref++) {
+        for (int i = 0; i < 6; i++) {
+            prev_gm_params_[ref][i] = dpb_buffer_.saved_gm_params[prev_frame][ref][i];
+        }
+    }
+    for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+        p_frame_header->loop_filter_params.loop_filter_ref_deltas[i] = dpb_buffer_.saved_loop_filter_ref_deltas[prev_frame][i];
+    }
+    p_frame_header->loop_filter_params.loop_filter_mode_deltas[0] = dpb_buffer_.saved_loop_filter_mode_deltas[prev_frame][0];
+    p_frame_header->loop_filter_params.loop_filter_mode_deltas[1] = dpb_buffer_.saved_loop_filter_mode_deltas[prev_frame][1];
+    for (int j = 0; j < MAX_SEGMENTS; j++) {
+        for (int k = 0; k < SEG_LVL_MAX; k++) {
+            p_frame_header->segmentation_params.feature_enabled_flags[j][k] = dpb_buffer_.saved_feature_enabled[prev_frame][j][k];
+            p_frame_header->segmentation_params.feature_data[j][k] = dpb_buffer_.saved_feature_data[prev_frame][j][k];
+        }
+    }
 }
 
 void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
@@ -1897,8 +1998,8 @@ void Av1VideoParser::SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1
     if (p_frame_header->frame_is_intra || !p_frame_header->frame_reference_mode.reference_select || !p_seq_header->enable_order_hint) {
         skip_mode_allowed = 0;
     } else {
-        forward_idx = -1;
-        backward_idx = -1;
+        forward_idx = INVALID_INDEX;
+        backward_idx = INVALID_INDEX;
         forward_hint = dpb_buffer_.ref_order_hint[0];  // init value. No effect.
         backward_hint = dpb_buffer_.ref_order_hint[1];  // init value. No effect.
 
@@ -1924,7 +2025,7 @@ void Av1VideoParser::SkipModeParams(const uint8_t *p_stream, size_t &offset, Av1
             p_frame_header->skip_mode_params.skip_mode_frame[0] = kLastFrame + std::min(forward_idx, backward_idx);
             p_frame_header->skip_mode_params.skip_mode_frame[1] = kLastFrame + std::max(forward_idx, backward_idx);
         } else {
-            second_forward_idx = -1;
+            second_forward_idx = INVALID_INDEX;
             second_forward_hint = dpb_buffer_.ref_order_hint[0];  // init value. No effect.
             for (i = 0; i < REFS_PER_FRAME; i++) {
                 ref_hint = dpb_buffer_.ref_order_hint[p_frame_header->ref_frame_idx[i]];
@@ -2490,6 +2591,37 @@ void Av1VideoParser::PrintVaapiParams() {
         MSG("tg_end = " << p_tile_param->tg_end);
         MSG("anchor_frame_idx = " << static_cast<int>(p_tile_param->anchor_frame_idx));
         MSG("tile_idx_in_tile_list = " << p_tile_param->tile_idx_in_tile_list);
+    }
+}
+
+void Av1VideoParser::PrintDpb() {
+    uint32_t i;
+
+    MSG("=======================");
+    MSG("DPB buffer content: ");
+    MSG("=======================");
+    MSG("Current frame: pic_idx = " << curr_pic_.pic_idx << ", dec_buf_idx = " << curr_pic_.dec_buf_idx << ", order_hint = " << curr_pic_.order_hint << ", frame_type = " << curr_pic_.frame_type);
+    for (i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
+        MSG("Frame store " << i << ": " << "dec_ref_count = " << dpb_buffer_.dec_ref_count[i] << ", pic_idx = " << dpb_buffer_.frame_store[i].pic_idx << ", dec_buf_idx = " << dpb_buffer_.frame_store[i].dec_buf_idx << ", current_frame_id = " << dpb_buffer_.frame_store[i].current_frame_id << ", order_hint = " << dpb_buffer_.frame_store[i].order_hint << ", frame_type = " << dpb_buffer_.frame_store[i].frame_type << ", use_status = " << dpb_buffer_.frame_store[i].use_status << ", show_frame = " << dpb_buffer_.frame_store[i].show_frame);
+    }
+    MSG_NO_NEWLINE("virtual_buffer_index[] =");
+    for (i = 0; i < NUM_REF_FRAMES; i++) {
+        MSG_NO_NEWLINE(" " << dpb_buffer_.dec_ref_count[i]);
+    }
+    MSG("");
+
+    MSG("Decode buffer pool:");
+    for(i = 0; i < dec_buf_pool_size_; i++) {
+        DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
+        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+    }
+    MSG("num_output_pics_ = " << num_output_pics_);
+    if (num_output_pics_) {
+        MSG_NO_NEWLINE("output_pic_list:");
+        for (i = 0; i < num_output_pics_; i++) {
+            MSG_NO_NEWLINE(" " << output_pic_list_[i]);
+        }
+        MSG("");
     }
 }
 #endif // DBGINFO
