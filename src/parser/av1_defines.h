@@ -298,7 +298,7 @@ typedef struct {
     uint32_t segmentation_temporal_update;
     uint32_t segmentation_update_data;
     uint32_t feature_enabled;
-    uint32_t feature_enabled_flags[MAX_SEGMENTS][SEG_LVL_MAX];
+    uint8_t  feature_enabled_flags[MAX_SEGMENTS][SEG_LVL_MAX];
     uint32_t feature_value;
     int16_t  feature_data[MAX_SEGMENTS][SEG_LVL_MAX];
     uint32_t seg_id_pre_skip;
@@ -322,9 +322,9 @@ typedef struct {
     uint32_t loop_filter_delta_enabled;
     uint32_t loop_filter_delta_update;
     uint32_t update_ref_delta;
-    uint32_t loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];
+    int32_t  loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];
     uint32_t update_mode_delta;
-    uint32_t loop_filter_mode_deltas[2];
+    int32_t  loop_filter_mode_deltas[2];
 } Av1LoopFilterParams;
 
 typedef struct {
