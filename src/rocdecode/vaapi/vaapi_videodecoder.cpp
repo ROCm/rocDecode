@@ -173,18 +173,26 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
         return ROCDEC_INVALID_PARAMETER;
     }
     va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
+    VASurfaceAttrib surf_attrib;
+    surf_attrib.type = VASurfaceAttribPixelFormat;
+    surf_attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
+    surf_attrib.value.type = VAGenericValueTypeInteger;
     uint32_t surface_format;
     switch (decoder_create_info_.chroma_format) {
         case rocDecVideoChromaFormat_Monochrome:
             surface_format = VA_RT_FORMAT_YUV400;
+            surf_attrib.value.value.i = VA_FOURCC_Y800;
             break;
         case rocDecVideoChromaFormat_420:
             if (decoder_create_info_.bit_depth_minus_8 == 2) {
                 surface_format = VA_RT_FORMAT_YUV420_10;
+                surf_attrib.value.value.i = VA_FOURCC_P010;
             } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
                 surface_format = VA_RT_FORMAT_YUV420_12;
+                surf_attrib.value.value.i = VA_FOURCC_P012;
             } else {
                 surface_format = VA_RT_FORMAT_YUV420;
+                surf_attrib.value.value.i = VA_FOURCC_NV12;
             }
             break;
         case rocDecVideoChromaFormat_422:
@@ -197,10 +205,8 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
             ERR("The surface type is not supported");
             return ROCDEC_NOT_SUPPORTED;
     }
-
     CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.width,
-        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), nullptr, 0));
-
+        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), &surf_attrib, 1));
     return ROCDEC_SUCCESS;
 }
 

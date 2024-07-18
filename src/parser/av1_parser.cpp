@@ -145,20 +145,25 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 return PARSER_INVALID_ARG;
             }
             if (pfn_display_picture_cb_) {
-                decode_buffer_pool_[dpb_buffer_.frame_store[disp_idx].dec_buf_idx].use_status |= kFrameUsedForDisplay;
+                if (seq_header_.film_grain_params_present && frame_header_.film_grain_params.apply_grain) {
+                    disp_idx = dpb_buffer_.frame_store[disp_idx].fg_buf_idx;
+                } else {
+                    disp_idx = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
+                }
+                decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
                 // Insert into output/display picture list
                 if (num_output_pics_ >= dec_buf_pool_size_) {
                     ERR("Display list size larger than decode buffer pool size!");
                     return PARSER_OUT_OF_RANGE;
                 } else {
-                    output_pic_list_[num_output_pics_] = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
+                    output_pic_list_[num_output_pics_] = disp_idx;
                     num_output_pics_++;
                 }
             }
             if ((ret = DecodeFrameWrapup()) != PARSER_OK) {
                 return ret;
             }
-        } else if (tile_group_data_.tile_number && tile_group_data_.tg_end == tile_group_data_.num_tiles - 1) {
+        } else if (tile_group_data_.num_tiles_parsed && tile_group_data_.num_tiles_parsed == tile_group_data_.num_tiles) {
             if ((ret = FindFreeInDecBufPool()) != PARSER_OK) {
                 return ret;
             }
@@ -276,7 +281,7 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     p_pic_param->seq_info_fields.fields.film_grain_params_present = p_seq_header->film_grain_params_present;
 
     p_pic_param->current_frame = curr_pic_.dec_buf_idx;
-    p_pic_param->current_display_picture = curr_pic_.dec_buf_idx; // Todo for FG
+    p_pic_param->current_display_picture = curr_pic_.fg_buf_idx;
     p_pic_param->anchor_frames_num = 0;
     p_pic_param->anchor_frames_list = nullptr;
 
@@ -319,26 +324,28 @@ ParserResult Av1VideoParser::SendPicForDecode() {
     p_pic_param->film_grain_info.film_grain_info_fields.bits.clip_to_restricted_range = p_frame_header->film_grain_params.clip_to_restricted_range;
     p_pic_param->film_grain_info.grain_seed = p_frame_header->film_grain_params.grain_seed;
     p_pic_param->film_grain_info.num_y_points = p_frame_header->film_grain_params.num_y_points;
-    for (i = 0; i < p_pic_param->film_grain_info.num_y_points; i++) {
-        p_pic_param->film_grain_info.point_y_value[i] = p_frame_header->film_grain_params.point_y_value[i];
-        p_pic_param->film_grain_info.point_y_scaling[i] = p_frame_header->film_grain_params.point_y_scaling[i];
-    }
     p_pic_param->film_grain_info.num_cb_points = p_frame_header->film_grain_params.num_cb_points;
-    for (i = 0; i < p_pic_param->film_grain_info.num_cb_points; i++) {
-        p_pic_param->film_grain_info.point_cb_value[i] = p_frame_header->film_grain_params.point_cb_value[i];
-        p_pic_param->film_grain_info.point_cb_scaling[i] = p_frame_header->film_grain_params.point_cb_scaling[i];
-    }
     p_pic_param->film_grain_info.num_cr_points = p_frame_header->film_grain_params.num_cr_points;
-    for (i = 0; i < p_pic_param->film_grain_info.num_cr_points; i++) {
-        p_pic_param->film_grain_info.point_cr_value[i] = p_frame_header->film_grain_params.point_cr_value[i];
-        p_pic_param->film_grain_info.point_cr_scaling[i] = p_frame_header->film_grain_params.point_cr_scaling[i];
-    }
-    for (i = 0; i < 24; i++) {
-        p_pic_param->film_grain_info.ar_coeffs_y[i] = p_frame_header->film_grain_params.ar_coeffs_y_plus_128[i] - 128;
-    }
-    for (i = 0; i < 25; i++) {
-        p_pic_param->film_grain_info.ar_coeffs_cb[i] = p_frame_header->film_grain_params.ar_coeffs_cb_plus_128[i] - 128;
-        p_pic_param->film_grain_info.ar_coeffs_cr[i] = p_frame_header->film_grain_params.ar_coeffs_cr_plus_128[i] - 128;
+    if (p_frame_header->film_grain_params.apply_grain) {
+        for (i = 0; i < p_pic_param->film_grain_info.num_y_points; i++) {
+            p_pic_param->film_grain_info.point_y_value[i] = p_frame_header->film_grain_params.point_y_value[i];
+            p_pic_param->film_grain_info.point_y_scaling[i] = p_frame_header->film_grain_params.point_y_scaling[i];
+        }
+        for (i = 0; i < p_pic_param->film_grain_info.num_cb_points; i++) {
+            p_pic_param->film_grain_info.point_cb_value[i] = p_frame_header->film_grain_params.point_cb_value[i];
+            p_pic_param->film_grain_info.point_cb_scaling[i] = p_frame_header->film_grain_params.point_cb_scaling[i];
+        }
+        for (i = 0; i < p_pic_param->film_grain_info.num_cr_points; i++) {
+            p_pic_param->film_grain_info.point_cr_value[i] = p_frame_header->film_grain_params.point_cr_value[i];
+            p_pic_param->film_grain_info.point_cr_scaling[i] = p_frame_header->film_grain_params.point_cr_scaling[i];
+        }
+        for (i = 0; i < 24; i++) {
+            p_pic_param->film_grain_info.ar_coeffs_y[i] = p_frame_header->film_grain_params.ar_coeffs_y_plus_128[i] - 128;
+        }
+        for (i = 0; i < 25; i++) {
+            p_pic_param->film_grain_info.ar_coeffs_cb[i] = p_frame_header->film_grain_params.ar_coeffs_cb_plus_128[i] - 128;
+            p_pic_param->film_grain_info.ar_coeffs_cr[i] = p_frame_header->film_grain_params.ar_coeffs_cr_plus_128[i] - 128;
+        }
     }
     p_pic_param->film_grain_info.cb_mult = p_frame_header->film_grain_params.cb_mult;
     p_pic_param->film_grain_info.cb_luma_mult = p_frame_header->film_grain_params.cb_luma_mult;
@@ -490,6 +497,9 @@ void Av1VideoParser::UpdateRefFrames() {
                     dpb_buffer_.saved_feature_data[i][j][k] = frame_header_.segmentation_params.feature_data[j][k];
                 }
             }
+            if (seq_header_.film_grain_params_present) {
+                dpb_buffer_.saved_film_grain_params[i] = frame_header_.film_grain_params; //save_grain_params()
+            }
 
             if (dpb_buffer_.virtual_buffer_index[i] != INVALID_INDEX) {
                 dpb_buffer_.dec_ref_count[dpb_buffer_.virtual_buffer_index[i]]--;
@@ -507,6 +517,25 @@ void Av1VideoParser::LoadRefFrame() {
     for (int j = 0; j < REFS_PER_FRAME; j++) {
         frame_header_.order_hints[j + kLastFrame] = dpb_buffer_.saved_order_hints[ref_idx][j + kLastFrame];
     }
+    for (int ref = kLastFrame; ref <= kAltRefFrame; ref++) {
+        for (int i = 0; i < 6; i++) {
+            frame_header_.global_motion_params.gm_params[ref][i] = dpb_buffer_.saved_gm_params[ref_idx][ref][i];
+        }
+    }
+    if (seq_header_.film_grain_params_present) {
+        frame_header_.film_grain_params = dpb_buffer_.saved_film_grain_params[ref_idx];
+    }
+    for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+        frame_header_.loop_filter_params.loop_filter_ref_deltas[i] = dpb_buffer_.saved_loop_filter_ref_deltas[ref_idx][i];
+    }
+    frame_header_.loop_filter_params.loop_filter_mode_deltas[0] = dpb_buffer_.saved_loop_filter_mode_deltas[ref_idx][0];
+    frame_header_.loop_filter_params.loop_filter_mode_deltas[1] = dpb_buffer_.saved_loop_filter_mode_deltas[ref_idx][1];
+    for (int j = 0; j < MAX_SEGMENTS; j++) {
+        for (int k = 0; k < SEG_LVL_MAX; k++) {
+            frame_header_.segmentation_params.feature_enabled_flags[j][k] = dpb_buffer_.saved_feature_enabled[ref_idx][j][k];
+            frame_header_.segmentation_params.feature_data[j][k] = dpb_buffer_.saved_feature_data[ref_idx][j][k];
+        }
+    }
 }
 
 ParserResult Av1VideoParser::DecodeFrameWrapup() {
@@ -521,6 +550,10 @@ ParserResult Av1VideoParser::DecodeFrameWrapup() {
         // For show_existing_frame = 0 case, post processing filtering is done in HW
         UpdateRefFrames();
     }
+#if DBGINFO
+    PrintDpb();
+#endif // DBGINFO
+
     // Output decoded pictures from DPB if any are ready
     if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
         if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
@@ -528,10 +561,7 @@ ParserResult Av1VideoParser::DecodeFrameWrapup() {
         }
     }
     pic_count_++;
-
-#if DBGINFO
-    PrintDpb();
-#endif // DBGINFO
+    memset(&frame_header_, 0, sizeof(Av1FrameHeader));
     return ret;
 }
 
@@ -559,17 +589,36 @@ ParserResult Av1VideoParser::FlushDpb() {
 
 ParserResult Av1VideoParser::FindFreeInDecBufPool() {
     int dec_buf_index;
-    // Find a free buffer in decode buffer pool
+    // Find a free buffer in decode/display buffer pool to store the decoded image
     for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
         if (decode_buffer_pool_[dec_buf_index].use_status == kNotUsed) {
             break;
         }
     }
     if (dec_buf_index == dec_buf_pool_size_) {
-        ERR("Could not find a free buffer in decode buffer pool.");
+        ERR("Could not find a free buffer in decode buffer pool for decoded image.");
         return PARSER_NOT_FOUND;
     }
     curr_pic_.dec_buf_idx = dec_buf_index;
+    decode_buffer_pool_[dec_buf_index].use_status |= kFrameUsedForDecode;
+    decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_.order_hint;
+    // Find a free buffer in decode/display buffer pool to store FG output
+    if (seq_header_.film_grain_params_present && frame_header_.film_grain_params.apply_grain) {
+        for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
+            if (decode_buffer_pool_[dec_buf_index].use_status == kNotUsed) {
+                break;
+            }
+        }
+        if (dec_buf_index == dec_buf_pool_size_) {
+            ERR("Could not find a free buffer in decode buffer pool for FG output.");
+            return PARSER_NOT_FOUND;
+        }
+        curr_pic_.fg_buf_idx = dec_buf_index;
+        decode_buffer_pool_[dec_buf_index].use_status |= kFrameUsedForDisplay;
+        decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_.order_hint;
+    } else {
+        curr_pic_.fg_buf_idx = curr_pic_.dec_buf_idx;
+    }
     return PARSER_OK;
 }
 
@@ -584,22 +633,25 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
         ERR("DPB buffer overflow!");
         return PARSER_NOT_FOUND;
     }
-
     curr_pic_.pic_idx = i;
     curr_pic_.use_status = kFrameUsedForDecode;
     dpb_buffer_.frame_store[curr_pic_.pic_idx] = curr_pic_;
     dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]++;
     // Mark as used in decode/display buffer pool
-    decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDecode;
-    decode_buffer_pool_[curr_pic_.dec_buf_idx].pic_order_cnt = curr_pic_.order_hint;
     if (pfn_display_picture_cb_ && curr_pic_.show_frame) {
-        decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
+        int disp_idx = 0xFF;
+        if (seq_header_.film_grain_params_present && frame_header_.film_grain_params.apply_grain) {
+            disp_idx = curr_pic_.fg_buf_idx;
+        } else {
+            disp_idx = curr_pic_.dec_buf_idx;
+        }
+        decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
         // Insert into output/display picture list
         if (num_output_pics_ >= dec_buf_pool_size_) {
             ERR("Display list size larger than decode buffer pool size!");
             return PARSER_OUT_OF_RANGE;
         } else {
-            output_pic_list_[num_output_pics_] = curr_pic_.dec_buf_idx;
+            output_pic_list_[num_output_pics_] = disp_idx;
             num_output_pics_++;
         }
     }
@@ -611,7 +663,7 @@ void Av1VideoParser::CheckAndUpdateDecStatus() {
     for (int i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
         if (dpb_buffer_.frame_store[i].use_status != kNotUsed && dpb_buffer_.dec_ref_count[i] == 0) {
             dpb_buffer_.frame_store[i].use_status = kNotUsed;
-            decode_buffer_pool_[i].use_status &= ~kFrameUsedForDecode;
+            decode_buffer_pool_[dpb_buffer_.frame_store[i].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
         }
     }
 }
@@ -813,6 +865,10 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
     ParseColorConfig(p_stream, offset, p_seq_header);
 
     p_seq_header->film_grain_params_present = Parser::GetBit(p_stream, offset);
+    // Increase decode/display pool size for film grain synthesis output store
+    if (p_seq_header->film_grain_params_present) {
+        CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE * 2);
+    }
 }
 
 ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size, int *p_bytes_parsed) {
@@ -845,7 +901,6 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     uint32_t all_frames = (1 << NUM_REF_FRAMES) - 1;
     int i;
 
-    memset(p_frame_header, 0, sizeof(Av1FrameHeader));
     if (p_seq_header->frame_id_numbers_present_flag) {
         frame_id_len = p_seq_header->additional_frame_id_length_minus_1 + p_seq_header-> delta_frame_id_length_minus_2 + 3;
     }
@@ -873,10 +928,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
                 p_frame_header->refresh_frame_flags = all_frames;
             }
             if (p_seq_header->film_grain_params_present) {
-                // Todo
-                ERR("Film grain param loading not implemented.\n");
-                // load_grain_params(p_frame_header->frame_to_show_map_idx);
-                return PARSER_NOT_IMPLEMENTED;
+                p_frame_header->film_grain_params = dpb_buffer_.saved_film_grain_params[p_frame_header->frame_to_show_map_idx]; // load_grain_params();
             }
             return PARSER_OK;
         }
@@ -1203,8 +1255,8 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
             tg_size -= tile_size + tile_size_bytes;
             p_tg_buf += tile_size + tile_size_bytes;
         }
+        p_tile_group->num_tiles_parsed++;
     }
-    p_tile_group->tile_number = p_tile_group->tg_end;
     if (p_tile_group->tg_end == p_tile_group->num_tiles - 1) {
         if (!frame_header_.disable_frame_end_update_cdf) {
             //frame_end_update_cdf();
@@ -2263,9 +2315,7 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
     if (!p_frame_header->film_grain_params.update_grain) {
         p_frame_header->film_grain_params.film_grain_params_ref_idx = Parser::ReadBits(p_stream, offset, 3);
         int temp_grain_seed = p_frame_header->film_grain_params.grain_seed;
-        //load_grain_params( film_grain_params_ref_idx );
-        // Todo
-        ERR("Warning: need to implement film grain param loading load_grain_params( film_grain_params_ref_idx ).\n");
+        p_frame_header->film_grain_params = dpb_buffer_.saved_film_grain_params[p_frame_header->film_grain_params.film_grain_params_ref_idx]; // load_grain_params()
         p_frame_header->film_grain_params.grain_seed = temp_grain_seed;
         return;
     }
@@ -2599,13 +2649,13 @@ void Av1VideoParser::PrintDpb() {
     MSG("=======================");
     MSG("DPB buffer content: ");
     MSG("=======================");
-    MSG("Current frame: pic_idx = " << curr_pic_.pic_idx << ", dec_buf_idx = " << curr_pic_.dec_buf_idx << ", order_hint = " << curr_pic_.order_hint << ", frame_type = " << curr_pic_.frame_type);
+    MSG("Current frame: pic_idx = " << curr_pic_.pic_idx << ", dec_buf_idx = " << curr_pic_.dec_buf_idx << ", fg_buf_idx = " << curr_pic_.fg_buf_idx << ", order_hint = " << curr_pic_.order_hint << ", frame_type = " << curr_pic_.frame_type);
     for (i = 0; i < BUFFER_POOL_MAX_SIZE; i++) {
-        MSG("Frame store " << i << ": " << "dec_ref_count = " << dpb_buffer_.dec_ref_count[i] << ", pic_idx = " << dpb_buffer_.frame_store[i].pic_idx << ", dec_buf_idx = " << dpb_buffer_.frame_store[i].dec_buf_idx << ", current_frame_id = " << dpb_buffer_.frame_store[i].current_frame_id << ", order_hint = " << dpb_buffer_.frame_store[i].order_hint << ", frame_type = " << dpb_buffer_.frame_store[i].frame_type << ", use_status = " << dpb_buffer_.frame_store[i].use_status << ", show_frame = " << dpb_buffer_.frame_store[i].show_frame);
+        MSG("Frame store " << i << ": " << "dec_ref_count = " << dpb_buffer_.dec_ref_count[i] << ", pic_idx = " << dpb_buffer_.frame_store[i].pic_idx << ", dec_buf_idx = " << dpb_buffer_.frame_store[i].dec_buf_idx << ", fg_buf_idx = " << dpb_buffer_.frame_store[i].fg_buf_idx << ", current_frame_id = " << dpb_buffer_.frame_store[i].current_frame_id << ", order_hint = " << dpb_buffer_.frame_store[i].order_hint << ", frame_type = " << dpb_buffer_.frame_store[i].frame_type << ", use_status = " << dpb_buffer_.frame_store[i].use_status << ", show_frame = " << dpb_buffer_.frame_store[i].show_frame);
     }
     MSG_NO_NEWLINE("virtual_buffer_index[] =");
     for (i = 0; i < NUM_REF_FRAMES; i++) {
-        MSG_NO_NEWLINE(" " << dpb_buffer_.dec_ref_count[i]);
+        MSG_NO_NEWLINE(" " << dpb_buffer_.virtual_buffer_index[i]);
     }
     MSG("");
 
