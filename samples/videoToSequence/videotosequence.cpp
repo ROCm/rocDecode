@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2024 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -134,27 +134,26 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
     int seq_id = 0;
     OutputSurfaceInfo *surf_info;
     VideoSeekContext video_seek_ctx;
-    // setup reconfigure with seek
-    if (seek_mode) {
-        //reconfig parameters
-        ReconfigParams reconfig_params = { 0 };
-        ReconfigDumpFileStruct reconfig_user_struct = {0};
-        reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
-        reconfig_user_struct.b_dump_frames_to_file = false;
-        reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
-        reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
-    }
-
     int seq_frame_start[seq_info.batch_size];
     seq_frame_start[0] = 0;
     for (int i = 1; i < seq_info.batch_size; i++) {
         seq_frame_start[i] = seq_frame_start[i-1] +  (seq_info.seq_length - 1) * seq_info.stride + seq_info.step;
+        //std::cout << "seq: " << i << " seq_start: " << seq_frame_start[i] << std::endl;
     }
     auto start_time = std::chrono::high_resolution_clock::now();
     int n_frames_skipped = 0, n_frame_seq = 0, num_seq = 0;
     int next_frame_num = 0;
     bool seq_start = true;
     std::string seq_output_file_name = p_output_file_name[num_seq];
+    //set reconfig before decode start
+    ReconfigParams reconfig_params = { 0 };
+    ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+    reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+    reconfig_user_struct.b_dump_frames_to_file = false;
+    reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
+    reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
+    p_dec->SetReconfigParams(&reconfig_params, true); // force reconfig flush mode
+
     do {
         if (seek_mode && seq_start) {
             // todo:: reconfigure before seeking
@@ -163,9 +162,10 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
             video_seek_ctx.seek_mode_ = SEEK_MODE_PREV_KEY_FRAME;
             demuxer->Seek(video_seek_ctx, &p_video, &n_video_bytes);
             pts = video_seek_ctx.out_frame_pts_;
-            n_frame = static_cast<int64_t> (pts * demuxer->GetFrameRate());
+            n_frame = static_cast<int64_t> (pts * demuxer->GetFrameRate());     // start frame number
             seq_start = false;
-            // todo::Flush frames from decoder
+            p_dec->FlushAndReconfigure();
+
         } else {
             demuxer->Demux(&p_video, &n_video_bytes, &pts);
         }
@@ -178,25 +178,29 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
             for (int i = 0; i < n_frame_returned; i++) {    
                 if ((n_frame + i)  == next_frame_num) {    
                     p_frame = p_dec->GetFrame(&pts);
-                    p_dec->SaveFrameToFile(seq_output_file_name, p_frame, surf_info);
-                    //std::cout << "writing frame: " << next_frame_num << " sequence: " << num_seq << std::endl;
-                    // release frame
+                    if (n_frame_seq < seq_info.seq_length) {
+                        p_dec->SaveFrameToFile(seq_output_file_name, p_frame, surf_info);
+                        //std::cout << "saving " << next_frame_num << " to " << seq_output_file_name << std::endl;
+                        n_frame_seq ++;
+                    }
                     p_dec->ReleaseFrame(pts);
-                    n_frame_seq ++;
                     next_frame_num += seq_info.stride;
+                }else {
+                    p_frame = p_dec->GetFrame(&pts);
+                    p_dec->ReleaseFrame(pts);
                 }
             }
         } 
         n_frame += n_frame_returned;
-        if (n_frame_seq == seq_info.seq_length) {
+        if (n_frame_seq >= seq_info.seq_length) {
             n_frame_seq = 0; //reset for next sequence
             seq_start = true;
             num_seq ++;
             if (num_seq < seq_info.batch_size) {
                 next_frame_num = seq_frame_start[num_seq];
                 seq_output_file_name = p_output_file_name[num_seq];
-                p_dec->ResetSaveFrameToFile();
             }
+            p_dec->ResetSaveFrameToFile();
         }
     } while (n_video_bytes && num_seq < seq_info.batch_size);
     
@@ -349,19 +353,11 @@ int main(int argc, char **argv) {
     bool b_flush_frames_during_reconfig = true, b_dump_output_frames = false;
     Rect *p_crop_rect = nullptr;            // specify crop_rect if output cropping is needed
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
-    //reconfig parameters
-    ReconfigParams reconfig_params = { 0 };
-    ReconfigDumpFileStruct reconfig_user_struct = { 0 };
-    reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
-    reconfig_user_struct.b_dump_frames_to_file = false;
-    reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
-    reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
     uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
     std::vector<std::string> input_file_names;
 
     ParseCommandLine(input_folder_path, output_folder_path, device_id, n_threads, seq_info, seek_mode, b_dump_output_frames, mem_type, argc, argv);
-    std::cout << "seq_info: " << " " << seq_info.batch_size << " " << seq_info.seq_length << " " << seq_info.step << " " << seq_info.stride << std::endl;
 
     try {
 
@@ -442,11 +438,9 @@ int main(int argc, char **argv) {
             } else {
                 v_dec_info[i]->dec_device_id = i % hip_vis_dev_count;
             }
-
             v_dec_info[i]->rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[i]->GetCodecID());
             v_dec_info[i]->bit_depth = v_demuxer[i]->GetBitDepth();
             v_dec_info[i]->viddec = std::make_unique<RocVideoDecoder>(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, false, p_crop_rect);
-            v_dec_info[i]->viddec->SetReconfigParams(&reconfig_params, true); // force reconfig flush mode
             v_dec_info[i]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
             std::cout << "info: decoding " << input_file_names[i] << " using GPU device " << v_dec_info[i]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
@@ -492,8 +486,11 @@ int main(int argc, char **argv) {
             if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
                 std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
             } else {
-                for (int i = 0; i < num_files; i++)
-                    std::cout << "info: saved frames into " << output_seq_file_names[i] << std::endl;
+                for (int i = 0; i < num_files; i++){
+                    for (int n = 0; n < seq_info.batch_size; n++) {
+                        std::cout << "info: saved frames into " << output_seq_file_names[i * seq_info.batch_size + n] << std::endl;
+                    }
+                }
             }
         }
 

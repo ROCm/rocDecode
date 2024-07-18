@@ -268,6 +268,13 @@ class RocVideoDecoder {
          * @return false : fail
          */
         bool SetReconfigParams(ReconfigParams *p_reconfig_params, bool b_force_reconfig_flush = false);
+        
+        /**
+         * @brief Function to force Reconfigure Flush: needed for random seeking to key frames
+         * 
+         * @return int 1: Success 0: Fail
+         */
+        int FlushAndReconfigure();
         /**
          * @brief this function decodes a frame and returns the number of frames avalable for display
          * 
@@ -460,6 +467,7 @@ class RocVideoDecoder {
         rocDecVideoSurfaceFormat video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
         RocdecSeiMessageInfo *curr_sei_message_ptr_ = nullptr;
         RocdecSeiMessageInfo sei_message_display_q_[MAX_FRAME_NUM];
+        RocdecVideoFormat *curr_video_format_ptr_ = nullptr;
         int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
         int decode_poc_ = 0, pic_num_in_dec_order_[MAX_FRAME_NUM];
         int num_alloced_frames_ = 0;

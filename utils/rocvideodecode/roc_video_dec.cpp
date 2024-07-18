@@ -73,6 +73,11 @@ RocVideoDecoder::~RocVideoDecoder() {
         roc_decoder_ = nullptr;
     }
 
+    if (curr_video_format_ptr_) {
+        delete curr_video_format_ptr_;
+        curr_video_format_ptr_ = nullptr;
+    }
+
     std::lock_guard<std::mutex> lock(mtx_vp_frame_);
     if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
         for (auto &p_frame : vp_frames_) {
@@ -250,6 +255,11 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
 */
 int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
+
+    if (p_video_format == nullptr) {
+        ROCDEC_THROW("Rocdec:: Invalid video format in HandleVideoSequence: ", ROCDEC_INVALID_PARAMETER);
+        return 0;
+    }
     auto start_time = StartTimer();
     input_video_info_str_.str("");
     input_video_info_str_.clear();
@@ -280,7 +290,6 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Rocdec:: Codec not supported on this GPU: ", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-
     if ((p_video_format->coded_width > decode_caps.max_width) || (p_video_format->coded_height > decode_caps.max_height)) {
         std::ostringstream errorString;
         errorString << std::endl
@@ -291,12 +300,16 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW(cErr, ROCDEC_NOT_SUPPORTED);
         return 0;
     }
+    if (curr_video_format_ptr_ == nullptr) {
+        curr_video_format_ptr_ = new RocdecVideoFormat();
+    }
+    // store current video format: this is required to call reconfigure from application in case of random seek
+    if (curr_video_format_ptr_) memcpy(curr_video_format_ptr_, p_video_format, sizeof(RocdecVideoFormat));
 
     if (coded_width_ && coded_height_) {
         // rocdecCreateDecoder() has been called before, and now there's possible config change
         return ReconfigureDecoder(p_video_format);
     }
-
     // e_codec has been set in the constructor (for parser). Here it's set again for potential correction
     codec_id_ = p_video_format->codec;
     video_chroma_format_ = p_video_format->chroma_format;
@@ -442,6 +455,26 @@ bool RocVideoDecoder::SetReconfigParams(ReconfigParams *p_reconfig_params, bool 
     return true;
 }
 
+
+/**
+ * @brief Function to force Reconfigure Flush: needed for random seeking to key frames
+ * 
+ * @return int 1: Success 0: Fail
+ */
+int RocVideoDecoder::FlushAndReconfigure() {
+    if (!p_reconfig_params_) {
+        std::cerr << "ERROR: Reconfig params is not set! "<< std::endl;
+        return 0;
+    }
+    if (!curr_video_format_ptr_ ) {
+        std::cerr << "ERROR: video format is not initialized! "<< std::endl;
+        return 0;
+    }
+    //call reconfigure
+    b_force_recofig_flush_ = true; // if not already set to force reconfigure
+    ReconfigureDecoder(curr_video_format_ptr_);
+    return true;
+}
 
 /**
  * @brief function to reconfigure decoder if there is a change in sequence params.
