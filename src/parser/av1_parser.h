@@ -68,13 +68,14 @@ public:
         uint32_t num_tiles;
         uint32_t tg_start; // tg_start of the current tile group
         uint32_t tg_end; // tg_end of the current tile group
-        uint32_t tile_number; // current tile number (counting from 0 to num_tiles - 1)
+        uint32_t num_tiles_parsed; // number of parsed tiles for the current frame
         Av1TileDataInfo tile_data_info[MAX_TILE_ROWS * MAX_TILE_COLS];
     } Av1TileGroupDataInfo;
 
     typedef struct {
         int      pic_idx;
-        int      dec_buf_idx;  // frame index in decode buffer pool
+        int      dec_buf_idx;  // frame index in decode/display buffer pool
+        int      fg_buf_idx;  // frame index for film grain synthesis output in decode/display buffer pool
         uint32_t current_frame_id;
         uint32_t order_hint;
         uint32_t frame_type;
@@ -101,6 +102,7 @@ public:
         int32_t saved_loop_filter_mode_deltas[NUM_REF_FRAMES][2];
         uint8_t saved_feature_enabled[NUM_REF_FRAMES][MAX_SEGMENTS][SEG_LVL_MAX];
         int16_t saved_feature_data[NUM_REF_FRAMES][MAX_SEGMENTS][SEG_LVL_MAX];
+        Av1FilmGrainParams saved_film_grain_params[NUM_REF_FRAMES];
     } DecodedPictureBuffer;
 
 protected:
