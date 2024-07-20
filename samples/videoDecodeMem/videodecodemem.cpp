@@ -38,8 +38,6 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 
-#define DEMUX_AVIO_CONTEXT_BUF_SIZE  5 * 1024 * 1024
-
 class FileStreamProvider : public VideoDemuxer::StreamProvider {
 public:
     FileStreamProvider(const char *input_file_path) {
