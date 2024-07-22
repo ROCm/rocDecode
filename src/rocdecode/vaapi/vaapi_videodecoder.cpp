@@ -152,11 +152,13 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
         case rocDecVideoCodec_AVC:
             va_profile_ = VAProfileH264Main;
             break;
-#if VA_CHECK_VERSION(1,6,0)
         case rocDecVideoCodec_AV1:
+#if VA_CHECK_VERSION(1,6,0)
             va_profile_ = VAProfileAV1Profile0;
-            break;
+#else
+            va_profile_ = 32; // VAProfileAV1Profile0;
 #endif
+            break;
         default:
             ERR("The codec type is not supported.");
             return ROCDEC_NOT_SUPPORTED;
@@ -189,7 +191,11 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
                 surf_attrib.value.value.i = VA_FOURCC_P010;
             } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
                 surface_format = VA_RT_FORMAT_YUV420_12;
+#if VA_CHECK_VERSION(1,6,0)
                 surf_attrib.value.value.i = VA_FOURCC_P012;
+#else
+                surf_attrib.value.value.i = 0x32313050; // VA_FOURCC_P012
+#endif
             } else {
                 surface_format = VA_RT_FORMAT_YUV420;
                 surf_attrib.value.value.i = VA_FOURCC_NV12;
@@ -311,7 +317,6 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             }
             break;
         }
-#if VA_CHECK_VERSION(1,6,0)
         case rocDecVideoCodec_AV1: {
             pPicParams->pic_params.av1.current_frame = curr_surface_id;
 
@@ -347,13 +352,19 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             slice_params_ptr = (void*)pPicParams->slice_params.av1;
             slice_params_size = sizeof(RocdecAv1SliceParams);
 
+#if VA_CHECK_VERSION(1,6,0)
             if ((pic_params_size != sizeof(VADecPictureParameterBufferAV1)) || (slice_params_size != sizeof(VASliceParameterBufferAV1))) {
                     ERR("AV1 data_buffer parameter_size not matching vaapi parameter buffer size.");
                     return ROCDEC_RUNTIME_ERROR;
             }
+#else
+            if ((pic_params_size != 1160) || (slice_params_size != 40)) {
+                    ERR("AV1 data_buffer parameter_size not matching vaapi parameter buffer size.");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
+#endif
             break;
         }
-#endif
 
         default: {
             ERR("The codec type is not supported.");
