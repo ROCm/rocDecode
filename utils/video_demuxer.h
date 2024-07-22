@@ -32,6 +32,7 @@ extern "C" {
 }
 
 #include "rocdecode.h"
+
 /*!
  * \file
  * \brief The AMD Video Demuxer for rocDecode Library.
@@ -125,6 +126,7 @@ class VideoDemuxer {
             public:
                 virtual ~StreamProvider() {}
                 virtual int GetData(uint8_t *buf, int buf_size) = 0;
+                virtual size_t GetBufferSize() = 0;
         };
         AVCodecID GetCodecID() { return av_video_codec_id_; };
         VideoDemuxer(const char *input_file_path) : VideoDemuxer(CreateFmtContextUtil(input_file_path)) {}
@@ -503,14 +505,14 @@ class VideoDemuxer {
                 return nullptr;
             }
             uint8_t *avioc_buffer = nullptr;
-            int avioc_buffer_size = 100 * 1024 * 1024;
+            int avioc_buffer_size = stream_provider->GetBufferSize();
             avioc_buffer = (uint8_t *)av_malloc(avioc_buffer_size);
             if (!avioc_buffer) {
                 std::cerr << "ERROR: av_malloc failed!" << std::endl;
                 return nullptr;
             }
             av_io_ctx_ = avio_alloc_context(avioc_buffer, avioc_buffer_size,
-                0, stream_provider, &ReadPacket, nullptr, nullptr);
+                    0, stream_provider, &ReadPacket, nullptr, nullptr);
             if (!av_io_ctx_) {
                 std::cerr << "ERROR: avio_alloc_context failed!" << std::endl;
                 return nullptr;
