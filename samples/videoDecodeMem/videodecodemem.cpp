@@ -49,11 +49,7 @@ public:
         fp_in_.seekg (0, fp_in_.end);
         int length = fp_in_.tellg();
         fp_in_.seekg (0, fp_in_.beg);
-        if (length > (100 * 1024 * 1024)) { // avioc_buffer_size = 100 * 1024 * 1024 in video_demuxer.h
-            std::cerr << "This app supports only file sizes upto 100MB! Please use a smaller file." << std::endl;
-            exit(-1);
-        }
-
+        io_buffer_size_ = length;
     }
     ~FileStreamProvider() {
         fp_in_.close();
@@ -63,9 +59,11 @@ public:
         // We read a file for this example. You may get your data from network or somewhere else
         return static_cast<int>(fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount());
     }
+    size_t GetBufferSize() { return io_buffer_size_; };
 
 private:
     std::ifstream fp_in_;
+    size_t  io_buffer_size_;
 };
 
 void ShowHelpAndExit(const char *option = NULL) {
