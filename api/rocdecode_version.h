@@ -37,6 +37,16 @@ extern "C" {
 #define ROCDECODE_MINOR_VERSION 7
 #define ROCDECODE_MICRO_VERSION 0
 
+
+/**
+ * ROCDECODE_CHECK_VERSION:
+ * @major: major version, like 1 in 1.2.3
+ * @minor: minor version, like 2 in 1.2.3
+ * @micro: micro version, like 3 in 1.2.3
+ *
+ * Evaluates to %TRUE if the version of rocDecode is greater than
+ * @major, @minor and @micro
+ */
 #define ROCDECODE_CHECK_VERSION(major, minor, micro) \
         (ROCDECODE_MAJOR_VERSION > (major) || \
         (ROCDECODE_MAJOR_VERSION == (major) && ROCDECODE_MINOR_VERSION > (minor)) || \
