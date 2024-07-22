@@ -317,7 +317,6 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             }
             break;
         }
-#if VA_CHECK_VERSION(1,6,0)
         case rocDecVideoCodec_AV1: {
             pPicParams->pic_params.av1.current_frame = curr_surface_id;
 
@@ -353,13 +352,19 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             slice_params_ptr = (void*)pPicParams->slice_params.av1;
             slice_params_size = sizeof(RocdecAv1SliceParams);
 
+#if VA_CHECK_VERSION(1,6,0)
             if ((pic_params_size != sizeof(VADecPictureParameterBufferAV1)) || (slice_params_size != sizeof(VASliceParameterBufferAV1))) {
                     ERR("AV1 data_buffer parameter_size not matching vaapi parameter buffer size.");
                     return ROCDEC_RUNTIME_ERROR;
             }
+#else
+            if ((pic_params_size != 1160) || (slice_params_size != 40)) {
+                    ERR("AV1 data_buffer parameter_size not matching vaapi parameter buffer size.");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
+#endif
             break;
         }
-#endif
 
         default: {
             ERR("The codec type is not supported.");
