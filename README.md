@@ -9,6 +9,7 @@ access the video decoding features available on your GPU.
 
 * H.265 (HEVC) - 8 bit, and 10 bit
 * H.264 (AVC) - 8 bit
+* AV1 - 8 bit, and 10 bit
 
 ## Prerequisites
 
