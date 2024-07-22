@@ -152,11 +152,13 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
         case rocDecVideoCodec_AVC:
             va_profile_ = VAProfileH264Main;
             break;
-#if VA_CHECK_VERSION(1,6,0)
         case rocDecVideoCodec_AV1:
+#if VA_CHECK_VERSION(1,6,0)
             va_profile_ = VAProfileAV1Profile0;
-            break;
+#else
+            va_profile_ = 32; // VAProfileAV1Profile0;
 #endif
+            break;
         default:
             ERR("The codec type is not supported.");
             return ROCDEC_NOT_SUPPORTED;
