@@ -36,7 +36,7 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
 
     if (parser_params->codec_type != rocDecVideoCodec_HEVC &&
         parser_params->codec_type != rocDecVideoCodec_AVC &&
-        (parser_params->codec_type != rocDecVideoCodec_AV1)) {
+        parser_params->codec_type != rocDecVideoCodec_AV1) {
         ERR("The current version of rocDecode officially supports only the H.265 (HEVC), H.264 (AVC) and AV1 codecs.");
         return ROCDEC_NOT_IMPLEMENTED;
     }
