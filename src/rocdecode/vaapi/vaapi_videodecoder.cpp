@@ -191,7 +191,7 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
                 surf_attrib.value.value.i = VA_FOURCC_P010;
             } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
                 surface_format = VA_RT_FORMAT_YUV420_12;
-#if VA_CHECK_VERSION(1,6,0)
+#if VA_CHECK_VERSION(1,8,0)
                 surf_attrib.value.value.i = VA_FOURCC_P012;
 #else
                 surf_attrib.value.value.i = 0x32313050; // VA_FOURCC_P012
