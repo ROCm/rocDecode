@@ -156,7 +156,7 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
 #if VA_CHECK_VERSION(1,6,0)
             va_profile_ = VAProfileAV1Profile0;
 #else
-            va_profile_ = 32; // VAProfileAV1Profile0;
+            va_profile_ = static_cast<VAProfile>(32); // VAProfileAV1Profile0;
 #endif
             break;
         default:
