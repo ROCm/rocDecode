@@ -42,8 +42,8 @@ add_test(
     video_decodeMem-H265
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeMem"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeMem"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeMem"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeMem"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodemem"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
@@ -55,8 +55,8 @@ add_test(
     video_decodePerf-H265
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodePerf"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodePerf"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodePerf"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodePerf"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodeperf"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
@@ -68,8 +68,8 @@ add_test(
     video_decodeRGB-H265
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeRGB"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeRGB"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeRGB"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeRGB"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodergb"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4 -of rgb
@@ -81,8 +81,8 @@ add_test(
     video_decode-H264
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecode"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H264.mp4
@@ -94,7 +94,7 @@ add_test(
     video_decodeBatch
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeBatch"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeBatch"
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeBatch"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodebatch"
@@ -107,7 +107,7 @@ add_test(
     video_decode-AV1
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
-            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecode"
+            --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
