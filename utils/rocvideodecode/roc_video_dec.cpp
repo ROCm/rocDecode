@@ -285,9 +285,9 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     decode_caps.chroma_format = p_video_format->chroma_format;
     decode_caps.bit_depth_minus_8 = p_video_format->bit_depth_luma_minus8;
 
-    ROCDEC_API_CALL(rocDecGetDecoderCaps(&decode_caps));
+    rocDecGetDecoderCaps(&decode_caps);
     if(!decode_caps.is_supported) {
-        ROCDEC_THROW("Rocdec:: Codec not supported on this GPU: ", ROCDEC_NOT_SUPPORTED);
+        ROCDEC_THROW("rocDecode:: Codec not supported on this GPU ", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
     if ((p_video_format->coded_width > decode_caps.max_width) || (p_video_format->coded_height > decode_caps.max_height)) {
