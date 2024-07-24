@@ -76,7 +76,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodeMem
+# videoDecodePerf
 add_test(
   NAME
     video_decodePerf-H265
