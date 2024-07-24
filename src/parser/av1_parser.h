@@ -92,12 +92,17 @@ public:
         // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
         // not used as reference, the value should be -1.
         int virtual_buffer_index[NUM_REF_FRAMES]; // VBI
-        int ref_frame_type[NUM_REF_FRAMES];
-        int ref_frame_id[NUM_REF_FRAMES];
-        int ref_order_hint[NUM_REF_FRAMES];
-        int ref_valid[NUM_REF_FRAMES];
-        uint32_t saved_order_hints[NUM_REF_FRAMES][NUM_REF_FRAMES];
-        int32_t saved_gm_params[NUM_REF_FRAMES][NUM_REF_FRAMES][6];
+        int ref_valid[NUM_REF_FRAMES]; // RefValid
+        int ref_frame_type[NUM_REF_FRAMES]; // RefFrameType
+        int ref_frame_id[NUM_REF_FRAMES]; // RefFrameId
+        uint32_t ref_upscaled_width[NUM_REF_FRAMES]; // RefUpscaledWidth
+        uint32_t ref_frame_width[NUM_REF_FRAMES]; // RefFrameWidth
+        uint32_t ref_frame_height[NUM_REF_FRAMES]; // RefFrameHeight
+        uint32_t ref_render_width[NUM_REF_FRAMES]; // RefRenderWidth
+        uint32_t ref_render_height[NUM_REF_FRAMES]; // RefRenderHeight
+        int ref_order_hint[NUM_REF_FRAMES]; // RefOrderHint
+        uint32_t saved_order_hints[NUM_REF_FRAMES][NUM_REF_FRAMES]; // SavedOrderHints
+        int32_t saved_gm_params[NUM_REF_FRAMES][NUM_REF_FRAMES][6]; // SavedGmParams
         int32_t saved_loop_filter_ref_deltas[NUM_REF_FRAMES][TOTAL_REFS_PER_FRAME];
         int32_t saved_loop_filter_mode_deltas[NUM_REF_FRAMES][2];
         uint8_t saved_feature_enabled[NUM_REF_FRAMES][MAX_SEGMENTS][SEG_LVL_MAX];
@@ -367,9 +372,9 @@ protected:
      * \param [in] offset Starting bit offset
      * \param [out] offset Updated bit offset
      * \param [out] p_frame_header Pointer to frame header struct
-     * \return None
+     * \return Delta quantizer value
      */
-    uint32_t ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
+    int32_t ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to segmentation parameters
      * \param [in] p_stream Pointer to the bit stream
