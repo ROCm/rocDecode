@@ -479,6 +479,11 @@ void Av1VideoParser::UpdateRefFrames() {
             dpb_buffer_.ref_valid[i] = 1;
             dpb_buffer_.ref_frame_id[i] = frame_header_.current_frame_id;
             dpb_buffer_.ref_frame_type[i] = frame_header_.frame_type;
+            dpb_buffer_.ref_upscaled_width[i] = frame_header_.frame_size.upscaled_width;
+            dpb_buffer_.ref_frame_width[i] = frame_header_.frame_size.frame_width;
+            dpb_buffer_.ref_frame_height[i] = frame_header_.frame_size.frame_height;
+            dpb_buffer_.ref_render_width[i] = frame_header_.render_size.render_width;
+            dpb_buffer_.ref_render_height[i] = frame_header_.render_size.render_height;
             dpb_buffer_.ref_order_hint[i] = frame_header_.order_hint;
             for (int j = 0; j < REFS_PER_FRAME; j++) {
                 dpb_buffer_.saved_order_hints[i][j + kLastFrame] = frame_header_.order_hints[j + kLastFrame];
@@ -515,6 +520,11 @@ void Av1VideoParser::UpdateRefFrames() {
 void Av1VideoParser::LoadRefFrame() {
     int ref_idx = frame_header_.frame_to_show_map_idx;
     frame_header_.current_frame_id = dpb_buffer_.ref_frame_id[ref_idx];
+    frame_header_.frame_size.upscaled_width = dpb_buffer_.ref_upscaled_width[ref_idx];
+    frame_header_.frame_size.frame_width = dpb_buffer_.ref_frame_width[ref_idx];
+    frame_header_.frame_size.frame_height = dpb_buffer_.ref_frame_height[ref_idx];
+    frame_header_.render_size.render_width = dpb_buffer_.ref_render_width[ref_idx];
+    frame_header_.render_size.render_height = dpb_buffer_.ref_render_height[ref_idx];
     frame_header_.order_hint = dpb_buffer_.ref_order_hint[ref_idx];
     for (int j = 0; j < REFS_PER_FRAME; j++) {
         frame_header_.order_hints[j + kLastFrame] = dpb_buffer_.saved_order_hints[ref_idx][j + kLastFrame];
@@ -1540,15 +1550,13 @@ void Av1VideoParser::FrameSizeWithRefs(const uint8_t *p_stream, size_t &offset, 
     for (int i = 0; i < REFS_PER_FRAME; i++) {
         p_frame_header->found_ref = Parser::GetBit(p_stream, offset);
         if (p_frame_header->found_ref) {
-            // Todo
-            ERR("Warning: Need to implement! found_ref == 1 case.\n");
-#if 0
-            UpscaledWidth = RefUpscaledWidth[ ref_frame_idx[ i ] ]
-            FrameWidth = UpscaledWidth
-            FrameHeight = RefFrameHeight[ ref_frame_idx[ i ] ]
-            RenderWidth = RefRenderWidth[ ref_frame_idx[ i ] ]
-            RenderHeight = RefRenderHeight[ ref_frame_idx[ i ] ]
-#endif
+            frame_header_.frame_size.upscaled_width = dpb_buffer_.ref_upscaled_width[frame_header_.ref_frame_idx[i]];
+            frame_header_.frame_size.frame_width = frame_header_.frame_size.upscaled_width;
+            frame_header_.frame_size.frame_width_minus_1 = frame_header_.frame_size.frame_width - 1;
+            frame_header_.frame_size.frame_height = dpb_buffer_.ref_frame_height[frame_header_.ref_frame_idx[i]];
+            frame_header_.frame_size.frame_height_minus_1 = frame_header_.frame_size.frame_height - 1;
+            frame_header_.render_size.render_width = dpb_buffer_.ref_render_width[frame_header_.ref_frame_idx[i]];
+            frame_header_.render_size.render_height = dpb_buffer_.ref_render_height[frame_header_.ref_frame_idx[i]];
             break;
         }
     }
@@ -1777,7 +1785,7 @@ void Av1VideoParser::QuantizationParams(const uint8_t *p_stream, size_t &offset,
     }
 }
 
-uint32_t Av1VideoParser::ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header) {
+int32_t Av1VideoParser::ReadDeltaQ(const uint8_t *p_stream, size_t &offset, Av1FrameHeader *p_frame_header) {
     p_frame_header->quantization_params.delta_coded = Parser::GetBit(p_stream, offset);
     if (p_frame_header->quantization_params.delta_coded) {
         p_frame_header->quantization_params.delta_q = ReadSigned(p_stream, offset, 1 + 6);
