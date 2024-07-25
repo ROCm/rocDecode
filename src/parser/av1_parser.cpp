@@ -52,6 +52,7 @@ rocDecStatus Av1VideoParser::UnInitialize() {
 
 rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) { 
     if (p_data->payload && p_data->payload_size) {
+        curr_pts_ = p_data->pts;
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
@@ -151,6 +152,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     disp_idx = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
                 }
                 decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
+                decode_buffer_pool_[disp_idx].pts = curr_pts_;
                 // Insert into output/display picture list
                 if (num_output_pics_ >= dec_buf_pool_size_) {
                     ERR("Display list size larger than decode buffer pool size!");
@@ -602,6 +604,7 @@ ParserResult Av1VideoParser::FindFreeInDecBufPool() {
     curr_pic_.dec_buf_idx = dec_buf_index;
     decode_buffer_pool_[dec_buf_index].use_status |= kFrameUsedForDecode;
     decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_.order_hint;
+    decode_buffer_pool_[dec_buf_index].pts = curr_pts_;
     // Find a free buffer in decode/display buffer pool to store FG output
     if (seq_header_.film_grain_params_present && frame_header_.film_grain_params.apply_grain) {
         for (dec_buf_index = 0; dec_buf_index < dec_buf_pool_size_; dec_buf_index++) {
@@ -616,6 +619,7 @@ ParserResult Av1VideoParser::FindFreeInDecBufPool() {
         curr_pic_.fg_buf_idx = dec_buf_index;
         decode_buffer_pool_[dec_buf_index].use_status |= kFrameUsedForDisplay;
         decode_buffer_pool_[dec_buf_index].pic_order_cnt = curr_pic_.order_hint;
+        decode_buffer_pool_[dec_buf_index].pts = curr_pts_;
     } else {
         curr_pic_.fg_buf_idx = curr_pic_.dec_buf_idx;
     }
@@ -646,6 +650,7 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
             disp_idx = curr_pic_.dec_buf_idx;
         }
         decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
+        decode_buffer_pool_[disp_idx].pts = curr_pts_;
         // Insert into output/display picture list
         if (num_output_pics_ >= dec_buf_pool_size_) {
             ERR("Display list size larger than decode buffer pool size!");
@@ -2662,7 +2667,7 @@ void Av1VideoParser::PrintDpb() {
     MSG("Decode buffer pool:");
     for(i = 0; i < dec_buf_pool_size_; i++) {
         DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
-        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt << ", pts = " << p_dec_buf->pts);
     }
     MSG("num_output_pics_ = " << num_output_pics_);
     if (num_output_pics_) {
