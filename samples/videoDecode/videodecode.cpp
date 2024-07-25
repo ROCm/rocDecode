@@ -207,7 +207,11 @@ int main(int argc, char **argv) {
         VideoSeekContext video_seek_ctx;
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-
+        rocDecStatus rocdec_status = viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth());
+        if (rocdec_status != ROCDEC_SUCCESS) {
+            std::cerr << "GPU doesn't support codec!" << std::endl;
+            return 0;
+        }        
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 

@@ -1173,3 +1173,12 @@ std::chrono::_V2::system_clock::time_point RocVideoDecoder::StartTimer() {
 double RocVideoDecoder::StopTimer(const std::chrono::_V2::system_clock::time_point &start_time) {
     return std::chrono::duration<double, std::milli>(std::chrono::_V2::system_clock::now() - start_time).count();
 }
+
+rocDecStatus RocVideoDecoder::CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth) {
+    RocdecDecodeCaps decode_caps;
+    decode_caps.device_id = device_id;
+    decode_caps.codec_type = codec_id;
+    decode_caps.chroma_format = rocDecVideoChromaFormat_420;
+    decode_caps.bit_depth_minus_8 = bit_depth - 8;
+    return rocDecGetDecoderCaps(&decode_caps);
+}
