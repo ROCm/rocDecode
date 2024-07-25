@@ -279,13 +279,13 @@ typedef struct {
 typedef struct {
     uint32_t base_q_idx;
     uint32_t delta_coded;
-    uint32_t delta_q;
-    uint32_t delta_q_y_dc;
+    int32_t  delta_q;
+    int32_t  delta_q_y_dc;
     uint32_t diff_uv_delta;
-    uint32_t delta_q_u_dc;
-    uint32_t delta_q_u_ac;
-    uint32_t delta_q_v_dc;
-    uint32_t delta_q_v_ac;
+    int32_t  delta_q_u_dc;
+    int32_t  delta_q_u_ac;
+    int32_t  delta_q_v_dc;
+    int32_t  delta_q_v_ac;
     uint32_t using_qmatrix;
     uint32_t qm_y;
     uint32_t qm_u;
