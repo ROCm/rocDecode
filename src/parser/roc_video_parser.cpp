@@ -29,6 +29,7 @@ RocVideoParser::RocVideoParser() {
     new_seq_activated_ = false;
     frame_rate_.numerator = 0;
     frame_rate_.denominator = 0;
+    curr_pts_ = 0;
 
     sei_rbsp_buf_ = nullptr;
     sei_rbsp_buf_size_ = 0;
@@ -101,6 +102,7 @@ ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
         int num_disp = num_output_pics_ - disp_delay;
         for (int i = 0; i < num_disp; i++) {
             disp_info.picture_index = output_pic_list_[i];
+            disp_info.pts = decode_buffer_pool_[output_pic_list_[i]].pts;
             pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
             decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
         }

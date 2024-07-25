@@ -63,6 +63,7 @@ rocDecStatus AvcVideoParser::UnInitialize() {
 
 rocDecStatus AvcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
+        curr_pts_ = p_data->pts;
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
             ERR(STR("Parser failed!"));
             return ROCDEC_RUNTIME_ERROR;
@@ -3110,6 +3111,7 @@ ParserResult AvcVideoParser::InsertCurrPicIntoDpb() {
             decode_buffer_pool_[curr_pic_.dec_buf_idx].use_status |= kFrameUsedForDisplay;
         }
         decode_buffer_pool_[curr_pic_.dec_buf_idx].pic_order_cnt = curr_pic_.pic_order_cnt;
+        decode_buffer_pool_[curr_pic_.dec_buf_idx].pts = curr_pts_;
     } else {
         ERR("Could not find the reserved frame buffer for the current picture in DPB.");
         return PARSER_FAIL;
@@ -3396,7 +3398,7 @@ void AvcVideoParser::PrintDpb() {
     MSG("Decode buffer pool:");
     for(i = 0; i < dec_buf_pool_size_; i++) {
         DecodeFrameBuffer *p_dec_buf = &decode_buffer_pool_[i];
-        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt);
+        MSG("Decode buffer " << i << ": use_status = " << p_dec_buf->use_status << ", pic_order_cnt = " << p_dec_buf->pic_order_cnt << ", pts = " << p_dec_buf->pts);
     }
     MSG("num_output_pics_ = " << num_output_pics_);
     if (num_output_pics_) {

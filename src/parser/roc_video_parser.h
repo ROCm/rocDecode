@@ -122,6 +122,7 @@ protected:
     typedef struct {
         uint32_t use_status;    // refer to FrameBufUseStatus
         uint32_t pic_order_cnt;
+        RocdecTimeStamp pts;
     } DecodeFrameBuffer;
     uint32_t dec_buf_pool_size_;        /* Number of decoded frame surfaces in the pool which are recycled. The size should be greater
                                            than or equal to DPB size (normally greater to guarantee smooth operations). The value is
@@ -133,6 +134,7 @@ protected:
     uint32_t num_output_pics_;  // number of pictures that are ready to be ouput
     std::vector<uint32_t> output_pic_list_; // sorted output frame index to decode_buffer_pool_
 
+    RocdecTimeStamp curr_pts_;
     Rational frame_rate_;
 
     RocdecVideoFormat video_format_params_;
