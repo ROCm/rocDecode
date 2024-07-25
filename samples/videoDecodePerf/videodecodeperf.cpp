@@ -178,6 +178,10 @@ int main(int argc, char **argv) {
                 v_device_id[i] = i % hip_vis_dev_count;
             }
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+            if (!dec->CodecSupported(v_device_id[i], rocdec_codec_id, demuxer->GetBitDepth())) {
+                std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
+                continue;
+            }
             v_demuxer.push_back(std::move(demuxer));
             v_viddec.push_back(std::move(dec));
         }

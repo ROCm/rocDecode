@@ -185,12 +185,15 @@ int main(int argc, char **argv) {
                 reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
             }
             if (use_reconfigure) {
-
                 if (!viddec) {
                     viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
                 }
             } else {
                 viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+            }
+            if(!viddec->CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+                std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
+                continue;
             }
             if (viddec && file_data.b_flush_last_frames) viddec->SetReconfigParams(&reconfig_params);
             std::string device_name, gcn_arch_name;
