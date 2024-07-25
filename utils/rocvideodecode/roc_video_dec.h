@@ -380,7 +380,7 @@ class RocVideoDecoder {
          * 
          * @return rocDecStatus 
          */
-        rocDecStatus CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth);
+        bool CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth);
 
     private:
         /**

@@ -299,7 +299,6 @@ int main(int argc, char **argv) {
         std::unique_ptr<RocVideoDecoder> dec_8bit_avc(nullptr), dec_8bit_hevc(nullptr), dec_10bit_hevc(nullptr), dec_8bit_av1(nullptr), dec_10bit_av1(nullptr);
         std::vector<std::unique_ptr<DecoderInfo>> v_dec_info;
         ThreadPool thread_pool(n_thread);
-        rocDecStatus rocdec_status;
 
         //reconfig parameters
         ReconfigParams reconfig_params = { 0 };
@@ -423,8 +422,7 @@ int main(int argc, char **argv) {
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             }
-            rocdec_status = v_dec_info[thread_idx]->viddec->CodecSupported(v_dec_info[thread_idx]->dec_device_id, v_dec_info[thread_idx]->rocdec_codec_id, v_dec_info[thread_idx]->bit_depth);
-            if (rocdec_status != ROCDEC_SUCCESS) {
+            if (!v_dec_info[thread_idx]->viddec->CodecSupported(v_dec_info[thread_idx]->dec_device_id, v_dec_info[thread_idx]->rocdec_codec_id, v_dec_info[thread_idx]->bit_depth)) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
                 continue;
             }
