@@ -296,7 +296,7 @@ int main(int argc, char **argv) {
         std::cout << "info: Number of threads: " << n_thread << std::endl;
 
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer(num_files);
-        std::unique_ptr<RocVideoDecoder> dec_8bit_avc(nullptr), dec_8bit_hevc(nullptr), dec_10bit_hevc(nullptr);
+        std::unique_ptr<RocVideoDecoder> dec_8bit_avc(nullptr), dec_8bit_hevc(nullptr), dec_10bit_hevc(nullptr), dec_8bit_av1(nullptr), dec_10bit_av1(nullptr);
         std::vector<std::unique_ptr<DecoderInfo>> v_dec_info;
         ThreadPool thread_pool(n_thread);
 
@@ -342,13 +342,21 @@ int main(int argc, char **argv) {
                 if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_AVC) {
                     std::unique_ptr<RocVideoDecoder> dec_8bit_avc(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                     v_dec_info[i]->viddec = std::move(dec_8bit_avc);
-                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_HEVC){
+                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_HEVC) {
                     std::unique_ptr<RocVideoDecoder> dec_8bit_hevc(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
                     v_dec_info[i]->viddec = std::move(dec_8bit_hevc);
+                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_AV1) {
+                    std::unique_ptr<RocVideoDecoder> dec_8bit_av1(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                    v_dec_info[i]->viddec = std::move(dec_8bit_av1);
                 }
-            } else {
-                std::unique_ptr<RocVideoDecoder> dec_10bit_hevc(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
-                v_dec_info[i]->viddec = std::move(dec_10bit_hevc);
+            } else { //bit depth = 10bit
+                if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_HEVC) {
+                    std::unique_ptr<RocVideoDecoder> dec_10bit_hevc(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                    v_dec_info[i]->viddec = std::move(dec_10bit_hevc);
+                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_AV1) {
+                    std::unique_ptr<RocVideoDecoder> dec_10bit_av1(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+                    v_dec_info[i]->viddec = std::move(dec_10bit_av1);
+                }
             }
 
             v_dec_info[i]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
@@ -370,28 +378,40 @@ int main(int argc, char **argv) {
                 uint32_t bit_depth = v_demuxer[j]->GetBitDepth();
                 rocDecVideoCodec codec_id = AVCodec2RocDecVideoCodec(v_demuxer[j]->GetCodecID());
                 if (v_dec_info[thread_idx]->bit_depth != bit_depth || v_dec_info[thread_idx]->rocdec_codec_id != codec_id) {
-                    if (bit_depth == 8) { // can be HEVC or H.264
+                    if (bit_depth == 8) { // can be HEVC or H.264 or AV1
                         if (dec_8bit_avc == nullptr && codec_id == rocDecVideoCodec_AVC) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit_avc(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit_avc);
                         } else if (dec_8bit_hevc == nullptr && codec_id == rocDecVideoCodec_HEVC) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit_hevc(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit_hevc);
+                        } else if (dec_8bit_av1 == nullptr && codec_id == rocDecVideoCodec_AV1) {
+                            std::unique_ptr<RocVideoDecoder> dec_8bit_av1(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_8bit_av1);
                         } else {
                             if (codec_id == rocDecVideoCodec_AVC) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_8bit_avc);
-                            }  else {
+                            } else if (codec_id == rocDecVideoCodec_HEVC) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_8bit_hevc);
+                            } else {
+                                v_dec_info[thread_idx]->viddec.swap(dec_8bit_av1);
                             }
                         }
                         v_dec_info[thread_idx]->bit_depth = bit_depth;
                         v_dec_info[thread_idx]->rocdec_codec_id = codec_id;
-                    } else { // bit_depth = 10bit; only HEVC
-                        if (dec_10bit_hevc == nullptr) {
+                    } else { // bit_depth = 10bit; HEVC or AV1
+                        if (dec_10bit_hevc == nullptr && codec_id == rocDecVideoCodec_HEVC) {
                             std::unique_ptr<RocVideoDecoder> dec_10bit_hevc(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
                             v_dec_info[thread_idx]->viddec = std::move(dec_10bit_hevc);
+                        } else if (dec_10bit_av1 == nullptr && codec_id == rocDecVideoCodec_AV1) {
+                            std::unique_ptr<RocVideoDecoder> dec_10bit_av1(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_10bit_av1);
                         } else {
-                            v_dec_info[thread_idx]->viddec.swap(dec_10bit_hevc);
+                            if (codec_id == rocDecVideoCodec_HEVC) {
+                                v_dec_info[thread_idx]->viddec.swap(dec_10bit_hevc);
+                            } else {
+                                v_dec_info[thread_idx]->viddec.swap(dec_10bit_av1);
+                            }
                         }
                         v_dec_info[thread_idx]->bit_depth = bit_depth;
                         v_dec_info[thread_idx]->rocdec_codec_id = codec_id;
@@ -401,6 +421,10 @@ int main(int argc, char **argv) {
                 std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_dec_info[thread_idx]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
+            }
+            if (!v_dec_info[thread_idx]->viddec->CodecSupported(v_dec_info[thread_idx]->dec_device_id, v_dec_info[thread_idx]->rocdec_codec_id, v_dec_info[thread_idx]->bit_depth)) {
+                std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
+                continue;
             }
             thread_pool.ExecuteJob(std::bind(DecProc, v_dec_info[thread_idx]->viddec.get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], std::ref(v_dec_info[thread_idx]->decoding_complete), b_dump_output_frames, output_file_names[j], mem_type));
         }
@@ -426,8 +450,8 @@ int main(int argc, char **argv) {
 
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;
-      exit(1);
     }
 
     return 0;
 }
+

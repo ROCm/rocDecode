@@ -76,7 +76,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodeMem
+# videoDecodePerf
 add_test(
   NAME
     video_decodePerf-H265
@@ -126,4 +126,17 @@ add_test(
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodebatch"
             -i ${ROCM_PATH}/share/rocdecode/video/ -t 2
+)
+
+# videoDecode AV1
+add_test(
+  NAME
+    video_decode-AV1
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecode"
+                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "videodecode"
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-AV1.mp4
 )

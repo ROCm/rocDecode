@@ -375,6 +375,13 @@ class RocVideoDecoder {
             }
          }
 
+        /**
+         * @brief Check if the given Video Codec is supported on the given GPU
+         * 
+         * @return rocDecStatus 
+         */
+        bool CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth);
+
     private:
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts

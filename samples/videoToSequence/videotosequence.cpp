@@ -468,6 +468,10 @@ int main(int argc, char **argv) {
                 std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
                 std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             }
+            if (!v_dec_info[thread_idx]->viddec->CodecSupported(v_dec_info[thread_idx]->dec_device_id, v_dec_info[thread_idx]->rocdec_codec_id, v_dec_info[thread_idx]->bit_depth)) {
+                std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
+                continue;
+            }
             thread_pool.ExecuteJob(std::bind(DecProc, v_dec_info[thread_idx]->viddec.get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], std::ref(v_dec_info[thread_idx]->decoding_complete), 
                                     seek_mode, b_dump_output_frames, seq_info, &output_seq_file_names[j*seq_info.batch_size], mem_type));
         }
