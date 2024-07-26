@@ -1130,7 +1130,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     }
 
     if ( pic_width_ != p_frame_header->frame_size.frame_width || pic_height_ != p_frame_header->frame_size.frame_height) {
-        pic_width_ = p_frame_header->frame_size.frame_width;
+        pic_width_ = p_frame_header->frame_size.upscaled_width;
         pic_height_ = p_frame_header->frame_size.frame_height;
         new_seq_activated_ = true;
     }
