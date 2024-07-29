@@ -301,24 +301,27 @@ protected:
      *             frame has hint equal to curr_frame_hint
      * \param [in] used_frame An array marking which reference frames have been used
      * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     * \param [in] latest_order_hint Latest order hint
      */
-    int FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+    int FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &latest_order_hint);
 
     /*! \brief Function to find the earliest backward reference
      * \param [in] shifted_order_hints An array containing the expected output order shifted such that the current
      *             frame has hint equal to curr_frame_hint
      * \param [in] used_frame An array marking which reference frames have been used
      * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     * \param [in] earliest_order_hint Eearliest order hint
      */
-    int FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+    int FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &earliest_order_hint);
 
     /*! \brief Function to find the latest forward reference
      * \param [in] shifted_order_hints An array containing the expected output order shifted such that the current
      *             frame has hint equal to curr_frame_hint
      * \param [in] used_frame An array marking which reference frames have been used
      * \param [in] curr_frame_hint A variable set equal to 1 << (OrderHintBits - 1)
+     * \param [in] latest_order_hint Latest order hint
      */
-    int FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint);
+    int FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &latest_order_hint);
 
     /*! \brief Function to parse frame size with refs info
      * \param [in] p_stream Pointer to the bit stream
