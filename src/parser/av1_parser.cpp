@@ -1422,6 +1422,7 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     int used_frame[NUM_REF_FRAMES];
     int curr_frame_hint;
     int shifted_order_hints[NUM_REF_FRAMES];
+    int latest_order_hint, earliest_order_hint;
     int ref;
 
     for (i = 0; i < REFS_PER_FRAME; i++) {
@@ -1439,22 +1440,24 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     for (i = 0; i < NUM_REF_FRAMES; i++) {
         shifted_order_hints[i] = curr_frame_hint + GetRelativeDist(p_seq_header, dpb_buffer_.ref_order_hint[i], p_frame_header->order_hint);
     }
+    latest_order_hint = shifted_order_hints[p_frame_header->last_frame_idx];
+    earliest_order_hint = shifted_order_hints[p_frame_header->gold_frame_idx];
 
     // The kAltRefFrame reference is set to be a backward reference to the frame with highest output order.
-    ref = FindLatestBackward(shifted_order_hints, used_frame, curr_frame_hint);
+    ref = FindLatestBackward(shifted_order_hints, used_frame, curr_frame_hint, latest_order_hint);
     if (ref >= 0) {
         p_frame_header->ref_frame_idx[kAltRefFrame - kLastFrame] = ref;
         used_frame[ref] = 1;
     }
     // The kBwdRefFrame reference is set to be a backward reference to the closest frame.
-    ref = FindEarliestBackward(shifted_order_hints, used_frame, curr_frame_hint);
+    ref = FindEarliestBackward(shifted_order_hints, used_frame, curr_frame_hint, earliest_order_hint);
     if ( ref >= 0 )
     {
         p_frame_header->ref_frame_idx[kBwdRefFrame - kLastFrame] = ref;
         used_frame[ref] = 1;
     }
     // The kAltRef2Frame reference is set to the next closest backward reference.
-    ref = FindEarliestBackward(shifted_order_hints, used_frame, curr_frame_hint);
+    ref = FindEarliestBackward(shifted_order_hints, used_frame, curr_frame_hint, earliest_order_hint);
     if ( ref >= 0 )
     {
         p_frame_header->ref_frame_idx[kAltRef2Frame - kLastFrame] = ref;
@@ -1466,7 +1469,7 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     for (i = 0; i < REFS_PER_FRAME - 2; i++) {
         int refFrame = ref_frame_list[i];
         if (p_frame_header->ref_frame_idx[refFrame - kLastFrame] < 0) {
-            ref = FindLatestForward(shifted_order_hints, used_frame, curr_frame_hint);
+            ref = FindLatestForward(shifted_order_hints, used_frame, curr_frame_hint, latest_order_hint);
             if (ref >= 0) {
                 p_frame_header->ref_frame_idx[refFrame - kLastFrame] = ref;
                 used_frame[ref] = 1;
@@ -1477,7 +1480,6 @@ void Av1VideoParser::SetFrameRefs(Av1SequenceHeader *p_seq_header, Av1FrameHeade
     // Finally, any remaining references are set to the reference frame with smallest output order.
     ref = INVALID_INDEX;
     for (i = 0; i < NUM_REF_FRAMES; i++) {
-        int earliest_order_hint = 9999;
         int hint = shifted_order_hints[i];
         if (ref < 0 || hint < earliest_order_hint) {
             ref = i;
@@ -1501,10 +1503,9 @@ int Av1VideoParser::GetRelativeDist(Av1SequenceHeader *p_seq_header, int a, int 
     return diff;
 }
 
-int Av1VideoParser::FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
+int Av1VideoParser::FindLatestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &latest_order_hint) {
     int ref = INVALID_INDEX;
     int hint;
-    int latest_order_hint = -9999;
 
     for (int i = 0; i < NUM_REF_FRAMES; i++) {
         hint = shifted_order_hints[i];
@@ -1516,10 +1517,9 @@ int Av1VideoParser::FindLatestBackward(int *shifted_order_hints, int *used_frame
     return ref;
 }
 
-int Av1VideoParser::FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
+int Av1VideoParser::FindEarliestBackward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &earliest_order_hint) {
     int ref = INVALID_INDEX;
     int hint;
-    int earliest_order_hint = 9999;
 
     for (int i = 0; i < NUM_REF_FRAMES; i++) {
         hint = shifted_order_hints[i];
@@ -1531,10 +1531,9 @@ int Av1VideoParser::FindEarliestBackward(int *shifted_order_hints, int *used_fra
     return ref;
 }
 
-int Av1VideoParser::FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint) {
+int Av1VideoParser::FindLatestForward(int *shifted_order_hints, int *used_frame, int curr_frame_hint, int &latest_order_hint) {
     int ref = INVALID_INDEX;
     int hint;
-    int latest_order_hint = -9999;
 
     for (int i = 0; i < NUM_REF_FRAMES; i++) {
         hint = shifted_order_hints[i];
