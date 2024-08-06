@@ -63,9 +63,10 @@ public:
     } Av1TileDataInfo;
 
     typedef struct {
-        uint8_t *buffer_ptr;  // pointer of the current tile group data.
-        uint32_t buffer_size;  // total size of the data buffer, may include the header bytes.
-        uint32_t num_tiles;
+        uint8_t *buffer_ptr;  // base pointer to all tile data.
+        uint32_t buffer_size;  // total size of all tile data, can come from multiple tile group OBUs.
+        uint32_t num_tiles; // total number of tiles in the picture
+        uint32_t tile_group_num; // current tile ground number, counting from 0.
         uint32_t tg_start; // tg_start of the current tile group
         uint32_t tg_end; // tg_end of the current tile group
         uint32_t num_tiles_parsed; // number of parsed tiles for the current frame
