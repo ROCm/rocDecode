@@ -1233,10 +1233,9 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     uint8_t *p_tg_buf = p_stream;
     uint32_t tg_size = size;
 
-    pic_stream_data_ptr_ = p_stream; // Todo: deal with multiple tile group OBUs
-    pic_stream_data_size_ = size;
-    p_tile_group->buffer_ptr = p_stream;
-    p_tile_group->buffer_size = size;
+    if (p_tile_group->tile_group_num == 0) {
+        p_tile_group->buffer_ptr = p_stream;
+    }
 
     // First parse the header
     p_tile_group->num_tiles = tile_cols * tile_rows;
@@ -1272,7 +1271,12 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         }
         p_tile_group->num_tiles_parsed++;
     }
+    p_tile_group->tile_group_num++;
     if (p_tile_group->tg_end == p_tile_group->num_tiles - 1) {
+        p_tile_group->buffer_size = p_tile_group->tile_data_info[p_tile_group->tg_end].tile_offset + p_tile_group->tile_data_info[p_tile_group->tg_end].tile_size;
+        p_tile_group->tg_start = 0;
+        pic_stream_data_ptr_ = p_tile_group->buffer_ptr;
+        pic_stream_data_size_ = p_tile_group->buffer_size;
         if (!frame_header_.disable_frame_end_update_cdf) {
             //frame_end_update_cdf();
         }
