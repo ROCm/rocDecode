@@ -43,7 +43,7 @@ optional arguments:
   --sample_mode SAMPLE_MODE
                         The sample to run - optional (default:0 [range:0-1] 0: videoDecode, 1: videoDecodePerf)
   --num_threads NUM_THREADS
-                        The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:4)
+                        The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:1)
   --max_num_decoded_frames MAX_NUM_DECODED_FRAMES
                         The max number of decoded frames. Useful for partial decoding of a long stream. - optional (default:0, meaning no limit)
 ```
