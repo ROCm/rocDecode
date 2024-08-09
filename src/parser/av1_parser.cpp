@@ -42,6 +42,10 @@ rocDecStatus Av1VideoParser::Initialize(RocdecParserParams *p_params) {
     if ((ret = RocVideoParser::Initialize(p_params)) != ROCDEC_SUCCESS) {
         return ret;
     }
+    // Set display delay to at least DECODE_BUF_POOL_EXTENSION (2) to prevent synchronous submission
+    if (parser_params_.max_display_delay < DECODE_BUF_POOL_EXTENSION) {
+        parser_params_.max_display_delay = DECODE_BUF_POOL_EXTENSION;
+    }
     CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE);
     return ROCDEC_SUCCESS;
 }
