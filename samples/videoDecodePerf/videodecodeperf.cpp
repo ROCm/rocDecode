@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "common.h"
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, int num_decoded_frames) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
@@ -48,6 +48,9 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
         n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
         n_frame += n_frame_returned;
+        if (num_decoded_frames && num_decoded_frames <= n_frame) {
+            break;
+        }
     } while (n_video_bytes);
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -64,7 +67,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
-    << "-t Number of threads (>= 1) - optional; default: 4" << std::endl
+    << "-t Number of threads (>= 1) - optional; default: 1" << std::endl
     << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
     exit(0);
@@ -74,10 +77,13 @@ int main(int argc, char **argv) {
 
     std::string input_file_path;
     int device_id = 0;
-    int n_thread = 4;
+    int n_thread = 1;
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
     bool b_force_zero_latency = false;
+    uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
+    int disp_delay = 0;
+
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -111,6 +117,20 @@ int main(int argc, char **argv) {
             if (device_id < 0) {
                 ShowHelpAndExit(argv[i]);
             }
+            continue;
+        }
+        if (!strcmp(argv[i], "-disp_delay")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-disp_delay");
+            }
+            disp_delay = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-f")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            num_decoded_frames = atoi(argv[i]);
             continue;
         }
         if (!strcmp(argv[i], "-z")) {
@@ -177,7 +197,7 @@ int main(int argc, char **argv) {
             } else {
                 v_device_id[i] = i % hip_vis_dev_count;
             }
-            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect));
+            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, false, disp_delay));
             if (!dec->CodecSupported(v_device_id[i], rocdec_codec_id, demuxer->GetBitDepth())) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
                 continue;
@@ -207,7 +227,7 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i]));
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i], num_decoded_frames));
         }
 
         for (int i = 0; i < n_thread; i++) {

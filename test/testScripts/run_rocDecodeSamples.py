@@ -64,8 +64,10 @@ parser.add_argument('--files_directory',    type=str, default='',
                     help='The path to a dirctory containing one or more supported files for decoding (e.g., mp4, mov, etc.) - required')
 parser.add_argument('--sample_mode',          type=int, default=0,
                     help='The sample to run - optional (default:0 [range:0-1] 0: videoDecode, 1: videoDecodePerf)')
-parser.add_argument('--num_threads',          type=int, default=4,
-                    help='The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:4)')
+parser.add_argument('--num_threads',          type=int, default=1,
+                    help='The number of threads is only for the videoDecodePerf sample (sample_mode = 1) - optional (default:1)')
+parser.add_argument('--max_num_decoded_frames',          type=int, default=0,
+                    help='The max number of decoded frames. Useful for partial decoding of a long stream. - optional (default:0, meaning no limit)')
 
 args = parser.parse_args()
 
@@ -75,6 +77,7 @@ filesDir = args.files_directory
 filesDirPath = Path(filesDir)
 sampleMode = args.sample_mode
 numThreads = args.num_threads
+maxNumFrames = args.max_num_decoded_frames
 
 print("\nrunrocDecodeTests V"+__version__+"\n")
 
@@ -113,7 +116,7 @@ if os.path.exists(resultsPath+'/rocDecode_test_results.csv'):
 
 if sampleMode == 0:
     for current_file in iter_files(filesDirPath):
-        os.system(run_rocDecode_app+' -i '+str(current_file)+' -d '+str(gpuDeviceID)+' | tee -a '+resultsPath+'/rocDecode_output.log')
+        os.system(run_rocDecode_app+' -i '+str(current_file)+' -d '+str(gpuDeviceID)+' -f '+str(maxNumFrames)+' | tee -a '+resultsPath+'/rocDecode_output.log')
         print("\n\n")
 
     orig_stdout = sys.stdout
@@ -144,7 +147,7 @@ if sampleMode == 0:
     os.system(runAwk_csv)
 elif sampleMode == 1:
     for current_file in iter_files(filesDirPath):
-        os.system(run_rocDecode_app+' -i '+str(current_file)+' -t '+str(numThreads)+' | tee -a '+resultsPath+'/rocDecode_output.log')
+        os.system(run_rocDecode_app+' -i '+str(current_file)+' -t '+str(numThreads)+' -f '+str(maxNumFrames)+' | tee -a '+resultsPath+'/rocDecode_output.log')
         print("\n\n")
 
     orig_stdout = sys.stdout

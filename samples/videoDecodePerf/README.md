@@ -30,7 +30,9 @@ make -j
 
 ```shell
 ./videodecodeperf -i <input video file [required]> 
-                  -t <number of threads [optional - default:4]>
+                  -t <number of threads [optional - default:1]>
+                  -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
+                  -disp_delay <display delay - specify the number of frames to be delayed for display [optional]>
                   -d <Device ID (>= 0) [optional - default:0]>
                   -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
 ```
