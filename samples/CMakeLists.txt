@@ -30,7 +30,7 @@ add_test(
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-H265.mp4
@@ -95,7 +95,7 @@ add_test(
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeBatch"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeBatch"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecodeBatch"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodebatch"
             -i ${CMAKE_SOURCE_DIR}/data/videos/ -t 2
@@ -108,7 +108,7 @@ add_test(
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
-                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecode"
+                              "${CMAKE_CURRENT_SOURCE_DIR}/videoDecode"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${CMAKE_SOURCE_DIR}/data/videos/AMD_driving_virtual_20-AV1.mp4
