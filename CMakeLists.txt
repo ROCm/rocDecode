@@ -165,6 +165,8 @@ if(HIP_FOUND AND Libva_FOUND)
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
   # make test with CTest
+  enable_testing()
+  include(CTest)
   add_subdirectory(test)
 
   # set package information
