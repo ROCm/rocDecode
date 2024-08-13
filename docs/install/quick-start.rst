@@ -8,7 +8,7 @@ rocDecode quick start installation
 
 To install the rocDecode runtime with minimum requirements, follow these steps:
 
-1. Install core ROCm components (ROCm 6.1.0 or later) using the
+1. Install core ROCm components (ROCm 6.1.0 and above) using the
 :doc:`native package manager <rocm-install-on-linux:how-to/native-install/index>`
 installation instructions.
 
