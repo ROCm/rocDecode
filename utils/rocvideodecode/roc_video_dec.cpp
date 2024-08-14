@@ -528,7 +528,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
             }
         }
     }
-    decoded_frame_cnt_ = 0;     // reset frame_count
+    output_frame_cnt_ = 0;     // reset frame_count
     if (is_decode_res_changed) {
         coded_width_ = p_video_format->coded_width;
         coded_height_ = p_video_format->coded_height;
@@ -643,6 +643,7 @@ int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     }
     pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));
+    decoded_pic_cnt_++;
     if (b_force_zero_latency_ && ((!pPicParams->field_pic_flag) || (pPicParams->second_field))) {
         RocdecParserDispInfo disp_info;
         memset(&disp_info, 0, sizeof(disp_info));
@@ -714,14 +715,14 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             dec_frame.picture_index = pDispInfo->picture_index;
             std::lock_guard<std::mutex> lock(mtx_vp_frame_);
             vp_frames_q_.push(dec_frame);
-            decoded_frame_cnt_++;
+            output_frame_cnt_++;
         } else {
             // copy the decoded surface info device or host
             uint8_t *p_dec_frame = nullptr;
             {
                 std::lock_guard<std::mutex> lock(mtx_vp_frame_);
                 // if not enough frames in stock, allocate
-                if ((unsigned)++decoded_frame_cnt_ > vp_frames_.size()) {
+                if ((unsigned)++output_frame_cnt_ > vp_frames_.size()) {
                     num_alloced_frames_++;
                     DecFrameBuffer dec_frame = { 0 };
                     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
@@ -734,7 +735,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                     dec_frame.picture_index = pDispInfo->picture_index;
                     vp_frames_.push_back(dec_frame);
                 }
-                p_dec_frame = vp_frames_[decoded_frame_cnt_ - 1].frame_ptr;
+                p_dec_frame = vp_frames_[output_frame_cnt_ - 1].frame_ptr;
             }
             // Copy luma data
             int dst_pitch = disp_width_ * byte_per_pixel_;
@@ -790,7 +791,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
             std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
         }
-        decoded_frame_cnt_++;
+        output_frame_cnt_++;
     }
 
     return 1;
@@ -832,8 +833,9 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
 }
 
 
-int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts) {
-    decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts, int *num_decoded_pics) {
+    output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
+    decoded_pic_cnt_ = 0;
     RocdecSourceDataPacket packet = { 0 };
     packet.payload = data;
     packet.payload_size = size;
@@ -843,21 +845,23 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
         packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
     }
     ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
-
-    return decoded_frame_cnt_;
+    if (num_decoded_pics) {
+        *num_decoded_pics = decoded_pic_cnt_;
+    }
+    return output_frame_cnt_;
 }
 
 uint8_t* RocVideoDecoder::GetFrame(int64_t *pts) {
-    if (decoded_frame_cnt_ > 0) {
+    if (output_frame_cnt_ > 0) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        decoded_frame_cnt_--;
+        output_frame_cnt_--;
         if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL && !vp_frames_q_.empty()) {
             DecFrameBuffer *fb = &vp_frames_q_.front();
             if (pts) *pts = fb->pts;
             return fb->frame_ptr;
         } else if (vp_frames_.size() > 0){
-            if (pts) *pts = vp_frames_[decoded_frame_cnt_ret_].pts;
-            return vp_frames_[decoded_frame_cnt_ret_++].frame_ptr;
+            if (pts) *pts = vp_frames_[output_frame_cnt_ret_].pts;
+            return vp_frames_[output_frame_cnt_ret_++].frame_ptr;
         }
     }
     return nullptr;

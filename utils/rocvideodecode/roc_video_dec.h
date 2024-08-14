@@ -282,9 +282,10 @@ class RocVideoDecoder {
          * @param size - size of the data buffer in bytes
          * @param pts - presentation timestamp
          * @param flags - video packet flags
+         * @param num_decoded_pics - nummber of pictures decoded in this call
          * @return int - num of frames to display
          */
-        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0);
+        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
          * 
@@ -475,7 +476,8 @@ class RocVideoDecoder {
         RocdecSeiMessageInfo *curr_sei_message_ptr_ = nullptr;
         RocdecSeiMessageInfo sei_message_display_q_[MAX_FRAME_NUM];
         RocdecVideoFormat *curr_video_format_ptr_ = nullptr;
-        int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+        int output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
+        int decoded_pic_cnt_ = 0;
         int decode_poc_ = 0, pic_num_in_dec_order_[MAX_FRAME_NUM];
         int num_alloced_frames_ = 0;
         std::ostringstream input_video_info_str_;

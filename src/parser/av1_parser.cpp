@@ -180,6 +180,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 ERR(STR("Failed to decode!"));
                 return ret;
             }
+            pic_count_++;
             dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
             memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
             if ((ret = DecodeFrameWrapup()) != PARSER_OK) {
@@ -576,7 +577,6 @@ ParserResult Av1VideoParser::DecodeFrameWrapup() {
             return ret;
         }
     }
-    pic_count_++;
     memset(&frame_header_, 0, sizeof(Av1FrameHeader));
     return ret;
 }

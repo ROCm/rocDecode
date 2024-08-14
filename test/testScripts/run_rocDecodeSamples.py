@@ -172,9 +172,9 @@ elif sampleMode == 1:
                         /\tCrop         : /{next}
                         /\tResize       : /{next}
                         /^$/{next}
-                        /info: Total frame decoded: / {totalFrames=$5; next}
-                        /info: avg decoding time per frame: /{timePerFrame=$7; next}
-                        /info: avg FPS: / { printf("%s, %d, %s, %d, %d, %f, %f\n", filename, numThreads, codec, bitDepth, totalFrames, timePerFrame, $4) }' rocDecode_videoDecodePerf_results/rocDecode_output.log >> rocDecode_videoDecodePerf_results/rocDecode_test_results.csv'''
+                        /info: Total pictures decoded: / {totalFrames=$5; next}
+                        /info: avg decoding time per picture: /{timePerFrame=$7; next}
+                        /info: avg decode FPS: / { printf("%s, %d, %s, %d, %d, %f, %f\n", filename, numThreads, codec, bitDepth, totalFrames, timePerFrame, $5) }' rocDecode_videoDecodePerf_results/rocDecode_output.log >> rocDecode_videoDecodePerf_results/rocDecode_test_results.csv'''
     sys.stdout = orig_stdout
     os.system(runAwk_csv)
 
