@@ -16,6 +16,7 @@ access the video decoding features available on your GPU.
 * Linux distribution
   * Ubuntu - `20.04` / `22.04`
   * RHEL - `8` / `9`
+  * SLES - `15 SP5`
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
 > [!IMPORTANT] 
@@ -25,7 +26,7 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0+` - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0` or later - `Libva` is an implementation for VA-API
   ```shell
   sudo apt install libva-dev
   ```
@@ -37,10 +38,15 @@ access the video decoding features available on your GPU.
   sudo apt install mesa-amdgpu-va-drivers
   ```
 
-* CMake `3.5` or later
+* CMake Version `3.5` or later
 
   ```shell
   sudo apt install cmake
+  ```
+
+* Clang Version `5.0.1` or later
+  ```shell
+  sudo apt install clang
   ```
 
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
@@ -229,11 +235,12 @@ page.
 * Linux
   * Ubuntu - `20.04` / `22.04`
   * RHEL - `8` / `9`
+  * SLES - `15 SP5`
 * ROCm:
-  * rocm-core - `6.1.0.60100-64`
-  * amdgpu-core - `1:6.1.60100-1741643`
+  * rocm-core - `6.2.0.60200-66`
+  * amdgpu-core - `1:6.2.60200-2009582`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
-* mesa-amdgpu-va-drivers - `1:24.1.0`
+* mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
 * mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V2.1.0`
+* rocDecode Setup Script - `V2.2.0`

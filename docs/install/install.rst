@@ -66,11 +66,17 @@ Prerequisites
 
     sudo apt install mesa-amdgpu-va-drivers
 
-* CMake 3.5 or later
+* CMake Version 3.5 or later
 
   .. code:: shell
 
     sudo apt install cmake
+
+* Clang Version `5.0.1` or later
+
+  .. code:: shell
+
+    sudo apt install clang
 
 * `pkg-config <https://en.wikipedia.org/wiki/Pkg-config>`_
 
