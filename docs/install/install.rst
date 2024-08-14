@@ -76,7 +76,7 @@ Prerequisites
 
   .. code:: shell
 
-    sudo apt install cmake
+    sudo apt install clang
 
 * `pkg-config <https://en.wikipedia.org/wiki/Pkg-config>`_
 
