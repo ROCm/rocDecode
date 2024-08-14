@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
         std::cout << "info: decoding started, please wait!" << std::endl;
 
         int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
+        int n_pic_decoded = 0, decoded_pics = 0;
         uint8_t *pvideo = nullptr;
         int pkg_flags = 0;
         uint8_t *pframe = nullptr;
@@ -277,7 +278,7 @@ int main(int argc, char **argv) {
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
-            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
+            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
@@ -298,6 +299,7 @@ int main(int argc, char **argv) {
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             total_dec_time += time_per_decode;
             n_frame += n_frame_returned;
+            n_pic_decoded += decoded_pics;
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
                 break;
             }
@@ -305,10 +307,13 @@ int main(int argc, char **argv) {
         } while (n_video_bytes);
         
         n_frame += viddec.GetNumOfFlushedFrames();
-        std::cout << "info: Total frame decoded: " << n_frame << std::endl;
+        std::cout << "info: Total pictures decoded: " << n_pic_decoded << std::endl;
+        std::cout << "info: Total frames output/displayed: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
-            std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+            std::cout << "info: avg decoding time per picture: " << total_dec_time / n_pic_decoded << " ms" <<std::endl;
+            std::cout << "info: avg decode FPS: " << (n_pic_decoded / total_dec_time) * 1000 << std::endl;
+            std::cout << "info: avg output/display time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
+            std::cout << "info: avg output/display FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         } else {
             if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
                 std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
