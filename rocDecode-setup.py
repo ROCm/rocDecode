@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -156,6 +156,7 @@ if userName == 'root':
 # source install - common package dependencies
 commonPackages = [
     'gcc',
+    'clang',
     'cmake',
     'git',
     'wget',
