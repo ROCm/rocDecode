@@ -48,13 +48,13 @@ Prerequisites
 * `ROCm-supported hardware <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
   (``gfx908`` or higher is required)
 
-* Install ROCm 6.1.0 or above with
+* Install ROCm 6.1.0 or later with
   `amdgpu-install <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html>`_
 
   * Run: ``--usecase=rocm``
   * To install rocDecode with minimum requirements, follow the :doc:`quick start instructions <./quick-start>`
 
-* Video Acceleration API Version ``1.5.0`` or above - ``Libva`` is an implementation for VA-API
+* Video Acceleration API Version ``1.5.0`` or later - ``Libva`` is an implementation for VA-API
 
   .. code:: shell
 
@@ -66,13 +66,13 @@ Prerequisites
 
     sudo apt install mesa-amdgpu-va-drivers
 
-* CMake Version 3.5 or above
+* CMake Version 3.5 or later
 
   .. code:: shell
 
     sudo apt install cmake
 
-* Clang Version `5.0.1` or above
+* Clang Version `5.0.1` or later
 
   .. code:: shell
 
