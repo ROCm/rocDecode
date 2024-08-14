@@ -21,11 +21,11 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT] 
 > `gfx908` or higher GPU required
 
-* Install ROCm `6.1.0` and above with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
+* Install ROCm `6.1.0` or above with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0+` - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0` or above - `Libva` is an implementation for VA-API
   ```shell
   sudo apt install libva-dev
   ```
@@ -37,13 +37,13 @@ access the video decoding features available on your GPU.
   sudo apt install mesa-amdgpu-va-drivers
   ```
 
-* CMake Version `3.5` and above
+* CMake Version `3.5` or above
 
   ```shell
   sudo apt install cmake
   ```
 
-* Clang Version `5.0.1` and above
+* Clang Version `5.0.1` or above
   ```shell
   sudo apt install clang
   ```
@@ -93,7 +93,7 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.1.0` and above with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
+* Install ROCm `6.1.0` or above with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
 
 * Use **either** [package install](#package-install) **or** [source install](#source-install) as described below.
 
