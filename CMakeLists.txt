@@ -155,8 +155,6 @@ if(HIP_FOUND AND Libva_FOUND)
   set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT runtime)
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev COMPONENT dev)
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-test COMPONENT test)
   # install test cmake
   install(FILES test/CMakeLists.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
   install(DIRECTORY test/testScripts DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
@@ -311,7 +309,7 @@ rocDecode runtime package provides rocDecode library and license.txt")
   cpack_add_component(dev
                     DISPLAY_NAME "rocDecode Develop Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
+rocDecode develop package provides rocDecode header files, and samples")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocDecode ASAN Package"
