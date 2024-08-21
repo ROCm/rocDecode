@@ -50,10 +50,12 @@ def strip_libtree_addresses(lib_tree):
     return lib_tree
 
 def iter_files(path):
-    for file_or_directory in path.rglob("*"):
-        if file_or_directory.is_file():
-            yield file_or_directory
-            
+    file_list = path.rglob('*')
+    sorted_file_list = sorted(file_list)
+    for item in sorted_file_list:
+        if item.is_file():
+            yield item
+
 # Import arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--rocDecode_directory',   type=str, default='',
