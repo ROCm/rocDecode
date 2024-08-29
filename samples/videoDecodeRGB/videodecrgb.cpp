@@ -382,13 +382,14 @@ int main(int argc, char **argv) {
             if (b_md5_check) {
                 char ref_md5_string[33], c2[2];
                 uint8_t ref_md5[16];
-                std::string str;
+                std::string str(2,0);
 
                 for (int i = 0; i < 16; i++) {
                     int c;
                     ref_md5_file.get(c2[0]);
                     ref_md5_file.get(c2[1]);
-                    str = c2;
+                    str[0] = c2[0];
+                    str[1] = c2[1];
                     c = std::stoi(str, nullptr, 16);
                     ref_md5[i] = c;
                 }
