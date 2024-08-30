@@ -205,9 +205,6 @@ int main(int argc, char **argv) {
         if (b_generate_md5) {
             viddec.InitMd5();
         }
-        if (b_md5_check) {
-            ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
-        }
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -258,28 +255,20 @@ int main(int argc, char **argv) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
             }
             std::cout << std::endl;
-
             if (b_md5_check) {
-                char ref_md5_string[33], c2[2];
+                std::string ref_md5_string(32, 0);
                 uint8_t ref_md5[16];
-                std::string str(2,0);
-
+                ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
+                ref_md5_file.getline(ref_md5_string.data(), 33);
                 for (int i = 0; i < 16; i++) {
-                    int c;
-                    ref_md5_file.get(c2[0]);
-                    ref_md5_file.get(c2[1]);
-                    str[0] = c2[0];
-                    str[1] = c2[1];
-                    c = std::stoi(str, nullptr, 16);
-                    ref_md5[i] = c;
+                    std::string part = ref_md5_string.substr(i * 2, 2);
+                    ref_md5[i] = std::stoi(part, nullptr, 16);
                 }
                 if (memcmp(digest, ref_md5, 16) == 0) {
                     std::cout << "MD5 digest matches the reference MD5 digest: ";
                 } else {
                     std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
-                ref_md5_file.seekg(0, std::ios_base::beg);
-                ref_md5_file.getline(ref_md5_string, 33);
                 std::cout << ref_md5_string << std::endl;
                 ref_md5_file.close();
             }
