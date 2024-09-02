@@ -3,26 +3,31 @@
 Documentation for rocDecode is available at
 [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 0.8.0
+## rocDecode 0.8.0 (unreleased)
 
-### Additions
+### Changes
 
 * Clang - Default CXX compiler
+
+### Removals
+
+* CTest - Core tests for make test and package test
+* mesa-amdgpu-dri-drivers - dependencies for RHEL & SLES
 
 ### Optimizations
 
 * Setup Script - Build and runtime install options
 
-### Changes
+### Resolved issues
 
-* CTest - Core tests for make test and package test
 * Package - VA driver dependencies updated
   * VA drivers - only use mesa-amdgpu-va-drivers for both debian and RPM based OS
   * mesa-amdgpu-va-drivers - brings all it's dependencies
-
-### Fixes
-
 * Sample - Bugfix for videoDecodeBatch
+
+### Known issues
+
+### Upcoming changes
 
 ### Tested configurations
 
