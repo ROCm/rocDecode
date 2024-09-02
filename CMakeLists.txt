@@ -26,7 +26,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++)
 endif()
 
-set(VERSION "0.7.0")
+set(VERSION "0.8.0")
 set(CMAKE_CXX_STANDARD 17)
 
 # Set Project Version and Language
@@ -194,15 +194,10 @@ if(HIP_FOUND AND Libva_FOUND)
   # Find Ubuntu 22.04 - Add libstdc++-12-dev package deps for Dev Package
   file(READ "/etc/os-release" OS_RELEASE)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
-  string(REGEX MATCH "SLES" SLES_FOUND ${OS_RELEASE})
-  string(REGEX MATCH "Mariner" MARINER_FOUND ${OS_RELEASE})
 
-  # Set the dependent packages - TBD: mesa-amdgpu-va-drivers should bring libdrm-amdgpu, and parts of mesa-amdgpu-dri-drivers but unavailable on RPM
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
-  if(SLES_FOUND OR MARINER_FOUND)
-    set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva2, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
-  endif()
+  # Set the dependent packages - TBD: To verify mesa-amdgpu-va-drivers should bring in all it's dependencies
+  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, mesa-amdgpu-va-drivers")
+  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, mesa-amdgpu-va-drivers")
   # Set the dev dependent packages
   set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)

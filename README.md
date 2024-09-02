@@ -67,12 +67,6 @@ access the video decoding features available on your GPU.
 >  ```shell
 >  sudo apt install libstdc++-12-dev
 >  ```
->
-> * On `RHEL`/`SLES` - Additional packages required: `libdrm-amdgpu` and `mesa-amdgpu-dri-drivers`
->
->  ```shell
->  sudo yum install libdrm-amdgpu mesa-amdgpu-dri-drivers
->  ```
 
 >[!NOTE]
 > * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
@@ -241,6 +235,5 @@ page.
   * amdgpu-core - `1:6.2.60200-2009582`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
-* mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V2.2.0`

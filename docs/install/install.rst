@@ -26,8 +26,6 @@ Tested configurations
 
 * mesa-amdgpu-va-drivers: 1:24.1.0
 
-* mesa-amdgpu-dri-drivers - `24.1.0.60200`
-
 * FFmpeg: 4.2.7/4.4.2-0
 
 * rocDecode Setup Script: V2.0.0
@@ -99,12 +97,6 @@ Prerequisites
   .. code:: shell
 
     sudo apt install libstdc++-12-dev
-
-  * On ``RHEL`` / ``SLES`` - Additional packages required: ``libdrm-amdgpu`` and ``mesa-amdgpu-dri-drivers``
-
-  .. code:: shell
-
-    sudo apt install libdrm-amdgpu mesa-amdgpu-dri-drivers
 
 
 Prerequisites setup script

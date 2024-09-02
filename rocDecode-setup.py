@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -168,14 +168,12 @@ commonPackages = [
 # Debian packages
 coreDebianPackages = [
     'rocm-hip-runtime-dev',
-    'libva2',
     'libva-dev',
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
 ]
 runtimeDebianPackages = [
-    'libdrm-amdgpu1',
     'mesa-amdgpu-va-drivers',
     'vainfo'
 ]
@@ -187,12 +185,8 @@ ffmpegDebianPackages = [
 ]
 
 # RPM Packages
-libvaNameRPM = "libva"
-if "SLES" in os_info_data or "Mariner" in os_info_data:
-    libvaNameRPM = "libva2"
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
-    str(libvaNameRPM),
     'libva-devel'
 ]
 
@@ -200,9 +194,7 @@ libvaUtilsNameRPM = "libva-utils"
 if "Mariner" in os_info_data:
     libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
 runtimeRPMPackages = [
-    'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
-    'mesa-amdgpu-dri-drivers',
     str(libvaUtilsNameRPM)
 ]
 
