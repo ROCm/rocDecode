@@ -256,10 +256,18 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
             if (b_md5_check) {
-                std::string ref_md5_string(32, 0);
+                std::string ref_md5_string(33, 0);
                 uint8_t ref_md5[16];
                 ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
-                ref_md5_file.getline(ref_md5_string.data(), 33);
+                if ((ref_md5_file.rdstate() & std::ifstream::failbit) != 0) {
+                    std::cerr << "Failed to open MD5 file." << std::endl;
+                    return 1;
+                }
+                ref_md5_file.getline(ref_md5_string.data(), ref_md5_string.length());
+                if ((ref_md5_file.rdstate() & std::ifstream::failbit) != 0) {
+                    std::cerr << "Failed to read MD5 digest string." << std::endl;
+                    return 1;
+                }
                 for (int i = 0; i < 16; i++) {
                     std::string part = ref_md5_string.substr(i * 2, 2);
                     ref_md5[i] = std::stoi(part, nullptr, 16);
