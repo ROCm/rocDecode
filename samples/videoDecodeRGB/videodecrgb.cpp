@@ -384,7 +384,7 @@ int main(int argc, char **argv) {
                     return 1;
                 }
                 ref_md5_file.getline(ref_md5_string.data(), ref_md5_string.length());
-                if ((ref_md5_file.rdstate() & std::ifstream::failbit) != 0) {
+                if ((ref_md5_file.rdstate() & std::ifstream::badbit) != 0) {
                     std::cerr << "Failed to read MD5 digest string." << std::endl;
                     return 1;
                 }
