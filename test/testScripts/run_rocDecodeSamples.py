@@ -141,7 +141,7 @@ if sampleMode == 0:
 
     orig_stdout = sys.stdout
     sys.stdout = open(resultsPath+'/rocDecode_test_results.csv', 'a')
-    echo_1 = 'File Name, Codec, Video Size, Bit Depth, Bit rate, Total Frames, Average decoding time per frame (ms), Avg FPS'
+    echo_1 = 'File Name, Codec, Video Size, Bit Depth, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
     print(echo_1)
     sys.stdout = orig_stdout
 
@@ -174,7 +174,7 @@ elif sampleMode == 1:
 
     orig_stdout = sys.stdout
     sys.stdout = open(resultsPath+'/rocDecode_test_results.csv', 'a')
-    echo_1 = 'File Name, Num Threads, Codec, Video Size, Bit Depth, Bit rate, Total Frames, Average decoding time per frame (ms), Avg FPS'
+    echo_1 = 'File Name, Num Threads, Codec, Video Size, Bit Depth, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
     print(echo_1)
     sys.stdout = orig_stdout
 
