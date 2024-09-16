@@ -29,22 +29,24 @@ THE SOFTWARE.
 #include "../commons.h"
 #include "../../api/rocdecode.h"
 
+#define CHECK_VAAPI(call) {\
+    VAStatus va_status = call;\
+    if (va_status != VA_STATUS_SUCCESS) {\
+        std::cout << "VAAPI failure: " << #call << " failed with status: " << std::hex << "0x" << va_status << std::dec << " = '" << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
+}
 
 // The CodecSpec struct contains information for an individual codec (e.g., rocDecVideoCodec_HEVC)
 struct CodecSpec {
+    rocDecVideoCodec codec_type;
     std::vector<rocDecVideoChromaFormat> chroma_format;
-    std::vector<int> bitdepth_minus8;
+    int max_bit_depth;
     uint16_t output_format_mask;
     uint32_t max_width;
     uint32_t max_height;
     uint16_t min_width;
     uint16_t min_height;
-};
-
-// The VcnCodecsSpec struct contains information for all supported codecs and number of vcn instances per device
-struct VcnCodecsSpec {
-    std::unordered_map<rocDecVideoCodec, CodecSpec> codecs_spec;
-    uint8_t num_decoders;
 };
 
 // The RocDecVcnCodecSpec singleton class for providing access to the the vcn_spec_table
@@ -54,55 +56,187 @@ public:
         static RocDecVcnCodecSpec instance;
         return instance;
     }
-    rocDecStatus GetDecoderCaps(std::string gcn_arch_name, RocdecDecodeCaps *pdc) {
-        std::lock_guard<std::mutex> lock(mutex);
-        std::size_t pos = gcn_arch_name.find_first_of(":");
-        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
-        auto it = vcn_spec_table.find(gcn_arch_name_base);
-        if (it != vcn_spec_table.end()) {
-            const VcnCodecsSpec& vcn_spec = it->second;
-            auto it1 = vcn_spec.codecs_spec.find(pdc->codec_type);
-            if (it1 != vcn_spec.codecs_spec.end()) {
-                const CodecSpec& codec_spec = it1->second;
-                auto it_chroma_format = std::find(codec_spec.chroma_format.begin(), codec_spec.chroma_format.end(), pdc->chroma_format);
-                auto it_bitdepth_minus8 = std::find(codec_spec.bitdepth_minus8.begin(), codec_spec.bitdepth_minus8.end(), pdc->bit_depth_minus_8);
-                if (it_chroma_format != codec_spec.chroma_format.end() && it_bitdepth_minus8 != codec_spec.bitdepth_minus8.end()) {
-                    pdc->is_supported = 1;
-                    pdc->num_decoders = vcn_spec.num_decoders;
-                    pdc->output_format_mask = codec_spec.output_format_mask;
-                    pdc->max_width = codec_spec.max_width;
-                    pdc->max_height = codec_spec.max_height;
-                    pdc->min_width = codec_spec.min_width;
-                    pdc->min_height = codec_spec.min_height;
-                    return ROCDEC_SUCCESS;
-                } else {
-                    return ROCDEC_NOT_SUPPORTED;
+    rocDecStatus ProbeHwDecodeCapabilities() {
+        std::string drm_node = "/dev/dri/renderD128"; // look at device_id 0
+        int drm_fd = open(drm_node.c_str(), O_RDWR);
+        if (drm_fd < 0) {
+            ERR("Failed to open drm node." + drm_node);
+            return ROCDEC_DEVICE_INVALID;
+        }
+        VADisplay va_display = vaGetDisplayDRM(drm_fd);
+        if (!va_display) {
+            ERR("Failed to create va_display.");
+            return ROCDEC_DEVICE_INVALID;
+        }
+        int major_version = 0, minor_version = 0;
+        CHECK_VAAPI(vaInitialize(va_display, &major_version, &minor_version));
+
+        int num_profiles = 0;
+        std::vector<VAProfile> profile_list;
+        num_profiles = vaMaxNumProfiles(va_display);
+        profile_list.resize(num_profiles);
+        CHECK_VAAPI(vaQueryConfigProfiles(va_display, profile_list.data(), &num_profiles));
+
+        // To simplify, merge all profile attributes into one codec type.
+        rocDecVideoCodec codec_type;
+        rocDecVideoChromaFormat chroma_format;
+        int bit_depth;
+        for (int i = 0; i < num_profiles; i++) {
+            bool interested = false;
+            bit_depth = 8;
+            switch (profile_list[i]) {
+                case VAProfileH264Main:
+                case VAProfileH264High:
+                case VAProfileH264ConstrainedBaseline:
+                    codec_type = rocDecVideoCodec_AVC;
+                    chroma_format = rocDecVideoChromaFormat_420;
+                    interested = true;
+                    break;
+
+                case VAProfileHEVCMain10:
+                    bit_depth = 10;
+                case VAProfileHEVCMain:
+                    codec_type = rocDecVideoCodec_HEVC;
+                    chroma_format = rocDecVideoChromaFormat_420;
+                    interested = true;
+                    break;
+
+                case VAProfileAV1Profile0:
+                    codec_type = rocDecVideoCodec_AV1;
+                    chroma_format = rocDecVideoChromaFormat_420;
+                    bit_depth = 10; // both 8 and 10 bit
+                    interested = true;
+                    break;
+
+                default:
+                    break;
+            }
+
+            if (interested) {
+                int j = 0;
+                for (j = 0; j < decode_cap_list_.size(); j++) {
+                    if (decode_cap_list_[j].codec_type == codec_type) {
+                        break;
+                    }
                 }
+                if (decode_cap_list_.size() == 0 || (decode_cap_list_.size() && j == decode_cap_list_.size())) {
+                    decode_cap_list_.resize(decode_cap_list_.size() + 1, {});
+                }
+                decode_cap_list_[j].codec_type = codec_type;
+                if (decode_cap_list_[j].max_bit_depth < bit_depth) {
+                    decode_cap_list_[j].max_bit_depth = bit_depth;
+                }
+                auto it_chroma_format = std::find(decode_cap_list_[j].chroma_format.begin(), decode_cap_list_[j].chroma_format.end(), chroma_format);
+                if (it_chroma_format == decode_cap_list_[j].chroma_format.end()) {
+                    decode_cap_list_[j].chroma_format.resize(decode_cap_list_[j].chroma_format.size() + 1);
+                    decode_cap_list_[j].chroma_format[decode_cap_list_[j].chroma_format.size() - 1] = chroma_format;
+                }
+
+                VAConfigAttrib va_config_attrib;
+                VAConfigID va_config_id;
+                unsigned int attr_count;
+                std::vector<VASurfaceAttrib> attr_list;
+                va_config_attrib.type = VAConfigAttribRTFormat;
+                CHECK_VAAPI(vaGetConfigAttributes(va_display, profile_list[i], VAEntrypointVLD, &va_config_attrib, 1));
+                CHECK_VAAPI(vaCreateConfig(va_display, profile_list[i], VAEntrypointVLD, &va_config_attrib, 1, &va_config_id));
+                CHECK_VAAPI(vaQuerySurfaceAttributes(va_display, va_config_id, 0, &attr_count));
+                attr_list.resize(attr_count);
+                CHECK_VAAPI(vaQuerySurfaceAttributes(va_display, va_config_id, attr_list.data(), &attr_count));
+                for (int k = 0; k < attr_count; k++) {
+                    switch (attr_list[k].type) {
+                    case VASurfaceAttribPixelFormat:
+                    {
+                        switch (attr_list[k].value.value.i) {
+                            case VA_FOURCC_NV12:
+                                decode_cap_list_[j].output_format_mask |= 1 << rocDecVideoSurfaceFormat_NV12;
+                                break;
+                            case VA_FOURCC_P016:
+                                decode_cap_list_[j].output_format_mask |= 1 << rocDecVideoSurfaceFormat_P016;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                        break;
+                    case VASurfaceAttribMinWidth:
+                        if (decode_cap_list_[j].min_width == 0 || (decode_cap_list_[j].min_width > 0 && decode_cap_list_[j].min_width > attr_list[k].value.value.i)) {
+                            decode_cap_list_[j].min_width = attr_list[k].value.value.i;
+                        }
+                        break;
+                    case VASurfaceAttribMinHeight:
+                        if (decode_cap_list_[j].min_height == 0 || (decode_cap_list_[j].min_height > 0 && decode_cap_list_[j].min_height > attr_list[k].value.value.i)) {
+                            decode_cap_list_[j].min_height = attr_list[k].value.value.i;
+                        }
+                        break;
+                    case VASurfaceAttribMaxWidth:
+                        if (decode_cap_list_[j].max_width < attr_list[k].value.value.i) {
+                            decode_cap_list_[j].max_width = attr_list[k].value.value.i;
+                        }
+                        break;
+                    case VASurfaceAttribMaxHeight:
+                        if (decode_cap_list_[j].max_height < attr_list[k].value.value.i) {
+                            decode_cap_list_[j].max_height = attr_list[k].value.value.i;
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+        }
+
+        initialized_ = true;
+        return ROCDEC_SUCCESS;
+    }
+    rocDecStatus GetDecoderCaps(RocdecDecodeCaps *pdc) {
+        if (!initialized_) {
+            if (ProbeHwDecodeCapabilities() != ROCDEC_SUCCESS) {
+                ERR("Failed to obtain decoder capabilities from driver.");
+                return ROCDEC_DEVICE_INVALID;
+            }
+        }
+        std::lock_guard<std::mutex> lock(mutex);
+        int i;
+        for (i = 0; i < decode_cap_list_.size(); i++) {
+            if (decode_cap_list_[i].codec_type == pdc->codec_type) {
+                break;
+            }
+        }
+        if (i < decode_cap_list_.size()) {
+            auto it_chroma_format = std::find(decode_cap_list_[i].chroma_format.begin(), decode_cap_list_[i].chroma_format.end(), pdc->chroma_format);
+            if (it_chroma_format != decode_cap_list_[i].chroma_format.end() && (pdc->bit_depth_minus_8 + 8) <= decode_cap_list_[i].max_bit_depth) {
+                pdc->is_supported = 1;
+                pdc->output_format_mask = decode_cap_list_[i].output_format_mask;
+                pdc->max_width = decode_cap_list_[i].max_width;
+                pdc->max_height = decode_cap_list_[i].max_height;
+                pdc->min_width = decode_cap_list_[i].min_width;
+                pdc->min_height = decode_cap_list_[i].min_height;
+                return ROCDEC_SUCCESS;
             } else {
                 return ROCDEC_NOT_SUPPORTED;
             }
         } else {
-            ERR("Didn't find the decoder capability for " + gcn_arch_name + " GPU!");
-            return ROCDEC_NOT_IMPLEMENTED;
+            return ROCDEC_NOT_SUPPORTED;
         }
     }
-    bool IsCodecConfigSupported(std::string gcn_arch_name, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
+    bool IsCodecConfigSupported(rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
+        if (!initialized_) {
+            if (ProbeHwDecodeCapabilities() != ROCDEC_SUCCESS) {
+                ERR("Failed to obtain decoder capabilities from driver.");
+                return ROCDEC_DEVICE_INVALID;
+            }
+        }
         std::lock_guard<std::mutex> lock(mutex);
-        std::size_t pos = gcn_arch_name.find_first_of(":");
-        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
-        auto it = vcn_spec_table.find(gcn_arch_name_base);
-        if (it != vcn_spec_table.end()) {
-            const VcnCodecsSpec& vcn_spec = it->second;
-            auto it1 = vcn_spec.codecs_spec.find(codec_type);
-            if (it1 != vcn_spec.codecs_spec.end()) {
-                const CodecSpec& codec_spec = it1->second;
-                auto it_chroma_format = std::find(codec_spec.chroma_format.begin(), codec_spec.chroma_format.end(), chroma_format);
-                auto it_bitdepth_minus8 = std::find(codec_spec.bitdepth_minus8.begin(), codec_spec.bitdepth_minus8.end(), bit_depth_minus8);
-                if (it_chroma_format != codec_spec.chroma_format.end() && it_bitdepth_minus8 != codec_spec.bitdepth_minus8.end()) {
-                    return (codec_spec.output_format_mask & (static_cast<int>(output_format) + 1));
-                } else {
-                    return false;
-                }
+        int i;
+        for (i = 0; i < decode_cap_list_.size(); i++) {
+            if (decode_cap_list_[i].codec_type == codec_type) {
+                break;
+            }
+        }
+        if (i < decode_cap_list_.size()) {
+            auto it_chroma_format = std::find(decode_cap_list_[i].chroma_format.begin(), decode_cap_list_[i].chroma_format.end(), chroma_format);
+            if (it_chroma_format != decode_cap_list_[i].chroma_format.end() && (bit_depth_minus8 + 8) <= decode_cap_list_[i].max_bit_depth) {
+                return decode_cap_list_[i].output_format_mask & 1 << (static_cast<int>(output_format));
             } else {
                 return false;
             }
@@ -111,26 +245,11 @@ public:
         }
     }
 private:
-    std::unordered_map<std::string, VcnCodecsSpec> vcn_spec_table;
+    bool initialized_;
+    std::vector<CodecSpec> decode_cap_list_{0};
     std::mutex mutex;
     RocDecVcnCodecSpec() {
-        //vcn lookup table format:
-        //{"gcn_arch_name1",{{{codec1, {{chroma_format1_for_codec1, chroma_format2_for_codec1, ...}, {bit_depth1_minus8_for_codec1, bit_depth2_minus8_for_codec1, ...}, output_format_mask_for_codec1, max_width_for_codec1, max_height_for_codec1, min_width_for_codec1, min_height_for_codec1}},
-        //                    {codec2, {{chroma_format1_for_codec2, chroma_format2_for_codec2, ...}, {bit_depth1_minus8_for_codec2, bit_depth2_minus8_for_codec2, ...}, output_format_mask_for_codec2, max_width_for_codec2, max_height_for_codec2, min_width_for_codec2, min_height_for_codec2}}}
-        //                    , vcn_instances_for_gcn_arch_name1}},
-        // av1 is available only on VCN3.0 and above
-        vcn_spec_table = {
-            {"gfx908",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2160, 64, 64}}}, 2}},
-            {"gfx90a",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2160, 64, 64}}}, 2}},
-            {"gfx940",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 3}},
-            {"gfx941",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 4}},
-            {"gfx942",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 3}},
-            {"gfx1030",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 2}},
-            {"gfx1031",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 2}},
-            {"gfx1032",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 2}},
-            {"gfx1100",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 2}},
-            {"gfx1101",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 1}},
-            {"gfx1102",{{{rocDecVideoCodec_HEVC, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 7680, 4320, 64, 64}}, {rocDecVideoCodec_AVC, {{rocDecVideoChromaFormat_420}, {0}, 1, 4096, 2176, 64, 64}}, {rocDecVideoCodec_AV1, {{rocDecVideoChromaFormat_420}, {0, 2}, 3, 8192, 4352, 64, 64}}}, 2}},};
+        initialized_ = false;
     }
     RocDecVcnCodecSpec(const RocDecVcnCodecSpec&) = delete;
     RocDecVcnCodecSpec& operator = (const RocDecVcnCodecSpec) = delete;

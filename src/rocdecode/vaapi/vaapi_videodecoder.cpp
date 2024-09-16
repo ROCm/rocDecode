@@ -64,7 +64,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
 
     //Before initializing the VAAPI, first check to see if the requested codec config is supported
     RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
-    if (!vcn_codec_spec.IsCodecConfigSupported(gcn_arch_name, decoder_create_info_.codec_type, decoder_create_info_.chroma_format,
+    if (!vcn_codec_spec.IsCodecConfigSupported(decoder_create_info_.codec_type, decoder_create_info_.chroma_format,
         decoder_create_info_.bit_depth_minus_8, decoder_create_info_.output_format)) {
         ERR("The codec config combination is not supported.");
         return ROCDEC_NOT_SUPPORTED;
@@ -166,6 +166,7 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
     va_config_attrib_.type = VAConfigAttribRTFormat;
     CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
     CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
+
     return ROCDEC_SUCCESS;
 }
 

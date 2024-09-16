@@ -150,7 +150,6 @@ typedef struct _RocdecDecodeCaps {
     uint32_t bit_depth_minus_8;            /**< IN: The Value "BitDepth minus 8" */
     uint32_t reserved_1[3];                /**< Reserved for future use - set to zero */
     uint8_t is_supported;                  /**< OUT: 1 if codec supported, 0 if not supported */
-    uint8_t num_decoders;                  /**< OUT: Number of Decoders that can support IN params */
     uint16_t output_format_mask;           /**< OUT: each bit represents corresponding rocDecVideoSurfaceFormat enum */
     uint32_t max_width;                    /**< OUT: Max supported coded width in pixels */
     uint32_t max_height;                   /**< OUT: Max supported coded height in pixels */
