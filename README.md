@@ -5,6 +5,9 @@
 rocDecode is a high-performance video decode SDK for AMD GPUs. Using the rocDecode API, you can
 access the video decoding features available on your GPU.
 
+> [!NOTE]
+> The published documentation is available at [rocDecode](https://rocm.docs.amd.com/projects/rocDecode/en/latest/index.html) in an organized, easy-to-read format, with search and a table of contents. The documentation source files reside in the `rocDecode/docs` folder of this repository. As with all ROCm projects, the documentation is open source. For more information on contributing to the documentation, see [Contribute to ROCm documentation](https://rocm.docs.amd.com/en/latest/contribute/contributing.html).
+
 ## Supported codecs
 
 * H.265 (HEVC) - 8 bit, and 10 bit
@@ -209,20 +212,6 @@ FFmpeg, refer to the instructions listed for your operating system:
 
 You can find rocDecode Docker containers in our
 [GitHub repository](https://github.com/ROCm/rocDecode/tree/develop/docker).
-
-## Documentation
-
-Run the following code to build our documentation locally.
-
-```shell
-cd docs
-pip3 install -r sphinx/requirements.txt
-python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
-```
-
-For more information on documentation builds, refer to the
-[Building documentation](https://rocm.docs.amd.com/en/latest/contribute/building.html)
-page.
 
 ## Tested configurations
 
