@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include <unordered_map>
 #include <mutex>
 #include <algorithm>
+#include <libdrm/amdgpu_drm.h>
+#include <libdrm/amdgpu.h>
 #include "../commons.h"
 #include "../../api/rocdecode.h"
 
@@ -63,13 +65,24 @@ public:
             ERR("Failed to open drm node." + drm_node);
             return ROCDEC_DEVICE_INVALID;
         }
+        amdgpu_device_handle dev_handle;
+        uint32_t major_version = 0, minor_version = 0;
+        if (amdgpu_device_initialize(drm_fd, &major_version, &minor_version, &dev_handle)) {
+		    ERR("GPU device initialization failed: " + drm_node);
+            return ROCDEC_DEVICE_INVALID;
+        }
+        if (amdgpu_query_hw_ip_count(dev_handle, AMDGPU_HW_IP_VCN_ENC, &num_codec_engines_)) {
+            ERR("Failed to get the number of video codec engines.");
+        }
+
         VADisplay va_display = vaGetDisplayDRM(drm_fd);
         if (!va_display) {
             ERR("Failed to create va_display.");
             return ROCDEC_DEVICE_INVALID;
         }
-        int major_version = 0, minor_version = 0;
-        CHECK_VAAPI(vaInitialize(va_display, &major_version, &minor_version));
+        vaSetInfoCallback(va_display, NULL, NULL);
+        int va_major_version = 0, va_minor_version = 0;
+        CHECK_VAAPI(vaInitialize(va_display, &va_major_version, &va_minor_version));
 
         int num_profiles = 0;
         std::vector<VAProfile> profile_list;
@@ -144,8 +157,7 @@ public:
                 CHECK_VAAPI(vaQuerySurfaceAttributes(va_display, va_config_id, attr_list.data(), &attr_count));
                 for (int k = 0; k < attr_count; k++) {
                     switch (attr_list[k].type) {
-                    case VASurfaceAttribPixelFormat:
-                    {
+                    case VASurfaceAttribPixelFormat: {
                         switch (attr_list[k].value.value.i) {
                             case VA_FOURCC_NV12:
                                 decode_cap_list_[j].output_format_mask |= 1 << rocDecVideoSurfaceFormat_NV12;
@@ -182,8 +194,11 @@ public:
                         break;
                     }
                 }
+                CHECK_VAAPI(vaDestroyConfig(va_display, va_config_id));
             }
         }
+        CHECK_VAAPI(vaTerminate(va_display));
+        close(drm_fd);
 
         initialized_ = true;
         return ROCDEC_SUCCESS;
@@ -246,6 +261,7 @@ public:
     }
 private:
     bool initialized_;
+    uint32_t num_codec_engines_ = 1;
     std::vector<CodecSpec> decode_cap_list_{0};
     std::mutex mutex;
     RocDecVcnCodecSpec() {
