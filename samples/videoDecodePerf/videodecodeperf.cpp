@@ -74,8 +74,13 @@ void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
     << "-t Number of threads (>= 1) - optional; default: 1" << std::endl
-    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
-    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
+    << "-d Device ID (>= 0) - optional; default: 0" << std::endl
+    << "-z Force zero latency (decoded frames will be flushed out for display immediately) - optional" << std::endl
+    << "-m Memory type (integer values between 0 to 3: specifies where to store the decoded output:" << std::endl
+    << "                                               0 = decoded output will be in internal interopped memory," << std::endl
+    << "                                               1 = decoded output will be copied to a separate device memory," << std::endl
+    << "                                               2 = decoded output will be copied to a separate host memory," << std::endl
+    << "                                               3 = decoded output will not be available (decode only)) - optional; default: 3" << std::endl;
     exit(0);
 }
 
@@ -144,6 +149,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-z");
             }
             b_force_zero_latency = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
         ShowHelpAndExit(argv[i]);
