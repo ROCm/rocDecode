@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "common.h"
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     int n_pic_decoded = 0, decoded_pics = 0;
     uint8_t *p_video = nullptr;
@@ -54,6 +54,9 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *
             break;
         }
     } while (n_video_bytes);
+    if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+        p_dec->WaitForDecodeCompletion();
+    }
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
@@ -76,6 +79,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-t Number of threads (>= 1) - optional; default: 1" << std::endl
     << "-d Device ID (>= 0) - optional; default: 0" << std::endl
     << "-z Force zero latency (decoded frames will be flushed out for display immediately) - optional" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional" << std::endl
     << "-m Memory type (integer values between 0 to 3: specifies where to store the decoded output:" << std::endl
     << "                                               0 = decoded output will be in internal interopped memory," << std::endl
     << "                                               1 = decoded output will be copied to a separate device memory," << std::endl
@@ -249,7 +253,7 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames));
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames, mem_type));
         }
 
         for (int i = 0; i < n_thread; i++) {
