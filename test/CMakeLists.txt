@@ -38,13 +38,7 @@ else()
 endif()
 
 # find rocDecode
-find_library(ROCDECODE_LIBRARY NAMES rocdecode HINTS ${ROCM_PATH}/lib)
-find_path(ROCDECODE_INCLUDE_DIR NAMES rocdecode.h PATHS /opt/rocm/include/rocdecode ${ROCM_PATH}/include/rocdecode)
-
-if(ROCDECODE_LIBRARY AND ROCDECODE_INCLUDE_DIR)
-    set(ROCDECODE_FOUND TRUE)
-    message("-- ${White}Using rocDecode -- \n\tLibraries:${ROCDECODE_LIBRARY} \n\tIncludes:${ROCDECODE_INCLUDE_DIR}${ColourReset}")
-endif()
+find_package(rocDecode QUIET)
 
 if(NOT ROCDECODE_FOUND)
     message("-- ${Yellow}${PROJECT_NAME} requires rocDecode. Install rocDecode before running CTests")
