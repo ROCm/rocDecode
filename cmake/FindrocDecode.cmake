@@ -35,9 +35,7 @@ mark_as_advanced(ROCDECODE_INCLUDE_DIR)
 mark_as_advanced(ROCDECODE_LIBRARY)
 
 if(ROCDECODE_INCLUDE_DIR AND ROCDECODE_LIBRARY)
-    if(rocDecode_FIND_REQUIRED)
-        message("-- FindrocDecode -- Using rocDecode: \n\tIncludes:${ROCDECODE_INCLUDE_DIR}\n\tLib:${ROCDECODE_LIBRARY}")
-    endif()
+    message("-- FindrocDecode -- Using rocDecode: \n\tIncludes:${ROCDECODE_INCLUDE_DIR}\n\tLib:${ROCDECODE_LIBRARY}")
     set(ROCDECODE_FOUND TRUE)
 else()
     if(rocDecode_FIND_REQUIRED)
@@ -47,28 +45,28 @@ else()
 endif()
 
 if(ROCDECODE_FOUND)
-  # Find rocDecode Version
-  file(READ "${ROCDECODE_INCLUDE_DIR}/rocdecode_version.h" ROCDECODE_VERSION_FILE)
-  string(REGEX MATCH "ROCDECODE_MAJOR_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
-  set(ROCDECODE_VER_MAJOR ${CMAKE_MATCH_1})
-  string(REGEX MATCH "ROCDECODE_MINOR_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
-  set(ROCDECODE_VER_MINOR ${CMAKE_MATCH_1})
-  string(REGEX MATCH "ROCDECODE_MICRO_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
-  set(ROCDECODE_VER_MICRO ${CMAKE_MATCH_1})
-  message("-- Found rocDecode Version: ${ROCDECODE_VER_MAJOR}.${ROCDECODE_VER_MINOR}.${ROCDECODE_VER_MICRO}")
+    # Find rocDecode Version
+    file(READ "${ROCDECODE_INCLUDE_DIR}/rocdecode_version.h" ROCDECODE_VERSION_FILE)
+    string(REGEX MATCH "ROCDECODE_MAJOR_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
+    set(ROCDECODE_VER_MAJOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "ROCDECODE_MINOR_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
+    set(ROCDECODE_VER_MINOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "ROCDECODE_MICRO_VERSION    ([0-9]*)" _ ${ROCDECODE_VERSION_FILE})
+    set(ROCDECODE_VER_MICRO ${CMAKE_MATCH_1})
+    message("-- Found rocDecode Version: ${ROCDECODE_VER_MAJOR}.${ROCDECODE_VER_MINOR}.${ROCDECODE_VER_MICRO}")
 endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     rocDecode
     FOUND_VAR  
-      ROCDECODE_FOUND 
+        ROCDECODE_FOUND 
     REQUIRED_VARS
-      ROCDECODE_INCLUDE_DIR
-      ROCDECODE_LIBRARY
-      ROCDECODE_VER_MAJOR
-      ROCDECODE_VER_MINOR
-      ROCDECODE_VER_MICRO
+        ROCDECODE_INCLUDE_DIR
+        ROCDECODE_LIBRARY
+        ROCDECODE_VER_MAJOR
+        ROCDECODE_VER_MINOR
+        ROCDECODE_VER_MICRO
 )
 
 set(ROCDECODE_FOUND ${ROCDECODE_FOUND} CACHE INTERNAL "")
