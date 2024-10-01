@@ -77,7 +77,7 @@ message("-- ${BoldBlue}rocDecode Install Path -- ${CMAKE_INSTALL_PREFIX}${Colour
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
+set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
 
 # rocDecode Build Type
 if(NOT CMAKE_BUILD_TYPE)
