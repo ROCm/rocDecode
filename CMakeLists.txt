@@ -26,6 +26,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++)
 endif()
 
+# NOTE: Match version with api/rocdecode_version.h
 set(VERSION "0.8.0")
 set(CMAKE_CXX_STANDARD 17)
 
