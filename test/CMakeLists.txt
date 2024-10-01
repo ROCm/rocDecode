@@ -56,7 +56,7 @@ if(NOT ROCDECODE_FOUND)
     message("-- ${Yellow}${PROJECT_NAME} requires rocDecode. Install rocDecode before running CTests")
 endif()
 
-# videoDecode
+# 1 - videoDecode
 add_test(
   NAME
     video_decode-H265
@@ -69,7 +69,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodeMem
+# 2 - videoDecodeMem
 add_test(
   NAME
     video_decodeMem-H265
@@ -82,7 +82,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodePerf
+# 3 - videoDecodePerf
 add_test(
   NAME
     video_decodePerf-H265
@@ -95,7 +95,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
 )
 
-# videoDecodeRGB
+# 4 - videoDecodeRGB
 add_test(
   NAME
     video_decodeRGB-H265
@@ -108,7 +108,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -of rgb
 )
 
-# videoDecode H264
+# 5 - videoDecode H264
 add_test(
   NAME
     video_decode-H264
@@ -121,7 +121,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H264.mp4
 )
 
-# videoDecodeBatch
+# 6 - videoDecodeBatch
 add_test(
   NAME
     video_decodeBatch
@@ -134,7 +134,7 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/ -t 2
 )
 
-# videoDecode AV1
+# 7 - videoDecode AV1
 add_test(
   NAME
     video_decode-AV1
