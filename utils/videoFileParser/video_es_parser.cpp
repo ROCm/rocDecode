@@ -21,10 +21,11 @@ THE SOFTWARE.
 */
 
 #include <string.h>
-#include "../../src/commons.h"
+//#include "../../src/commons.h"
 #include "video_es_parser.h"
 #include "../../src/parser/hevc_defines.h"
 #include "../../src/parser/avc_defines.h"
+#include "../../src/parser/av1_defines.h"
 #include "../../src/parser/roc_video_parser.h"
 
 RocVideoESParser::RocVideoESParser(const char *input_file_path) {
@@ -46,6 +47,10 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     num_start_code_ = 0;
     curr_start_code_offset_ = 0;
     next_start_code_offset_ = 0;
+    obu_byte_offset_ = 0;
+    obu_size_ = 0;
+    num_td_obus_ = 0;
+    num_temp_units_ = 0;
 }
 
 RocVideoESParser::~RocVideoESParser() {
@@ -57,53 +62,61 @@ RocVideoESParser::~RocVideoESParser() {
     }
 }
 
+int RocVideoESParser::GetDataSizeInRB() {
+    if (read_ptr_ == write_ptr_) {
+        return 0;
+    } else if (read_ptr_ < write_ptr_) {
+        return write_ptr_ - read_ptr_;
+    } else {
+        return BS_RING_SIZE - read_ptr_ + write_ptr_;
+    }
+}
+
 int RocVideoESParser::FetchBitStream()
 {
     int free_space;
     int read_size;
     int total_read_size = 0;
-    int offset;
+    //int offset;
+
+    // A full ring has BS_RING_SIZE - 1 bytes
+    free_space = BS_RING_SIZE - 1 - GetDataSizeInRB();
+    if (free_space == 0) {
+        return 0;
+    }
     
     // First fill the ending part of the ring
     if (write_ptr_ >= read_ptr_) {
-        if (write_ptr_ == read_ptr_) { // empty
-            free_space = BS_RING_SIZE - write_ptr_;
-            offset = write_ptr_;
-        } else if (write_ptr_ > read_ptr_) {
-            free_space = BS_RING_SIZE - write_ptr_ - 1;
-            offset = (write_ptr_ + 1) % BS_RING_SIZE;
+        int fill_space = BS_RING_SIZE - (write_ptr_ == 0 ? 1 : write_ptr_);
+        read_size = fread(&bs_ring_[write_ptr_], 1, fill_space, p_stream_file_);
+        if (read_size > 0) {
+            write_ptr_ += read_size;
         }
-        if (free_space) {
-            read_size = fread(&bs_ring_[offset], 1, free_space, p_stream_file_);
-            if (read_size > 0) {
-                write_ptr_ = (offset + read_size - 1) % BS_RING_SIZE;
-            }
-            if (read_size < free_space) {
-                end_of_file_ = true;
-            }
-            total_read_size += read_size;
-            if (end_of_file_) {
-                return total_read_size;
-            }
+        if (read_size < fill_space) {
+            end_of_file_ = true;
         }
+        total_read_size += read_size;
+        if (end_of_file_) {
+            return total_read_size;
+        }
+    }
+    free_space -= read_size;
+    if (free_space == 0) {
+        return total_read_size;
     }
         
     // Continue filling the beginning part of the ring
-    offset = (write_ptr_ + 1) % BS_RING_SIZE;
+    //offset = (write_ptr_ + 1) % BS_RING_SIZE;
     if (read_ptr_ > 0) {
-        free_space = read_ptr_ - offset - 1;
-        if (free_space > 0) {
-            read_size = fread(&bs_ring_[offset], 1, free_space, p_stream_file_);
-            if (read_size > 0) {
-                write_ptr_ = offset + read_size - 1;
-            }
-            if (read_size < free_space) {
-                end_of_file_ = true;
-            }
-            total_read_size += read_size;
+        read_size = fread(&bs_ring_[0], 1, free_space, p_stream_file_);
+        if (read_size > 0) {
+            write_ptr_ = read_size;
         }
+        if (read_size < free_space) {
+            end_of_file_ = true;
+        }
+        total_read_size += read_size;
     }
-    
     return total_read_size;
 }
 
@@ -179,7 +192,7 @@ void RocVideoESParser::CopyNalUnitFromRing() {
     if (curr_start_code_offset_ != next_start_code_offset_) {
         nal_end_plus_1 = next_start_code_offset_;
     } else {
-        nal_end_plus_1 = (write_ptr_ + 1) % BS_RING_SIZE; // end of stream
+        nal_end_plus_1 = write_ptr_; // end of stream
     }
     //printf("CopyNalUnitFromRing(): nal_start = %d, nal_end_plus_1 = %d, curr_byte_offset_ = %d\n", nal_start, nal_end_plus_1, curr_byte_offset_); // Jefftest
     if (nal_end_plus_1 >= nal_start) {
@@ -269,7 +282,7 @@ void RocVideoESParser::CheckAvcNalForSlice(int start_code_offset, int *slice_fla
     }
 }
 
-int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
+int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
     int slice_nal_flag;
     int first_slice_flag = 0;
     int num_slices = 0;
@@ -288,21 +301,14 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
     }
 
     while (!end_of_stream_) {
-        if (FindStartCode()) {
-        } else {
+        if (!FindStartCode()) {
             ERR("No start code in the bitstream.");
             break;
         }
         CopyNalUnitFromRing();
-        printf("Check current NAL type.\n"); // Jefftest
         //CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
         CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
         if (slice_nal_flag) {
-            /*if (first_slice_flag && num_slices == 0) { // first slice of the current picture
-                num_slices = 1;
-            } else if (!first_slice_flag && num_slices) { // second and more slices of the current picture
-                num_slices++;
-            }*/
             num_slices++;
             curr_pic_end_ = pic_data_size_; // update the current picture data end
         }
@@ -310,13 +316,11 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
         if (curr_start_code_offset_ == next_start_code_offset_) {
             break; // end of stream
         } else if (num_slices) {
-        printf("Check next NAL type.\n"); // Jefftest
             //CheckHevcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
             CheckAvcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
             if (slice_nal_flag && first_slice_flag) {
                 // Between two pictures, we can have non-slice NAL units which are associated with the next picutre
                 if (curr_pic_end_ < pic_data_size_) {
-                    printf("Here ......................\n"); // Jefftest
                     next_pic_start_ = curr_pic_end_;
                 }
                 break; // hit the first slice of the next picture
@@ -333,4 +337,99 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
     }
     printf("pic_size = %d, num_pictures = %d\n", *pic_size, num_pictures_); // Jefftest
     return 0;
+}
+
+bool RocVideoESParser::ReadObuHeaderAndSize(int *obu_type) {
+    uint8_t header_byte;
+    int obu_extension_flag;
+
+    obu_size_ = 0;
+    obu_byte_offset_ = curr_byte_offset_;
+    // Parser header
+    if (GetByte(curr_byte_offset_, &header_byte) == false) {
+        return false;
+    }
+    *obu_type = (header_byte >> 3) & 0x0F;
+    obu_extension_flag = (header_byte >> 2) & 0x01;
+    curr_byte_offset_ = (curr_byte_offset_ + 1) % BS_RING_SIZE;
+    obu_size_++;
+    if (obu_extension_flag) {
+        curr_byte_offset_ = (curr_byte_offset_ + 1) % BS_RING_SIZE;
+        obu_size_++;
+    }
+    // Parse size
+    int len;
+    uint32_t value = 0;
+    uint8_t data_byte;
+    for (len = 0; len < 8; ++len) {
+        if (GetByte(curr_byte_offset_ + len, &data_byte) == false) {
+            return false;
+        }
+        value |= (data_byte & 0x7F) << (len * 7);
+        if ((data_byte & 0x80) == 0) {
+            ++len;
+            break;
+        }
+    }
+    obu_size_ += len + value;
+    curr_byte_offset_ = (curr_byte_offset_ + len + value) % BS_RING_SIZE;
+
+    return true;
+}
+
+bool RocVideoESParser::CopyObuFromRing() {
+    if (obu_size_ > GetDataSizeInRB()) {
+        if (FetchBitStream() == 0) {
+            end_of_stream_ = true;
+            return false;
+        }
+        if (obu_size_ > GetDataSizeInRB()) {
+            return false;
+        }
+    }
+    if ((pic_data_size_ + obu_size_) > pic_data_.size()) {
+        pic_data_.resize(pic_data_.size() + obu_size_);
+    }
+    int obu_end_offset = (obu_byte_offset_ + obu_size_) % BS_RING_SIZE;
+    if (obu_end_offset >= obu_byte_offset_) {
+        memcpy(&pic_data_[pic_data_size_], &bs_ring_[obu_byte_offset_], obu_size_);
+    } else {
+        memcpy(&pic_data_[pic_data_size_], &bs_ring_[obu_byte_offset_], BS_RING_SIZE - obu_byte_offset_);
+        memcpy(&pic_data_[pic_data_size_ + BS_RING_SIZE - obu_byte_offset_], &bs_ring_[0], obu_end_offset);
+    }
+    printf("CopyObuFromRing(): pic_data_size_ = %d, obu_size_ = %d\n", pic_data_size_, obu_size_); // Jefftest
+    pic_data_size_ += obu_size_;
+    SetReadPointer(obu_end_offset);
+    return true;
+}
+
+int RocVideoESParser::GetPicDataAv1(uint8_t **p_pic_data, int *pic_size) {
+    int obu_type;
+    pic_data_size_ = 0;
+
+    while (!end_of_stream_) {
+        if (!ReadObuHeaderAndSize(&obu_type)) {
+            break;
+        }
+        CopyObuFromRing();
+        if (obu_type == kObuTemporalDelimiter) {
+            num_td_obus_++;
+        if (num_td_obus_ > 1) {
+            break;
+        }
+        }
+    }
+
+    *p_pic_data = pic_data_.data();
+    *pic_size = pic_data_size_;
+    num_temp_units_++;
+    return 0;
+}
+
+int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
+    int ret;
+
+    ret = GetPicDataAvcHevc(p_pic_data, pic_size);
+    //ret = GetPicDataAv1(p_pic_data, pic_size);
+    return ret;
 }

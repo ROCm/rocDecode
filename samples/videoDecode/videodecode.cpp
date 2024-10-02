@@ -38,6 +38,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "video_es_parser.h"
 #include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -229,6 +230,7 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
+        double total_interop_time = 0;
         bool first_frame = true;
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
@@ -248,8 +250,21 @@ int main(int argc, char **argv) {
         }
         viddec.SetReconfigParams(&reconfig_params);
 
+        // Jefftest
+        RocVideoESParser es_parser(input_file_path.c_str());
+        /*do {
+            es_parser.GetPicData(&pvideo, &n_video_bytes);
+            for (int i = 0; i < 100; i++) {
+                printf("%x ", pvideo[i]);
+            }
+        } while (n_video_bytes);*/
+        static int count = 0;
+
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
+            #if 1
+            es_parser.GetPicData(&pvideo, &n_video_bytes);
+            #else
             if (seek_criteria == 1 && first_frame) {
                 // use VideoSeekContext class to seek to given frame number
                 video_seek_ctx.seek_frame_ = seek_to_frame;
@@ -275,12 +290,18 @@ int main(int argc, char **argv) {
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
+            #endif
+            // Jefftest
+            printf("Frame %d ......................\n", count);
+            printf("pic size = %d\n", n_video_bytes);
+            count++;
             n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
+            auto start_interop_time = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
                 if (b_generate_md5) {
@@ -294,7 +315,9 @@ int main(int argc, char **argv) {
             }
             auto end_time = std::chrono::high_resolution_clock::now();
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            auto time_per_interop = std::chrono::duration<double, std::micro>(end_time - start_interop_time).count();
             total_dec_time += time_per_decode;
+            total_interop_time += time_per_interop;
             n_frame += n_frame_returned;
             n_pic_decoded += decoded_pics;
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
@@ -310,6 +333,7 @@ int main(int argc, char **argv) {
             std::cout << "info: avg decoding time per picture: " << total_dec_time / n_pic_decoded << " ms" <<std::endl;
             std::cout << "info: avg decode FPS: " << (n_pic_decoded / total_dec_time) * 1000 << std::endl;
             std::cout << "info: avg output/display time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
+            std::cout << "info: avg inter-op time per frame: " << total_interop_time / n_frame << " us" <<std::endl;
             std::cout << "info: avg output/display FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         } else {
             if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
@@ -348,7 +372,7 @@ int main(int argc, char **argv) {
                 } else {
                     std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
-                std::cout << ref_md5_string << std::endl;
+                std::cout << ref_md5_string.data() << std::endl;
                 ref_md5_file.close();
             }
         }

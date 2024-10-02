@@ -27,8 +27,9 @@ THE SOFTWARE.
 #include <vector>
 
 // Jefftest 
-#define BS_RING_SIZE (8 * 1024 * 1024)
-//#define BS_RING_SIZE (800 * 1024)
+//#define BS_RING_SIZE (8 * 1024 * 1024)
+#define BS_RING_SIZE (900 * 1024)
+//#define BS_RING_SIZE (400 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
 
 class RocVideoESParser {
@@ -59,18 +60,42 @@ class RocVideoESParser {
         int curr_start_code_offset_;
         int next_start_code_offset_;
         //int nal_unit_size_;
+        // AV1
+        int obu_byte_offset_; // header offset
+        int obu_size_; // including header
+        int num_td_obus_; // number of temporal delimiter OBUs
 
         // Picture data (linear buffer)
         std::vector<uint8_t> pic_data_;
         int pic_data_size_;
+        // AVC/HEVC
         int curr_pic_end_;
         int next_pic_start_;
         int num_pictures_;
+        // AV1
+        int num_temp_units_; // number of temporal units
+
+        /*! \brief Function to retrieve the bitstream of a picture for AVC/HEVC
+         * \param [out] p_pic_data Pointer to the picture data
+         * \param [out] pic_size Size of the picture in bytes
+         */
+        int GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size);
+
+        /*! \brief Function to retrieve the bitstream of a temporal unit for AV1
+         * \param [out] p_pic_data Pointer to the picture data
+         * \param [out] pic_size Size of the picture in bytes
+         */
+        int GetPicDataAv1(uint8_t **p_pic_data, int *pic_size);
 
         /*! \brief Function to read bitstream from file and fill into the ring buffer.
         * \return Number of bytes read from file.
         */
         int FetchBitStream();
+
+        /*! \brief Function to check the remaining data size in the ring buffer
+         * \return Number of bytes still available in the ring
+         */
+        int GetDataSizeInRB();
 
         /*! \brief Function to read one byte from the ring buffer without advancing the read pointer
          * \param [in] offset The byte offset to read
@@ -106,4 +131,15 @@ class RocVideoESParser {
         /*! \brief Function to copy a NAL unit from the bitstream ring buffer to the linear picture data buffer
          */
         void CopyNalUnitFromRing();
-};
+
+        /*! \brief Function to parse an OBU header and size
+        * \param [out] obu_type Pointer to the returned OBU type
+        * \return true if success
+        */
+        bool ReadObuHeaderAndSize(int *obu_type);
+    
+        /*! \brief Function to copy an OBU from the bitstream ring buffer to the linear picture data buffer
+         * \return true if success
+         */
+        bool CopyObuFromRing();
+    };
