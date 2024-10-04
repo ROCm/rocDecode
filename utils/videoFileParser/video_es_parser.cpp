@@ -51,6 +51,7 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     obu_size_ = 0;
     num_td_obus_ = 0;
     num_temp_units_ = 0;
+    ivf_file_header_read_ = false;
 }
 
 RocVideoESParser::~RocVideoESParser() {
@@ -77,7 +78,6 @@ int RocVideoESParser::FetchBitStream()
     int free_space;
     int read_size;
     int total_read_size = 0;
-    //int offset;
 
     // A full ring has BS_RING_SIZE - 1 bytes
     free_space = BS_RING_SIZE - 1 - GetDataSizeInRB();
@@ -90,7 +90,7 @@ int RocVideoESParser::FetchBitStream()
         int fill_space = BS_RING_SIZE - (write_ptr_ == 0 ? 1 : write_ptr_);
         read_size = fread(&bs_ring_[write_ptr_], 1, fill_space, p_stream_file_);
         if (read_size > 0) {
-            write_ptr_ += read_size;
+            write_ptr_ = (write_ptr_ + read_size) % BS_RING_SIZE; // when we still have more bytes to fill, write_ptr_ becomes 0 to continue to the next step.
         }
         if (read_size < fill_space) {
             end_of_file_ = true;
@@ -99,18 +99,17 @@ int RocVideoESParser::FetchBitStream()
         if (end_of_file_) {
             return total_read_size;
         }
-    }
-    free_space -= read_size;
-    if (free_space == 0) {
-        return total_read_size;
+        free_space -= read_size;
+        if (free_space == 0) {
+            return total_read_size;
+        }
     }
         
     // Continue filling the beginning part of the ring
-    //offset = (write_ptr_ + 1) % BS_RING_SIZE;
     if (read_ptr_ > 0) {
-        read_size = fread(&bs_ring_[0], 1, free_space, p_stream_file_);
+        read_size = fread(&bs_ring_[write_ptr_], 1, free_space, p_stream_file_);
         if (read_size > 0) {
-            write_ptr_ = read_size;
+            write_ptr_ = (write_ptr_ + read_size) % BS_RING_SIZE;
         }
         if (read_size < free_space) {
             end_of_file_ = true;
@@ -132,9 +131,30 @@ bool RocVideoESParser::GetByte(int offset, uint8_t *data) {
     return true;
 }
 
+bool RocVideoESParser::ReadBytes(int offset, int size, uint8_t *data) {
+    offset = offset % BS_RING_SIZE;
+    if (size > GetDataSizeInRB()) {
+        if (FetchBitStream() == 0) {
+            end_of_stream_ = true;
+            return false;
+        }
+        if (size > GetDataSizeInRB()) {
+            ERR("Could not read the requested bytes from ring buffer. Either ring buffer size is too small or not enough bytes left.");
+            return false;
+        }
+    }
+    if (offset + size > BS_RING_SIZE) {
+        int part = BS_RING_SIZE - offset;
+        memcpy(data, &bs_ring_[offset], part);
+        memcpy(&data[part], &bs_ring_[0], size - part);
+    } else {
+        memcpy(data, &bs_ring_[offset], size);
+    }
+    return true;
+}
+
 void RocVideoESParser::SetReadPointer(int value) {
     read_ptr_ = value % BS_RING_SIZE;
-    //printf("read_ptr = %d, write_ptr = %d\n", read_ptr_, write_ptr_); // Jefftest
 }
 
 bool RocVideoESParser::FindStartCode() {
@@ -306,8 +326,8 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
             break;
         }
         CopyNalUnitFromRing();
-        //CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
-        CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+        CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+        //CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
         if (slice_nal_flag) {
             num_slices++;
             curr_pic_end_ = pic_data_size_; // update the current picture data end
@@ -316,8 +336,8 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
         if (curr_start_code_offset_ == next_start_code_offset_) {
             break; // end of stream
         } else if (num_slices) {
-            //CheckHevcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
-            CheckAvcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
+            CheckHevcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
+            //CheckAvcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
             if (slice_nal_flag && first_slice_flag) {
                 // Between two pictures, we can have non-slice NAL units which are associated with the next picutre
                 if (curr_pic_end_ < pic_data_size_) {
@@ -426,10 +446,84 @@ int RocVideoESParser::GetPicDataAv1(uint8_t **p_pic_data, int *pic_size) {
     return 0;
 }
 
+bool RocVideoESParser::CheckIvfFileHeader(uint8_t *stream) {
+    static const char *IVF_SIGNATURE = "DKIF";
+    uint8_t *ptr = stream;
+
+    // bytes 0-3: signature
+    if (memcmp(IVF_SIGNATURE, ptr, 4) == 0) {
+        ptr += 4;
+        // bytes 4-5: version (should be 0). Little Endian.
+        int ivf_version = ptr[0] | (ptr[1] << 8);
+        if (ivf_version != 0) {
+            ERR("Stream file error: Incorrect IVF version (" + TOSTR(ivf_version) + "). Should be 0.");
+        }
+        ptr += 2;
+        // bytes 6-7: length of header in bytes
+        ptr += 2;
+        // bytes 8-11: codec FourCC (e.g., 'VP80')
+        uint32_t codec_fourcc = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+        ptr += 4;
+        // bytes 12-13: width in pixels
+        uint32_t width = ptr[0] | (ptr[1] << 8);
+        ptr += 2;
+        // bytes 14-15: height in pixels
+        uint32_t height = ptr[0] | (ptr[1] << 8);
+        ptr += 2;
+        // bytes 16-23: time base denominator
+        uint32_t denominator = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+        ptr += 4;
+        // bytes 20-23: time base numerator
+        uint32_t numerator = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+        ptr += 4;
+        // bytes 24-27: number of frames in file
+        uint32_t num_frames = ptr[0] | (ptr[1] << 8);
+        // bytes 28-31: unused
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int RocVideoESParser::GetPicDataIvfAv1(uint8_t **p_pic_data, int *pic_size) {
+    uint8_t frame_header[12];
+    pic_data_size_ = 0;
+    if (ReadBytes(curr_byte_offset_, 12, frame_header)) {
+        curr_byte_offset_ = (curr_byte_offset_ + 12) % BS_RING_SIZE;
+        SetReadPointer(curr_byte_offset_);
+        int frame_size = frame_header[0] | (frame_header[1] << 8) | (frame_header[2] << 16) | (frame_header[3] << 24);
+        if (frame_size > pic_data_.size()) {
+            pic_data_.resize(frame_size);
+        }
+        if (ReadBytes(curr_byte_offset_, frame_size, pic_data_.data())) {
+            pic_data_size_ = frame_size;
+            curr_byte_offset_ = (curr_byte_offset_ + frame_size) % BS_RING_SIZE;
+            SetReadPointer(curr_byte_offset_);
+        }
+    }
+    *p_pic_data = pic_data_.data();
+    *pic_size = pic_data_size_;
+    return 0;
+}
+
 int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
     int ret;
 
+#if 0
     ret = GetPicDataAvcHevc(p_pic_data, pic_size);
+#else
     //ret = GetPicDataAv1(p_pic_data, pic_size);
+    // IVF containter files
+    if (!ivf_file_header_read_) {
+        uint8_t file_header[32];
+        ReadBytes(curr_byte_offset_, 32, file_header);
+        if (CheckIvfFileHeader(file_header)) {
+            curr_byte_offset_ = (curr_byte_offset_ + 32) % BS_RING_SIZE;
+            SetReadPointer(curr_byte_offset_);
+        }
+        ivf_file_header_read_ = true;
+    }
+    ret = GetPicDataIvfAv1(p_pic_data, pic_size);
+#endif
     return ret;
 }

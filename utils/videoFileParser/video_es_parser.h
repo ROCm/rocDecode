@@ -27,8 +27,9 @@ THE SOFTWARE.
 #include <vector>
 
 // Jefftest 
+#define BS_RING_SIZE (16 * 1024 * 1024)
 //#define BS_RING_SIZE (8 * 1024 * 1024)
-#define BS_RING_SIZE (900 * 1024)
+//#define BS_RING_SIZE (900 * 1024)
 //#define BS_RING_SIZE (400 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
 
@@ -75,6 +76,8 @@ class RocVideoESParser {
         // AV1
         int num_temp_units_; // number of temporal units
 
+        bool ivf_file_header_read_; // indicator if IVF file header has been checked
+
         /*! \brief Function to retrieve the bitstream of a picture for AVC/HEVC
          * \param [out] p_pic_data Pointer to the picture data
          * \param [out] pic_size Size of the picture in bytes
@@ -86,6 +89,12 @@ class RocVideoESParser {
          * \param [out] pic_size Size of the picture in bytes
          */
         int GetPicDataAv1(uint8_t **p_pic_data, int *pic_size);
+
+        /*! \brief Function to retrieve the bitstream of a temporal unit for AV1 from IVF container
+         * \param [out] p_pic_data Pointer to the picture data
+         * \param [out] pic_size Size of the picture in bytes
+         */
+        int GetPicDataIvfAv1(uint8_t **p_pic_data, int *pic_size);
 
         /*! \brief Function to read bitstream from file and fill into the ring buffer.
         * \return Number of bytes read from file.
@@ -103,6 +112,14 @@ class RocVideoESParser {
          * \return True: success; False: no more byte available.
          */
         bool GetByte(int offset, uint8_t *data);
+
+        /*! \brief Function to read the specified bytes from the ring buffer without advancing the read pointer
+         * \param [in] offset The starting byte offset to read
+         * \param [in] size The numbers of bytes to read
+         * \param [out] data The bytes read
+         * \return True: success; False: can not read the set bytes
+         */
+        bool ReadBytes(int offset, int size, uint8_t *data);
 
         /*! \brief Function to update the read pointer by the set bytes
          * \param [in] value The new read pointer value
@@ -142,4 +159,10 @@ class RocVideoESParser {
          * \return true if success
          */
         bool CopyObuFromRing();
-    };
+
+        /*! \brief Function to check the 32 byte stream for IVF file header identity
+         * \return true if IVF file header is identified; false: otherwise
+         */
+        bool CheckIvfFileHeader(uint8_t *stream);
+
+};
