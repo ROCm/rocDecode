@@ -277,6 +277,13 @@ extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_hand
 
 /************************************************************************************************/
 //! \ingroup group_rocparser
+//! \fn rocDecStatus ROCDECAPI rocDecParserReleaseFrame(RocdecVideoParser parser_handle, int pic_idx)
+//! Release frame with index pic_idx from parser's buffer pool and mark it for reuse 
+/************************************************************************************************/
+extern rocDecStatus ROCDECAPI rocDecParserReleaseFrame(RocdecVideoParser parser_handle, int pic_idx);
+
+/************************************************************************************************/
+//! \ingroup group_rocparser
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle)
 //! Destroy the video parser object
 /************************************************************************************************/

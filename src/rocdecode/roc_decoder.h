@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <string.h>
 #include <map>
 #include "../api/rocdecode.h"
+#include "../api/rocparser.h"
 #include <hip/hip_runtime.h>
 #include "vaapi/vaapi_videodecoder.h"
 
@@ -61,10 +62,11 @@ public:
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
     rocDecStatus GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
+    rocDecStatus ReleaseVideoFrame(RocdecVideoParser parser_hdl, int pic_idx);
 
 private:
     rocDecStatus InitHIP(int device_id);
-    rocDecStatus ReleaseVideoFrame(int pic_idx);
+    rocDecStatus FreeVideoFrame(int pic_idx);
     int num_devices_;
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;

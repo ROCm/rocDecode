@@ -52,6 +52,13 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method
 
+    /*! @brief function to to release surface with pic_idx and mark it for reuse, can be called from a different thread than decode thread
+     * \param [in] pic_idx surface index for the picture to be released
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus ReleaseFrame(int pic_idx) {return ROCDEC_NOT_IMPLEMENTED;};     // derived method :: to be implemented
+
     enum PictureStructure {
         kFrame,
         kTopField,
