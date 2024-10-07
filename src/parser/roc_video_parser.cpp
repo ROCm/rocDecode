@@ -73,6 +73,21 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
     return ROCDEC_SUCCESS;
 }
 
+/**
+ * @brief function to to release surface with pic_idx and mark it for reuse, can be called from a different thread than decode thread
+ * \param [in] pic_idx surface index for the picture to be released
+ * 
+ * @return rocDecStatus 
+ */
+
+rocDecStatus RocVideoParser::ReleaseFrame(int pic_idx) {
+    if(pic_idx < 0) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    //todo::
+    return ROCDEC_NOT_IMPLEMENTED;
+}
+
 void RocVideoParser::InitDecBufPool() {
     for (int i = 0; i < dec_buf_pool_size_; i++) {
         decode_buffer_pool_[i].use_status = kNotUsed;
