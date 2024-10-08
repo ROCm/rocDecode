@@ -75,12 +75,13 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
 
 /**
  * @brief function to to release surface with pic_idx and mark it for reuse, can be called from a different thread than decode thread
+ * @brief calling thread is responsible for syncronizing
  * \param [in] pic_idx surface index for the picture to be released
  * 
  * @return rocDecStatus 
  */
 
-rocDecStatus RocVideoParser::ReleaseFrame(int pic_idx) {
+rocDecStatus RocVideoParser::MarkFrameForReuse(int pic_idx) {
     if(pic_idx < 0) {
         return ROCDEC_INVALID_PARAMETER;
     }
@@ -121,7 +122,6 @@ ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
             pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
             decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
         }
-
         num_output_pics_ = disp_delay;
         // Shift the remaining frames to the top
         if (num_output_pics_) {

@@ -87,14 +87,14 @@ rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *pa
 //! Release frame with index pic_idx from parser's buffer pool and mark it for reuse 
 /************************************************************************************************/
 rocDecStatus ROCDECAPI
-rocDecParserReleaseFrame(RocdecVideoParser parser_handle, int pic_idx) {
+rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx) {
     if (parser_handle == nullptr || pic_idx < 0) {
         return ROCDEC_INVALID_PARAMETER;
     }
     auto roc_parser_handle = static_cast<RocParserHandle *>(parser_handle);
     rocDecStatus ret;
     try {
-        ret = roc_parser_handle->ReleaseFrame(pic_idx);
+        ret = roc_parser_handle->MarkFrameForReuse(pic_idx);
     }
     catch(const std::exception& e) {
         roc_parser_handle->CaptureError(e.what());

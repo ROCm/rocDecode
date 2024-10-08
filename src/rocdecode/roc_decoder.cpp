@@ -172,19 +172,6 @@ rocDecStatus RocDecoder::GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
     return rocdec_status;
 }
 
-rocDecStatus RocDecoder::ReleaseVideoFrame(void *parser_hdl, int pic_idx) {
-    if (!parser_hdl || pic_idx >= hip_interop_.size()) {
-        return ROCDEC_INVALID_PARAMETER;
-    }
-    rocDecStatus rocdec_status;
-    rocdec_status = rocDecParserReleaseFrame(static_cast<RocdecVideoParser>(parser_hdl), pic_idx);
-    if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("ReleaseVideoFrame failed for picture idx = " + TOSTR(pic_idx));
-        return rocdec_status;
-    }
-    return rocdec_status;
-}
-
 rocDecStatus RocDecoder::FreeVideoFrame(int pic_idx) {
     if (pic_idx >= hip_interop_.size()) {
         return ROCDEC_INVALID_PARAMETER;

@@ -8,6 +8,7 @@ Documentation for rocDecode is available at
 ### Additions
 
 * Clang - Default CXX compiler
+* Parser - Add new API rocDecParserMarkFrameForReuse()
 
 ### Optimizations
 
