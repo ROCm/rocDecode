@@ -50,7 +50,7 @@ rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *d
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle)
 //! Destroy the decoder object
 /*****************************************************************************************************/
-rocDecStatus ROCDECAPI
+rocDecStatus ROCDECAPI 
 rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle) {
     if (decoder_handle == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
@@ -192,30 +192,6 @@ rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
     }
     return ret;
 }
-
-/************************************************************************************************************************/
-//! \fn extern rocDecStatus ROCDECAPI rocDecReleaseVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx)
-//! \ingroup group_amd_rocdecode
-//! Release video frame corresponding to pic_idx for reuse after consuming the interopped device memory
-/************************************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecReleaseVideoFrame(rocDecDecoderHandle decoder_handle, RocdecVideoParser parser_handle, int pic_idx) {
-    if (decoder_handle == nullptr) {
-        return ROCDEC_INVALID_PARAMETER;
-    }
-    auto handle = static_cast<DecHandle *>(decoder_handle);
-    rocDecStatus ret;
-    try {
-        ret = handle->roc_decoder_->ReleaseVideoFrame(parser_handle, pic_idx);
-    }
-    catch(const std::exception& e) {
-        handle->CaptureError(e.what());
-        ERR(e.what())
-        return ROCDEC_RUNTIME_ERROR;
-    }
-    return ret;
-
-}
-
 
 /*****************************************************************************************************/
 //! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)
