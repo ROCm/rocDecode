@@ -74,7 +74,7 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
 }
 
 rocDecStatus RocVideoParser::MarkFrameForReuse(int pic_idx) {
-    if(pic_idx < 0) {
+    if (pic_idx < 0) {
         return ROCDEC_INVALID_PARAMETER;
     }
     //todo::
