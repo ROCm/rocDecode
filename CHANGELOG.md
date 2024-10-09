@@ -3,6 +3,46 @@
 Documentation for rocDecode is available at
 [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
+## rocDecode 0.8.0 (unreleased)
+
+### Changes
+
+* Clang - Default CXX compiler
+
+### Removals
+
+* CTest - Core tests for make test and package test
+* mesa-amdgpu-dri-drivers - dependencies for RHEL & SLES
+
+### Optimizations
+
+* Setup Script - Build and runtime install options
+
+### Resolved issues
+
+* Package - VA driver dependencies updated
+  * VA drivers - only use mesa-amdgpu-va-drivers for both debian and RPM based OS
+  * mesa-amdgpu-va-drivers - brings all it's dependencies
+* Sample - Bugfix for videoDecodeBatch
+
+### Known issues
+
+### Upcoming changes
+
+### Tested configurations
+
+* Linux
+  * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+  * SLES - `15 SP5`
+* ROCm:
+  * rocm-core - `6.2.0.60200-66`
+  * amdgpu-core - `1:6.2.60200-2009582`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
+* FFmpeg - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V2.2.0`
+
 ## rocDecode 0.7.0
 
 ### Additions
@@ -33,7 +73,6 @@ Documentation for rocDecode is available at
   * amdgpu-core - `1:6.2.60200-2009582`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
-* mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V2.2.0`
 
