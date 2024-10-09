@@ -1500,13 +1500,6 @@ extern rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_ha
                                                     void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3],
                                                     RocdecProcParams *vid_postproc_params);
 
-/************************************************************************************************************************/
-//! \fn extern rocDecStatus ROCDECAPI rocDecReleaseVideoFrame(rocDecDecoderHandle decoder_handle, void *parser_handle, int pic_idx)
-//! \ingroup group_amd_rocdecode
-//! Release video frame corresponding to pic_idx for reuse after consuming the interopped device memory
-/************************************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecReleaseVideoFrame(rocDecDecoderHandle decoder_handle, void* parser_handle, int pic_idx);
-
 /*****************************************************************************************************/
 //! \fn const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status)
 //! \ingroup group_amd_rocdecode
