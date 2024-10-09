@@ -33,9 +33,8 @@ THE SOFTWARE.
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* NOTE: Match version with CMakeLists.txt */
 #define ROCDECODE_MAJOR_VERSION 0
-#define ROCDECODE_MINOR_VERSION 8
+#define ROCDECODE_MINOR_VERSION 7
 #define ROCDECODE_MICRO_VERSION 0
 
 

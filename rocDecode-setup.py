@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.3.0"
+__version__ = "2.2.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -107,11 +107,9 @@ linuxCMake = 'cmake'
 linuxSystemInstall_check = ''
 linuxFlag = ''
 sudoValidateOption= '-v'
-osUpdate = ''
 if "centos" in os_info_data or "redhat" in os_info_data:
     linuxSystemInstall = 'yum -y'
     linuxSystemInstall_check = '--nogpgcheck'
-    osUpdate = 'makecache'
     if "VERSION_ID=7" in os_info_data:
         linuxCMake = 'cmake3'
         platfromInfo = platfromInfo+'-redhat-7'
@@ -125,7 +123,6 @@ elif "Ubuntu" in os_info_data:
     linuxSystemInstall = 'apt-get -y'
     linuxSystemInstall_check = '--allow-unauthenticated'
     linuxFlag = '-S'
-    osUpdate = 'update'
     if "VERSION_ID=20" in os_info_data:
         platfromInfo = platfromInfo+'-Ubuntu-20'
     elif "VERSION_ID=22" in os_info_data:
@@ -138,13 +135,11 @@ elif "SLES" in os_info_data:
     linuxSystemInstall = 'zypper -n'
     linuxSystemInstall_check = '--no-gpg-checks'
     platfromInfo = platfromInfo+'-SLES'
-    osUpdate = 'refresh'
 elif "Mariner" in os_info_data:
     linuxSystemInstall = 'tdnf -y'
     linuxSystemInstall_check = '--nogpgcheck'
     platfromInfo = platfromInfo+'-Mariner'
     runtimeInstall = 'OFF'
-    osUpdate = 'makecache'
 else:
     print("\nrocDecode Setup on "+platfromInfo+" is unsupported\n")
     print("\nrocDecode Setup Supported on: Ubuntu 20/22, RedHat 8/9, & SLES 15\n")
@@ -155,7 +150,7 @@ print("\nrocDecode Setup on: "+platfromInfo+"\n")
 print("\nrocDecode Dependencies Installation with rocDecode-setup.py V-"+__version__+"\n")
 
 if userName == 'root':
-    ERROR_CHECK(os.system(linuxSystemInstall+' '+osUpdate))
+    ERROR_CHECK(os.system(linuxSystemInstall+' update'))
     ERROR_CHECK(os.system(linuxSystemInstall+' install sudo'))
 
 # source install - common package dependencies
@@ -173,12 +168,14 @@ commonPackages = [
 # Debian packages
 coreDebianPackages = [
     'rocm-hip-runtime-dev',
+    'libva2',
     'libva-dev',
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
 ]
 runtimeDebianPackages = [
+    'libdrm-amdgpu1',
     'mesa-amdgpu-va-drivers',
     'vainfo'
 ]
@@ -190,8 +187,12 @@ ffmpegDebianPackages = [
 ]
 
 # RPM Packages
+libvaNameRPM = "libva"
+if "SLES" in os_info_data or "Mariner" in os_info_data:
+    libvaNameRPM = "libva2"
 coreRPMPackages = [
     'rocm-hip-runtime-devel',
+    str(libvaNameRPM),
     'libva-devel'
 ]
 
@@ -199,12 +200,14 @@ libvaUtilsNameRPM = "libva-utils"
 if "Mariner" in os_info_data:
     libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
 runtimeRPMPackages = [
+    'libdrm-amdgpu',
     'mesa-amdgpu-va-drivers',
+    'mesa-amdgpu-dri-drivers',
     str(libvaUtilsNameRPM)
 ]
 
 # update
-ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +' '+linuxSystemInstall_check+' '+osUpdate))
+ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +' '+linuxSystemInstall_check+' update'))
 
 # common packages
 ERROR_CHECK(os.system('sudo '+sudoValidateOption))
