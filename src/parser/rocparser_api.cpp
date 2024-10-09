@@ -83,7 +83,7 @@ rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *pa
 
 /************************************************************************************************/
 //! \ingroup group_rocparser
-//! \fn rocDecStatus ROCDECAPI rocDecParserReleaseFrame(RocdecVideoParser parser_handle, int pic_idx)
+//! \fn rocDecStatus ROCDECAPI rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx)
 //! Release frame with index pic_idx from parser's buffer pool and mark it for reuse 
 /************************************************************************************************/
 rocDecStatus ROCDECAPI

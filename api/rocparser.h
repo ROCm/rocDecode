@@ -277,7 +277,7 @@ extern rocDecStatus ROCDECAPI rocDecParseVideoData(RocdecVideoParser parser_hand
 
 /************************************************************************************************/
 //! \ingroup group_rocparser
-//! \fn rocDecStatus ROCDECAPI rocDecParserMarkForReuse(RocdecVideoParser parser_handle, int pic_idx)
+//! \fn rocDecStatus ROCDECAPI rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx)
 //! Mark frame with index pic_idx in parser's buffer pool for reuse (means the frame has been consumed) 
 /************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx);

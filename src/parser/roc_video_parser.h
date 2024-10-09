@@ -102,7 +102,14 @@ public:
     virtual rocDecStatus Initialize(RocdecParserParams *pParams);
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
     virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
-    virtual rocDecStatus MarkFrameForReuse(int pic_idx);  /**< Called to mark surface with pic_idx for reuse: can be called from a different thread than decode thread*/
+    /**
+     * @brief function to to release surface with pic_idx and mark it for reuse, can be called from a different thread than decode thread
+     * @brief calling thread is responsible for syncronizing
+     * \param [in] pic_idx surface index for the picture to be released
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus MarkFrameForReuse(int pic_idx);
 
 protected:
     RocdecParserParams parser_params_ = {};
