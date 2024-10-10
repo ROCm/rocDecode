@@ -642,7 +642,6 @@ int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
         THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
     }
     pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
-    std::cout << "PictureDec picIdx: " << pPicParams->curr_pic_idx << std::endl;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));
     last_decode_surf_idx_ = pPicParams->curr_pic_idx;
     decoded_pic_cnt_++;
@@ -667,7 +666,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     RocdecProcParams video_proc_params = {};
     video_proc_params.progressive_frame = pDispInfo->progressive_frame;
     video_proc_params.top_field_first = pDispInfo->top_field_first;
-    std::cout << "Display picIdx: " << pDispInfo->picture_index << std::endl;
 
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
@@ -893,7 +891,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
                 std::cerr << "Decoded Frame is released out of order" << std::endl;
                 return false;
             }
-            std::cout << "rocDecParserMarkFrameForReuse pic_index: "<< fb->picture_index << std::endl;
             ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
             vp_frames_.erase(vp_frames_.begin());     // get rid of the frames from the framestore
         }
@@ -908,7 +905,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
         }
-        std::cout << "rocDecParserMarkFrameForReuse pic_index: "<< fb->picture_index << std::endl;
         ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
 
         // pop decoded frame
@@ -933,7 +929,6 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         DecFrameBuffer *fb = &vp_frames_q_.front();
         // pop decoded frame
-        std::cout << "rocDecParserMarkFrameForReuse pic_index: "<< fb->picture_index << std::endl;
         ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
         vp_frames_q_.pop();
     }
