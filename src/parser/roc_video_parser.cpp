@@ -78,6 +78,9 @@ rocDecStatus RocVideoParser::MarkFrameForReuse(int pic_idx) {
         return ROCDEC_INVALID_PARAMETER;
     }
 
+    // Jefftest
+    decode_buffer_pool_[pic_idx].use_status &= ~kFrameUsedForDisplay;
+    #if 0
     decode_buffer_pool_[output_pic_list_[pic_idx]].use_status &= ~kFrameUsedForDisplay;
     std::cout << "Use-status for pic_idx: " << pic_idx << " " << decode_buffer_pool_[output_pic_list_[pic_idx]].use_status << std::endl;
     num_output_pics_--;          // only one picture has been flushed out
@@ -87,6 +90,7 @@ rocDecStatus RocVideoParser::MarkFrameForReuse(int pic_idx) {
             output_pic_list_[i] = output_pic_list_[i + 1];
         }
     }
+    #endif
     return ROCDEC_SUCCESS;
 }
 
@@ -122,9 +126,10 @@ ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
             disp_info.pts = decode_buffer_pool_[output_pic_list_[i]].pts;
             pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
             //decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
-            //MarkFrameForReuse(i);
+            // Jefftest
+            //MarkFrameForReuse(disp_info.picture_index);
         }
-#if 0
+#if 1 // Jefftest
         num_output_pics_ -= num_disp;
         // Shift the remaining frames to the top
         if (num_output_pics_) {
