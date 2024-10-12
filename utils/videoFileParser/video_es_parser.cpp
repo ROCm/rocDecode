@@ -33,17 +33,17 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     if ( !p_stream_file_) {
         ERR("Failed to open the bitstream file.");
     }
-    bs_ring_ = static_cast<uint8_t*>(malloc(BS_RING_SIZE));
     end_of_file_ = false;
     end_of_stream_ = false;
+    bs_ring_ = static_cast<uint8_t*>(malloc(BS_RING_SIZE));
     read_ptr_ = 0;
     write_ptr_ = 0;
+    curr_byte_offset_ = read_ptr_;
     pic_data_.assign(INIT_PIC_DATA_SIZE, 0);
     pic_data_size_ = 0;
     curr_pic_end_ = 0;
     next_pic_start_ = 0;
     num_pictures_ = 0;
-    curr_byte_offset_ = read_ptr_;
     num_start_code_ = 0;
     curr_start_code_offset_ = 0;
     next_start_code_offset_ = 0;
@@ -52,6 +52,8 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     num_td_obus_ = 0;
     num_temp_units_ = 0;
     ivf_file_header_read_ = false;
+
+    stream_type_ = ProbeStreamType();
 }
 
 RocVideoESParser::~RocVideoESParser() {
@@ -326,8 +328,11 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
             break;
         }
         CopyNalUnitFromRing();
-        CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
-        //CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+        if ( stream_type_ == Stream_Type_Avc_Elementary) {
+            CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+        } else {
+            CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+        }
         if (slice_nal_flag) {
             num_slices++;
             curr_pic_end_ = pic_data_size_; // update the current picture data end
@@ -336,8 +341,11 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
         if (curr_start_code_offset_ == next_start_code_offset_) {
             break; // end of stream
         } else if (num_slices) {
-            CheckHevcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
-            //CheckAvcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
+            if ( stream_type_ == Stream_Type_Avc_Elementary) {
+                CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+            } else {
+                CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
+            }
             if (slice_nal_flag && first_slice_flag) {
                 // Between two pictures, we can have non-slice NAL units which are associated with the next picutre
                 if (curr_pic_end_ < pic_data_size_) {
@@ -507,23 +515,479 @@ int RocVideoESParser::GetPicDataIvfAv1(uint8_t **p_pic_data, int *pic_size) {
 }
 
 int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
-    int ret;
-
-#if 0
-    ret = GetPicDataAvcHevc(p_pic_data, pic_size);
-#else
-    //ret = GetPicDataAv1(p_pic_data, pic_size);
-    // IVF containter files
-    if (!ivf_file_header_read_) {
-        uint8_t file_header[32];
-        ReadBytes(curr_byte_offset_, 32, file_header);
-        if (CheckIvfFileHeader(file_header)) {
-            curr_byte_offset_ = (curr_byte_offset_ + 32) % BS_RING_SIZE;
-            SetReadPointer(curr_byte_offset_);
+    switch (stream_type_) {
+        case Stream_Type_Avc_Elementary:
+        case Stream_Type_Hevc_Elementary:
+            return GetPicDataAvcHevc(p_pic_data, pic_size);
+        case Stream_Type_Av1_Elementary:
+            return GetPicDataAv1(p_pic_data, pic_size);
+        case Stream_Type_Av1_Ivf: {
+            if (!ivf_file_header_read_) {
+            uint8_t file_header[32];
+            ReadBytes(curr_byte_offset_, 32, file_header);
+            if (CheckIvfFileHeader(file_header)) {
+                curr_byte_offset_ = (curr_byte_offset_ + 32) % BS_RING_SIZE;
+                SetReadPointer(curr_byte_offset_);
+            }
+            ivf_file_header_read_ = true;
+            }
+            return GetPicDataIvfAv1(p_pic_data, pic_size);
         }
-        ivf_file_header_read_ = true;
+        default: {
+            *p_pic_data = pic_data_.data();
+            *pic_size = 0;
+            return 0;
+        }
     }
-    ret = GetPicDataIvfAv1(p_pic_data, pic_size);
-#endif
-    return ret;
+
+}
+
+int RocVideoESParser::GetCodecId() {
+    switch (stream_type_) {
+        case Stream_Type_Avc_Elementary:
+            return rocDecVideoCodec_AVC;
+        case Stream_Type_Hevc_Elementary:
+            return rocDecVideoCodec_HEVC;
+        case Stream_Type_Av1_Elementary:
+        case Stream_Type_Av1_Ivf:
+            return rocDecVideoCodec_AV1;
+        default:
+            return rocDecVideoCodec_NumCodecs;
+    }
+}
+
+int RocVideoESParser::ProbeStreamType() {
+    int stream_type = Stream_Type_UnSupported;
+    int stream_type_score = 0;
+    uint8_t *stream_buf;
+    int stream_size;
+
+    stream_buf = static_cast<uint8_t*>(malloc(STREAM_PROBE_SIZE));
+    fseek(p_stream_file_, 0L, SEEK_SET);
+    stream_size = fread(stream_buf, 1, STREAM_PROBE_SIZE, p_stream_file_);
+
+    for (int i = Stream_Type_Avc_Elementary; i < Stream_Type_Num_Supported; i++) {
+        int curr_score = 0;
+        switch (i) {
+            case Stream_Type_Avc_Elementary:
+                curr_score = CheckAvcEStream(stream_buf, stream_size);
+                if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
+                    stream_type = Stream_Type_Avc_Elementary;
+                    stream_type_score = curr_score;
+                }
+                break;
+            case Stream_Type_Hevc_Elementary:
+                curr_score = CheckHevcEStream(stream_buf, stream_size);
+                if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
+                    stream_type = Stream_Type_Hevc_Elementary;
+                    stream_type_score = curr_score;
+                }
+                break;
+            case Stream_Type_Av1_Elementary:
+                curr_score = CheckAv1EStream(stream_buf, stream_size);
+                if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
+                    stream_type = Stream_Type_Av1_Elementary;
+                    stream_type_score = curr_score;
+                }
+                break;
+            case Stream_Type_Av1_Ivf:
+                curr_score = CheckIvfAv1Stream(stream_buf, stream_size);
+                if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
+                    stream_type = Stream_Type_Av1_Ivf;
+                    stream_type_score = curr_score;
+                }
+                break;
+        }
+    }
+
+    if (stream_buf) {
+        free(stream_buf);
+    }
+    fseek(p_stream_file_, 0L, SEEK_SET);
+    return stream_type;
+}
+
+int RocVideoESParser::CheckAvcEStream(uint8_t *p_stream, int stream_size) {
+    int score = 0;
+    int curr_offset = 0;
+    int num_start_codes = 0;
+    int sps_present = 0;
+    int pps_present = 0;
+    int slice_present = 0;
+    int idr_slice_present = 0;
+    int first_slice_present = 0;
+    size_t offset = 0;
+
+    printf("CheckAvcEStream() ..........\n"); // Jefftest
+    while (curr_offset < stream_size - 2) {
+        if (p_stream[curr_offset] == 0 && p_stream[curr_offset + 1] == 0 && p_stream[curr_offset + 2] == 1) {
+            num_start_codes++;
+            uint8_t nal_header_byte = p_stream[curr_offset + 3];
+            uint8_t nal_unit_type = nal_header_byte & 0x1F;
+            uint8_t nal_rbsp[256];
+            memcpy(nal_rbsp, p_stream + curr_offset + 4, 256);
+            EbspToRbsp(nal_rbsp, 0, 256);
+            switch (nal_unit_type) {
+                case kAvcNalTypeSeq_Parameter_Set: {
+                    offset = 0;
+                    uint32_t profile_idc = Parser::ReadBits(nal_rbsp, offset, 8);
+                    Parser::ReadBits(nal_rbsp, offset, 8);
+                    uint32_t level_idc = Parser::ReadBits(nal_rbsp, offset, 8);
+                    uint32_t seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if (profile_idc > 0 && level_idc > 0 && seq_parameter_set_id >= 0 && seq_parameter_set_id <= 31) {
+                        sps_present = 1;
+                    }
+                    printf("profile_idc = %d, level_idc = %d, sps id = %d, sps_present = %d\n", profile_idc, level_idc, seq_parameter_set_id, sps_present); // Jefftest
+                    break;
+                }
+
+                case kAvcNalTypePic_Parameter_Set: {
+                    offset = 0;
+                    uint32_t pic_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    uint32_t seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if ( pic_parameter_set_id >= 0 && pic_parameter_set_id <= 255 && seq_parameter_set_id >= 0 && seq_parameter_set_id <= 31) {
+                        pps_present = 1;
+                    }
+                    printf("pps id = %d, sps id = %d, pps_present = %d\n", pic_parameter_set_id, seq_parameter_set_id, pps_present); // Jefftest
+                    break;
+                }
+
+                case kAvcNalTypeSlice_IDR:
+                    idr_slice_present = 1;
+                case kAvcNalTypeSlice_Non_IDR:
+                case kAvcNalTypeSlice_Data_Partition_A:
+                case kAvcNalTypeSlice_Data_Partition_B:
+                case kAvcNalTypeSlice_Data_Partition_C: {
+                    slice_present = 1;
+                    offset = 0;
+                    uint32_t first_mb_in_slice = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if ( first_mb_in_slice == 0) {
+                        first_slice_present = 1;
+                    }
+                    printf("idr slice = %d, slice_present = %d, first slice = %d\n", idr_slice_present, slice_present, first_slice_present); // Jefftest
+                    break;
+                }
+
+                default:
+                    break;
+            }
+            curr_offset += 4;
+        } else {
+            curr_offset++;
+        }
+    }
+    printf("num start codes = %d\n", num_start_codes); // Jefftest
+    if (num_start_codes == 0) {
+        score = 0;
+    } else {
+        score = sps_present * 25 + pps_present * 25 + idr_slice_present * 15 + slice_present * 15 + first_slice_present * 15;
+        printf("score = %d\n", score); // Jefftest
+    }
+    return score;
+}
+
+int RocVideoESParser::CheckHevcEStream(uint8_t *p_stream, int stream_size) {
+    int score = 0;
+    int curr_offset = 0;
+    int num_start_codes = 0;
+    int vps_present = 0;
+    int sps_present = 0;
+    int pps_present = 0;
+    int slice_present = 0;
+    int rap_slice_present = 0;
+    int first_slice_present = 0;
+    size_t offset = 0;
+
+    printf("CheckHevcEStream() ..........\n"); // Jefftest
+    while (curr_offset < stream_size - 2) {
+        if (p_stream[curr_offset] == 0 && p_stream[curr_offset + 1] == 0 && p_stream[curr_offset + 2] == 1) {
+            num_start_codes++;
+            uint8_t nal_header_byte = p_stream[curr_offset + 3];
+            uint8_t nal_unit_type = (nal_header_byte >> 1) & 0x3F;
+            uint8_t nal_rbsp[256];
+            memcpy(nal_rbsp, p_stream + curr_offset + 5, 256);
+            EbspToRbsp(nal_rbsp, 0, 256);
+            switch (nal_unit_type) {
+                 case NAL_UNIT_VPS: {
+                    offset = 16;
+                    int vps_reserved_0xffff_16bits = Parser::ReadBits(nal_rbsp, offset, 16);
+                    printf("ffff bits = %x\n", vps_reserved_0xffff_16bits); // Jefftest
+                    if (vps_reserved_0xffff_16bits == 0xFFFF) {
+                        vps_present = 1;
+                    }
+                    printf("vps_present = %d\n", vps_present); // Jefftest
+                    break;
+                }
+
+                case NAL_UNIT_SPS: {
+                    offset = 0;
+                    Parser::ReadBits(nal_rbsp, offset, 4); // sps_video_parameter_set_id // Jefftest to simplify offset += 4;
+                    uint32_t max_sub_layer_minus1 = Parser::ReadBits(nal_rbsp, offset, 3);
+                    Parser::GetBit(nal_rbsp, offset); // sps_temporal_id_nesting_flag
+                    // profile_tier_level()
+                    int sub_layer_profile_present_flag[6];
+                    int sub_layer_level_present_flag[6];
+                    offset += 96;
+                    for (int i = 0; i < max_sub_layer_minus1; i++) {
+                        sub_layer_profile_present_flag[i] = Parser::GetBit(nal_rbsp, offset);
+                        sub_layer_level_present_flag[i] = Parser::GetBit(nal_rbsp, offset);
+                    }
+                    if (max_sub_layer_minus1 > 0) {
+                        for (int i = max_sub_layer_minus1; i < 8; i++) {
+                            offset += 2;
+                        }
+                    }
+                    for (int i = 0; i < max_sub_layer_minus1; i++) {
+                        if (sub_layer_profile_present_flag[i]) {
+                            offset += 88;
+                        }
+                        if (sub_layer_level_present_flag[i]) {
+                            offset += 8;
+                        }
+                    }
+                    uint32_t sps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    uint32_t chroma_format_idc = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if (sps_seq_parameter_set_id >= 0 && sps_seq_parameter_set_id <= 15 && chroma_format_idc >= 0 && chroma_format_idc <= 3) {
+                        sps_present = 1;
+                    }
+                    printf("sps id = %d, chroma_format_idc = %d, sps_present = %d\n", sps_seq_parameter_set_id, chroma_format_idc, sps_present); // Jefftest
+
+                    break;
+                }
+
+                case NAL_UNIT_PPS: {
+                    offset = 0;
+                    uint32_t pps_pic_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    uint32_t pps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if ( pps_pic_parameter_set_id >= 0 && pps_pic_parameter_set_id <= 63 && pps_seq_parameter_set_id >= 0 && pps_seq_parameter_set_id <= 15) {
+                        pps_present = 1;
+                    }
+                    printf("pps_pic_parameter_set_id = %d, pps_seq_parameter_set_id = %d, pps_present = %d\n", pps_pic_parameter_set_id, pps_seq_parameter_set_id, pps_present); // Jefftest
+                    break;
+                }
+
+                case NAL_UNIT_CODED_SLICE_BLA_W_LP:
+                case NAL_UNIT_CODED_SLICE_BLA_W_RADL:
+                case NAL_UNIT_CODED_SLICE_BLA_N_LP:
+                case NAL_UNIT_CODED_SLICE_IDR_W_RADL:
+                case NAL_UNIT_CODED_SLICE_IDR_N_LP:
+                case NAL_UNIT_CODED_SLICE_CRA_NUT:
+                    rap_slice_present = 1;
+                case NAL_UNIT_CODED_SLICE_TRAIL_R:
+                case NAL_UNIT_CODED_SLICE_TRAIL_N:
+                case NAL_UNIT_CODED_SLICE_TLA_R:
+                case NAL_UNIT_CODED_SLICE_TSA_N:
+                case NAL_UNIT_CODED_SLICE_STSA_R:
+                case NAL_UNIT_CODED_SLICE_STSA_N:
+                case NAL_UNIT_CODED_SLICE_RADL_N:
+                case NAL_UNIT_CODED_SLICE_RADL_R:
+                case NAL_UNIT_CODED_SLICE_RASL_N:
+                case NAL_UNIT_CODED_SLICE_RASL_R: {
+                    offset = 0;
+                    int first_slice_segment_in_pic_flag = Parser::GetBit(nal_rbsp, offset);
+                    if (first_slice_segment_in_pic_flag) {
+                        first_slice_present = 1;
+                    }
+                    if (nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP && nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23) {
+                        offset++;
+                    }
+                    uint32_t slice_pic_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
+                    if ( slice_pic_parameter_set_id >= 0 && slice_pic_parameter_set_id <= 63) {
+                        slice_present = 1;
+                    } else {
+                        slice_present = 0;
+                    }
+                    if (!slice_present) {
+                        rap_slice_present = 0;
+                        first_slice_present = 0;
+                    }
+                    printf("slice_present = %d, rap_slice_present = %d, first_slice_present = %d\n", slice_present, rap_slice_present, first_slice_present); // Jefftest
+                    break;
+                }
+
+                default:
+                    break;
+            }
+            curr_offset += 5;
+        } else {
+            curr_offset++;
+        }
+    }
+    printf("num start codes = %d\n", num_start_codes); // Jefftest
+    if (num_start_codes == 0) {
+        score = 0;
+    } else {
+        score = vps_present * 20 + sps_present * 20 + pps_present * 20 + rap_slice_present * 15 + slice_present * 15 + first_slice_present * 15;
+        printf("score = %d\n", score); // Jefftest
+    }
+    return score;
+}
+
+int RocVideoESParser::EbspToRbsp(uint8_t *streamBuffer, int begin_bytepos, int end_bytepos) {
+    int count = 0;
+    if (end_bytepos < begin_bytepos) {
+        return end_bytepos;
+    }
+    uint8_t *streamBuffer_i = streamBuffer + begin_bytepos;
+    uint8_t *streamBuffer_end = streamBuffer + end_bytepos;
+    int reduce_count = 0;
+    for (; streamBuffer_i != streamBuffer_end; ) {
+        //starting from begin_bytepos to avoid header information
+        //in NAL unit, 0x000000, 0x000001 or 0x000002 shall not occur at any uint8_t-aligned position
+        uint8_t tmp =* streamBuffer_i;
+        if (count == ZEROBYTES_SHORTSTARTCODE) {
+            if (tmp == 0x03) {
+                //check the 4th uint8_t after 0x000003, except when cabac_zero_word is used, in which case the last three bytes of this NAL unit must be 0x000003
+                if ((streamBuffer_i + 1 != streamBuffer_end) && (streamBuffer_i[1] > 0x03)) {
+                    return -1;
+                }
+                //if cabac_zero_word is used, the final uint8_t of this NAL unit(0x03) is discarded, and the last two bytes of RBSP must be 0x0000
+                if (streamBuffer_i + 1 == streamBuffer_end) {
+                    break;
+                }
+                memmove(streamBuffer_i, streamBuffer_i + 1, streamBuffer_end-streamBuffer_i - 1);
+                streamBuffer_end--;
+                reduce_count++;
+                count = 0;
+                tmp = *streamBuffer_i;
+            } else if (tmp < 0x03) {
+            }
+        }
+        if (tmp == 0x00) {
+            count++;
+        } else {
+            count = 0;
+        }
+        streamBuffer_i++;
+    }
+    return end_bytepos - begin_bytepos + reduce_count;
+}
+
+int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
+    int score = 0;
+    uint8_t *obu_stream = p_stream;
+    int curr_offset = 0;
+    int temporal_delimiter_obu_present = 0;
+    int seq_header_obu_present = 0;
+    int frame_header_obu_present = 0;
+    int frame_obu_present = 0;
+    int tile_group_obu_present = 0;
+    bool syntax_error = false;
+    size_t offset = 0;
+
+    printf("CheckAv1EStream() ..........\n"); // Jefftest
+    while (curr_offset < stream_size) {
+        // OBU header
+        Av1ObuHeader obu_header;
+        offset = 0;
+        obu_stream = p_stream + curr_offset;
+        obu_header.size = 1;
+        if (Parser::GetBit(obu_stream, offset) != 0) {
+            syntax_error = true;
+            break;
+        }
+        obu_header.obu_type = Parser::ReadBits(obu_stream, offset, 4);
+        obu_header.obu_extension_flag = Parser::GetBit(obu_stream, offset);
+        obu_header.obu_has_size_field = Parser::GetBit(obu_stream, offset);
+        if (!obu_header.obu_has_size_field) {
+            syntax_error = true;
+            break;
+        }
+        if (Parser::GetBit(obu_stream, offset) != 0) {
+            syntax_error = true;
+            break;
+        }
+        if (obu_header.obu_extension_flag) {
+            obu_header.size += 1;
+            obu_header.temporal_id = Parser::ReadBits(obu_stream, offset, 3);
+            obu_header.spatial_id = Parser::ReadBits(obu_stream, offset, 2);
+            if (Parser::ReadBits(obu_stream, offset, 3) != 0) {
+                syntax_error = true;
+                break;
+            }
+        }
+        curr_offset += obu_header.size;
+        obu_stream += obu_header.size;
+        // OBU size
+        int len;
+        uint32_t obu_size = 0;
+        for (len = 0; len < 8; ++len) {
+            obu_size |= (obu_stream[len] & 0x7F) << (len * 7);
+            if ((obu_stream[len] & 0x80) == 0) {
+                ++len;
+                break;
+            }
+        }
+        curr_offset += len;
+        obu_stream += len;
+
+        switch (obu_header.obu_type) {
+            case kObuTemporalDelimiter:
+                temporal_delimiter_obu_present = 1;
+                break;
+
+            case kObuSequenceHeader: {
+                offset = 0;
+                uint32_t seq_profile = Parser::ReadBits(obu_stream, offset, 3);
+                if (seq_profile >= 0 && seq_profile <= 2) {
+                    seq_header_obu_present = 1;
+                }
+                break;
+            }
+
+            case kObuFrameHeader:
+                frame_header_obu_present = 1;
+                break;
+
+            case kObuFrame:
+                frame_obu_present = 1;
+                break;
+
+            case kObuTileGroup:
+                tile_group_obu_present = 1;
+                break;
+        }
+
+        curr_offset += obu_size;
+    }
+    if (syntax_error) {
+        score = 0;
+    } else {
+        printf("temporal_delimiter_obu_present = %d, seq_header_obu_present = %d, frame_header_obu_present = %d, frame_obu_present = %d, tile_group_obu_present = %d\n", temporal_delimiter_obu_present, seq_header_obu_present, frame_header_obu_present, frame_obu_present, tile_group_obu_present); // Jefftest
+        score = temporal_delimiter_obu_present * 25 + seq_header_obu_present * 25 + frame_obu_present * 50 + (frame_header_obu_present & tile_group_obu_present) * 50;
+        printf("score = %d\n", score); // Jefftest
+    }
+    return score;
+}
+
+int RocVideoESParser::CheckIvfAv1Stream(uint8_t *p_stream, int stream_size) {
+    static const char *IVF_SIGNATURE = "DKIF";
+    static const char *AV1_FourCC = "AV01";
+    uint8_t *ptr = p_stream;
+    int score = 0;
+
+    printf("CheckIvfAv1Stream() ..........\n"); // Jefftest
+    // bytes 0-3: signature
+    if (memcmp(IVF_SIGNATURE, ptr, 4) == 0) {
+        ptr += 4;
+        // bytes 4-5: version (should be 0). Little Endian.
+        int ivf_version = ptr[0] | (ptr[1] << 8);
+        if (ivf_version != 0) {
+            score = 0;
+        } else {
+            ptr += 2;
+            // bytes 6-7: length of header in bytes
+            ptr += 2;
+            // bytes 8-11: codec FourCC (e.g., 'VP80')
+            if (memcmp(AV1_FourCC, ptr, 4) == 0) {
+                score = 100;
+            } else {
+                score = 0;
+            }
+        }
+    } else {
+        score = 0;
+    }
+    printf("score = %d\n", score); // Jefftest
+    return score;
 }

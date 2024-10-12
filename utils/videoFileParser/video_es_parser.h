@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <vector>
+#include "rocdecode.h"
 
 // Jefftest 
 #define BS_RING_SIZE (16 * 1024 * 1024)
@@ -33,12 +34,28 @@ THE SOFTWARE.
 //#define BS_RING_SIZE (400 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
 
+enum {
+    Stream_Type_UnSupported = -1,
+    Stream_Type_Avc_Elementary = 0,
+    Stream_Type_Hevc_Elementary,
+    Stream_Type_Av1_Elementary,
+    Stream_Type_Av1_Ivf,
+    Stream_Type_Num_Supported
+} StreamFileType;
+
+#define STREAM_PROBE_SIZE 2 * 1024
+#define STREAM_TYPE_SCORE_THRESHOLD 50
+
 class RocVideoESParser {
     public:
         RocVideoESParser(const char *input_file_path);
         RocVideoESParser();
         ~RocVideoESParser();
 
+        /*! \brief Function to probe the bitstream file and try to get the codec id
+         * \retrun Codec id
+         */
+        int GetCodecId();
 
         /*! \brief Function to retrieve the bitstream of a picture
          * \param [out] p_pic_data Pointer to the picture data
@@ -48,6 +65,7 @@ class RocVideoESParser {
 
     private:
         FILE *p_stream_file_ = NULL;
+        int stream_type_;
 
         // Bitstream ring buffer
         uint8_t *bs_ring_;
@@ -165,4 +183,44 @@ class RocVideoESParser {
          */
         bool CheckIvfFileHeader(uint8_t *stream);
 
+        /*! \brief Function to probe the bitstream file and try to find if it is one of types supported.
+         * \return Elementary stream file type
+         */
+        int ProbeStreamType();
+
+        /*! \brief Function to check the likelihood of a stream to be an AVC elementary stream.
+         * \param [in] p_stream Pointer to the stream
+         * \param [in] stream_size Size of the stream in bytes
+         * \return The likelihood score
+         */
+        int CheckAvcEStream(uint8_t *p_stream, int stream_size);
+
+        /*! \brief Function to check the likelihood of a stream to be an HEVC elementary stream.
+         * \param [in] p_stream Pointer to the stream
+         * \param [in] stream_size Size of the stream in bytes
+         * \return The likelihood score
+         */
+        int CheckHevcEStream(uint8_t *p_stream, int stream_size);
+
+        /*! \brief Function to convert from Encapsulated Byte Sequence Packets to Raw Byte Sequence Payload
+        * \param [inout] stream_buffer A pointer of <tt>uint8_t</tt> for the converted RBSP buffer.
+        * \param [in] begin_bytepos Start position in the EBSP buffer to convert
+        * \param [in] end_bytepos End position in the EBSP buffer to convert, generally it's size.
+        * \return Returns the size of the converted buffer
+        */
+        int EbspToRbsp(uint8_t *stream_buffer, int begin_bytepos, int end_bytepos);
+
+        /*! \brief Function to check the likelihood of a stream to be an AV1 elementary stream.
+         * \param [in] p_stream Pointer to the stream
+         * \param [in] stream_size Size of the stream in bytes
+         * \return The likelihood score
+         */
+        int CheckAv1EStream(uint8_t *p_stream, int stream_size);
+
+        /*! \brief Function to check the likelihood of a stream to be an IVF container of AV1 elementary stream.
+         * \param [in] p_stream Pointer to the stream
+         * \param [in] stream_size Size of the stream in bytes
+         * \return The likelihood score
+         */
+        int CheckIvfAv1Stream(uint8_t *p_stream, int stream_size);
 };
