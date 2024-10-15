@@ -211,21 +211,10 @@ int main(int argc, char **argv) {
         VideoSeekContext video_seek_ctx;
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         #else
-        // Jefftest
         RocVideoESParser es_parser(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = es_parser.GetCodecId();
-        //printf("codec id = %d\n", codec_id);
-        /*do {
-            es_parser.GetPicData(&pvideo, &n_video_bytes);
-            for (int i = 0; i < 100; i++) {
-                printf("%x ", pvideo[i]);
-            }
-        } while (n_video_bytes);*/
-        static int count = 0;
         #endif
-
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        // Jefftest
         int bit_depth;
         #if 1
         bit_depth = es_parser.GetBitDepth();
@@ -304,10 +293,6 @@ int main(int argc, char **argv) {
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
-            // Jefftest
-            printf("Frame %d ......................\n", count);
-            printf("pic size = %d\n", n_video_bytes);
-            count++;
             n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
