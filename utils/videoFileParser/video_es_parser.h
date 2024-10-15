@@ -27,11 +27,7 @@ THE SOFTWARE.
 #include <vector>
 #include "rocdecode.h"
 
-// Jefftest 
 #define BS_RING_SIZE (16 * 1024 * 1024)
-//#define BS_RING_SIZE (8 * 1024 * 1024)
-//#define BS_RING_SIZE (900 * 1024)
-//#define BS_RING_SIZE (400 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
 
 enum {
@@ -55,7 +51,7 @@ class RocVideoESParser {
         /*! \brief Function to probe the bitstream file and try to get the codec id
          * \retrun Codec id
          */
-        int GetCodecId();
+        rocDecVideoCodec GetCodecId();
 
         /*! \brief Function to retrieve the bitstream of a picture
          * \param [out] p_pic_data Pointer to the picture data
@@ -63,9 +59,14 @@ class RocVideoESParser {
          */
         int GetPicData(uint8_t **p_pic_data, int *pic_size);
 
+        /*! \brief Function to return the bit depth of the stream
+         */
+        int GetBitDepth() {return bit_depth_;};
+
     private:
         FILE *p_stream_file_ = NULL;
         int stream_type_;
+        int bit_depth_;
 
         // Bitstream ring buffer
         uint8_t *bs_ring_;
@@ -223,4 +224,12 @@ class RocVideoESParser {
          * \return The likelihood score
          */
         int CheckIvfAv1Stream(uint8_t *p_stream, int stream_size);
+
+        /*! \brief Function to read variable length unsigned n-bit number appearing directly in the bitstream. 4.10.3. uvlc().
+        * \param [in] p_stream Bit stream pointer
+        * \param [in] bit_offset Starting bit offset
+        * \param [out] bit_offset Updated bit offset
+        * \return The unsigned value
+        */
+        uint32_t ReadUVLC(const uint8_t *p_stream, size_t &bit_offset);
 };

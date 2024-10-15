@@ -20,6 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#define USE_ROCDECODE_ES_PARSER 1
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -204,14 +206,36 @@ int main(int argc, char **argv) {
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        #if 0
         VideoDemuxer demuxer(input_file_path.c_str());
         VideoSeekContext video_seek_ctx;
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+        #else
+        // Jefftest
+        RocVideoESParser es_parser(input_file_path.c_str());
+        rocDecVideoCodec rocdec_codec_id = es_parser.GetCodecId();
+        //printf("codec id = %d\n", codec_id);
+        /*do {
+            es_parser.GetPicData(&pvideo, &n_video_bytes);
+            for (int i = 0; i < 100; i++) {
+                printf("%x ", pvideo[i]);
+            }
+        } while (n_video_bytes);*/
+        static int count = 0;
+        #endif
+
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+        // Jefftest
+        int bit_depth;
+        #if 1
+        bit_depth = es_parser.GetBitDepth();
+        #else
+        bit_depth = demuxer.GetBitDepth();
+        #endif
+        if(!viddec.CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
             std::cerr << "GPU doesn't support codec!" << std::endl;
             return 0;
-        }        
+        }
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -230,7 +254,6 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
-        double total_interop_time = 0;
         bool first_frame = true;
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
@@ -249,16 +272,6 @@ int main(int argc, char **argv) {
             viddec.InitMd5();
         }
         viddec.SetReconfigParams(&reconfig_params);
-
-        // Jefftest
-        RocVideoESParser es_parser(input_file_path.c_str());
-        /*do {
-            es_parser.GetPicData(&pvideo, &n_video_bytes);
-            for (int i = 0; i < 100; i++) {
-                printf("%x ", pvideo[i]);
-            }
-        } while (n_video_bytes);*/
-        static int count = 0;
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -286,11 +299,11 @@ int main(int argc, char **argv) {
             } else {
                 demuxer.Demux(&pvideo, &n_video_bytes, &pts);
             }
+            #endif
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
-            #endif
             // Jefftest
             printf("Frame %d ......................\n", count);
             printf("pic size = %d\n", n_video_bytes);
@@ -315,9 +328,7 @@ int main(int argc, char **argv) {
             }
             auto end_time = std::chrono::high_resolution_clock::now();
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            auto time_per_interop = std::chrono::duration<double, std::micro>(end_time - start_interop_time).count();
             total_dec_time += time_per_decode;
-            total_interop_time += time_per_interop;
             n_frame += n_frame_returned;
             n_pic_decoded += decoded_pics;
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
@@ -333,7 +344,6 @@ int main(int argc, char **argv) {
             std::cout << "info: avg decoding time per picture: " << total_dec_time / n_pic_decoded << " ms" <<std::endl;
             std::cout << "info: avg decode FPS: " << (n_pic_decoded / total_dec_time) * 1000 << std::endl;
             std::cout << "info: avg output/display time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
-            std::cout << "info: avg inter-op time per frame: " << total_interop_time / n_frame << " us" <<std::endl;
             std::cout << "info: avg output/display FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         } else {
             if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {

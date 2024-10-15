@@ -21,7 +21,6 @@ THE SOFTWARE.
 */
 
 #include <string.h>
-//#include "../../src/commons.h"
 #include "video_es_parser.h"
 #include "../../src/parser/hevc_defines.h"
 #include "../../src/parser/avc_defines.h"
@@ -54,6 +53,7 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     ivf_file_header_read_ = false;
 
     stream_type_ = ProbeStreamType();
+    bit_depth_ = 8;
 }
 
 RocVideoESParser::~RocVideoESParser() {
@@ -469,7 +469,7 @@ bool RocVideoESParser::CheckIvfFileHeader(uint8_t *stream) {
         ptr += 2;
         // bytes 6-7: length of header in bytes
         ptr += 2;
-        // bytes 8-11: codec FourCC (e.g., 'VP80')
+        // bytes 8-11: codec FourCC (e.g., 'AV01')
         uint32_t codec_fourcc = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
         ptr += 4;
         // bytes 12-13: width in pixels
@@ -542,7 +542,7 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
 
 }
 
-int RocVideoESParser::GetCodecId() {
+rocDecVideoCodec RocVideoESParser::GetCodecId() {
     switch (stream_type_) {
         case Stream_Type_Avc_Elementary:
             return rocDecVideoCodec_AVC;
@@ -634,7 +634,34 @@ int RocVideoESParser::CheckAvcEStream(uint8_t *p_stream, int stream_size) {
                     Parser::ReadBits(nal_rbsp, offset, 8);
                     uint32_t level_idc = Parser::ReadBits(nal_rbsp, offset, 8);
                     uint32_t seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
-                    if (profile_idc > 0 && level_idc > 0 && seq_parameter_set_id >= 0 && seq_parameter_set_id <= 31) {
+                    uint32_t chroma_format_idc;
+                    if (profile_idc == 100 ||
+                        profile_idc == 110 ||
+                        profile_idc == 122 ||
+                        profile_idc == 244 ||
+                        profile_idc == 44  ||
+                        profile_idc == 83  ||
+                        profile_idc == 86  ||
+                        profile_idc == 118 ||
+                        profile_idc == 128 ||
+                        profile_idc == 138 ||
+                        profile_idc == 139 ||
+                        profile_idc == 134 ||
+                        profile_idc == 135) {
+                        chroma_format_idc = Parser::ExpGolomb::ReadUe(p_stream, offset);
+                        if (chroma_format_idc == 3) {
+                            Parser::GetBit(p_stream, offset); // separate_colour_plane_flag
+                        }
+                        uint32_t bit_depth_luma = Parser::ExpGolomb::ReadUe(p_stream, offset) + 8;
+                        uint32_t bit_depth_chroma = Parser::ExpGolomb::ReadUe(p_stream, offset) + 8;
+                        bit_depth_ = bit_depth_luma > bit_depth_chroma ? bit_depth_luma : bit_depth_chroma;
+                    } else {
+                        chroma_format_idc = 1;
+                        bit_depth_ = 8;
+                    }
+                    printf("bit depth = %d\n", bit_depth_); // Jefftest
+
+                    if (profile_idc > 0 && level_idc > 0 && seq_parameter_set_id >= 0 && seq_parameter_set_id <= 31 && chroma_format_idc >= 0 && chroma_format_idc <= 3 && bit_depth_ >= 8 && bit_depth_ <= 14) {
                         sps_present = 1;
                     }
                     printf("profile_idc = %d, level_idc = %d, sps id = %d, sps_present = %d\n", profile_idc, level_idc, seq_parameter_set_id, sps_present); // Jefftest
@@ -747,7 +774,23 @@ int RocVideoESParser::CheckHevcEStream(uint8_t *p_stream, int stream_size) {
                     }
                     uint32_t sps_seq_parameter_set_id = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
                     uint32_t chroma_format_idc = Parser::ExpGolomb::ReadUe(nal_rbsp, offset);
-                    if (sps_seq_parameter_set_id >= 0 && sps_seq_parameter_set_id <= 15 && chroma_format_idc >= 0 && chroma_format_idc <= 3) {
+                    if (chroma_format_idc == 3) {
+                        Parser::GetBit(nal_rbsp, offset); // separate_colour_plane_flag
+                    }
+                    Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // pic_width_in_luma_samples
+                    Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // pic_height_in_luma_samples
+                    int conformance_window_flag = Parser::GetBit(nal_rbsp, offset);
+                    if (conformance_window_flag) {
+                        Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // conf_win_left_offset
+                        Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // conf_win_right_offset
+                        Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // conf_win_top_offset
+                        Parser::ExpGolomb::ReadUe(nal_rbsp, offset); // conf_win_bottom_offset
+                    }
+                    uint32_t bit_depth_luma = Parser::ExpGolomb::ReadUe(nal_rbsp, offset) + 8;
+                    uint32_t bit_depth_chroma = Parser::ExpGolomb::ReadUe(nal_rbsp, offset) + 8;
+                    bit_depth_ = bit_depth_luma > bit_depth_chroma ? bit_depth_luma : bit_depth_chroma;
+                    printf("bit depth = %d\n", bit_depth_); // Jefftest
+                    if (sps_seq_parameter_set_id >= 0 && sps_seq_parameter_set_id <= 15 && chroma_format_idc >= 0 && chroma_format_idc <= 3 && bit_depth_ >= 8 && bit_depth_ <= 16) {
                         sps_present = 1;
                     }
                     printf("sps id = %d, chroma_format_idc = %d, sps_present = %d\n", sps_seq_parameter_set_id, chroma_format_idc, sps_present); // Jefftest
@@ -863,6 +906,20 @@ int RocVideoESParser::EbspToRbsp(uint8_t *streamBuffer, int begin_bytepos, int e
     return end_bytepos - begin_bytepos + reduce_count;
 }
 
+uint32_t RocVideoESParser::ReadUVLC(const uint8_t *p_stream, size_t &bit_offset) {
+    int leading_zeros = 0;
+    while (!Parser::GetBit(p_stream, bit_offset)) {
+        ++leading_zeros;
+    }
+    // Maximum 32 bits.
+    if (leading_zeros >= 32) {
+        return 0xFFFFFFFF;
+    }
+    uint32_t base = (1u << leading_zeros) - 1;
+    uint32_t value = Parser::ReadBits(p_stream, bit_offset, leading_zeros);
+    return base + value;
+}
+
 int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
     int score = 0;
     uint8_t *obu_stream = p_stream;
@@ -927,9 +984,150 @@ int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
                 break;
 
             case kObuSequenceHeader: {
+                Av1SequenceHeader seq_header = {0};
                 offset = 0;
-                uint32_t seq_profile = Parser::ReadBits(obu_stream, offset, 3);
-                if (seq_profile >= 0 && seq_profile <= 2) {
+                seq_header.seq_profile = Parser::ReadBits(obu_stream, offset, 3);
+                seq_header.still_picture = Parser::GetBit(obu_stream, offset);
+                seq_header.reduced_still_picture_header = Parser::GetBit(obu_stream, offset);
+
+                if (seq_header.reduced_still_picture_header) {
+                    seq_header.timing_info_present_flag = 0;
+                    seq_header.decoder_model_info_present_flag = 0;
+                    seq_header.initial_display_delay_present_flag = 0;
+                    seq_header.operating_points_cnt_minus_1 = 0;
+                    seq_header.operating_point_idc[0] = 0;
+                    seq_header.seq_level_idx[0] = Parser::ReadBits(obu_stream, offset, 5);
+                    seq_header.seq_tier[0] = 0;
+                    seq_header.decoder_model_present_for_this_op[0] = 0;
+                    seq_header.initial_display_delay_present_for_this_op[0] = 0;
+                } else {
+                    seq_header.timing_info_present_flag = Parser::GetBit(obu_stream, offset);
+                    if (seq_header.timing_info_present_flag) {
+                        // timing_info()
+                        seq_header.timing_info.num_units_in_display_tick = Parser::ReadBits(obu_stream, offset, 32);
+                        seq_header.timing_info.time_scale = Parser::ReadBits(obu_stream, offset, 32);
+                        seq_header.timing_info.equal_picture_interval = Parser::GetBit(obu_stream, offset);
+                        if (seq_header.timing_info.equal_picture_interval) {
+                            seq_header.timing_info.num_ticks_per_picture_minus_1 = ReadUVLC(obu_stream, offset);
+                        }
+                        seq_header.decoder_model_info_present_flag = Parser::GetBit(obu_stream, offset);
+                        if (seq_header.decoder_model_info_present_flag) {
+                            seq_header.decoder_model_info.buffer_delay_length_minus_1 = Parser::ReadBits(obu_stream, offset, 5);
+                            seq_header.decoder_model_info.num_units_in_decoding_tick = Parser::ReadBits(obu_stream, offset, 32);
+                            seq_header.decoder_model_info.buffer_removal_time_length_minus_1 = Parser::ReadBits(obu_stream, offset, 5);
+                            seq_header.decoder_model_info.frame_presentation_time_length_minus_1 = Parser::ReadBits(obu_stream, offset, 5);
+                        }
+                    } else {
+                        seq_header.decoder_model_info_present_flag = 0;
+                    }
+                    seq_header.initial_display_delay_present_flag = Parser::GetBit(obu_stream, offset);
+                    seq_header.operating_points_cnt_minus_1 = Parser::ReadBits(obu_stream, offset, 5);
+                    for (int i = 0; i < seq_header.operating_points_cnt_minus_1 + 1; i++) {
+                        seq_header.operating_point_idc[i] = Parser::ReadBits(obu_stream, offset, 12);
+                        seq_header.seq_level_idx[i] = Parser::ReadBits(obu_stream, offset, 5);
+                        if (seq_header.seq_level_idx[i] > 7) {
+                            seq_header.seq_tier[i] = Parser::GetBit(obu_stream, offset);
+                        } else {
+                            seq_header.seq_tier[i] = 0;
+                        }
+                        if (seq_header.decoder_model_info_present_flag) {
+                            seq_header.decoder_model_present_for_this_op[i] = Parser::GetBit(obu_stream, offset);
+                            if (seq_header.decoder_model_present_for_this_op[i]) {
+                                seq_header.operating_parameters_info[i].decoder_buffer_delay = Parser::ReadBits(obu_stream, offset, seq_header.decoder_model_info.buffer_delay_length_minus_1 + 1);
+                                seq_header.operating_parameters_info[i].encoder_buffer_delay = Parser::ReadBits(obu_stream, offset, seq_header.decoder_model_info.buffer_delay_length_minus_1 + 1);
+                                seq_header.operating_parameters_info[i].low_delay_mode_flag = Parser::GetBit(obu_stream, offset);
+                            }
+                        } else {
+                            seq_header.decoder_model_present_for_this_op[i] = 0;
+                        }
+
+                        if (seq_header.initial_display_delay_present_flag) {
+                            seq_header.initial_display_delay_present_for_this_op[i] = Parser::GetBit(obu_stream, offset);
+                            if (seq_header.initial_display_delay_present_for_this_op[i]) {
+                                seq_header.initial_display_delay_minus_1[i] = Parser::ReadBits(obu_stream, offset, 4);
+                            }
+                        }
+                    }
+                }
+                seq_header.frame_width_bits_minus_1 = Parser::ReadBits(obu_stream, offset, 4);
+                seq_header.frame_height_bits_minus_1 = Parser::ReadBits(obu_stream, offset, 4);
+                seq_header.max_frame_width_minus_1 = Parser::ReadBits(obu_stream, offset, seq_header.frame_width_bits_minus_1 + 1);
+                seq_header.max_frame_height_minus_1 = Parser::ReadBits(obu_stream, offset, seq_header.frame_height_bits_minus_1 + 1);
+                if (seq_header.reduced_still_picture_header) {
+                    seq_header.frame_id_numbers_present_flag = 0;
+                } else {
+                    seq_header.frame_id_numbers_present_flag = Parser::GetBit(obu_stream, offset);
+                }
+                if (seq_header.frame_id_numbers_present_flag) {
+                    seq_header.delta_frame_id_length_minus_2 = Parser::ReadBits(obu_stream, offset, 4);
+                    seq_header.additional_frame_id_length_minus_1 = Parser::ReadBits(obu_stream, offset, 3);
+                }
+                seq_header.use_128x128_superblock = Parser::GetBit(obu_stream, offset);
+                seq_header.enable_filter_intra = Parser::GetBit(obu_stream, offset);
+                seq_header.enable_intra_edge_filter = Parser::GetBit(obu_stream, offset);
+
+                if (seq_header.reduced_still_picture_header) {
+                    seq_header.enable_interintra_compound = 0;
+                    seq_header.enable_masked_compound = 0;
+                    seq_header.enable_warped_motion = 0;
+                    seq_header.enable_dual_filter = 0;
+                    seq_header.enable_order_hint = 0;
+                    seq_header.enable_jnt_comp = 0;
+                    seq_header.enable_ref_frame_mvs = 0;
+                    seq_header.seq_force_screen_content_tools = SELECT_SCREEN_CONTENT_TOOLS;
+                    seq_header.seq_force_integer_mv = SELECT_INTEGER_MV;
+                    seq_header.order_hint_bits = 0;
+                } else {
+                    seq_header.enable_interintra_compound = Parser::GetBit(obu_stream, offset);
+                    seq_header.enable_masked_compound = Parser::GetBit(obu_stream, offset);
+                    seq_header.enable_warped_motion = Parser::GetBit(obu_stream, offset);
+                    seq_header.enable_dual_filter = Parser::GetBit(obu_stream, offset);
+                    seq_header.enable_order_hint = Parser::GetBit(obu_stream, offset);
+                    if (seq_header.enable_order_hint) {
+                        seq_header.enable_jnt_comp = Parser::GetBit(obu_stream, offset);
+                        seq_header.enable_ref_frame_mvs = Parser::GetBit(obu_stream, offset);
+                    } else {
+                        seq_header.enable_jnt_comp = 0;
+                        seq_header.enable_ref_frame_mvs = 0;
+                    }
+                    seq_header.seq_choose_screen_content_tools = Parser::GetBit(obu_stream, offset);
+                    if (seq_header.seq_choose_screen_content_tools) {
+                        seq_header.seq_force_screen_content_tools = SELECT_SCREEN_CONTENT_TOOLS;
+                    } else {
+                        seq_header.seq_force_screen_content_tools = Parser::GetBit(obu_stream, offset);
+                    }
+                    if (seq_header.seq_force_screen_content_tools > 0) {
+                        seq_header.seq_choose_integer_mv = Parser::GetBit(obu_stream, offset);
+                        if (seq_header.seq_choose_integer_mv) {
+                            seq_header.seq_force_integer_mv = SELECT_INTEGER_MV;
+                        } else {
+                            seq_header.seq_force_integer_mv = Parser::GetBit(obu_stream, offset);
+                        }
+                    } else {
+                        seq_header.seq_force_integer_mv = SELECT_INTEGER_MV;
+                    }
+
+                    if (seq_header.enable_order_hint) {
+                        seq_header.order_hint_bits_minus_1 = Parser::ReadBits(obu_stream, offset, 3);
+                        seq_header.order_hint_bits = seq_header.order_hint_bits_minus_1 + 1;
+                    } else {
+                        seq_header.order_hint_bits = 0;
+                    }
+                }
+                seq_header.enable_superres = Parser::GetBit(obu_stream, offset);
+                seq_header.enable_cdef = Parser::GetBit(obu_stream, offset);
+                seq_header.enable_restoration = Parser::GetBit(obu_stream, offset);
+                seq_header.color_config.bit_depth = 8;
+                seq_header.color_config.high_bitdepth = Parser::GetBit(obu_stream, offset);
+                if (seq_header.seq_profile == 2 && seq_header.color_config.high_bitdepth) {
+                    seq_header.color_config.twelve_bit = Parser::GetBit(obu_stream, offset);
+                    seq_header.color_config.bit_depth = seq_header.color_config.twelve_bit ? 12 : 10;
+                } else if (seq_header.seq_profile <= 2) {
+                    seq_header.color_config.bit_depth = seq_header.color_config.high_bitdepth ? 10 : 8;
+                }
+                bit_depth_ = seq_header.color_config.bit_depth;
+                printf("bit depth = %d\n", bit_depth_); // Jefftest
+                if (seq_header.seq_profile >= 0 && seq_header.seq_profile <= 2) {
                     seq_header_obu_present = 1;
                 }
                 break;
@@ -963,6 +1161,8 @@ int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
 int RocVideoESParser::CheckIvfAv1Stream(uint8_t *p_stream, int stream_size) {
     static const char *IVF_SIGNATURE = "DKIF";
     static const char *AV1_FourCC = "AV01";
+    static const int IvfFileHeaderSize = 32;
+    static const int IvfFrameHeaderSize = 12;
     uint8_t *ptr = p_stream;
     int score = 0;
 
@@ -978,11 +1178,17 @@ int RocVideoESParser::CheckIvfAv1Stream(uint8_t *p_stream, int stream_size) {
             ptr += 2;
             // bytes 6-7: length of header in bytes
             ptr += 2;
-            // bytes 8-11: codec FourCC (e.g., 'VP80')
-            if (memcmp(AV1_FourCC, ptr, 4) == 0) {
-                score = 100;
-            } else {
+            // bytes 8-11: codec FourCC (e.g., 'AV01')
+            if (memcmp(AV1_FourCC, ptr, 4)) {
                 score = 0;
+            } else {
+                ptr = p_stream + IvfFileHeaderSize;
+                int frame_size = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+                printf("frame_size = %d\n", frame_size); // Jefftest
+                ptr += IvfFrameHeaderSize;
+                int size = stream_size - IvfFileHeaderSize - IvfFrameHeaderSize;
+                size = frame_size < size ? frame_size : size;
+                score = CheckAv1EStream(ptr, size);
             }
         }
     } else {
