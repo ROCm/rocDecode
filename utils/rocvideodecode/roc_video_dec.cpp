@@ -885,11 +885,13 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
         if (!b_flushing)  // if not flushing the buffers are re-used, so keep them
             return true;            // nothing to do
         else {
+            std::lock_guard<std::mutex> lock(mtx_vp_frame_);
             DecFrameBuffer *fb = &vp_frames_[0];
             if (pTimestamp != fb->pts) {
                 std::cerr << "Decoded Frame is released out of order" << std::endl;
                 return false;
             }
+            ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
             vp_frames_.erase(vp_frames_.begin());     // get rid of the frames from the framestore
         }
     }
@@ -903,8 +905,11 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
         }
+        ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
+
         // pop decoded frame
         vp_frames_q_.pop();
+
     }
     return true;
 }
@@ -922,7 +927,9 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     // only needed when using internal mapped buffer
     while (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        DecFrameBuffer *fb = &vp_frames_q_.front();
         // pop decoded frame
+        ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, fb->picture_index));
         vp_frames_q_.pop();
     }
     return true;
