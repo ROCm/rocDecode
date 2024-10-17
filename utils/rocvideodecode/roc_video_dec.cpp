@@ -25,7 +25,7 @@ THE SOFTWARE.
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
               const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
-              b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
+              b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height), stop_picture_display_thread_(false), output_frame_cnt_(0) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -48,6 +48,8 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
     parser_params.pfn_display_picture = b_force_zero_latency_ ? NULL : HandlePictureDisplayProc;
     parser_params.pfn_get_sei_msg = b_extract_sei_message_ ? HandleSEIMessagesProc : NULL;
     ROCDEC_API_CALL(rocDecCreateVideoParser(&rocdec_parser_, &parser_params));
+    // Start the picture display thread
+    picture_display_thread_ = std::thread(&RocVideoDecoder::PictureDisplayThreadFunc, this);
 }
 
 
@@ -105,6 +107,13 @@ RocVideoDecoder::~RocVideoDecoder() {
         fclose(fp_out_);
         fp_out_ = nullptr;
     }
+
+    {
+        std::lock_guard<std::mutex> lock(display_mutex_);
+        stop_picture_display_thread_ = true;
+    }
+    display_cv_.notify_one();
+    picture_display_thread_.join();
 
     double elapsed_time = StopTimer(start_time);
     AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
@@ -528,7 +537,10 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
             }
         }
     }
-    output_frame_cnt_ = 0;     // reset frame_count
+    {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        output_frame_cnt_ = 0;     // reset frame_count
+    }
     if (is_decode_res_changed) {
         coded_width_ = p_video_format->coded_width;
         coded_height_ = p_video_format->coded_height;
@@ -663,138 +675,11 @@ int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
  * @return int 0:fail 1: success
  */
 int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
-    RocdecProcParams video_proc_params = {};
-    video_proc_params.progressive_frame = pDispInfo->progressive_frame;
-    video_proc_params.top_field_first = pDispInfo->top_field_first;
-
-    if (b_extract_sei_message_) {
-        if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
-            // Write SEI Message
-            uint8_t *sei_buffer = (uint8_t *)(sei_message_display_q_[pDispInfo->picture_index].sei_data);
-            uint32_t sei_num_messages = sei_message_display_q_[pDispInfo->picture_index].sei_message_count;
-            RocdecSeiMessage *sei_message = sei_message_display_q_[pDispInfo->picture_index].sei_message;
-            if (fp_sei_) {
-                for (uint32_t i = 0; i < sei_num_messages; i++) {
-                    if (codec_id_ == rocDecVideoCodec_AVC || rocDecVideoCodec_HEVC) {
-                        switch (sei_message[i].sei_message_type) {
-                            case SEI_TYPE_TIME_CODE: {
-                                //todo:: check if we need to write timecode
-                            }
-                            break;
-                            case SEI_TYPE_USER_DATA_UNREGISTERED: {
-                                fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
-                            }
-                            break;
-                        }
-                    }
-                    if (codec_id_ == rocDecVideoCodec_AV1) {
-                        fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
-                    }    
-                    sei_buffer += sei_message[i].sei_message_size;
-                }
-            }
-            free(sei_message_display_q_[pDispInfo->picture_index].sei_data);
-            sei_message_display_q_[pDispInfo->picture_index].sei_data = NULL; // to avoid double free
-            free(sei_message_display_q_[pDispInfo->picture_index].sei_message);
-            sei_message_display_q_[pDispInfo->picture_index].sei_message = NULL; // to avoid double free
-        }
+    {
+        std::lock_guard<std::mutex> lock(display_mutex_);
+        picture_display_q_.push(*pDispInfo);
     }
-    if (out_mem_type_ != OUT_SURFACE_MEM_NOT_MAPPED) {
-        void * src_dev_ptr[3] = { 0 };
-        uint32_t src_pitch[3] = { 0 };
-        ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
-        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
-            DecFrameBuffer dec_frame = { 0 };
-            dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
-            dec_frame.pts = pDispInfo->pts;
-            dec_frame.picture_index = pDispInfo->picture_index;
-            std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-            vp_frames_q_.push(dec_frame);
-            output_frame_cnt_++;
-        } else {
-            // copy the decoded surface info device or host
-            uint8_t *p_dec_frame = nullptr;
-            {
-                std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-                // if not enough frames in stock, allocate
-                if ((unsigned)++output_frame_cnt_ > vp_frames_.size()) {
-                    num_alloced_frames_++;
-                    DecFrameBuffer dec_frame = { 0 };
-                    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                        // allocate device memory
-                        HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
-                    } else {
-                        dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
-                    }
-                    dec_frame.pts = pDispInfo->pts;
-                    dec_frame.picture_index = pDispInfo->picture_index;
-                    vp_frames_.push_back(dec_frame);
-                }
-                p_dec_frame = vp_frames_[output_frame_cnt_ - 1].frame_ptr;
-            }
-            // Copy luma data
-            int dst_pitch = disp_width_ * byte_per_pixel_;
-            uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_dev_ptr[0]) + (disp_rect_.top + crop_rect_.top) * src_pitch[0] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
-            if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                if (src_pitch[0] == dst_pitch) {
-                    int luma_size = src_pitch[0] * coded_height_;
-                    HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, p_src_ptr_y, luma_size, hip_stream_));
-                } else {
-                    // use 2d copy to copy an ROI
-                    HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToDevice, hip_stream_));
-                }
-            } else
-                HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToHost, hip_stream_));
-
-            // Copy chroma plane ( )
-            // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
-            uint8_t *p_frame_uv = p_dec_frame + dst_pitch * disp_height_;
-            uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_dev_ptr[1]) + ((disp_rect_.top + crop_rect_.top) >> 1) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_ :
-            static_cast<uint8_t *>(src_dev_ptr[1]) + (disp_rect_.top + crop_rect_.top) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
-            if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                if (src_pitch[1] == dst_pitch) {
-                    int chroma_size = chroma_height_ * dst_pitch;
-                    HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, p_src_ptr_uv, chroma_size, hip_stream_));
-                } else {
-                    // use 2d copy to copy an ROI
-                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
-                }
-            } else
-                HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
-
-            if (num_chroma_planes_ == 2) {
-                uint8_t *p_frame_v = p_dec_frame + dst_pitch * (disp_height_ + chroma_height_);
-                uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_dev_ptr[2]) + (disp_rect_.top + crop_rect_.top) * src_pitch[2] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
-                if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
-                    if (src_pitch[2] == dst_pitch) {
-                        int chroma_size = chroma_height_ * dst_pitch;
-                        HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_v, p_src_ptr_v, chroma_size, hip_stream_));
-                    } else {
-                        // use 2d copy to copy an ROI
-                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
-                    }
-                } else
-                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
-            }
-
-            HIP_API_CALL(hipStreamSynchronize(hip_stream_));
-        }
-    } else {
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
-        output_frame_cnt_++;
-    }
-
+    display_cv_.notify_one();
     return 1;
 }
 
@@ -835,7 +720,7 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
 
 
 int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts, int *num_decoded_pics) {
-    output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
+    output_frame_cnt_ret_ = 0;
     decoded_pic_cnt_ = 0;
     RocdecSourceDataPacket packet = { 0 };
     packet.payload = data;
@@ -849,6 +734,14 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
     }
+    {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        // Ensure consumption of frames if there are at least two frames in the vp_frames_q_
+        if (vp_frames_q_.size() >= 1) {
+            return output_frame_cnt_;
+        }
+    }
+
     return output_frame_cnt_;
 }
 
@@ -900,7 +793,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         DecFrameBuffer *fb = &vp_frames_q_.front();
         void *mapped_frame_ptr = fb->frame_ptr;
-
         if (pTimestamp != fb->pts) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
             return false;
@@ -1204,4 +1096,153 @@ void RocVideoDecoder::WaitForDecodeCompletion() {
     do {
         rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, last_decode_surf_idx_, &dec_status);
     } while (dec_status.decode_status == rocDecodeStatus_InProgress);
+}
+
+void RocVideoDecoder::PictureDisplayThreadFunc() {
+    while (true) {
+        RocdecParserDispInfo disp_info;
+        {
+            std::unique_lock<std::mutex> lock(display_mutex_);
+            display_cv_.wait(lock, [this]() { return !picture_display_q_.empty() || stop_picture_display_thread_; });
+            if (stop_picture_display_thread_ && picture_display_q_.empty()) {
+                break;
+            }
+            disp_info = picture_display_q_.front();
+            picture_display_q_.pop();
+        }
+
+        RocdecProcParams video_proc_params = {};
+        video_proc_params.progressive_frame = disp_info.progressive_frame;
+        video_proc_params.top_field_first = disp_info.top_field_first;
+
+        if (b_extract_sei_message_) {
+            if (sei_message_display_q_[disp_info.picture_index].sei_data) {
+                // Write SEI Message
+                uint8_t *sei_buffer = (uint8_t *)(sei_message_display_q_[disp_info.picture_index].sei_data);
+                uint32_t sei_num_messages = sei_message_display_q_[disp_info.picture_index].sei_message_count;
+                RocdecSeiMessage *sei_message = sei_message_display_q_[disp_info.picture_index].sei_message;
+                if (fp_sei_) {
+                    for (uint32_t i = 0; i < sei_num_messages; i++) {
+                        if (codec_id_ == rocDecVideoCodec_AVC || rocDecVideoCodec_HEVC) {
+                            switch (sei_message[i].sei_message_type) {
+                                case SEI_TYPE_TIME_CODE: {
+                                    //todo:: check if we need to write timecode
+                                }
+                                break;
+                                case SEI_TYPE_USER_DATA_UNREGISTERED: {
+                                    fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
+                                }
+                                break;
+                            }
+                        }
+                        if (codec_id_ == rocDecVideoCodec_AV1) {
+                            fwrite(sei_buffer, sei_message[i].sei_message_size, 1, fp_sei_);
+                        }
+                        sei_buffer += sei_message[i].sei_message_size;
+                    }
+                }
+                free(sei_message_display_q_[disp_info.picture_index].sei_data);
+                sei_message_display_q_[disp_info.picture_index].sei_data = NULL; // to avoid double free
+                free(sei_message_display_q_[disp_info.picture_index].sei_message);
+                sei_message_display_q_[disp_info.picture_index].sei_message = NULL; // to avoid double free
+            }
+        }
+        if (out_mem_type_ != OUT_SURFACE_MEM_NOT_MAPPED) {
+            void * src_dev_ptr[3] = { 0 };
+            uint32_t src_pitch[3] = { 0 };
+            ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, disp_info.picture_index, src_dev_ptr, src_pitch, &video_proc_params));
+            RocdecDecodeStatus dec_status;
+            memset(&dec_status, 0, sizeof(dec_status));
+            rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, disp_info.picture_index, &dec_status);
+            if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
+                std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[disp_info.picture_index] << std::endl;
+            }
+            if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
+                DecFrameBuffer dec_frame = { 0 };
+                dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
+                dec_frame.pts = disp_info.pts;
+                dec_frame.picture_index = disp_info.picture_index;
+                std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+                vp_frames_q_.push(dec_frame);
+                output_frame_cnt_++;
+            } else {
+                // copy the decoded surface info device or host
+                uint8_t *p_dec_frame = nullptr;
+                {
+                    std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+                    // if not enough frames in stock, allocate
+                    if ((unsigned)++output_frame_cnt_ > vp_frames_.size()) {
+                        num_alloced_frames_++;
+                        DecFrameBuffer dec_frame = { 0 };
+                        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                            // allocate device memory
+                            HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
+                        } else {
+                            dec_frame.frame_ptr = new uint8_t[GetFrameSize()];
+                        }
+                        dec_frame.pts = disp_info.pts;
+                        dec_frame.picture_index = disp_info.picture_index;
+                        vp_frames_.push_back(dec_frame);
+                    }
+                    p_dec_frame = vp_frames_[output_frame_cnt_ - 1].frame_ptr;
+                }
+                // Copy luma data
+                int dst_pitch = disp_width_ * byte_per_pixel_;
+                uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_dev_ptr[0]) + (disp_rect_.top + crop_rect_.top) * src_pitch[0] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
+                if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                    if (src_pitch[0] == dst_pitch) {
+                        int luma_size = src_pitch[0] * coded_height_;
+                        HIP_API_CALL(hipMemcpyDtoDAsync(p_dec_frame, p_src_ptr_y, luma_size, hip_stream_));
+                    } else {
+                        // use 2d copy to copy an ROI
+                        HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    }
+                } else
+                    HIP_API_CALL(hipMemcpy2DAsync(p_dec_frame, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyDeviceToHost, hip_stream_));
+
+                // Copy chroma plane ( )
+                // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
+                uint8_t *p_frame_uv = p_dec_frame + dst_pitch * disp_height_;
+                uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_dev_ptr[1]) + ((disp_rect_.top + crop_rect_.top) >> 1) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_ :
+                static_cast<uint8_t *>(src_dev_ptr[1]) + (disp_rect_.top + crop_rect_.top) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
+                if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                    if (src_pitch[1] == dst_pitch) {
+                        int chroma_size = chroma_height_ * dst_pitch;
+                        HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_uv, p_src_ptr_uv, chroma_size, hip_stream_));
+                    } else {
+                        // use 2d copy to copy an ROI
+                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                    }
+                } else
+                    HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+
+                if (num_chroma_planes_ == 2) {
+                    uint8_t *p_frame_v = p_dec_frame + dst_pitch * (disp_height_ + chroma_height_);
+                    uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_dev_ptr[2]) + (disp_rect_.top + crop_rect_.top) * src_pitch[2] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
+                    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+                        if (src_pitch[2] == dst_pitch) {
+                            int chroma_size = chroma_height_ * dst_pitch;
+                            HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_v, p_src_ptr_v, chroma_size, hip_stream_));
+                        } else {
+                            // use 2d copy to copy an ROI
+                            HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                        }
+                    } else
+                        HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToHost, hip_stream_));
+                }
+
+                HIP_API_CALL(hipStreamSynchronize(hip_stream_));
+            }
+        } else {
+            ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, disp_info.picture_index));
+            RocdecDecodeStatus dec_status;
+            memset(&dec_status, 0, sizeof(dec_status));
+            rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, disp_info.picture_index, &dec_status);
+            if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
+                std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[disp_info.picture_index] << std::endl;
+            }
+            std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+            output_frame_cnt_++;
+        }
+    }
 }
