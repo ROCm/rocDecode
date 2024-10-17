@@ -36,6 +36,9 @@ THE SOFTWARE.
 #include <cstring>
 #include <unordered_map>
 #include <chrono>
+#include <thread>
+#include <condition_variable>
+#include <atomic>
 #include <hip/hip_runtime.h>
 extern "C" {
 #include "libavutil/md5.h"
@@ -461,6 +464,18 @@ class RocVideoDecoder {
          */
         double StopTimer(const std::chrono::_V2::system_clock::time_point &start_time);
 
+        /**
+         * @brief Function executed by the picture display thread.
+         *
+         */
+        void PictureDisplayThreadFunc();
+
+        /**
+         * @brief Thread responsible for displaying pictures.
+         *
+         */
+        std::thread picture_display_thread_;
+
         int num_devices_;
         int device_id_;
         RocdecVideoParser rocdec_parser_ = nullptr;
@@ -516,4 +531,8 @@ class RocVideoDecoder {
         uint32_t extra_output_file_count_ = 0;
         std::thread::id decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
         std::unordered_map<std::thread::id, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
+        std::mutex display_mutex_;
+        std::condition_variable display_cv_;
+        std::atomic<bool> stop_picture_display_thread_;
+        std::queue<RocdecParserDispInfo> picture_display_q_;
 };
