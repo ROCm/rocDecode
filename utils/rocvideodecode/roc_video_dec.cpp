@@ -25,7 +25,7 @@ THE SOFTWARE.
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
               const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
-              b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height), stop_picture_display_thread_(false) {
+              b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height), stop_picture_display_thread_(false), output_frame_cnt_(0) {
 
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
@@ -720,14 +720,6 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
 
 
 int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts, int *num_decoded_pics) {
-    {
-        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
-        // Ensure consumption of frames if there are at least two frames in the vp_frames_q_
-        if (vp_frames_q_.size() >= 2) {
-            return output_frame_cnt_;
-        }
-        output_frame_cnt_ = 0;
-    }
     output_frame_cnt_ret_ = 0;
     decoded_pic_cnt_ = 0;
     RocdecSourceDataPacket packet = { 0 };
@@ -742,6 +734,14 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
     }
+    {
+        std::lock_guard<std::mutex> lock(mtx_vp_frame_);
+        // Ensure consumption of frames if there are at least two frames in the vp_frames_q_
+        if (vp_frames_q_.size() >= 1) {
+            return output_frame_cnt_;
+        }
+    }
+
     return output_frame_cnt_;
 }
 
@@ -1234,6 +1234,7 @@ void RocVideoDecoder::PictureDisplayThreadFunc() {
                 HIP_API_CALL(hipStreamSynchronize(hip_stream_));
             }
         } else {
+            ROCDEC_API_CALL(rocDecParserMarkFrameForReuse(rocdec_parser_, disp_info.picture_index));
             RocdecDecodeStatus dec_status;
             memset(&dec_status, 0, sizeof(dec_status));
             rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, disp_info.picture_index, &dec_status);
