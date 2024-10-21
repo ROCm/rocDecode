@@ -21,8 +21,7 @@ Documentation for rocDecode is available at
 ### Resolved issues
 
 * Package - VA driver dependencies updated
-  * VA drivers - only use mesa-amdgpu-va-drivers for both debian and RPM based OS
-  * mesa-amdgpu-va-drivers - brings all it's dependencies
+  * VA drivers - libva-amdgpu packages are now used to avoid API related issues
 * Sample - Bugfix for videoDecodeBatch
 
 ### Known issues
