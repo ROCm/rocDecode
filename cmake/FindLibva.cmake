@@ -21,9 +21,9 @@
 #
 ################################################################################
 
-find_library(LIBVA_LIBRARY NAMES va HINTS /usr/lib/x86_64-linux-gnu /usr/lib64 /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
-find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /usr/lib/x86_64-linux-gnu /usr/lib64 /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64)
-find_path(LIBVA_INCLUDE_DIR NAMES va/va.h PATHS /usr/include /opt/amdgpu/include)
+find_library(LIBVA_LIBRARY NAMES va HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 /usr/lib/x86_64-linux-gnu /usr/lib64)
+find_library(LIBVA_DRM_LIBRARY NAMES va-drm HINTS /opt/amdgpu/lib/x86_64-linux-gnu /opt/amdgpu/lib64 /usr/lib/x86_64-linux-gnu /usr/lib64)
+find_path(LIBVA_INCLUDE_DIR NAMES va/va.h PATHS /opt/amdgpu/include NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Libva DEFAULT_MSG LIBVA_INCLUDE_DIR LIBVA_LIBRARY)
@@ -40,7 +40,7 @@ if(Libva_FOUND)
   set(va_ver_micro ${CMAKE_MATCH_1})
   message("-- ${White}Found Libva Version: ${va_ver_major}.${va_ver_minor}.${va_ver_micro}${ColourReset}")
 
-  if((${va_ver_major} GREATER_EQUAL 1) AND (${va_ver_minor} GREATER_EQUAL 5))
+  if((${va_ver_major} GREATER_EQUAL 1) AND (${va_ver_minor} GREATER_EQUAL 16))
     message("-- ${White}\tLibva Version Supported${ColourReset}")
   else()
     set(Libva_FOUND FALSE)
