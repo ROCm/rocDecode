@@ -1903,8 +1903,7 @@ int Av1VideoParser::GetQIndex(Av1FrameHeader *p_frame_header, int ignore_delta_q
         int data = p_frame_header->segmentation_params.feature_data[segment_id][SEG_LVL_ALT_Q];
         int q_index = p_frame_header->quantization_params.base_q_idx + data;
         // CurrentQIndex is base_q_idx at tile level: If ignoreDeltaQ is equal to 0 and delta_q_present is equal to 1, set qindex equal to CurrentQIndex + data.
-        std::clamp(q_index, 0, 255);
-        return q_index;
+        return std::clamp(q_index, 0, 255);
     } else if (ignore_delta_q == 0 && p_frame_header->delta_q_params.delta_q_present == 1) {
         return p_frame_header->quantization_params.base_q_idx; // CurrentQIndex is base_q_idx at tile level
     } else {
