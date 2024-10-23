@@ -195,7 +195,7 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 coreRPMPackages = [
-    'libva-amdgpu-devel'
+    'libva-amdgpu-devel',
     'rocm-hip-runtime-devel',
 ]
 runtimeRPMPackages = [

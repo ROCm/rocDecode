@@ -8,6 +8,7 @@ Documentation for rocDecode is available at
 ### Changes
 
 * Clang - Default CXX compiler
+* FindLibva - Correctly find the minimum supported va-api 1.16
 
 ### Removals
 
