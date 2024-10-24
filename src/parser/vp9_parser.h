@@ -51,6 +51,7 @@ public:
      */
     virtual rocDecStatus UnInitialize();     // derived method
 
+protected:
     typedef struct {
         int      pic_idx;
         int      dec_buf_idx;  // frame index in decode/display buffer pool
@@ -66,12 +67,14 @@ public:
     } DecodedPictureBuffer;
 
     Vp9UncompressedHeader uncompressed_header_;
-    uint32_t header_size_in_bytes_;
-    uint32_t loop_filter_level_;
+    uint32_t uncomp_header_size_;
     uint8_t last_frame_type_; // LastFrameType
     uint8_t frame_is_intra_;
+    RocdecVp9SliceParams tile_params_;
+    int16_t y_dequant_[VP9_MAX_SEGMENTS][2];
+    int16_t uv_dequant_[VP9_MAX_SEGMENTS][2];
+    uint8_t lvl_lookup_[VP9_MAX_SEGMENTS][VP9_MAX_REF_FRAMES][MAX_MODE_LF_DELTAS];
 
-protected:
     DecodedPictureBuffer dpb_buffer_;
     Vp9Picture curr_pic_;
 
@@ -115,10 +118,9 @@ protected:
     /*! \brief Function to parse an uncompressed header (uncompressed_header(), 6.2)
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
-     * \param [out] p_bytes_parsed Number of bytes that have been parsed
      * \return <tt>ParserResult</tt>
      */
-    ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size, int *p_bytes_parsed);
+    ParserResult ParseUncompressedHeader(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse frame sync syntax (frame_sync_code(), 6.2.1)
      * \param [in] p_stream Pointer to the bit stream
@@ -211,6 +213,39 @@ protected:
      *  \return None
      */
     void TileInfo(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header);
+
+    /*! \brief Function to set up Y and UV dequantization values based on segmentation parameters. 8.6.1.
+     *  \param [in] p_uncomp_header Pointer to uncompressed header struct
+     *  \return None
+     */
+    void SetupSegDequant(Vp9UncompressedHeader *p_uncomp_header);
+
+    /*! \brief Function to return the quantizer index for the current block.
+     *  \param [in] p_uncomp_header Pointer to uncompressed header struct
+     *  \param [in] seg_id Segment id
+     *  \return quantizer index
+     */
+    int GetQIndex(Vp9UncompressedHeader *p_uncomp_header, int seg_id);
+
+    /*! \brief Function to get DC quantization parameter
+     *  \param [in] bit_depth Bit depth
+     *  \param [in] seg_id index Quantization parameter index
+     *  \return DC quantization parameter
+     */
+    int DcQ(int bit_depth, int index);
+
+    /*! \brief Function to get AC quantization parameter
+     *  \param [in] bit_depth Bit depth
+     *  \param [in] seg_id index Quantization parameter index
+     *  \return AC quantization parameter
+     */
+    int AcQ(int bit_depth, int index);
+
+    /*! \brief Function to prepare a filter strength lookup table once per frame. 8.8.1.
+     *  \param [in] p_uncomp_header Pointer to uncompressed header struct
+     *  \return None
+     */
+    void LoopFilterFrameInit(Vp9UncompressedHeader *p_uncomp_header);
 
     /*! \brief Function to read igned integer using n bits for the value and 1 bit for a sign flag 4.10.6. su(n).
      * \param [in] p_stream Bit stream pointer

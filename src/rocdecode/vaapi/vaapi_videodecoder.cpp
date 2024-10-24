@@ -152,6 +152,13 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
         case rocDecVideoCodec_AVC:
             va_profile_ = VAProfileH264Main;
             break;
+        case rocDecVideoCodec_VP9:
+            if (decoder_create_info_.bit_depth_minus_8 == 0) {
+                va_profile_ = VAProfileVP9Profile0;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                va_profile_ = VAProfileVP9Profile2;
+            }
+            break;
         case rocDecVideoCodec_AV1:
 #if VA_CHECK_VERSION(1,6,0)
             va_profile_ = VAProfileAV1Profile0;
@@ -317,6 +324,28 @@ rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
             }
             break;
         }
+
+        case rocDecVideoCodec_VP9: {
+            for (int i = 0; i < 8; i++) {
+                if (pPicParams->pic_params.vp9.reference_frames[i] != 0xFF) {
+                    if (pPicParams->pic_params.vp9.reference_frames[i] >= va_surface_ids_.size()) {
+                        ERR("Reference frame index exceeded the VAAPI surface pool limit.");
+                        return ROCDEC_INVALID_PARAMETER;
+                    }
+                    pPicParams->pic_params.vp9.reference_frames[i] = va_surface_ids_[pPicParams->pic_params.vp9.reference_frames[i]];
+                }
+            }
+            pic_params_ptr = (void*)&pPicParams->pic_params.vp9;
+            pic_params_size = sizeof(RocdecVp9PicParams);
+            slice_params_ptr = (void*)pPicParams->slice_params.vp9;
+            slice_params_size = sizeof(RocdecVp9SliceParams);
+            if ((pic_params_size != sizeof(VADecPictureParameterBufferVP9)) || (slice_params_size != sizeof(VASliceParameterBufferVP9))) {
+                    ERR("VP9 data_buffer parameter_size not matching vaapi parameter buffer size.");
+                    return ROCDEC_RUNTIME_ERROR;
+            }
+            break;
+        }
+
         case rocDecVideoCodec_AV1: {
             pPicParams->pic_params.av1.current_frame = curr_surface_id;
 

@@ -24,13 +24,19 @@ THE SOFTWARE.
 
 #include <stdint.h>
 
-#define VP9_REFS_PER_FRAME  3 // Each inter frame can use up to 3 frames for reference
-#define VP9_NUM_REF_FRAMES  8 // Number of frames that can be stored for future reference
-#define VP9_MAX_REF_FRAMES  4 // Number of values that can be derived for ref_frame
-#define VP9_MAX_SEGMENTS    8 // Number of segments allowed in segmentation map
-#define VP9_SEG_LVL_MAX     4 // Number of segment features
-#define MIN_TILE_WIDTH_B64  4 // Minimum width of a tile in units of superblocks (although tiles on the right hand edge can be narrower)
-#define MAX_TILE_WIDTH_B64  64 // Maximum width of a tile in units of superblocks
+#define VP9_REFS_PER_FRAME      3 // Each inter frame can use up to 3 frames for reference
+#define VP9_NUM_REF_FRAMES      8 // Number of frames that can be stored for future reference
+#define VP9_MAX_REF_FRAMES      4 // Number of values that can be derived for ref_frame
+#define VP9_MAX_SEGMENTS        8 // Number of segments allowed in segmentation map
+#define VP9_SEG_LVL_ALT_Q       0 // Index for quantizer segment feature
+#define VP9_SEG_LVL_ALT_L       1 // Index for loop filter segment feature
+#define VP9_SEG_LVL_REF_FRAME   2 // Index for reference frame segment feature
+#define VP9_SEG_LVL_SKIP        3 // Index for skip segment feature
+#define VP9_SEG_LVL_MAX         4 // Number of segment features
+#define MIN_TILE_WIDTH_B64      4 // Minimum width of a tile in units of superblocks (although tiles on the right hand edge can be narrower)
+#define MAX_TILE_WIDTH_B64      64 // Maximum width of a tile in units of superblocks
+#define MAX_MODE_LF_DELTAS      2  // Number of different mode types for loop filtering
+#define VP9_MAX_LOOP_FILTER     63 // Maximum value used for loop filtering
 
 typedef enum {
     kVp9KeyFrame        = 0,
@@ -96,7 +102,7 @@ typedef struct {
 } Vp9FrameSize;
 
 typedef struct {
-    uint8_t render_and_frame_size_different;
+    uint8_t  render_and_frame_size_different;
     uint16_t render_width_minus_1;
     uint16_t render_height_minus_1;
     uint32_t render_width;
@@ -125,7 +131,7 @@ typedef struct {
 typedef struct {
     uint8_t segmentation_enabled;
     uint8_t segmentation_update_map;
-    uint8_t segmentation_tree_probs[8];
+    uint8_t segmentation_tree_probs[7];
     uint8_t segmentation_temporal_update;
     uint8_t segmentation_pred_prob[3];
     uint8_t segmentation_update_data;
