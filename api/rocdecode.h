@@ -1100,16 +1100,15 @@ typedef struct _RocdecAV1PicParams {
     uint16_t context_update_tile_id;
 
     union {
+        /** \brief flags for current picture
+         *  same syntax and semantic as those in AV1 code
+         */
         struct {
-            /** \brief flags for current picture
-             *  same syntax and semantic as those in AV1 code
-             */
-
-            /** \brief Frame Type
-             *  0:     KEY_FRAME;
-             *  1:     INTER_FRAME;
-             *  2:     INTRA_ONLY_FRAME;
-             *  3:     SWITCH_FRAME
+            /** \brief Frame Type:
+             *    0:     KEY_FRAME;
+             *    1:     INTER_FRAME;
+             *    2:     INTRA_ONLY_FRAME;
+             *    3:     SWITCH_FRAME
              *  For SWITCH_FRAME, application shall set error_resilient_mode = 1,
              *  refresh_frame_flags, etc. appropriately. And driver will convert it
              *  to INTER_FRAME.
