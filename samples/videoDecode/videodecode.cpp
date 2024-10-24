@@ -38,6 +38,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "video_es_parser.h"
 #include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -57,7 +58,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-seek_criteria - Demux seek criteria & value - optional; default - 0,0; "
     << "[0: no seek; 1: SEEK_CRITERIA_FRAME_NUM, frame number; 2: SEEK_CRITERIA_TIME_STAMP, frame number (time calculated internally)]" << std::endl
     << "-seek_mode - Seek to previous key frame or exact - optional; default - 0"
-    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl;
+    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl
+    << "-no_ffmpeg_demux - use the built-in elementary stream file parser instead of FFMPEG demuxer; optional." << std::endl;
     exit(0);
 }
 
@@ -82,6 +84,7 @@ int main(int argc, char **argv) {
     // seek options
     uint64_t seek_to_frame = 0;
     int seek_criteria = 0, seek_mode = 0;
+    bool b_use_ffmpeg_demuxer = true; // true by default to enable decoding of various container formats. set to false to use the built-in parser on elementary stream files and IVF format.
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -196,6 +199,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-seek_mode");
             continue;
         }
+        if (!strcmp(argv[i], "-no_ffmpeg_demux")) {
+            if (i == argc) {
+                ShowHelpAndExit("-no_ffmpeg_demux");
+            }
+            b_use_ffmpeg_demuxer = false;
+            continue;
+        }
 
         ShowHelpAndExit(argv[i]);
     }
@@ -205,12 +215,22 @@ int main(int argc, char **argv) {
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
         VideoDemuxer demuxer(input_file_path.c_str());
         VideoSeekContext video_seek_ctx;
-        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+        RocVideoESParser es_parser(input_file_path.c_str());
+        rocDecVideoCodec rocdec_codec_id;
+        int bit_depth;
+
+        if (b_use_ffmpeg_demuxer) {
+            rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+            bit_depth = demuxer.GetBitDepth();
+        } else {
+            rocdec_codec_id = es_parser.GetCodecId();
+            bit_depth = es_parser.GetBitDepth();
+        }
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+        if(!viddec.CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
             std::cerr << "GPU doesn't support codec!" << std::endl;
             return 0;
-        }        
+        }
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -250,26 +270,30 @@ int main(int argc, char **argv) {
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            if (seek_criteria == 1 && first_frame) {
-                // use VideoSeekContext class to seek to given frame number
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
-                first_frame = false;
-            } else if (seek_criteria == 2 && first_frame) {
-                // use VideoSeekContext class to seek to given timestamp
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
-                first_frame = false;
+            if (b_use_ffmpeg_demuxer) {
+                if (seek_criteria == 1 && first_frame) {
+                    // use VideoSeekContext class to seek to given frame number
+                    video_seek_ctx.seek_frame_ = seek_to_frame;
+                    video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
+                    video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                    demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                    pts = video_seek_ctx.out_frame_pts_;
+                    std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
+                    first_frame = false;
+                } else if (seek_criteria == 2 && first_frame) {
+                    // use VideoSeekContext class to seek to given timestamp
+                    video_seek_ctx.seek_frame_ = seek_to_frame;
+                    video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
+                    video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                    demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                    pts = video_seek_ctx.out_frame_pts_;
+                    std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
+                    first_frame = false;
+                } else {
+                    demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+                }
             } else {
-                demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+                es_parser.GetPicData(&pvideo, &n_video_bytes);
             }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
@@ -281,6 +305,7 @@ int main(int argc, char **argv) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
+            auto start_interop_time = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
                 if (b_generate_md5) {
@@ -348,7 +373,7 @@ int main(int argc, char **argv) {
                 } else {
                     std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
-                std::cout << ref_md5_string << std::endl;
+                std::cout << ref_md5_string.data() << std::endl;
                 ref_md5_file.close();
             }
         }
