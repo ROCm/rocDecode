@@ -73,17 +73,33 @@ rocDecStatus Vp9VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
 ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size) {
     ParserResult ret = PARSER_OK;
-    pic_data_buffer_ptr_ = (uint8_t*)p_stream;
-    pic_data_size_ = pic_data_size;
-    curr_byte_offset_ = 0;
+    printf("Frame %d: pic_data_size = %d.................\n", pic_count_, pic_data_size); // Jefftest
+    if ((ret = ParseUncompressedHeader(const_cast<uint8_t*>(p_stream), pic_data_size)) != PARSER_OK) {
+        return ret;
+    }
+    // Init Roc decoder for the first time or reconfigure the existing decoder
+    if (new_seq_activated_) {
+        if ((ret = NotifyNewSequence(&uncompressed_header_)) != PARSER_OK) {
+            return ret;
+        }
+        new_seq_activated_ = false;
+    }
+    pic_stream_data_ptr_ = const_cast<uint8_t*>(p_stream);
+    pic_stream_data_size_ = pic_data_size;
+    num_slices_ = 1;
 
-    ParseUncompressedHeader(pic_data_buffer_ptr_ + curr_byte_offset_, pic_data_size);
+    // Decode the picture
+    if ((ret = SendPicForDecode()) != PARSER_OK) {
+        ERR(STR("Failed to decode!"));
+        return ret;
+    }
+    pic_count_++;
 
     return PARSER_OK;
 }
 
 ParserResult Vp9VideoParser::NotifyNewSequence(Vp9UncompressedHeader *p_uncomp_header) {
-    video_format_params_.codec = rocDecVideoCodec_AV1;
+    video_format_params_.codec = rocDecVideoCodec_VP9;
     video_format_params_.frame_rate.numerator = frame_rate_.numerator;
     video_format_params_.frame_rate.denominator = frame_rate_.denominator;
     video_format_params_.bit_depth_luma_minus8 = p_uncomp_header->color_config.bit_depth - 8;
@@ -143,9 +159,9 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     dec_pic_params_.bottom_field_flag = 0;
     dec_pic_params_.second_field = 0;
 
-    dec_pic_params_.bitstream_data_len = pic_stream_data_size_; // Todo
-    dec_pic_params_.bitstream_data = pic_stream_data_ptr_; // Todo
-    dec_pic_params_.num_slices = 1;
+    dec_pic_params_.bitstream_data_len = pic_stream_data_size_;
+    dec_pic_params_.bitstream_data = pic_stream_data_ptr_;
+    dec_pic_params_.num_slices = num_slices_;
 
     dec_pic_params_.ref_pic_flag = 1;
     dec_pic_params_.intra_pic_flag = frame_is_intra_;
@@ -154,7 +170,6 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     RocdecVp9PicParams *p_pic_param = &dec_pic_params_.pic_params.vp9;
     p_pic_param->frame_width = pic_width_;
     p_pic_param->frame_height = pic_height_;
-    // Todo p_pic_param->reference_frames[] 
     p_pic_param->pic_fields.bits.subsampling_x = p_uncomp_header->color_config.subsampling_x;
     p_pic_param->pic_fields.bits.subsampling_y = p_uncomp_header->color_config.subsampling_y;
     p_pic_param->pic_fields.bits.frame_type = p_uncomp_header->frame_type;
@@ -192,6 +207,11 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     }
     p_pic_param->profile = p_uncomp_header->profile;
     p_pic_param->bit_depth = p_uncomp_header->color_config.bit_depth;
+
+    // Todo
+    for (int i = 0; i < VP9_NUM_REF_FRAMES; i++)
+        p_pic_param->reference_frames[i] = 0; 
+
 
     RocdecVp9SliceParams *p_tile_params = &tile_params_;
     p_tile_params->slice_data_offset = 0; // Todo
@@ -256,7 +276,7 @@ ParserResult Vp9VideoParser::FindFreeInDecBufPool() {
 
 ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
     int i;
-    /*for (i = 0; i < VP9_NUM_REF_FRAMES; i++ ) {
+    /*Todo for (i = 0; i < VP9_NUM_REF_FRAMES; i++ ) {
         if (dpb_buffer_.dec_ref_count[i] == 0) {
             break;
         }
@@ -297,7 +317,7 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     size_t offset = 0;  // current bit offset
     Vp9UncompressedHeader *p_uncomp_header = &uncompressed_header_;
 
-    memset(p_uncomp_header, 0, sizeof(Vp9UncompressedHeader));
+    // memset(p_uncomp_header, 0, sizeof(Vp9UncompressedHeader));
     p_uncomp_header->frame_marker = Parser::ReadBits(p_stream, offset, 2);
     p_uncomp_header->profile_low_bit = Parser::GetBit(p_stream, offset);
     p_uncomp_header->profile_high_bit = Parser::GetBit(p_stream, offset);
