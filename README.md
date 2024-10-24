@@ -29,17 +29,20 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0` or later - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) - `Libva` is an implementation for VA-API
   ```shell
-  sudo apt install libva-dev
+  sudo apt install libva-amdgpu-dev
   ```
 > [!NOTE]
-> RPM Packages for `RHEL`/`SLES` - `libva-devel`
+> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu-devel`
+> libva-amdgpu is strongly recommended over system libva as it is used for building mesa-amdgpu-va-driver
 
 * AMD VA Drivers
   ```shell
-  sudo apt install mesa-amdgpu-va-drivers
+  sudo apt install libva2-amdgpu libva-amdgpu-drm2 libva-amdgpu-wayland2 libva-amdgpu-x11-2 mesa-amdgpu-va-drivers
   ```
+> [!NOTE]
+> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
 * CMake Version `3.5` or later
 
