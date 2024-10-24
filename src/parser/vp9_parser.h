@@ -88,7 +88,7 @@ protected:
     /*! \brief Function to notify decoder about new sequence format through callback
      * \return <tt>ParserResult</tt>
      */
-    ParserResult NotifyNewSequence();
+    ParserResult NotifyNewSequence(Vp9UncompressedHeader *p_uncomp_header);
 
     /*! \brief Function to fill the decode parameters and call back decoder to decode a picture
      * \return <tt>ParserResult</tt>

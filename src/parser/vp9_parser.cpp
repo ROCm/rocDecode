@@ -82,35 +82,33 @@ ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     return PARSER_OK;
 }
 
-ParserResult Vp9VideoParser::NotifyNewSequence() {
+ParserResult Vp9VideoParser::NotifyNewSequence(Vp9UncompressedHeader *p_uncomp_header) {
     video_format_params_.codec = rocDecVideoCodec_AV1;
-    /*video_format_params_.frame_rate.numerator = frame_rate_.numerator;
+    video_format_params_.frame_rate.numerator = frame_rate_.numerator;
     video_format_params_.frame_rate.denominator = frame_rate_.denominator;
-    video_format_params_.bit_depth_luma_minus8 = p_seq_header->color_config.bit_depth - 8;
-    video_format_params_.bit_depth_chroma_minus8 = p_seq_header->color_config.bit_depth - 8;
+    video_format_params_.bit_depth_luma_minus8 = p_uncomp_header->color_config.bit_depth - 8;
+    video_format_params_.bit_depth_chroma_minus8 = p_uncomp_header->color_config.bit_depth - 8;
     video_format_params_.progressive_sequence = 1;
     video_format_params_.min_num_decode_surfaces = dec_buf_pool_size_;
     video_format_params_.coded_width = pic_width_;
     video_format_params_.coded_height = pic_height_;
 
-    // 6.4.2. Color config semantics
-    if (p_seq_header->color_config.mono_chrome == 1 && p_seq_header->color_config.subsampling_x == 1 && p_seq_header->color_config.subsampling_y == 1) {
-            video_format_params_.chroma_format = rocDecVideoChromaFormat_Monochrome;
-    } else if (p_seq_header->color_config.mono_chrome == 0 && p_seq_header->color_config.subsampling_x == 1 && p_seq_header->color_config.subsampling_y == 1) {
-        video_format_params_.chroma_format = rocDecVideoChromaFormat_420;
-    } else if (p_seq_header->color_config.mono_chrome == 0 && p_seq_header->color_config.subsampling_x == 1 && p_seq_header->color_config.subsampling_y == 0) {
+    // 7.2.2. Color config semantics
+    if (p_uncomp_header->color_config.subsampling_x == 1 && p_uncomp_header->color_config.subsampling_y == 1) {
+            video_format_params_.chroma_format = rocDecVideoChromaFormat_420;
+    } else if (p_uncomp_header->color_config.subsampling_x == 1 && p_uncomp_header->color_config.subsampling_y == 0) {
         video_format_params_.chroma_format = rocDecVideoChromaFormat_422;
-    } else if (p_seq_header->color_config.mono_chrome == 0 && p_seq_header->color_config.subsampling_x == 0 && p_seq_header->color_config.subsampling_y == 0) {
+    } else if (p_uncomp_header->color_config.subsampling_x == 0 && p_uncomp_header->color_config.subsampling_y == 0) {
         video_format_params_.chroma_format = rocDecVideoChromaFormat_444;
     } else {
-        ERR("Incorrect chroma format.");
+        ERR("Unsupported chroma format.");
         return PARSER_INVALID_FORMAT;
     }
 
     video_format_params_.display_area.left = 0;
     video_format_params_.display_area.top = 0;
-    video_format_params_.display_area.right = p_frame_header->render_size.render_width;
-    video_format_params_.display_area.bottom = p_frame_header->render_size.render_height;
+    video_format_params_.display_area.right = p_uncomp_header->render_size.render_width;
+    video_format_params_.display_area.bottom = p_uncomp_header->render_size.render_height;
     video_format_params_.bitrate = 0;
 
     // Dispaly aspect ratio
@@ -129,7 +127,7 @@ ParserResult Vp9VideoParser::NotifyNewSequence() {
         return PARSER_FAIL;
     } else {
         return PARSER_OK;
-    }*/
+    }
     
     return PARSER_OK;
 }
