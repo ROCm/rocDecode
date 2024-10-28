@@ -172,13 +172,17 @@ commonPackages = [
 
 # Debian packages
 coreDebianPackages = [
+    'libva-amdgpu-dev',
     'rocm-hip-runtime-dev',
-    'libva-dev',
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
 ]
 runtimeDebianPackages = [
+    'libva2-amdgpu',
+    'libva-amdgpu-drm2',
+    'libva-amdgpu-wayland2',
+    'libva-amdgpu-x11-2',
     'mesa-amdgpu-va-drivers',
     'vainfo'
 ]
@@ -191,16 +195,13 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 coreRPMPackages = [
+    'libva-amdgpu-devel',
     'rocm-hip-runtime-devel',
-    'libva-devel'
 ]
-
-libvaUtilsNameRPM = "libva-utils"
-if "Mariner" in os_info_data:
-    libvaUtilsNameRPM = "libva2" #TBD - no utils package available 
 runtimeRPMPackages = [
+    'libva-amdgpu',
+    'libva-utils',
     'mesa-amdgpu-va-drivers',
-    str(libvaUtilsNameRPM)
 ]
 
 # update
