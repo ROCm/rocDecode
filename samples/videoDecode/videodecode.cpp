@@ -38,6 +38,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "ffmpeg_video_dec.h"
 #include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -45,6 +46,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-b backend (0 for GPU, 1 CPU); optional; default: 0" << std::endl
     << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-disp_delay -specify the number of frames to be delayed for display; optional;" << std::endl
@@ -68,6 +70,7 @@ int main(int argc, char **argv) {
     int dump_output_frames = 0;
     int device_id = 0;
     int disp_delay = 0;
+    int backend = 0;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
     bool b_generate_md5 = false;
@@ -106,6 +109,14 @@ int main(int argc, char **argv) {
             dump_output_frames = 1;
             continue;
         }
+        if (!strcmp(argv[i], "-b")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            backend = atoi(argv[i]);
+            continue;
+        }
+
         if (!strcmp(argv[i], "-d")) {
             if (++i == argc) {
                 ShowHelpAndExit("-d");
@@ -203,18 +214,26 @@ int main(int argc, char **argv) {
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        RocVideoDecoder *viddec;
         VideoDemuxer demuxer(input_file_path.c_str());
         VideoSeekContext video_seek_ctx;
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
-            std::cerr << "GPU doesn't support codec!" << std::endl;
+        if (!backend)   // gpu backend
+            viddec = new RocVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
+        else {
+            std::cout << "info: RocDecode is using CPU backend!" << std::endl;
+            if (mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) mem_type = OUT_SURFACE_MEM_DEV_COPIED;    // mem_type internal is not supported in this mode
+            viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
+        }
+
+        if(!viddec->CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+            std::cerr << "rocDecode doesn't support codec!" << std::endl;
             return 0;
         }        
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
-        viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
+        viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
         std::cout << "info: Using GPU device " << device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
         std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
         std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
@@ -244,9 +263,9 @@ int main(int argc, char **argv) {
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
         if (b_generate_md5) {
-            viddec.InitMd5();
+            viddec->InitMd5();
         }
-        viddec.SetReconfigParams(&reconfig_params);
+        viddec->SetReconfigParams(&reconfig_params);
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
@@ -275,22 +294,22 @@ int main(int argc, char **argv) {
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
-            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
+            n_frame_returned = viddec->DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
-            if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
+            if (!n_frame && !viddec->GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
             for (int i = 0; i < n_frame_returned; i++) {
-                pframe = viddec.GetFrame(&pts);
+                pframe = viddec->GetFrame(&pts);
                 if (b_generate_md5) {
-                    viddec.UpdateMd5ForFrame(pframe, surf_info);
+                    viddec->UpdateMd5ForFrame(pframe, surf_info);
                 }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
-                    viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
+                    viddec->SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
                 // release frame
-                viddec.ReleaseFrame(pts);
+                viddec->ReleaseFrame(pts);
             }
             auto end_time = std::chrono::high_resolution_clock::now();
             auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
@@ -303,7 +322,7 @@ int main(int argc, char **argv) {
 
         } while (n_video_bytes);
         
-        n_frame += viddec.GetNumOfFlushedFrames();
+        n_frame += viddec->GetNumOfFlushedFrames();
         std::cout << "info: Total pictures decoded: " << n_pic_decoded << std::endl;
         std::cout << "info: Total frames output/displayed: " << n_frame << std::endl;
         if (!dump_output_frames) {
@@ -320,7 +339,7 @@ int main(int argc, char **argv) {
         }
         if (b_generate_md5) {
             uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
+            viddec->FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);

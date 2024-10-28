@@ -78,6 +78,39 @@ typedef enum OutputSurfaceMemoryType_enum {
 #endif
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
+inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
+    int num_planes = 1;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        num_planes = 1;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        num_planes = 2;
+        break;
+    }
+
+    return num_planes;
+};
+
+inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
+    float factor = 0.5;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        factor = 0.5;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        factor = 1.0;
+        break;
+    }
+
+    return factor;
+};
+
+
 class RocVideoDecodeException : public std::exception {
 public:
 
@@ -285,12 +318,12 @@ class RocVideoDecoder {
          * @param num_decoded_pics - nummber of pictures decoded in this call
          * @return int - num of frames to display
          */
-        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
+        virtual int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
          * 
          */
-        uint8_t* GetFrame(int64_t *pts);
+        virtual uint8_t* GetFrame(int64_t *pts);
 
         /**
          * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
@@ -300,7 +333,7 @@ class RocVideoDecoder {
          * @return true      - success
          * @return false     - falied
          */
-        bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
+        virtual bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
 
         /**
          * @brief utility function to save image to a file
@@ -331,12 +364,12 @@ class RocVideoDecoder {
          * @param surf_info         - surface info
          * @param rgb_image_size    - image size for rgb (optional). A non_zero value indicates the surf_mem holds an rgb interleaved image and the entire size will be dumped to file
          */
-        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
+        virtual void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
 
         /**
          * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
         */
-        void ResetSaveFrameToFile();
+        virtual void ResetSaveFrameToFile();
 
         /**
          * @brief Helper function to start MD5 calculation
@@ -387,6 +420,11 @@ class RocVideoDecoder {
          */
         bool CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth);
 
+        /**
+         *   @brief  This function reconfigure decoder if there is a change in sequence params.
+         */
+        virtual int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
+
     protected:
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
@@ -429,11 +467,6 @@ class RocVideoDecoder {
          *   @brief  This function gets called when all unregistered user SEI messages are parsed for a frame
          */
         int GetSEIMessage(RocdecSeiMessageInfo *p_sei_message_info);
-
-        /**
-         *   @brief  This function reconfigure decoder if there is a change in sequence params.
-         */
-        int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
         
         /**
          * @brief function to release all internal frames and clear the vp_frames_q_ (used with reconfigure): Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
