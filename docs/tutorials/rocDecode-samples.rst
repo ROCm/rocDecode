@@ -12,13 +12,13 @@ All three rocDecode packages, ``rocDecode``, ``rocdecode-dev``, and ``rocdecode-
 
 If you're using a :doc:`package installer <./install/rocDecode-package-install>`, install ``rocdecode``, ``rocdecode-dev``, and ``rocdecode-test``.
 
-If you're building and installing rocDecode from its :doc:`source code <../install/rocDecode-build-and-install>`, ``rocDecode-setup.py`` will need to be run with ``--developer`` set to ``ON``:
+If you're building and installing rocDecode from its :doc:`source code <../install/rocDecode-build-and-install>`, ``rocDecode-setup.py`` needs to be run with ``--developer`` set to ``ON``:
 
 .. code:: cpp
 
    python3 rocDecode-setup.py --developer ON
 
-The rocDecode-test package will need to be built and installed as well:
+The rocDecode-test package needs to be built and installed as well:
 
 .. code:: shell
 

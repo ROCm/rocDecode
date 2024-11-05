@@ -10,7 +10,7 @@ If you will be contributing to the rocDecode code base, or if you want to previe
 
 If you will not be previewing features or contributing to the code base, use the :doc:`package installers <./rocDecode-package-install>` to install rocDecode. 
 
-Before building rocDecode, use the `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py>`_ setup script to install all the required prerequisites:
+Before building rocDecode, use `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py>`_ to install all the required prerequisites:
 
 .. code:: shell
 
@@ -22,7 +22,7 @@ Before building rocDecode, use the `rocDecode-setup.py <https://github.com/ROCm/
 
   Never run ``rocDecode-setup.py`` with ``--runtime OFF``.  
   
-   ``--developer ON`` is required to use the code samples.
+  ``--developer ON`` is required to use the code samples.
 
 Build and install rocDecode using the following commands:
 
@@ -37,7 +37,7 @@ Build and install rocDecode using the following commands:
 
 After installation, the rocDecode libraries will be copied to ``/opt/rocm/lib`` and the rocDecode header files will be copied to ``/opt/rocm/include/rocdecode``.
 
-Build and install the rocDecode test module. This module is required to use the rocDecode samples, and can only be installed if ``rocDecode-setup.py`` was run with ``--developer ON``.
+Build and install the rocDecode test module. This module is required if you'll be using the rocDecode samples, and can only be installed if ``rocDecode-setup.py`` was run with ``--developer ON``.
 
 .. code:: shell
 

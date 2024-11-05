@@ -38,7 +38,7 @@ subtrees:
   entries:
   - file: reference/rocDecode-formats-and-architectures.rst
     title: rocDecode supported codecs and architectures
-  - file: reference/tested-configurations.rst
+  - file: reference/rocDecode-tested-configurations.rst
     title: rocDecode tested configurations
   - file: doxygen/html/files
     title: rocDecode API library
