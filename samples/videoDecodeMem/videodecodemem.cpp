@@ -77,7 +77,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl;
     exit(0);
 }
 
@@ -91,6 +92,7 @@ int main(int argc, char **argv) {
     bool b_extract_sei_messages = false;
     bool b_generate_md5 = false;
     bool b_md5_check = false;
+    int disp_delay = 1;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
@@ -172,13 +174,20 @@ int main(int argc, char **argv) {
             mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
+        if (!strcmp(argv[i], "-disp_delay")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-disp_delay");
+            }
+            disp_delay = atoi(argv[i]);
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
     try {
         FileStreamProvider stream_provider(input_file_path.c_str());
         VideoDemuxer demuxer(&stream_provider);
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages);
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
         if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
             std::cerr << "GPU doesn't support codec!" << std::endl;
             return 0;
