@@ -29,17 +29,20 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) Version `1.5.0` or later - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) - `Libva` is an implementation for VA-API
   ```shell
-  sudo apt install libva-dev
+  sudo apt install libva-amdgpu-dev
   ```
 > [!NOTE]
-> RPM Packages for `RHEL`/`SLES` - `libva-devel`
+> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu-devel`
+> libva-amdgpu is strongly recommended over system libva as it is used for building mesa-amdgpu-va-driver
 
 * AMD VA Drivers
   ```shell
-  sudo apt install mesa-amdgpu-va-drivers
+  sudo apt install libva2-amdgpu libva-amdgpu-drm2 libva-amdgpu-wayland2 libva-amdgpu-x11-2 mesa-amdgpu-va-drivers
   ```
+> [!NOTE]
+> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
 * CMake Version `3.5` or later
 
@@ -69,12 +72,6 @@ access the video decoding features available on your GPU.
 >
 >  ```shell
 >  sudo apt install libstdc++-12-dev
->  ```
->
-> * On `RHEL`/`SLES` - Additional packages required: `libdrm-amdgpu` and `mesa-amdgpu-dri-drivers`
->
->  ```shell
->  sudo yum install libdrm-amdgpu mesa-amdgpu-dri-drivers
 >  ```
 
 >[!NOTE]
@@ -230,6 +227,5 @@ You can find rocDecode Docker containers in our
   * amdgpu-core - `1:6.2.60200-2009582`
 * libva-dev - `2.7.0-2` / `2.14.0-1`
 * mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
-* mesa-amdgpu-dri-drivers - `24.1.0.60200`
 * FFmpeg - `4.2.7` / `4.4.2-0`
 * rocDecode Setup Script - `V2.2.0`
