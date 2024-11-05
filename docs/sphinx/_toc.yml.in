@@ -14,11 +14,15 @@ subtrees:
     title: Installing rocDecode with the package installer
   - file: install/rocDecode-build-and-install.rst
     title: Installing rocDecode from its source code
+  - url: https://github.com/ROCm/rocDecode/tree/develop/docker
+    title: rocDecode Docker containers
 
 - caption: Samples
   entries:
   - file: tutorials/rocDecode-samples.rst
     title: rocDecode samples
+  - url: https://github.com/ROCm/rocDecode/tree/develop/samples
+    title: rocDecode samples on GitHub
 
 - caption: How to
   entries:
@@ -37,11 +41,11 @@ subtrees:
   - file: reference/tested-configurations.rst
     title: rocDecode tested configurations
   - file: doxygen/html/files
-    title: API library
+    title: rocDecode API library
   - file: doxygen/html/globals
-    title: Functions
+    title: rocDecode functions
   - file: doxygen/html/annotated
-    title: Data structures
+    title: rocDecode data structures
 
 - caption: About
   entries:

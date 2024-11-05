@@ -6,9 +6,11 @@
 Building and installing rocDecode from source code
 ********************************************************************
 
-These instructions are for building rocDecode from its source code. If you will not be contributing to the rocDecode code base or previewing features, :doc:`package installers <./rocDecode-package-install>` are available. 
+If you will be contributing to the rocDecode code base, or if you want to preview new features, build rocDecode from its source code.
 
-Use the `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py>`_ setup script to install prerequisites:
+If you will not be previewing features or contributing to the code base, use the :doc:`package installers <./rocDecode-package-install>` to install rocDecode. 
+
+Before building rocDecode, use the `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocDecode-setup.py>`_ setup script to install all the required prerequisites:
 
 .. code:: shell
 
@@ -18,9 +20,9 @@ Use the `rocDecode-setup.py <https://github.com/ROCm/rocDecode/blob/develop/rocD
 
 .. note:: 
 
-  Always run ``rocDecode-setup.py`` with ``--runtime ON``.  
+  Never run ``rocDecode-setup.py`` with ``--runtime OFF``.  
   
-  To use the rocDecode samples, set ``--developer`` to ``ON``.
+   ``--developer ON`` is required to use the code samples.
 
 Build and install rocDecode using the following commands:
 

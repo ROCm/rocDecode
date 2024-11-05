@@ -6,9 +6,9 @@
 Installing rocDecode with the package installer
 ********************************************************************
 
-There are three rocDecode packages available:
+Three rocDecode packages are available:
 
-* ``rocdecode``: The rocDecode runtime package. This is the basic rocDecode package. 
+* ``rocdecode``: The rocDecode runtime package. This is the basic rocDecode package. It must always be installed.
 * ``rocdecode-dev``: The rocDecode development package. This package installs a full suite of libraries, header files, and samples. This package needs to be installed to use the rocDecode samples.
 * ``rocdecode-test``: A test package that provides a CTest to verify the installation. This package needs to be installed to use the rocDecode samples.
 
@@ -43,8 +43,6 @@ Use the following commands to install only the rocDecode runtime package:
 
 Complete installation
 ========================================
-
-The complete installation installs all three rocDecode packages: ``rocdecode``, ``rocdecode-dev``, and ``rocdecode-test``. 
 
 Use the following commands to install ``rocdecode``, ``rocdecode-dev``, and ``rocdecode-test``:
 
