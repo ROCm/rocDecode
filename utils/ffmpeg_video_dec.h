@@ -103,6 +103,21 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          */
         bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
 
+        /**
+         * @brief Helper function to dump decoded output surface to file
+         * 
+         * @param output_file_name  - Output file name
+         * @param dev_mem           - pointer to surface memory
+         * @param surf_info         - surface info
+         * @param rgb_image_size    - image size for rgb (optional). A non_zero value indicates the surf_mem holds an rgb interleaved image and the entire size will be dumped to file
+         */
+        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
+
+        /**
+        *   @brief  This function is used to get the current frame size based on pixel format.
+        */
+        virtual int GetFrameSize() { assert(disp_width_); return ((disp_width_ * disp_height_) + ((chroma_height_ * chroma_width_) * num_chroma_planes_)) * byte_per_pixel_; }
+
     private:
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
@@ -155,29 +170,36 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         void DecodeThread();
         int DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame);
         void InitOutputFrameInfo(AVFrame *p_frame);
-        void PushPacket(AVPacket *pkt, int surf_idx_){
-            std::unique_lock<std::mutex> lock(mtx_pkt_q_);
-            av_packet_q_.push(std::make_pair(pkt, surf_idx_));
+        void PushPacket(AVPacket *pkt){
+            {
+                std::lock_guard<std::mutex> lock(mtx_pkt_q_);
+                av_packet_q_.push(pkt);
+            }
             cv_pkt_.notify_one();
         }
         
-        std::pair<AVPacket *, int> PopPacket(){
+        AVPacket *PopPacket(){
+            AVPacket *pkt;
             std::unique_lock<std::mutex> lock(mtx_pkt_q_);
             cv_pkt_.wait(lock, [&] { return !av_packet_q_.empty(); });
-            std::pair<AVPacket *, int> pkt = av_packet_q_.front();
+            pkt = av_packet_q_.front();
             av_packet_q_.pop();
             return pkt;
         }
 
         void PushFrame(AVFrame *av_frame){
-            std::unique_lock<std::mutex> lock(mtx_frame_q_);
-            av_frame_q_.push(av_frame);
+            {
+                std::lock_guard<std::mutex> lock(mtx_frame_q_);
+                av_frame_q_.push(av_frame);
+            }
             cv_frame_.notify_one();
         };
 
         AVFrame *PopFrame(){
             std::unique_lock<std::mutex> lock(mtx_frame_q_);
-            cv_pkt_.wait(lock, [&] { return !av_frame_q_.empty(); });
+            cv_frame_.wait(lock, [&] { return !av_frame_q_.empty() || end_of_stream_; });
+            if (end_of_stream_ && av_frame_q_.empty())
+                return nullptr;
             AVFrame *p_frame = av_frame_q_.front();
             av_frame_q_.pop();
             return p_frame;
@@ -186,9 +208,11 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         typedef enum { CMD_ABORT, CMD_DECODE } CommandType;
         typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
 
+        uint32_t av_frame_cnt_ = 0;
+        uint32_t av_pkt_cnt_ = 0;
         RocdecSourceDataPacket last_packet_;
         std::thread *ffmpeg_decoder_thread_ = nullptr;
-        std::queue<std::pair<AVPacket *, int>> av_packet_q_;        // queue for compressed packets
+        std::queue<AVPacket *> av_packet_q_;        // queue for compressed packets
         std::queue<AVFrame *> av_frame_q_;
         std::vector<DecFrameBufferFFMpeg> vp_frames_ffmpeg_;      // vector of decoded frames
         std::vector<AVFrame *> dec_frames_;      // vector of AVFrame * for decoded frames

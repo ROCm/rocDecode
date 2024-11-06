@@ -23,7 +23,8 @@ THE SOFTWARE.
 
 #include "ffmpeg_video_dec.h"
 
-#define NO_DECODE_THREAD 1
+#define NO_DECODE_THREAD    1   // this is temporary for testing till we get mt working
+
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoCodec
  * 
@@ -45,6 +46,26 @@ static inline AVCodecID RocDecVideoCodec2AVCodec(rocDecVideoCodec rocdec_codec) 
     }
 }
 
+static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format) {
+    float factor = 0.5;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        factor = 1.0;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        factor = 1.0;
+        break;
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        factor = 0.5;
+        break;
+    }
+    return factor;
+};
+
+
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
  * 
@@ -55,16 +76,13 @@ static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AV
     switch (av_pixel_format) {
         case AV_PIX_FMT_YUV420P : 
         case AV_PIX_FMT_YUVJ420P : 
-            return rocDecVideoSurfaceFormat_NV12;           // need to see if this is actually correct
+            return rocDecVideoSurfaceFormat_YUV420;           // need to see if this is actually correct
         case AV_PIX_FMT_YUV444P : 
         case AV_PIX_FMT_YUVJ444P : 
             return rocDecVideoSurfaceFormat_YUV444;
-        case AV_PIX_FMT_YUV422P : 
-        case AV_PIX_FMT_YUVJ422P : 
-            return rocDecVideoSurfaceFormat_NV12;           // this is wrong: we don't really need to deal with 422 surface formats for most videos
         case AV_PIX_FMT_YUV420P10LE :
         case AV_PIX_FMT_YUV420P12LE :
-            return rocDecVideoSurfaceFormat_P016;
+            return rocDecVideoSurfaceFormat_YUV420_16Bit;
         default :
             std::cerr << "ERROR: " << av_get_pix_fmt_name(av_pixel_format) << " pixel_format is not supported!" << std::endl;          
             return rocDecVideoSurfaceFormat_NV12;       // for sanity
@@ -99,7 +117,8 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
     if (!ffmpeg_decoder_thread_) {
         THROW("FFMpegVideoDecoder create thread failed");
     }
-#endif    
+#endif
+
 }
 
 
@@ -130,7 +149,6 @@ FFMpegVideoDecoder::~FFMpegVideoDecoder() {
     if (dec_context_) {
         avcodec_free_context(&dec_context_);
     }
-
 }
 
 /* Return value from HandleVideoSequence() are interpreted as   :
@@ -158,7 +176,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     input_video_info_str_ << std::endl;
 
     int num_decode_surfaces = p_video_format->min_num_decode_surfaces;
-    std::cout << "Num of decoded surfaces: " << num_decode_surfaces << std::endl;
+
     // check if the codec is supported in FFMpeg
     // Initialize FFMpeg and find the decoder for codec
     if (!decoder_) decoder_ = avcodec_find_decoder(RocDecVideoCodec2AVCodec(p_video_format->codec));
@@ -176,7 +194,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
             THROW("Could not open codec");
         }
         // get the output pixel format from dec_context_
-        decoder_pixel_format_ = dec_context_->pix_fmt;
+        decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
     }
     // allocate av_frame buffer pool for number of surfaces
     if (dec_frames_.empty()) {
@@ -184,6 +202,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
             AVFrame *p_frame = av_frame_alloc();
             dec_frames_.push_back(p_frame);
         }
+        av_frame_cnt_ = 0;
     }
     // allocate av_packets_ for decoding
     if (av_packets_.empty()) {
@@ -244,6 +263,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     }
 
     chroma_height_ = (int)(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (video_chroma_format_ == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     surface_stride_ = target_width_ * byte_per_pixel_;   
@@ -264,6 +284,14 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
     }
+    input_video_info_str_ << "Video Decoding Params:" << std::endl
+        << "\tNum Surfaces : " << num_decode_surfaces << std::endl
+        << "\tCrop         : [" << disp_rect_.left << ", " << disp_rect_.top << ", "
+        << disp_rect_.right << ", " << disp_rect_.bottom << "]" << std::endl
+        << "\tResize       : " << target_width_ << "x" << target_height_ << std::endl
+    ;
+    input_video_info_str_ << std::endl;
+    std::cout << input_video_info_str_.str();
 
     double elapsed_time = StopTimer(start_time);
     AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
@@ -332,7 +360,7 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         disp_rect_.bottom = p_video_format->display_area.bottom;
         disp_width_ = p_video_format->display_area.right - p_video_format->display_area.left;
         disp_height_ = p_video_format->display_area.bottom - p_video_format->display_area.top;
-        chroma_height_ = static_cast<int>(std::ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+
         if (!(crop_rect_.right && crop_rect_.bottom)) {
             target_width_ = (disp_width_ + 1) & ~1;
             target_height_ = (disp_height_ + 1) & ~1;
@@ -343,7 +371,8 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     }
 
     surface_stride_ = target_width_ * byte_per_pixel_;
-    chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_height_ = static_cast<int>(std::ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
@@ -388,25 +417,25 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
  * @return int 1: success 0: fail
  */
 int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
-    std::cout << "Calling HandlePictureDecode" << std::endl;
-    AVPacket *av_pkt = av_packets_[pPicParams->curr_pic_idx];
+    AVPacket *av_pkt = av_packets_[av_pkt_cnt_];
     av_pkt->data = const_cast<uint8_t *>(last_packet_.payload);
     av_pkt->size = last_packet_.payload_size;
     av_pkt->flags = 0;
     av_pkt->pts = last_packet_.pts;
-
-    pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
+    //pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
+    //last_decode_surf_idx_ = pPicParams->curr_pic_idx;
+#if NO_DECODE_THREAD
+    // for testing Decoding without threading
+    DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
+#else
+    //push packet into packet q for decoding
+    PushPacket(av_pkt);
+#endif
+    av_pkt_cnt_ = (av_pkt_cnt_ + 1) % av_packets_.size();
     if (!av_pkt->data || !av_pkt->size) {
         end_of_stream_ = true;
     }
-    last_decode_surf_idx_ = pPicParams->curr_pic_idx;
-#if NO_DECODE_THREAD
-    // for testing Decoding without threading
-    DecodeAvFrame(av_pkt, dec_frames_[last_decode_surf_idx_]);
-#else
-    //push packet into packet q for decoding
-    PushPacket(av_pkt, last_decode_surf_idx_);
-#endif
+
     return 1;
 }
 
@@ -417,10 +446,21 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
  * @return int 0:fail 1: success
  */
 int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
-    //RocdecProcParams video_proc_params = {};
-    //video_proc_params.progressive_frame = pDispInfo->progressive_frame;
-    //video_proc_params.top_field_first = pDispInfo->top_field_first;
-    std::cout << "Calling Handle Picture Display" << std::endl;
+    // check if we reached eos here. This is a hack since HandlePictureDecode won't be called at the end_of_sequece. 
+    // so we need to flush FFMpeg decoder when we have received the lastpacket with 0 bytes
+    if (!last_packet_.payload_size && !end_of_stream_) {
+        //std::cout << "decoder last packet for flushing" << std::endl;
+        int surf_idx = (last_decode_surf_idx_ + 1) % dec_frames_.size();
+        AVPacket pkt = { 0 };
+    #if NO_DECODE_THREAD
+        // for testing Decoding without threading
+        DecodeAvFrame(&pkt, dec_frames_[surf_idx]);
+    #else
+        //push packet into packet q for decoding
+        PushPacket(&pkt);
+    #endif
+    }
+
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
             // Write SEI Message
@@ -455,7 +495,15 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     }
     // vp_frames_ffmpeg_.size() is empty, wait for decoding to finish
     // this will happen during PopFrame()
-    AVFrame *p_av_frame = PopFrame();
+    AVFrame *p_av_frame;
+    //std::cout << "Before pop frame " << std::endl;
+#if NO_DECODE_THREAD
+        p_av_frame = av_frame_q_.front();
+        av_frame_q_.pop();
+#else        
+        p_av_frame = PopFrame();
+#endif        
+
     if (p_av_frame == nullptr) {
         std::cerr << "Invalid avframe decode output" << std::endl;
         return 0;
@@ -496,17 +544,21 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     int dst_pitch = disp_width_ * byte_per_pixel_;
     uint8_t *p_src_ptr_y = static_cast<uint8_t *>(src_ptr[0]) + (disp_rect_.top + crop_rect_.top) * src_pitch[0] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
     uint8_t *p_frame_y = p_dec_frame;
+    if (!p_frame_y && !p_src_ptr_y) {
+        std::cerr << "HandlePictureDisplay: Invalid Memory address for src/dst" << std::endl;
+        return 0;
+    }
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         if (src_pitch[0] == dst_pitch) {
-            int luma_size = src_pitch[0] * coded_height_;
+            int luma_size = src_pitch[0] * disp_height_;
             HIP_API_CALL(hipMemcpyHtoDAsync(p_frame_y, p_src_ptr_y, luma_size, hip_stream_));
         } else {
             // use 2d copy to copy an ROI
-            //HIP_API_CALL(hipMemcpy2DAsync(p_frame_y, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyHostToDevice, hip_stream_));
+            HIP_API_CALL(hipMemcpy2DAsync(p_frame_y, dst_pitch, p_src_ptr_y, src_pitch[0], dst_pitch, disp_height_, hipMemcpyHostToDevice, hip_stream_));
         }
     } else {
         if (src_pitch[0] == dst_pitch) {
-            int luma_size = src_pitch[0] * coded_height_;
+            int luma_size = src_pitch[0] * disp_height_;
             memcpy(p_frame_y, p_src_ptr_y, luma_size);
         } else {
             for (int i = 0; i < disp_height_; i++) {
@@ -519,33 +571,33 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     // Copy chroma plane ( )
     // rocDec output gives pointer to luma and chroma pointers seperated for the decoded frame
     uint8_t *p_frame_uv = p_dec_frame + dst_pitch * disp_height_;
-    uint8_t *p_src_ptr_uv = (num_chroma_planes_ == 1) ? static_cast<uint8_t *>(src_ptr[1]) + ((disp_rect_.top + crop_rect_.top) >> 1) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_ :
-            static_cast<uint8_t *>(src_ptr[1]) + (disp_rect_.top + crop_rect_.top) * src_pitch[1] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
+    uint8_t *p_src_ptr_uv = static_cast<uint8_t *>(src_ptr[1]) + ((disp_rect_.top + crop_rect_.top) >> 1) * src_pitch[1] + ((disp_rect_.left + crop_rect_.left)>>1) * byte_per_pixel_ ;
+    dst_pitch = chroma_width_ *  byte_per_pixel_;          
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         if (src_pitch[1] == dst_pitch) {
             int chroma_size = chroma_height_ * dst_pitch;
             HIP_API_CALL(hipMemcpyHtoDAsync(p_frame_uv, p_src_ptr_uv, chroma_size, hip_stream_));
         } else {
             // use 2d copy to copy an ROI
-            //HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyHostToDevice, hip_stream_));
+            HIP_API_CALL(hipMemcpy2DAsync(p_frame_uv, dst_pitch, p_src_ptr_uv, src_pitch[1], dst_pitch, chroma_height_, hipMemcpyHostToDevice, hip_stream_));
         }
     } else {
-        if (src_pitch[0] == dst_pitch) {
-            int luma_size = src_pitch[0] * coded_height_;
-            memcpy(p_dec_frame, p_src_ptr_y, luma_size);
+        if (src_pitch[1] == dst_pitch) {
+            int chroma_size = chroma_height_ * dst_pitch;
+            memcpy(p_frame_uv, p_src_ptr_uv, chroma_size);
         } 
         else {
-            for (int i = 0; i < disp_height_; i++) {
+            for (int i = 0; i < chroma_height_; i++) {
                 memcpy(p_frame_uv, p_src_ptr_uv, dst_pitch);
                 p_frame_uv += dst_pitch;
-                p_src_ptr_y += src_pitch[1];
+                p_src_ptr_uv += src_pitch[1];
             }
         }
     }
 
     if (num_chroma_planes_ == 2) {
-        uint8_t *p_frame_v = p_dec_frame + dst_pitch * (disp_height_ + chroma_height_);
-        uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_ptr[2]) + (disp_rect_.top + crop_rect_.top) * src_pitch[2] + (disp_rect_.left + crop_rect_.left) * byte_per_pixel_;
+        uint8_t *p_frame_v = p_frame_uv + dst_pitch * chroma_height_;
+        uint8_t *p_src_ptr_v = static_cast<uint8_t *>(src_ptr[2]) + (disp_rect_.top + crop_rect_.top) * src_pitch[2] + ((disp_rect_.left + crop_rect_.left) >> 1) * byte_per_pixel_;
         if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
             if (src_pitch[2] == dst_pitch) {
                 int chroma_size = chroma_height_ * dst_pitch;
@@ -553,16 +605,23 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             } else {
                 // use 2d copy to copy an ROI
                 HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
-            }
+            }            
         }
         else {
-            for (int i = 0; i < disp_height_; i++) {
-                memcpy(p_frame_v, p_src_ptr_v, dst_pitch);
-                p_frame_v += dst_pitch;
-                p_src_ptr_v += src_pitch[1];
+            if (src_pitch[2] == dst_pitch) {
+                int chroma_size = chroma_height_ * dst_pitch;
+                memcpy(p_frame_v, p_src_ptr_v, chroma_size);
+            } 
+            else {
+                for (int i = 0; i < chroma_height_; i++) {
+                    memcpy(p_frame_v, p_src_ptr_v, dst_pitch);
+                    p_frame_v += dst_pitch;
+                    p_src_ptr_v += src_pitch[1];
+                }
             }
         }         
     }
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) HIP_API_CALL(hipStreamSynchronize(hip_stream_));
 
     return 1;
 }
@@ -571,7 +630,6 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 int FFMpegVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts, int *num_decoded_pics) {
     output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
     decoded_pic_cnt_ = 0;
-    //RocdecSourceDataPacket packet = { 0 };
     last_packet_ = { 0 };
     last_packet_.payload = data;
     last_packet_.payload_size = size;
@@ -620,34 +678,38 @@ bool FFMpegVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
     return true;
 }
 
-void FFMpegVideoDecoder::InitOutputFrameInfo(AVFrame *p_frame) {    
+void FFMpegVideoDecoder::InitOutputFrameInfo(AVFrame *p_frame) {
+    
+    video_surface_format_ = AVPixelFormat2rocDecVideoSurfaceFormat((AVPixelFormat)p_frame->format);
+    surface_stride_ = target_width_ * byte_per_pixel_;
+    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
+    chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+    num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
+    // Fill output_surface_info_
     output_surface_info_.output_width = target_width_;
     output_surface_info_.output_height = target_height_;
-    output_surface_info_.output_pitch  = p_frame->linesize[0];
+    output_surface_info_.output_pitch  = surface_stride_;
     output_surface_info_.output_vstride = target_height_;
     output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
     output_surface_info_.bytes_per_pixel = byte_per_pixel_;
-    output_surface_info_.surface_format = AVPixelFormat2rocDecVideoSurfaceFormat(p_frame->format);
+    output_surface_info_.surface_format = video_surface_format_;
     output_surface_info_.num_chroma_planes = num_chroma_planes_;
     if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_DEV_COPIED;
-    } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED){
+    } else if (out_mem_type_ == OUT_SURFACE_MEM_HOST_COPIED) {
         output_surface_info_.output_surface_size_in_bytes = GetFrameSize();
         output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
     }
-
 }
 
 void FFMpegVideoDecoder::DecodeThread()
 {
-    std::pair<AVPacket *, int> pkt;
+    AVPacket *pkt;
     do {
         pkt = PopPacket();
-        if (pkt.first != nullptr) {
-            std::cout << "new packet " << pkt.first << " size: " << av_packet_q_.size() << std::endl;
-            DecodeAvFrame(pkt.first, dec_frames_[pkt.second]);
-        }
+        //std::cout << "pop packet" << std::endl;
+        DecodeAvFrame(pkt, dec_frames_[av_frame_cnt_]);
     } while (!end_of_stream_);
 }
 
@@ -656,33 +718,124 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     //send packet to av_codec
     status = avcodec_send_packet(dec_context_, av_pkt);
     if (status < 0) {
-        std::cerr << "Error sending av packet for decoding" << std::endl;
-        return 0;
+        std::cout << "Error sending av packet for decoding: status: " << status << std::endl;
     }
     while (status >= 0) {
-        if (!p_frame) {
-            return 0;
-        }
         status = avcodec_receive_frame(dec_context_, p_frame);
         if (status == AVERROR(EAGAIN) || status == AVERROR_EOF) {
             //av_frame_free(&p_frame);
             end_of_stream_ = (status == AVERROR_EOF);
-            std::cout << "return from DecodeAvFrame with status: " << status << std::endl;
             return 0;
         }
         else if (status < 0) {
-            //av_frame_free(&p_frame);
-            std::cerr << "Error during decoding" << std::endl;
+            std::cout << "Error during decoding" << std::endl;
             return 0;
         }
         // for the first frame, initialize OutputsurfaceInfo
-        if (!dec_context_->frame_number) {
+        if (dec_context_->frame_number == 1) {
             InitOutputFrameInfo(p_frame);
         }
-        std::cout<<"Decoding frame: " << dec_context_->frame_number << std::endl;
+        //std::cout<<"Decoding frame: " << dec_context_->frame_number << "<pframe, index>: " << p_frame << " " << av_frame_cnt_ << std::endl;
         decoded_pic_cnt_++;
+        
+#if NO_DECODE_THREAD
+        av_frame_q_.push(p_frame);
+#else        
         // add frame to the frame_q
         PushFrame(p_frame);
+#endif    
+        av_frame_cnt_ = (av_frame_cnt_ + 1) % dec_frames_.size();
+        p_frame = dec_frames_[av_frame_cnt_]; //advance for next frame decode
     }
     return 0;
+}
+
+
+void FFMpegVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size) {
+    uint8_t *hst_ptr = nullptr;
+    bool is_rgb = (rgb_image_size != 0);
+    uint64_t output_image_size = is_rgb ? rgb_image_size : surf_info->output_surface_size_in_bytes;
+    if (surf_info->mem_type == OUT_SURFACE_MEM_DEV_COPIED) {
+        if (hst_ptr == nullptr) {
+            hst_ptr = new uint8_t [output_image_size];
+        }
+        hipError_t hip_status = hipSuccess;
+        hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
+        if (hip_status != hipSuccess) {
+            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hipGetErrorName(hip_status) << ")" << std::endl;
+            delete [] hst_ptr;
+            return;
+        }
+    } else
+        hst_ptr = static_cast<uint8_t *> (surf_mem);
+
+    
+    if (current_output_filename.empty()) {
+        current_output_filename = output_file_name;
+    }
+
+    // don't overwrite to the same file if reconfigure is detected for a resolution changes.
+    if (is_decoder_reconfigured_) {
+        if (fp_out_) {
+            fclose(fp_out_);
+            fp_out_ = nullptr;
+        }
+        // Append the width and height of the new stream to the old file name to create a file name to save the new frames
+        // do this only if resolution changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
+        // don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
+        if (!current_output_filename.compare(output_file_name)) {
+            std::string::size_type const pos(output_file_name.find_last_of('.'));
+            extra_output_file_count_++;
+            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height) + "_" + std::to_string(extra_output_file_count_);
+            if (pos != std::string::npos) {
+                output_file_name.insert(pos, to_append);
+            } else {
+                output_file_name += to_append;
+            }
+        }
+        is_decoder_reconfigured_ = false;
+    } 
+
+    if (fp_out_ == nullptr) {
+        fp_out_ = fopen(output_file_name.c_str(), "wb");
+    }
+    if (fp_out_) {
+        if (!is_rgb) {
+            uint8_t *tmp_hst_ptr = hst_ptr;
+            int img_width = surf_info->output_width;
+            int img_height = surf_info->output_height;
+            int output_stride =  surf_info->output_pitch;
+            if (img_width * surf_info->bytes_per_pixel == output_stride && img_height == surf_info->output_vstride) {
+                fwrite(hst_ptr, 1, output_image_size, fp_out_);
+            } else {
+                uint32_t width = surf_info->output_width * surf_info->bytes_per_pixel;
+                if (surf_info->bit_depth <= 16) {
+                    for (int i = 0; i < surf_info->output_height; i++) {
+                        fwrite(tmp_hst_ptr, 1, width, fp_out_);
+                        tmp_hst_ptr += output_stride;
+                    }
+                    // dump chroma
+                    uint32_t chroma_stride = (output_stride >> 1);
+                    uint8_t *u_hst_ptr = hst_ptr + output_stride * surf_info->output_height;
+                    uint8_t *v_hst_ptr = u_hst_ptr + chroma_stride * chroma_height_;
+                    for (int i = 0; i < chroma_height_; i++) {
+                        fwrite(u_hst_ptr, 1, chroma_width_, fp_out_);
+                        u_hst_ptr += chroma_stride;
+                    }
+                    if (num_chroma_planes_ == 2) {
+                        for (int i = 0; i < chroma_height_; i++) {
+                            fwrite(v_hst_ptr, 1, chroma_width_, fp_out_);
+                            v_hst_ptr += chroma_stride;
+                        }
+                    }
+                } 
+            }
+        } else {
+            fwrite(hst_ptr, 1, rgb_image_size, fp_out_);
+        }
+    }
+
+    if (hst_ptr && (surf_info->mem_type != OUT_SURFACE_MEM_HOST_COPIED)) {
+        delete [] hst_ptr;
+    }
 }

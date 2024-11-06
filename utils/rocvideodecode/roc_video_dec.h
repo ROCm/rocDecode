@@ -89,6 +89,10 @@ inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
     case rocDecVideoSurfaceFormat_YUV444_16Bit:
         num_planes = 2;
         break;
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        num_planes = 2;
+        break;
     }
 
     return num_planes;
@@ -99,6 +103,8 @@ inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
     case rocDecVideoSurfaceFormat_P016:
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
         factor = 0.5;
         break;
     case rocDecVideoSurfaceFormat_YUV444:
@@ -248,12 +254,12 @@ class RocVideoDecoder {
         /**
         *   @brief  This function is used to get the current frame size based on pixel format.
         */
-        int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
+        virtual int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
 
         /**
         *   @brief  This function is used to get the current frame size based on pitch
         */
-        int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)); }
+        //int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)); }
 
         /**
          * @brief Get the Bit Depth and BytesPerPixel associated with the pixel format
@@ -528,7 +534,7 @@ class RocVideoDecoder {
         uint32_t target_width_ = 0;
         uint32_t target_height_ = 0;
         int max_width_ = 0, max_height_ = 0;
-        uint32_t chroma_height_ = 0;
+        uint32_t chroma_height_ = 0, chroma_width_ = 0;
         uint32_t num_chroma_planes_ = 0;
         uint32_t num_components_ = 0;
         uint32_t surface_stride_ = 0;

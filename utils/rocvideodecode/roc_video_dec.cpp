@@ -215,6 +215,15 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
         *pitch = align(width, 128) * 2;
         *vstride = align(height, 16);
         break;
+    case rocDecVideoSurfaceFormat_YUV420:
+        *pitch = align(width, 256);
+        *vstride = align(height, 16);
+        break;
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        *pitch = align(width, 128) * 2;
+        *vstride = align(height, 16);
+        break;
+
     }
     return;
 }

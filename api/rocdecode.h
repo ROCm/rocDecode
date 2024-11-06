@@ -107,6 +107,9 @@ typedef enum rocDecVideoSurfaceFormat_enum {
     rocDecVideoSurfaceFormat_YUV444 = 2,       /**< Planar YUV [Y plane followed by U and V planes] */
     rocDecVideoSurfaceFormat_YUV444_16Bit = 3, /**< 16 bit Planar YUV [Y plane followed by U and V planes].
                                                 Can be used for 10 bit(6LSB bits 0), 12 bit (4LSB bits 0) */
+    rocDecVideoSurfaceFormat_YUV420 = 4,       /**< Planar YUV [Y plane followed by U and V planes in 4:2:0 format] */
+    rocDecVideoSurfaceFormat_YUV420_16Bit = 5, /**< 16 bit Planar YUV [Y plane followed by U and V planes in ].
+                                                Can be used for 10 bit(LSB), 12 bit (LSB) */
 } rocDecVideoSurfaceFormat;
 
 /**************************************************************************************************************/
