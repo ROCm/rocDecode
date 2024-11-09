@@ -232,12 +232,13 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-seek_mode option for seeking (0: no seek 1: seek to prev key frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl;
     exit(0);
 }
 // input_folder_path, output_folder_path, device_id, n_threads, seq_info, seek_mode, mem_type, argc, argv
 void ParseCommandLine(std::string &input_folder_path, std::string &output_folder_path, int &device_id, int &n_thread, SeqInfo &seq_info, int &seek_mode, 
-                bool &b_dump_output_frames, OutputSurfaceMemoryType &mem_type, int argc, char *argv[]) {
+                bool &b_dump_output_frames, OutputSurfaceMemoryType &mem_type, int &disp_delay, int argc, char *argv[]) {
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -338,6 +339,13 @@ void ParseCommandLine(std::string &input_folder_path, std::string &output_folder
                 ShowHelpAndExit("-seek_mode");
             continue;
         }
+        if (!strcmp(argv[i], "-disp_delay")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-disp_delay");
+            }
+            disp_delay = atoi(argv[i]);
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
 }
@@ -350,6 +358,8 @@ int main(int argc, char **argv) {
     int device_id = 0, num_files = 0, seek_mode = 0;
     SeqInfo seq_info = {4, 1, 1, 4};        //default values
     int n_threads = 1;
+    int disp_delay = 1;
+    bool b_extract_sei_messages = false;
     bool b_flush_frames_during_reconfig = true, b_dump_output_frames = false;
     Rect *p_crop_rect = nullptr;            // specify crop_rect if output cropping is needed
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
@@ -357,7 +367,7 @@ int main(int argc, char **argv) {
     uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
     std::vector<std::string> input_file_names;
 
-    ParseCommandLine(input_folder_path, output_folder_path, device_id, n_threads, seq_info, seek_mode, b_dump_output_frames, mem_type, argc, argv);
+    ParseCommandLine(input_folder_path, output_folder_path, device_id, n_threads, seq_info, seek_mode, b_dump_output_frames, mem_type, disp_delay, argc, argv);
 
     try {
 
@@ -440,7 +450,7 @@ int main(int argc, char **argv) {
             }
             v_dec_info[i]->rocdec_codec_id = AVCodec2RocDecVideoCodec(v_demuxer[i]->GetCodecID());
             v_dec_info[i]->bit_depth = v_demuxer[i]->GetBitDepth();
-            v_dec_info[i]->viddec = std::make_unique<RocVideoDecoder>(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, false, p_crop_rect);
+            v_dec_info[i]->viddec = std::make_unique<RocVideoDecoder>(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, false, p_crop_rect, b_extract_sei_messages, disp_delay);
             v_dec_info[i]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
             std::cout << "info: decoding " << input_file_names[i] << " using GPU device " << v_dec_info[i]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
@@ -461,7 +471,7 @@ int main(int argc, char **argv) {
                 // If the codec_type or bit_depth has changed, recreate the decoder
                 //if (v_dec_info[thread_idx]->bit_depth != bit_depth || v_dec_info[thread_idx]->rocdec_codec_id != codec_id) {
                     (v_dec_info[thread_idx]->viddec).release();
-                    v_dec_info[thread_idx]->viddec = std::make_unique<RocVideoDecoder>(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, false, p_crop_rect);
+                    v_dec_info[thread_idx]->viddec = std::make_unique<RocVideoDecoder>(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, false, p_crop_rect, b_extract_sei_messages, disp_delay);
                 //}
                 v_dec_info[thread_idx]->viddec->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
                 std::cout << "info: decoding " << input_file_names[j] << " using GPU device " << v_dec_info[thread_idx]->dec_device_id << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
