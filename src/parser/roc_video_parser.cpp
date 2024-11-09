@@ -143,7 +143,8 @@ ParserResult RocVideoParser::GetNalUnit() {
             curr_byte_offset_ += 3;
 
             // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
+            // also detect empty nal units with no data
+            if (start_code_num_ == 1 || ((next_start_code_offset_ - curr_start_code_offset_) <= 3)) {
                 start_code_found = false;
                 curr_start_code_offset_ = next_start_code_offset_;
                 continue;
