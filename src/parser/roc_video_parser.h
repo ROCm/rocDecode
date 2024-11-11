@@ -83,14 +83,14 @@ typedef struct {
 #define CHECK_ALLOWED_RANGE(val, min, max) { \
     if (val < min || val > max) { \
         ERR ("value not in range: " + TOSTR(val) + "allowed<min,max>: " + TOSTR(min) + " " + TOSTR(max));\
-        goto error; \
+        return PARSER_OUT_OF_RANGE; \
     } \
 }
 
 #define CHECK_ALLOWED_MAX(val, max) { \
     if (val > max) { \
         ERR ("value greater than maximum allowed value: " + TOSTR(val) + " max: " + TOSTR(max));\
-        goto error; \
+        return PARSER_OUT_OF_RANGE; \
     } \
 }
 

@@ -624,9 +624,8 @@ ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     HevcSliceSegHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
                     if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
-                        if ((nal_unit_header_.nal_unit_type == NAL_UNIT_CODED_SLICE_TRAIL_N) || (nal_unit_header_.nal_unit_type ==NAL_UNIT_CODED_SLICE_TRAIL_R))
-                            break;      // ignore and continue to next nal_unit
-                        return ret2;
+                        // we got an error while parsing this NAL unit. ignore and continue with next NAL unit
+                        break;      // ignore and continue to next nal_unit
                     }
 
                     // Start decode process
@@ -1543,7 +1542,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
 
     // Set active VPS, SPS and PPS for the current slice
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
-    CHECK_ALLOWED_MAX(m_active_pps_id_, (MAX_SPS_COUNT - 1));
+    CHECK_ALLOWED_MAX(m_active_pps_id_, (MAX_PPS_COUNT - 1));
     temp_sh.slice_pic_parameter_set_id = p_slice_header->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &m_pps_[m_active_pps_id_];
     if ( pps_ptr->is_received == 0) {
@@ -1655,8 +1654,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                     p_slice_header->num_long_term_sps = Parser::ExpGolomb::ReadUe(nalu, offset);
                 }
                 p_slice_header->num_long_term_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
-                if (p_slice_header->num_long_term_pics > 16)
-                    goto error;
+                if (p_slice_header->num_long_term_pics > 16) {
+                    ERR("Parsed Value exceeds allowed max");
+                    return PARSER_OUT_OF_RANGE;
+                }
 
                 int bits_for_ltrp_in_sps = 0;
                 while (sps_ptr->num_long_term_ref_pics_sps > (1 << bits_for_ltrp_in_sps)) {
@@ -1870,8 +1871,6 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
 #endif // DBGINFO
 
     return PARSER_OK;
-error:
-    return PARSER_WRONG_STATE;
 }
 
 bool HevcVideoParser::IsIdrPic(HevcNalUnitHeader *nal_header_ptr) {
