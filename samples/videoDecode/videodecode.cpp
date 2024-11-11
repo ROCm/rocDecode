@@ -47,7 +47,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
-    << "-disp_delay -specify the number of frames to be delayed for display; optional;" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
     << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     std::fstream ref_md5_file;
     int dump_output_frames = 0;
     int device_id = 0;
-    int disp_delay = 0;
+    int disp_delay = 1;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
     bool b_generate_md5 = false;
