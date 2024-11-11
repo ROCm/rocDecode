@@ -1784,7 +1784,11 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 }
                 if ((p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l0_active_minus1 > 0) || (!p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l1_active_minus1 > 0)) {
                     p_slice_header->collocated_ref_idx = Parser::ExpGolomb::ReadUe(nalu, offset);
-                    CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l0_active_minus1);
+                    if (p_slice_header->slice_type == HEVC_SLICE_TYPE_P || (p_slice_header->slice_type == HEVC_SLICE_TYPE_B && p_slice_header->collocated_from_l0_flag == 1)) {
+                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l0_active_minus1);
+                    } else if (p_slice_header->slice_type == HEVC_SLICE_TYPE_B && p_slice_header->collocated_from_l0_flag == 0) {
+                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l1_active_minus1);
+                    }
                 }
             }
 
