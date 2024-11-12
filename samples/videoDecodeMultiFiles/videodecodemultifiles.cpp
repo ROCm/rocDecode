@@ -50,6 +50,7 @@ typedef struct {
     Rect *p_crop_rect;
     int dump_output_frames;
     OutputSurfaceMemoryType mem_type;        // set to internal
+    int disp_delay;
 } FileInfo;
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -63,6 +64,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "crop l,t,r,b (crop rectangle for output (not used when using interopped decoded frame); default: 0)" << std::endl
     << "m 0 decoded surface memory; optional; default - 0 [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
     << "flush 1 flush last frames during reconfig; optional; default - 1 [1 : Flush last frames during reconfig  0 : Discard last frames during reconfigure ]" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
     << "infile input2.[mp4/mov...]" << std::endl
     << "outfile output2.yuv" << std::endl
     << "...." << std::endl
@@ -134,6 +136,7 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
             file_data.crop_rect = {0, 0, 0, 0};
             file_data.p_crop_rect = nullptr;
             file_data.mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
+            file_data.disp_delay = 1;
         } else if (!strcmp(param, "outfile")) {
             file_data.out_file = value;
             file_data.dump_output_frames = 1;
@@ -152,6 +155,8 @@ void ParseCommandLine(std::deque<FileInfo> *multi_file_data, int &device_id, boo
             file_data.p_crop_rect = &file_data.crop_rect;
         } else if (!strcmp(param, "m")) {
             file_data.mem_type = static_cast<OutputSurfaceMemoryType>(atoi(value));
+        } else if (!strcmp(param, "disp_delay")) {
+            file_data.disp_delay = atoi(value);
         }
     }
     if (file_idx > 0) {
@@ -186,10 +191,10 @@ int main(int argc, char **argv) {
             }
             if (use_reconfigure) {
                 if (!viddec) {
-                    viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+                    viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages, file_data.disp_delay);
                 }
             } else {
-                viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages);
+                viddec = new RocVideoDecoder(device_id, file_data.mem_type, rocdec_codec_id, file_data.b_force_zero_latency, file_data.p_crop_rect, file_data.b_extract_sei_messages, file_data.disp_delay);
             }
             if(!viddec->CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;

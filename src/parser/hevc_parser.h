@@ -35,6 +35,7 @@ extern int scaling_list_default_1_2[2][6][64];
 //size_id = 3
 extern int scaling_list_default_3[1][2][64];
 
+
 class HevcVideoParser : public RocVideoParser {
 
 public:

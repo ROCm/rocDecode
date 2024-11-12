@@ -139,11 +139,12 @@ ParserResult RocVideoParser::GetNalUnit() {
             start_code_found = true;
             start_code_num_++;
             next_start_code_offset_ = curr_byte_offset_;
-            // Move the pointer 3 bytes forward
-            curr_byte_offset_ += 3;
+            // Move the pointer (3 + 2) bytes forward (start_code + nal header)
+            curr_byte_offset_ += 5;
 
             // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
+            // also detect empty nal units with no data
+            if (start_code_num_ == 1 ) {
                 start_code_found = false;
                 curr_start_code_offset_ = next_start_code_offset_;
                 continue;
