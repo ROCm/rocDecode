@@ -77,9 +77,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
     GetVisibleDevices(visible_devices);
 
     int offset = 0;
-    if (gcn_arch_name_base.compare("gfx940") == 0 ||
-        gcn_arch_name_base.compare("gfx941") == 0 ||
-        gcn_arch_name_base.compare("gfx942") == 0) {
+    if (gcn_arch_name_base.compare("gfx942") == 0) {
             std::vector<ComputePartition> current_compute_partitions;
             GetCurrentComputePartition(current_compute_partitions);
             if (current_compute_partitions.empty()) {

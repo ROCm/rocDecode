@@ -565,9 +565,8 @@ ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t
             ERR(STR("Error: no start code found in the frame data."));
             return ret;
         }
-
         // Parse the NAL unit
-        if (nal_unit_size_) {
+        if (nal_unit_size_ >= 5) {
             // start code + NAL unit header = 5 bytes
             int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
@@ -625,7 +624,8 @@ ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     HevcSliceSegHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
                     if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
-                        return ret2;
+                        // we got an error while parsing this NAL unit. ignore and continue with next NAL unit
+                        break;      // ignore and continue to next nal_unit
                     }
 
                     // Start decode process
@@ -1542,6 +1542,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
 
     // Set active VPS, SPS and PPS for the current slice
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
+    CHECK_ALLOWED_MAX(m_active_pps_id_, (MAX_PPS_COUNT - 1));
     temp_sh.slice_pic_parameter_set_id = p_slice_header->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &m_pps_[m_active_pps_id_];
     if ( pps_ptr->is_received == 0) {
@@ -1603,6 +1604,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         }
         int bits_slice_segment_address = (int)ceilf(log2f((float)pic_size_in_ctbs_y_));
         temp_sh.slice_segment_address = p_slice_header->slice_segment_address = Parser::ReadBits(nalu, offset, bits_slice_segment_address);
+        //todo:: check for max slice_segment_address and error if exceeds max
     }
 
     if (!p_slice_header->dependent_slice_segment_flag) {
@@ -1610,6 +1612,8 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->slice_reserved_flag[i] = Parser::GetBit(nalu, offset);
         }
         p_slice_header->slice_type = Parser::ExpGolomb::ReadUe(nalu, offset);
+        CHECK_ALLOWED_MAX(p_slice_header->slice_type, 2);
+
         if (pps_ptr->output_flag_present_flag) {
             p_slice_header->pic_output_flag = Parser::GetBit(nalu, offset);
         } else {
@@ -1650,6 +1654,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                     p_slice_header->num_long_term_sps = Parser::ExpGolomb::ReadUe(nalu, offset);
                 }
                 p_slice_header->num_long_term_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
+                if (p_slice_header->num_long_term_pics > 16) {
+                    ERR("Parsed Value exceeds allowed max");
+                    return PARSER_OUT_OF_RANGE;
+                }
 
                 int bits_for_ltrp_in_sps = 0;
                 while (sps_ptr->num_long_term_ref_pics_sps > (1 << bits_for_ltrp_in_sps)) {
@@ -1702,8 +1710,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->num_ref_idx_active_override_flag = Parser::GetBit(nalu, offset);
             if (p_slice_header->num_ref_idx_active_override_flag) {
                 p_slice_header->num_ref_idx_l0_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+                CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l0_active_minus1, 14);
                 if (p_slice_header->slice_type == HEVC_SLICE_TYPE_B) {
                     p_slice_header->num_ref_idx_l1_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+                    CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l1_active_minus1, 14);
                 }
             } else {
                 p_slice_header->num_ref_idx_l0_active_minus1 = pps_ptr->num_ref_idx_l0_default_active_minus1;
@@ -1746,6 +1756,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 if (p_slice_header->ref_pic_list_modification_flag_l0) {
                     for (int i = 0; i <= p_slice_header->num_ref_idx_l0_active_minus1; i++) {
                         p_slice_header->list_entry_l0[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
+                        //todo;; check_max
                     }
                 }
 
@@ -1754,6 +1765,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                     if (p_slice_header->ref_pic_list_modification_flag_l1) {
                         for (int i = 0; i <= p_slice_header->num_ref_idx_l1_active_minus1; i++) {
                             p_slice_header->list_entry_l1[i] = Parser::ReadBits(nalu, offset, list_entry_bits);
+                            //todo::checkmax
                         }
                     }
                 }
@@ -1772,6 +1784,11 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 }
                 if ((p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l0_active_minus1 > 0) || (!p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l1_active_minus1 > 0)) {
                     p_slice_header->collocated_ref_idx = Parser::ExpGolomb::ReadUe(nalu, offset);
+                    if (p_slice_header->slice_type == HEVC_SLICE_TYPE_P || (p_slice_header->slice_type == HEVC_SLICE_TYPE_B && p_slice_header->collocated_from_l0_flag == 1)) {
+                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l0_active_minus1);
+                    } else {
+                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l1_active_minus1);
+                    }
                 }
             }
 
@@ -1779,12 +1796,15 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 ParsePredWeightTable(p_slice_header, chroma_array_type, nalu, offset);
             }
             p_slice_header->five_minus_max_num_merge_cand = Parser::ExpGolomb::ReadUe(nalu, offset);
+            //CHECK_ALLOWED_MAX(p_slice_header->five_minus_max_num_merge_cand, 4);
         }
 
         p_slice_header->slice_qp_delta = Parser::ExpGolomb::ReadSe(nalu, offset);
         if (pps_ptr->pps_slice_chroma_qp_offsets_present_flag) {
             p_slice_header->slice_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+            CHECK_ALLOWED_RANGE(p_slice_header->slice_cb_qp_offset, -12, 12);
             p_slice_header->slice_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
+            CHECK_ALLOWED_RANGE(p_slice_header->slice_cr_qp_offset, -12, 12);
         }
         if (pps_ptr->chroma_qp_offset_list_enabled_flag) {
             p_slice_header->cu_chroma_qp_offset_enabled_flag = Parser::GetBit(nalu, offset);
@@ -1796,7 +1816,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->slice_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
             if ( !p_slice_header->slice_deblocking_filter_disabled_flag ) {
                 p_slice_header->slice_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+                CHECK_ALLOWED_RANGE(p_slice_header->slice_beta_offset_div2, -6, 6);
                 p_slice_header->slice_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
+                CHECK_ALLOWED_RANGE(p_slice_header->slice_tc_offset_div2, -6, 6);
             }
         }
 
@@ -2085,7 +2107,7 @@ void HevcVideoParser::ConstructRefPicLists(HevcSliceInfo *p_slice_info) {
     rIdx = 0;
     num_rps_curr_temp_list = std::max(p_slice_header->num_ref_idx_l0_active_minus1 + 1, num_pic_total_curr_);
 
-    while (rIdx < num_rps_curr_temp_list) {
+    while ((num_poc_st_curr_before_ | num_poc_st_curr_after_ | num_poc_lt_curr_) && (rIdx < num_rps_curr_temp_list)) {
         for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
             ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
         }
@@ -2108,7 +2130,7 @@ void HevcVideoParser::ConstructRefPicLists(HevcSliceInfo *p_slice_info) {
         rIdx = 0;
         num_rps_curr_temp_list = std::max(p_slice_header->num_ref_idx_l1_active_minus1 + 1, num_pic_total_curr_);
 
-        while (rIdx < num_rps_curr_temp_list) {
+        while ((num_poc_st_curr_after_ | num_poc_st_curr_before_ | num_poc_lt_curr_) && (rIdx < num_rps_curr_temp_list)) {
             for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
                 ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_after_[i];
             }
@@ -2154,12 +2176,10 @@ void HevcVideoParser::EmptyDpb() {
 }
 
 int HevcVideoParser::FlushDpb() {
-    if (dpb_buffer_.num_pics_needed_for_output) {
-        // Bump the remaining pictures
-        while (dpb_buffer_.num_pics_needed_for_output) {
-            if (BumpPicFromDpb() != PARSER_OK) {
-                return PARSER_FAIL;
-            }
+    // Bump the remaining pictures
+    while (dpb_buffer_.num_pics_needed_for_output) {
+        if (BumpPicFromDpb() != PARSER_OK) {
+            return PARSER_FAIL;
         }
     }
     if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
