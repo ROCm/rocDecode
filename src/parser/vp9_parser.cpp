@@ -199,7 +199,7 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     p_pic_param->log2_tile_columns = p_uncomp_header->tile_info.tile_cols_log2;
     p_pic_param->frame_header_length_in_bytes = uncomp_header_size_;
     p_pic_param->first_partition_size = p_uncomp_header->header_size_in_bytes;
-    for( int i = 0; i < 7; i++) {
+    for (int i = 0; i < 7; i++) {
         p_pic_param->mb_segment_tree_probs[i] = p_uncomp_header->segmentation_params.segmentation_tree_probs[i];
     }
     for (int i = 0; i < 3; i++) {
@@ -276,38 +276,7 @@ ParserResult Vp9VideoParser::FindFreeInDecBufPool() {
 
 ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
     int i;
-    /*Todo for (i = 0; i < VP9_NUM_REF_FRAMES; i++ ) {
-        if (dpb_buffer_.dec_ref_count[i] == 0) {
-            break;
-        }
-    }
-    if (i == VP9_NUM_REF_FRAMES) {
-        ERR("DPB buffer overflow!");
-        return PARSER_NOT_FOUND;
-    }
-    curr_pic_.pic_idx = i;
-    curr_pic_.use_status = kFrameUsedForDecode;
-    dpb_buffer_.frame_store[curr_pic_.pic_idx] = curr_pic_;
-    dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]++;
-    // Mark as used in decode/display buffer pool
-    if (pfn_display_picture_cb_ && curr_pic_.show_frame) {
-        int disp_idx = 0xFF;
-        if (seq_header_.film_grain_params_present && frame_header_.film_grain_params.apply_grain) {
-            disp_idx = curr_pic_.fg_buf_idx;
-        } else {
-            disp_idx = curr_pic_.dec_buf_idx;
-        }
-        decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
-        decode_buffer_pool_[disp_idx].pts = curr_pts_;
-        // Insert into output/display picture list
-        if (num_output_pics_ >= dec_buf_pool_size_) {
-            ERR("Display list size larger than decode buffer pool size!");
-            return PARSER_OUT_OF_RANGE;
-        } else {
-            output_pic_list_[num_output_pics_] = disp_idx;
-            num_output_pics_++;
-        }
-    }*/
+    /*Todo*/
 
     return PARSER_OK;
 }
@@ -632,12 +601,10 @@ void Vp9VideoParser::SegmentationParams(const uint8_t *p_stream, size_t &offset,
 
 uint8_t Vp9VideoParser::ReadProb(const uint8_t *p_stream, size_t &offset) {
     uint8_t prob_coded;
-    uint8_t prob;
+    uint8_t prob = 255;
     prob_coded = Parser::GetBit(p_stream, offset);
     if (prob_coded) {
         prob = Parser::ReadBits(p_stream, offset, 8);
-    } else {
-        prob = 255;
     }
     return prob;
 }
