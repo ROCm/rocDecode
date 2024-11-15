@@ -28,14 +28,6 @@ THE SOFTWARE.
 #include <map>
 #include <algorithm>
 
-//size_id = 0
-extern int scaling_list_default_0[1][6][16];
-//size_id = 1, 2
-extern int scaling_list_default_1_2[2][6][64];
-//size_id = 3
-extern int scaling_list_default_3[1][2][64];
-
-
 class HevcVideoParser : public RocVideoParser {
 
 public:

@@ -2029,7 +2029,7 @@ void HevcVideoParser::DecodeRps() {
         /// Short term reference pictures
         for (i = 0; i < num_poc_st_curr_before_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_curr_before_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_curr_before_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_curr_before_[i] = j;  // RefPicSetStCurrBefore. Use DPB buffer index for now
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
@@ -2039,7 +2039,7 @@ void HevcVideoParser::DecodeRps() {
 
         for (i = 0; i < num_poc_st_curr_after_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_curr_after_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_curr_after_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_curr_after_[i] = j;  // RefPicSetStCurrAfter
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
@@ -2049,7 +2049,7 @@ void HevcVideoParser::DecodeRps() {
 
         for ( i = 0; i < num_poc_st_foll_; i++ ) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_foll_[i] = j;  // RefPicSetStFoll
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
