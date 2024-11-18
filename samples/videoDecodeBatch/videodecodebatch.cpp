@@ -435,6 +435,7 @@ int main(int argc, char **argv) {
             }
             if (!v_dec_info[thread_idx]->viddec->CodecSupported(v_dec_info[thread_idx]->dec_device_id, v_dec_info[thread_idx]->rocdec_codec_id, v_dec_info[thread_idx]->bit_depth)) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
+                v_dec_info[thread_idx]->decoding_complete = true;
                 continue;
             }
             thread_pool.ExecuteJob(std::bind(DecProc, v_dec_info[thread_idx]->viddec.get(), v_demuxer[j].get(), &v_frame[j], &v_fps[j], std::ref(v_dec_info[thread_idx]->decoding_complete), b_dump_output_frames, output_file_names[j], mem_type));
