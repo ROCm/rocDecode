@@ -30,6 +30,15 @@ HevcVideoParser::HevcVideoParser() {
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
+    for (int i = 0; i < MAX_VPS_COUNT; i++) {
+        vps_list_[i].is_received = 0;
+    }
+    for (int i = 0; i < MAX_SPS_COUNT; i++) {
+        sps_list_[i].is_received = 0;
+    }
+    for (int i = 0; i < MAX_PPS_COUNT; i++) {
+        pps_list_[i].is_received = 0;
+    }
     InitDpb();
 }
 
