@@ -282,9 +282,10 @@ class RocVideoDecoder {
          * @param size - size of the data buffer in bytes
          * @param pts - presentation timestamp
          * @param flags - video packet flags
+         * @param num_decoded_pics - nummber of pictures decoded in this call
          * @return int - num of frames to display
          */
-        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0);
+        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
          * 
@@ -335,7 +336,7 @@ class RocVideoDecoder {
         /**
          * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
         */
-       void ResetSaveFrameToFile();
+        void ResetSaveFrameToFile();
 
         /**
          * @brief Helper function to start MD5 calculation
@@ -364,6 +365,10 @@ class RocVideoDecoder {
          * @return int32_t 
          */
         int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
+
+        /*! \brief Function to wait for the decode completion of the last submitted picture
+         */
+        void WaitForDecodeCompletion();
 
         // Session overhead refers to decoder initialization and deinitialization time
         void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
@@ -475,9 +480,11 @@ class RocVideoDecoder {
         RocdecSeiMessageInfo *curr_sei_message_ptr_ = nullptr;
         RocdecSeiMessageInfo sei_message_display_q_[MAX_FRAME_NUM];
         RocdecVideoFormat *curr_video_format_ptr_ = nullptr;
-        int decoded_frame_cnt_ = 0, decoded_frame_cnt_ret_ = 0;
+        int output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
+        int decoded_pic_cnt_ = 0;
         int decode_poc_ = 0, pic_num_in_dec_order_[MAX_FRAME_NUM];
         int num_alloced_frames_ = 0;
+        int last_decode_surf_idx_ = 0;
         std::ostringstream input_video_info_str_;
         int bitdepth_minus_8_ = 0;
         uint32_t byte_per_pixel_ = 1;

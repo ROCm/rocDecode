@@ -2085,7 +2085,7 @@ void HevcVideoParser::ConstructRefPicLists(HevcSliceInfo *p_slice_info) {
     rIdx = 0;
     num_rps_curr_temp_list = std::max(p_slice_header->num_ref_idx_l0_active_minus1 + 1, num_pic_total_curr_);
 
-    while (rIdx < num_rps_curr_temp_list) {
+    while ((num_poc_st_curr_before_ | num_poc_st_curr_after_ | num_poc_lt_curr_) && (rIdx < num_rps_curr_temp_list)) {
         for (i = 0; i < num_poc_st_curr_before_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
             ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_before_[i];
         }
@@ -2108,7 +2108,7 @@ void HevcVideoParser::ConstructRefPicLists(HevcSliceInfo *p_slice_info) {
         rIdx = 0;
         num_rps_curr_temp_list = std::max(p_slice_header->num_ref_idx_l1_active_minus1 + 1, num_pic_total_curr_);
 
-        while (rIdx < num_rps_curr_temp_list) {
+        while ((num_poc_st_curr_after_ | num_poc_st_curr_before_ | num_poc_lt_curr_) && (rIdx < num_rps_curr_temp_list)) {
             for (i = 0; i < num_poc_st_curr_after_ && rIdx < num_rps_curr_temp_list; rIdx++, i++) {
                 ref_pic_list_temp[rIdx] = ref_pic_set_st_curr_after_[i];
             }
@@ -2154,12 +2154,10 @@ void HevcVideoParser::EmptyDpb() {
 }
 
 int HevcVideoParser::FlushDpb() {
-    if (dpb_buffer_.num_pics_needed_for_output) {
-        // Bump the remaining pictures
-        while (dpb_buffer_.num_pics_needed_for_output) {
-            if (BumpPicFromDpb() != PARSER_OK) {
-                return PARSER_FAIL;
-            }
+    // Bump the remaining pictures
+    while (dpb_buffer_.num_pics_needed_for_output) {
+        if (BumpPicFromDpb() != PARSER_OK) {
+            return PARSER_FAIL;
         }
     }
     if (pfn_display_picture_cb_ && num_output_pics_ > 0) {

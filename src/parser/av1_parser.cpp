@@ -42,6 +42,10 @@ rocDecStatus Av1VideoParser::Initialize(RocdecParserParams *p_params) {
     if ((ret = RocVideoParser::Initialize(p_params)) != ROCDEC_SUCCESS) {
         return ret;
     }
+    // Set display delay to at least DECODE_BUF_POOL_EXTENSION (2) to prevent synchronous submission
+    if (parser_params_.max_display_delay < DECODE_BUF_POOL_EXTENSION) {
+        parser_params_.max_display_delay = DECODE_BUF_POOL_EXTENSION;
+    }
     CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE);
     return ROCDEC_SUCCESS;
 }
@@ -176,6 +180,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 ERR(STR("Failed to decode!"));
                 return ret;
             }
+            pic_count_++;
             dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
             memset(&tile_group_data_, 0, sizeof(Av1TileGroupDataInfo));
             if ((ret = DecodeFrameWrapup()) != PARSER_OK) {
@@ -572,7 +577,6 @@ ParserResult Av1VideoParser::DecodeFrameWrapup() {
             return ret;
         }
     }
-    pic_count_++;
     memset(&frame_header_, 0, sizeof(Av1FrameHeader));
     return ret;
 }
@@ -1899,8 +1903,7 @@ int Av1VideoParser::GetQIndex(Av1FrameHeader *p_frame_header, int ignore_delta_q
         int data = p_frame_header->segmentation_params.feature_data[segment_id][SEG_LVL_ALT_Q];
         int q_index = p_frame_header->quantization_params.base_q_idx + data;
         // CurrentQIndex is base_q_idx at tile level: If ignoreDeltaQ is equal to 0 and delta_q_present is equal to 1, set qindex equal to CurrentQIndex + data.
-        std::clamp(q_index, 0, 255);
-        return q_index;
+        return std::clamp(q_index, 0, 255);
     } else if (ignore_delta_q == 0 && p_frame_header->delta_q_params.delta_q_present == 1) {
         return p_frame_header->quantization_params.base_q_idx; // CurrentQIndex is base_q_idx at tile level
     } else {

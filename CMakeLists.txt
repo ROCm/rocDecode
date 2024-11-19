@@ -22,8 +22,12 @@
 # ##############################################################################
 
 cmake_minimum_required(VERSION 3.5)
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER clang++)
+endif()
 
-set(VERSION "0.7.0")
+# NOTE: Match version with api/rocdecode_version.h
+set(VERSION "0.8.0")
 set(CMAKE_CXX_STANDARD 17)
 
 # Set Project Version and Language
@@ -74,7 +78,7 @@ message("-- ${BoldBlue}rocDecode Install Path -- ${CMAKE_INSTALL_PREFIX}${Colour
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/llvm/bin/clang++)
+set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
 
 # rocDecode Build Type
 if(NOT CMAKE_BUILD_TYPE)
@@ -152,8 +156,6 @@ if(HIP_FOUND AND Libva_FOUND)
   set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT runtime)
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev COMPONENT dev)
-  install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-test COMPONENT test)
   # install test cmake
   install(FILES test/CMakeLists.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
   install(DIRECTORY test/testScripts DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
@@ -164,7 +166,7 @@ if(HIP_FOUND AND Libva_FOUND)
   # make test with CTest
   enable_testing()
   include(CTest)
-  add_subdirectory(samples)
+  add_subdirectory(test)
 
   # set package information
   set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -193,22 +195,21 @@ if(HIP_FOUND AND Libva_FOUND)
   # Find Ubuntu 22.04 - Add libstdc++-12-dev package deps for Dev Package
   file(READ "/etc/os-release" OS_RELEASE)
   string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
-  string(REGEX MATCH "SLES" SLES_FOUND ${OS_RELEASE})
-  string(REGEX MATCH "Mariner" MARINER_FOUND ${OS_RELEASE})
 
-  # Set the dependent packages - TBD: mesa-amdgpu-va-drivers should bring libdrm-amdgpu, and parts of mesa-amdgpu-dri-drivers but unavailable on RPM
-  set(rocDecode_DEBIAN_PACKAGE_LIST  "rocm-hip-runtime, libva2, libdrm-amdgpu1, mesa-amdgpu-va-drivers")
-  set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
-  if(SLES_FOUND OR MARINER_FOUND)
-    set(rocDecode_RPM_PACKAGE_LIST     "rocm-hip-runtime, libva2, libdrm-amdgpu, mesa-amdgpu-va-drivers, mesa-amdgpu-dri-drivers")
-  endif()
+  # Set the dependent packages
+  # libva 2.16 (API 1.16) is needed to use mesa-amdgpu-va-drivers, libva-amdgpu
+  # (AMD build of libva 2.16) should be used if distro's libva is too old
+  # Libva is 2.12 on Ubuntu 22.04 and 24.04, so we can always use libva-amdgpu
+  set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST  "rocm-hip-runtime, libva2-amdgpu, libva-amdgpu-drm2, libva-amdgpu-wayland2, libva-amdgpu-x11-2, mesa-amdgpu-va-drivers")
+  # Unfortunately RPM has a mix of versions; RHEL has "libva", SLE has "libva2"
+  set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "rocm-hip-runtime, (libva >= 2.16.0 or libva2 >= 2.16.0 or libva-amdgpu), mesa-amdgpu-va-drivers")
   # Set the dev dependent packages
-  set(rocDecode_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
+  set(ROCDECODE_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
-    set(rocDecode_DEBIAN_DEV_PACKAGE_LIST "${rocDecode_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
+    set(ROCDECODE_DEBIAN_DEV_PACKAGE_LIST "${ROCDECODE_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "ffmpeg, libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(rocDecode_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libva-devel, pkg-config")
+  set(ROCDECODE_RPM_DEV_PACKAGE_LIST  "rocm-hip-runtime-devel, libva-amdgpu-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
@@ -229,26 +230,26 @@ if(HIP_FOUND AND Libva_FOUND)
   # Debian package
   set(CPACK_DEB_COMPONENT_INSTALL ON)
   set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
-  set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${rocDecode_DEBIAN_PACKAGE_LIST}")
+  set(CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS "rocm-core, ${ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST}")
   set(CPACK_DEBIAN_DEV_PACKAGE_NAME "${PROJECT_NAME}-dev")
   set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS 
-  "rocm-core, ${PROJECT_NAME}, ${rocDecode_DEBIAN_DEV_PACKAGE_LIST}")
+  "rocm-core, ${PROJECT_NAME}, ${ROCDECODE_DEBIAN_DEV_PACKAGE_LIST}")
   # Debian package - specific variable for ASAN
   set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
-  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "rocm-core-asan, ${rocDecode_DEBIAN_PACKAGE_LIST}" )
+  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "rocm-core-asan, ${ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST}" )
   # Debian package - Test
   set(CPACK_DEBIAN_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
   set(CPACK_DEBIAN_TEST_PACKAGE_DEPENDS "rocm-core, ${CPACK_DEBIAN_DEV_PACKAGE_NAME}" )
   # RPM package
   set(CPACK_RPM_COMPONENT_INSTALL ON)
   set(CPACK_RPM_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
-  set(CPACK_RPM_RUNTIME_PACKAGE_REQUIRES "rocm-core, ${rocDecode_RPM_PACKAGE_LIST}")
+  set(CPACK_RPM_RUNTIME_PACKAGE_REQUIRES "rocm-core, ${ROCDECODE_RPM_RUNTIME_PACKAGE_LIST}")
   set(CPACK_RPM_DEV_PACKAGE_NAME "${PROJECT_NAME}-devel")
-  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}, ${rocDecode_RPM_DEV_PACKAGE_LIST}")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-core, ${PROJECT_NAME}, ${ROCDECODE_RPM_DEV_PACKAGE_LIST}")
   set(CPACK_RPM_PACKAGE_LICENSE "MIT" )
   # RPM package specific variable for ASAN
   set(CPACK_RPM_ASAN_PACKAGE_NAME "${PROJECT_NAME}-asan" )
-  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, ${rocDecode_RPM_PACKAGE_LIST}" )
+  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, ${ROCDECODE_RPM_RUNTIME_PACKAGE_LIST}" )
   # RPM package specific variable for Test
   set(CPACK_RPM_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
   set(CPACK_RPM_TEST_PACKAGE_REQUIRES "rocm-core, ${CPACK_RPM_DEV_PACKAGE_NAME}" )
@@ -308,7 +309,7 @@ rocDecode runtime package provides rocDecode library and license.txt")
   cpack_add_component(dev
                     DISPLAY_NAME "rocDecode Develop Package"
                     DESCRIPTION "AMD rocDecode is a high performance video decode SDK for AMD GPUs. \
-rocDecode develop package provides rocDecode library, header files, samples, and license.txt")
+rocDecode develop package provides rocDecode header files, and samples")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocDecode ASAN Package"
@@ -326,6 +327,6 @@ else()
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install rocm-hip-runtime-dev!")
   endif()
   if(NOT Libva_FOUND)
-    message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-dev/libva-devel!")
+    message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
   endif()
 endif()

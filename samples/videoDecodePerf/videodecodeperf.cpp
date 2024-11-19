@@ -37,8 +37,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "common.h"
 
-void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, double *pn_fps, int num_decoded_frames) {
+void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
+    int n_pic_decoded = 0, decoded_pics = 0;
     uint8_t *p_video = nullptr;
     int64_t pts = 0;
     double total_dec_time = 0.0;
@@ -46,30 +47,44 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
 
     do {
         demuxer->Demux(&p_video, &n_video_bytes, &pts);
-        n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts);
+        n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts, &decoded_pics);
         n_frame += n_frame_returned;
-        if (num_decoded_frames && num_decoded_frames <= n_frame) {
+        n_pic_decoded += decoded_pics;
+        if (max_num_frames && max_num_frames <= n_frame) {
             break;
         }
     } while (n_video_bytes);
+    if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+        p_dec->WaitForDecodeCompletion();
+    }
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
     auto session_overhead = p_dec->GetDecoderSessionOverHead(std::this_thread::get_id());
     // Calculate average decoding time
     total_dec_time = time_per_decode - session_overhead;
-    double average_decoding_time = total_dec_time / n_frame;
-    double n_fps = 1000 / average_decoding_time;
+    double average_output_time = total_dec_time / n_frame;
+    double average_decoding_time = total_dec_time / n_pic_decoded;
+    double n_fps = 1000 / average_output_time;
+    double n_fps_dec = 1000 / average_decoding_time;
     *pn_fps = n_fps;
+    *pn_fps_dec = n_fps_dec;
     *pn_frame = n_frame;
+    *pn_pic_dec = n_pic_decoded;
 }
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
     << "-t Number of threads (>= 1) - optional; default: 1" << std::endl
-    << "-d Device ID (>= 0)  - optional; default: 0" << std::endl
-    << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl;
+    << "-d Device ID (>= 0) - optional; default: 0" << std::endl
+    << "-z Force zero latency (decoded frames will be flushed out for display immediately) - optional" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional" << std::endl
+    << "-m Memory type (integer values between 0 to 3: specifies where to store the decoded output:" << std::endl
+    << "                                               0 = decoded output will be in internal interopped memory," << std::endl
+    << "                                               1 = decoded output will be copied to a separate device memory," << std::endl
+    << "                                               2 = decoded output will be copied to a separate host memory," << std::endl
+    << "                                               3 = decoded output will not be available (decode only)) - optional; default: 3" << std::endl;
     exit(0);
 }
 
@@ -81,7 +96,7 @@ int main(int argc, char **argv) {
     Rect *p_crop_rect = nullptr;
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
     bool b_force_zero_latency = false;
-    uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
+    uint32_t max_num_frames = 0;  // max number of frames to be decoded. default value is 0, meaning decode the entire stream
     int disp_delay = 0;
 
     // Parse command-line arguments
@@ -130,7 +145,7 @@ int main(int argc, char **argv) {
             if (++i == argc) {
                 ShowHelpAndExit("-d");
             }
-            num_decoded_frames = atoi(argv[i]);
+            max_num_frames = atoi(argv[i]);
             continue;
         }
         if (!strcmp(argv[i], "-z")) {
@@ -138,6 +153,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-z");
             }
             b_force_zero_latency = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-m")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-m");
+            }
+            mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
         ShowHelpAndExit(argv[i]);
@@ -207,12 +229,16 @@ int main(int argc, char **argv) {
         }
 
         float total_fps = 0;
+        float total_fps_dec = 0;
         std::vector<std::thread> v_thread;
-        std::vector<double> v_fps;
-        std::vector<int> v_frame;
+        std::vector<double> v_fps, v_fps_dec;
+        std::vector<int> v_frame, v_frame_dec;
         v_fps.resize(n_thread, 0);
+        v_fps_dec.resize(n_thread, 0);
         v_frame.resize(n_thread, 0);
+        v_frame_dec.resize(n_thread, 0);
         int n_total = 0;
+        int n_total_dec = 0;
         OutputSurfaceInfo *p_surf_info;
 
         std::string device_name;
@@ -227,18 +253,23 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_fps[i], num_decoded_frames));
+            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames, mem_type));
         }
 
         for (int i = 0; i < n_thread; i++) {
             v_thread[i].join();
             total_fps += v_fps[i];
+            total_fps_dec += v_fps_dec[i];
             n_total += v_frame[i];
+            n_total_dec += v_frame_dec[i];
         }
 
-        std::cout << "info: Total frame decoded: " << n_total  << std::endl;
-        std::cout << "info: avg decoding time per frame: " << 1000 / total_fps << " ms" << std::endl;
-        std::cout << "info: avg FPS: " << total_fps  << std::endl;
+        std::cout << "info: Total pictures decoded: " << n_total_dec  << std::endl;
+        std::cout << "info: Total frames output/displayed: " << n_total  << std::endl;
+        std::cout << "info: avg decoding time per picture: " << 1000 / total_fps_dec << " ms" << std::endl;
+        std::cout << "info: avg decode FPS: " << total_fps_dec  << std::endl;
+        std::cout << "info: avg output/display time per frame: " << 1000 / total_fps << " ms" << std::endl;
+        std::cout << "info: avg output/display FPS: " << total_fps  << std::endl;
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;
       exit(1);

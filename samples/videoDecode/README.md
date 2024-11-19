@@ -32,7 +32,7 @@ make -j
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
               -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
               -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
-              -disp_delay <display delay - specify the number of frames to be delayed for display [optional]>
+              -disp_delay <display delay - specify the number of frames to be delayed for display [optional - default: 1]>
               -sei <extract SEI messages [optional]>
               -md5 <generate MD5 message digest on the decoded YUV image sequence [optional]>
               -md5_check MD5_File_Path <generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file [optional]>

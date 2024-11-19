@@ -64,7 +64,7 @@ public:
 
 private:
     rocDecStatus InitHIP(int device_id);
-    rocDecStatus ReleaseVideoFrame(int pic_idx);
+    rocDecStatus FreeVideoFrame(int pic_idx);
     int num_devices_;
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;

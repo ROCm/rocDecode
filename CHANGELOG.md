@@ -1,7 +1,57 @@
-# rocDecode changelog
+# Changelog for rocDecode
 
-Documentation for rocDecode is available at
-[https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
+Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
+
+## rocDecode 0.8.0 for ROCm 6.3
+
+### Changed
+
+* Clang is now the default CXX compiler.
+* The new minimum supported version of va-api is 1.16.
+* New build and runtime options have been added to the `rocDecode-setup.py` setup script.
+
+### Removed
+
+* Make tests have been removed. CTEST is now used for both Make tests and package tests.
+* `mesa-amdgpu-dri-drivers` has been removed as a dependency on RHEL and SLES.
+
+### Resolved issues
+
+* Fixed a bug in the size of output streams in the `videoDecodeBatch` sample.
+
+## rocDecode 0.7.0
+
+### Added
+
+* Clang - Default CXX compiler
+* Parser - Add new API rocDecParserMarkFrameForReuse()
+
+### Optimized
+
+* Setup Script - Build and runtime install options
+
+### Changed
+
+* CTest - Core tests for make test and package test
+
+### Resolved issues
+
+* Sample - Bugfix for videoDecodeBatch
+
+### Tested configurations
+
+* Linux
+  * Ubuntu - `20.04` / `22.04`
+  * RHEL - `8` / `9`
+  * SLES - `15 SP5`
+* ROCm:
+  * rocm-core - `6.2.0.60200-66`
+  * amdgpu-core - `1:6.2.60200-2009582`
+* libva-dev - `2.7.0-2` / `2.14.0-1`
+* mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
+* FFmpeg - `4.2.7` / `4.4.2-0`
+* rocDecode Setup Script - `V2.2.0`
+
 
 ## rocDecode 0.6.0
 

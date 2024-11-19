@@ -26,8 +26,6 @@ Tested configurations
 
 * mesa-amdgpu-va-drivers: 1:24.1.0
 
-* mesa-amdgpu-dri-drivers - `24.1.0.60200`
-
 * FFmpeg: 4.2.7/4.4.2-0
 
 * rocDecode Setup Script: V2.0.0
@@ -66,11 +64,17 @@ Prerequisites
 
     sudo apt install mesa-amdgpu-va-drivers
 
-* CMake 3.5 or later
+* CMake Version 3.5 or later
 
   .. code:: shell
 
     sudo apt install cmake
+
+* Clang Version `5.0.1` or later
+
+  .. code:: shell
+
+    sudo apt install clang
 
 * `pkg-config <https://en.wikipedia.org/wiki/Pkg-config>`_
 
@@ -93,12 +97,6 @@ Prerequisites
   .. code:: shell
 
     sudo apt install libstdc++-12-dev
-
-  * On ``RHEL`` / ``SLES`` - Additional packages required: ``libdrm-amdgpu`` and ``mesa-amdgpu-dri-drivers``
-
-  .. code:: shell
-
-    sudo apt install libdrm-amdgpu mesa-amdgpu-dri-drivers
 
 
 Prerequisites setup script
@@ -276,8 +274,8 @@ architecture.
 
   "gfx908 - MI1xx", "VCN 2.5.0", "2", "Yes", "4096, 2176", "Yes", "4096, 2160"
   "gfx90a - MI2xx", "VCN 2.6.0", "2", "Yes", "4096, 2176", "Yes", "4096, 2160"
-  "gfx940, gfx942 - MI3xx", "VCN 3.0", "3", "Yes", "7680, 4320", "Yes", "4096, 2176"
-  "gfx941 - MI3xx", "VCN 3.0", "4", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx942 - MI3xx A", "VCN 3.0", "3", "Yes", "7680, 4320", "Yes", "4096, 2176"
+  "gfx942 - MI3xx X", "VCN 3.0", "4", "Yes", "7680, 4320", "Yes", "4096, 2176"
   "gfx1030, gfx1031, gfx1032 - Navi2x", "VCN 3.x", "2", "Yes", "7680, 4320", "Yes", "4096, 2176"
   "gfx1100, gfx1102 - Navi3x", "VCN 4.0", "2", "Yes", "7680, 4320", "Yes", "4096, 2176"
   "gfx1101 - Navi3x", "VCN 4.0", "1", "Yes", "7680, 4320", "Yes", "4096, 2176"
