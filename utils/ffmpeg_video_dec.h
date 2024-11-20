@@ -37,6 +37,11 @@ extern "C" {
 #include <queue>
 #include <atomic>
 
+// enable this flag to test decoding without a separate thread for decode
+#define NO_DECODE_THREAD    0
+
+#define MAX_AV_PACKET_DATA_SIZE     4096
+
 typedef struct DecFrameBufferFFMpeg_ {
     AVFrame *av_frame_ptr;      /**< av_frame pointer for the decoded frame */
     uint8_t *frame_ptr;       /**< host/device memory pointer for the decoded frame depending on mem_type*/
@@ -217,6 +222,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         std::vector<DecFrameBufferFFMpeg> vp_frames_ffmpeg_;      // vector of decoded frames
         std::vector<AVFrame *> dec_frames_;      // vector of AVFrame * for decoded frames
         std::vector<AVPacket *> av_packets_;    // store of AVPackets for decoding
+        std::vector<std::pair<uint8_t *, int>> av_packet_data_;
         std::mutex mtx_pkt_q_, mtx_frame_q_;               //for command and status
         std::condition_variable cv_pkt_, cv_frame_;     //for command and status
         std::atomic<bool> end_of_stream_ = false;

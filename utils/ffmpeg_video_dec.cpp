@@ -23,8 +23,6 @@ THE SOFTWARE.
 
 #include "ffmpeg_video_dec.h"
 
-#define NO_DECODE_THREAD    1   // this is temporary for testing till we get mt working
-
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoCodec
  * 
@@ -97,7 +95,7 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
         THROW("Output Memory Type is not supported");
     }
     if (rocdec_parser_) {
-        rocDecDestroyVideoParser(rocdec_parser_);
+        rocDecDestroyVideoParser(rocdec_parser_);       // need to do this here since it was already created in the base class
         // create rocdec videoparser
         RocdecParserParams parser_params = {};
         parser_params.codec_type = codec_id_;
@@ -141,11 +139,19 @@ FFMpegVideoDecoder::~FFMpegVideoDecoder() {
         av_frame_free(&dec_frames_.back());
         dec_frames_.pop_back();
     }
-    //re
+    // free av_packet_data_
+    while (!av_packet_data_.empty()) {
+        std::pair<uint8_t *, int> *packet_data = &av_packet_data_.back();
+        av_freep(&packet_data->first);
+        av_packet_data_.pop_back();
+    }
+
+    //release av_packets
     while (!av_packets_.empty()) {
         av_packet_free(&av_packets_.back());
         av_packets_.pop_back();
     }
+
     if (dec_context_) {
         avcodec_free_context(&dec_context_);
     }
@@ -204,10 +210,19 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         }
         av_frame_cnt_ = 0;
     }
+    if (av_packet_data_.empty()) {
+        for (int i=0; i < num_decode_surfaces; i++) {
+            uint8_t *pkt_data = static_cast<uint8_t *> (av_malloc(MAX_AV_PACKET_DATA_SIZE));
+            av_packet_data_.push_back(std::make_pair(pkt_data, MAX_AV_PACKET_DATA_SIZE));
+        }
+    }
+
     // allocate av_packets_ for decoding
     if (av_packets_.empty()) {
         for (int i=0; i < num_decode_surfaces; i++) {
             AVPacket *pkt = av_packet_alloc();
+            pkt->data = static_cast<u_int8_t *> (av_packet_data_[i].first);
+            pkt->size = av_packet_data_[i].second;
             av_packets_.push_back(pkt);
         }
     }
@@ -418,12 +433,21 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
  */
 int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     AVPacket *av_pkt = av_packets_[av_pkt_cnt_];
-    av_pkt->data = const_cast<uint8_t *>(last_packet_.payload);
+    std::pair<uint8_t *, int> *packet_data = &av_packet_data_[av_pkt_cnt_];
+    if (last_packet_.payload_size > packet_data->second) {
+        void *new_pkt_data = av_realloc(av_pkt->data, (last_packet_.payload_size + MAX_AV_PACKET_DATA_SIZE));  // add more to avoid frequence reallocation
+        if (!new_pkt_data) {
+            std::cerr << "ERROR: couldn't allocate packet data" << std::endl;
+        }
+        packet_data->first   = static_cast<uint8_t *> (new_pkt_data);
+        packet_data->second  = (last_packet_.payload_size + MAX_AV_PACKET_DATA_SIZE);
+        av_pkt->data = packet_data->first;
+    }
+    memcpy(av_pkt->data, last_packet_.payload, last_packet_.payload_size);
     av_pkt->size = last_packet_.payload_size;
     av_pkt->flags = 0;
     av_pkt->pts = last_packet_.pts;
-    //pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
-    //last_decode_surf_idx_ = pPicParams->curr_pic_idx;
+
 #if NO_DECODE_THREAD
     // for testing Decoding without threading
     DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
@@ -449,12 +473,10 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     // check if we reached eos here. This is a hack since HandlePictureDecode won't be called at the end_of_sequece. 
     // so we need to flush FFMpeg decoder when we have received the lastpacket with 0 bytes
     if (!last_packet_.payload_size && !end_of_stream_) {
-        //std::cout << "decoder last packet for flushing" << std::endl;
-        int surf_idx = (last_decode_surf_idx_ + 1) % dec_frames_.size();
         AVPacket pkt = { 0 };
     #if NO_DECODE_THREAD
         // for testing Decoding without threading
-        DecodeAvFrame(&pkt, dec_frames_[surf_idx]);
+        DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
     #else
         //push packet into packet q for decoding
         PushPacket(&pkt);
