@@ -24,6 +24,8 @@ THE SOFTWARE.
 #include "vp9_defines.h"
 #include "roc_video_parser.h"
 
+#define INVALID_INDEX -1  // Invalid buffer index.
+
 class Vp9VideoParser : public RocVideoParser {
 public:
     /*! \brief Vp9VideoParser constructor
@@ -62,8 +64,16 @@ protected:
      */
     typedef struct {
         Vp9Picture frame_store[VP9_NUM_REF_FRAMES]; // BufferPool
+        int dec_ref_count[VP9_NUM_REF_FRAMES]; // frame ref count
+        // A list of all frame buffers that may be used for reference of the current picture or any
+        // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
+        // not used as reference, the value should be -1. Borrowed from AV1.
+        int virtual_buffer_index[VP9_NUM_REF_FRAMES];
         uint32_t ref_frame_width[VP9_NUM_REF_FRAMES]; // RefFrameWidth
         uint32_t ref_frame_height[VP9_NUM_REF_FRAMES]; // RefFrameHeight
+        uint32_t ref_subsampling_x[VP9_NUM_REF_FRAMES]; // RefSubsamplingX
+        uint32_t ref_subsampling_y[VP9_NUM_REF_FRAMES]; // RefSubsamplingY
+        uint32_t ref_bit_depth[VP9_NUM_REF_FRAMES]; // RefBitDepth
     } DecodedPictureBuffer;
 
     Vp9UncompressedHeader uncompressed_header_;
@@ -74,7 +84,9 @@ protected:
     int16_t y_dequant_[VP9_MAX_SEGMENTS][2];
     int16_t uv_dequant_[VP9_MAX_SEGMENTS][2];
     uint8_t lvl_lookup_[VP9_MAX_SEGMENTS][VP9_MAX_REF_FRAMES][MAX_MODE_LF_DELTAS];
-
+    
+    int num_frames_in_chunck_; // can be more than 1 for superframes
+    std::vector<uint32_t> frame_sizes_; // frame size of a single coded frame or sizes of multiple coded frames in a superframe
     DecodedPictureBuffer dpb_buffer_;
     Vp9Picture curr_pic_;
 
@@ -85,6 +97,13 @@ protected:
      */
     ParserResult ParsePictureData(const uint8_t *p_stream, uint32_t pic_data_size);
 
+    /*! \brief Function to detect a superframe and parse the frame sizes. Annex B.
+     *  \param [in] p_stream Pointer to the frame data chunk
+     *  \param [in] chunk_data_size Size of the frame data chunk
+     *  \return None
+     */
+    void CheckSuperframe(const uint8_t *p_stream, uint32_t chunk_data_size);
+
     /*! \brief Function to notify decoder about new sequence format through callback
      * \return <tt>ParserResult</tt>
      */
@@ -94,6 +113,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult SendPicForDecode();
+
+    /*! \brief Function to do reference frame update process. 8.10.
+     *  \return None
+     */
+    void UpdateRefFrames();
 
     /*! Function to initialize the local DPB (BufferPool)
      *  \return None
@@ -114,6 +138,11 @@ protected:
      * \return <tt>ParserResult</tt>
      */
     ParserResult FindFreeInDpbAndMark();
+
+    /*! \brief Function to check the frame stores that are done decoding and update status in DPB and decode/disp pool.
+     *  \return None.
+     */
+    void CheckAndUpdateDecStatus();
 
     /*! \brief Function to parse an uncompressed header (uncompressed_header(), 6.2)
      * \param [in] p_stream Pointer to the bit stream
@@ -167,6 +196,11 @@ protected:
      * \return None
      */
     void ComputeImageSize(Vp9UncompressedHeader *p_uncomp_header);
+
+    /*! \brief Function to indicate that this frame can be decoded without dependence on previous coded frames. setup_past_independence() in spec.
+     * \param [out] p_frame_header Pointer to frame header struct
+     */
+    void SetupPastIndependence(Vp9UncompressedHeader *p_uncomp_header);
 
     /*! \brief Function to parse loop filter params syntax (loop_filter_params(), 6.2.8)
      * \param [in] p_stream Pointer to the bit stream
@@ -259,4 +293,13 @@ protected:
         uint8_t sign = Parser::GetBit(p_stream, bit_offset);
         return sign ? -u_value : u_value;
     }
+
+#if DBGINFO
+    /*! \brief Function to log VAAPI parameters
+     */
+    void PrintVaapiParams();
+    /*! \brief Function to log DPB and decode/display buffer pool info
+     */
+    void PrintDpb();
+#endif // DBGINFO
 };
