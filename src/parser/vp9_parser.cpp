@@ -82,7 +82,6 @@ ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
 
     CheckSuperframe(p_stream, pic_data_size);
 
-
     uint8_t *pic_data_ptr = const_cast<uint8_t*>(p_stream);
     for (int frame_index = 0; frame_index < num_frames_in_chunck_; frame_index++) {
         if ((ret = ParseUncompressedHeader(pic_data_ptr, frame_sizes_[frame_index])) != PARSER_OK) {
