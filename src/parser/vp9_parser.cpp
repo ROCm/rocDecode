@@ -49,7 +49,6 @@ rocDecStatus Vp9VideoParser::Initialize(RocdecParserParams *p_params) {
     if (parser_params_.max_display_delay < DECODE_BUF_POOL_EXTENSION) {
         parser_params_.max_display_delay = DECODE_BUF_POOL_EXTENSION;
     }
-    //parser_params_.max_display_delay = 0;
     CheckAndAdjustDecBufPoolSize(VP9_NUM_REF_FRAMES);
     return ROCDEC_SUCCESS;
 }
@@ -106,12 +105,12 @@ ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
                 decode_buffer_pool_[disp_idx].pts = curr_pts_;
                 // Insert into output/display picture list
-                if (num_output_pics_ >= dec_buf_pool_size_) {
-                    ERR("Display list size larger than decode buffer pool size!");
-                    return PARSER_OUT_OF_RANGE;
-                } else {
+                if (num_output_pics_ < dec_buf_pool_size_) {
                     output_pic_list_[num_output_pics_] = disp_idx;
                     num_output_pics_++;
+                } else {
+                    ERR("Display list size larger than decode buffer pool size!");
+                    return PARSER_OUT_OF_RANGE;
                 }
             }
     #if DBGINFO
@@ -162,11 +161,9 @@ void Vp9VideoParser::CheckSuperframe(const uint8_t *p_stream, uint32_t chunk_dat
         size_bytes = ((last_byte >> 3) & 0x3) + 1;
         num_frames = (last_byte & 0x7) + 1;
         size_index = 2 + num_frames * size_bytes;
-        if (chunk_data_size >= size_index) {
-            uint8_t first_byte = p_stream[chunk_data_size - size_index];
-            if (first_byte == last_byte) {
-                is_superframe = true;
-            }
+        // Check if the first byte and the last byte match
+        if (chunk_data_size >= size_index && p_stream[chunk_data_size - size_index] == last_byte) {
+            is_superframe = true;
         }
     }
 
@@ -179,8 +176,7 @@ void Vp9VideoParser::CheckSuperframe(const uint8_t *p_stream, uint32_t chunk_dat
             int count = 0;
             frame_sizes_[i] = 0;
             do {
-                frame_sizes_[i] = (p_stream[offset] << (8 * count)) + frame_sizes_[i];
-                offset++;
+                frame_sizes_[i] = (p_stream[offset++] << (8 * count)) + frame_sizes_[i];
                 count++;
             } while (count < size_bytes);
         }
@@ -415,12 +411,12 @@ ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
         decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
         decode_buffer_pool_[disp_idx].pts = curr_pts_;
         // Insert into output/display picture list
-        if (num_output_pics_ >= dec_buf_pool_size_) {
-            ERR("Display list size larger than decode buffer pool size!");
-            return PARSER_OUT_OF_RANGE;
-        } else {
+        if (num_output_pics_ < dec_buf_pool_size_) {
             output_pic_list_[num_output_pics_] = disp_idx;
             num_output_pics_++;
+        } else {
+            ERR("Display list size larger than decode buffer pool size!");
+            return PARSER_OUT_OF_RANGE;
         }
     }
     return PARSER_OK;
