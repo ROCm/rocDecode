@@ -310,8 +310,8 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     }
 
     RocdecVp9SliceParams *p_tile_params = &tile_params_;
-    p_tile_params->slice_data_offset = 0; // Todo
-    p_tile_params->slice_data_size = pic_stream_data_size_; // Todo
+    p_tile_params->slice_data_offset = 0;
+    p_tile_params->slice_data_size = pic_stream_data_size_;
     p_tile_params->slice_data_flag = 0; // VA_SLICE_DATA_FLAG_ALL;
     for (int i = 0; i < VP9_MAX_SEGMENTS; i++) {
         p_tile_params->seg_param[i].segment_flags.fields.segment_reference_enabled = p_uncomp_header->segmentation_params.feature_enabled[i][VP9_SEG_LVL_REF_FRAME];
@@ -535,10 +535,10 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         SetupPastIndependence(p_uncomp_header);
         if (p_uncomp_header->frame_type == kVp9KeyFrame || p_uncomp_header->error_resilient_mode == 1 || p_uncomp_header->reset_frame_context == 3) {
             for (int i = 0; i < 4; i++) {
-                // Todo: save_probs( i )
+                // save_probs( i )
             }
         } else if (p_uncomp_header->reset_frame_context == 2) {
-            // Todo: save_probs(p_uncomp_header->frame_context_idx)
+            // save_probs(p_uncomp_header->frame_context_idx)
         }
         p_uncomp_header->frame_context_idx = 0;
     }
@@ -663,7 +663,7 @@ void Vp9VideoParser::ComputeImageSize(Vp9UncompressedHeader *p_uncomp_header) {
     p_uncomp_header->frame_size.mi_rows = (p_uncomp_header->frame_size.frame_height + 7) >> 3;
     p_uncomp_header->frame_size.sb64_cols = (p_uncomp_header->frame_size.mi_cols + 7) >> 3;
     p_uncomp_header->frame_size.sb64_rows = (p_uncomp_header->frame_size.mi_rows + 7) >> 3;
-    // Todo steps in 7.2.6
+    // steps in 7.2.6
 }
 
 void Vp9VideoParser::SetupPastIndependence(Vp9UncompressedHeader *p_uncomp_header) {
