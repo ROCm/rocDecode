@@ -298,10 +298,9 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     p_pic_param->bit_depth = p_uncomp_header->color_config.bit_depth;
 
     for (int i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+        p_pic_param->reference_frames[i] = 0xFF;
         if (dpb_buffer_.virtual_buffer_index[i] != INVALID_INDEX) {
             p_pic_param->reference_frames[i] = dpb_buffer_.frame_store[dpb_buffer_.virtual_buffer_index[i]].dec_buf_idx;
-        } else {
-            p_pic_param->reference_frames[i] = 0xFF;
         }
     }
 
