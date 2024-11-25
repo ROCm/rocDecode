@@ -201,6 +201,9 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         }
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
+        dec_context_->thread_count = 4;
+        dec_context_->thread_type = FF_THREAD_FRAME;
+
     }
     // allocate av_frame buffer pool for number of surfaces
     if (dec_frames_.empty()) {
