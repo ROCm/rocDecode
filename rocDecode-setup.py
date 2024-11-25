@@ -29,7 +29,7 @@ else:
     import subprocess
 
 __copyright__ = "Copyright (c) 2023 - 2024, AMD ROCm rocDecode"
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 __email__ = "mivisionx.support@amd.com"
 __status__ = "Shipping"
 
@@ -160,12 +160,7 @@ if userName == 'root':
 
 # source install - common package dependencies
 commonPackages = [
-    'gcc',
-    'clang',
     'cmake',
-    'git',
-    'wget',
-    'unzip',
     'pkg-config',
     'rocm-hip-runtime'
 ]
@@ -173,7 +168,7 @@ commonPackages = [
 # Debian packages
 coreDebianPackages = [
     'libva-amdgpu-dev',
-    'rocm-hip-runtime-dev',
+    'rocm-hip-runtime-dev'
 ]
 coreDebianU22Packages = [
     'libstdc++-12-dev'
@@ -196,12 +191,12 @@ ffmpegDebianPackages = [
 # RPM Packages
 coreRPMPackages = [
     'libva-amdgpu-devel',
-    'rocm-hip-runtime-devel',
+    'rocm-hip-runtime-devel'
 ]
 runtimeRPMPackages = [
     'libva-amdgpu',
-    'libva-utils',
     'mesa-amdgpu-va-drivers',
+    'libva-utils'
 ]
 
 # update

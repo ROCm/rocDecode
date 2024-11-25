@@ -52,7 +52,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-of Output Format name - (native, bgr, bgr48, rgb, rgb48, bgra, bgra64, rgba, rgba64; converts native YUV frame to RGB image format; optional; default: 0" << std::endl
     << "-resize WxH - (where W is resize width and H is resize height) optional; default: no resize " << std::endl
-    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl;
+    << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl;
 
     exit(0);
 }
@@ -155,6 +156,8 @@ int main(int argc, char **argv) {
     bool dump_output_frames = false;
     bool convert_to_rgb = false;
     int device_id = 0;
+    int disp_delay = 1;
+    bool b_extract_sei_messages = false;
     Rect crop_rect = {};
     Dim resize_dim = {};
     Rect *p_crop_rect = nullptr;
@@ -248,13 +251,20 @@ int main(int argc, char **argv) {
             md5_file_path = argv[i];
             continue;
         }
+        if (!strcmp(argv[i], "-disp_delay")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-disp_delay");
+            }
+            disp_delay = atoi(argv[i]);
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
 
     try {
         VideoDemuxer demuxer(input_file_path.c_str());
         rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect);
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, false, p_crop_rect, b_extract_sei_messages, disp_delay);
         if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
             std::cerr << "GPU doesn't support codec!" << std::endl;
             return 0;

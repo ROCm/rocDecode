@@ -143,7 +143,7 @@ ParserResult RocVideoParser::GetNalUnit() {
             curr_byte_offset_ += 3;
 
             // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
+            if (start_code_num_ == 1 ) {
                 start_code_found = false;
                 curr_start_code_offset_ = next_start_code_offset_;
                 continue;
@@ -152,7 +152,7 @@ ParserResult RocVideoParser::GetNalUnit() {
             }
         }
         curr_byte_offset_++;
-    }    
+    }
     if (start_code_num_ == 0) {
         // No NAL unit in the frame data
         return PARSER_NOT_FOUND;
@@ -163,7 +163,7 @@ ParserResult RocVideoParser::GetNalUnit() {
     } else {
         nal_unit_size_ = pic_data_size_ - curr_start_code_offset_;
         return PARSER_EOF;
-    }        
+    }
 }
 
 size_t RocVideoParser::EbspToRbsp(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {

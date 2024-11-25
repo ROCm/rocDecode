@@ -21,13 +21,24 @@
 #
 # ##############################################################################
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
+
+# ROCM Path
+if(DEFINED ENV{ROCM_PATH})
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
+elseif(ROCM_PATH)
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
+else()
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
+endif()
+
+# Set AMD Clang as default compiler
 if (NOT DEFINED CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER clang++)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
 
 # NOTE: Match version with api/rocdecode_version.h
-set(VERSION "0.8.0")
+set(VERSION "0.9.0")
 set(CMAKE_CXX_STANDARD 17)
 
 # Set Project Version and Language
@@ -45,14 +56,6 @@ find_program(MAKE_NSIS_EXE makensis)
 find_program(RPMBUILD_EXE rpmbuild)
 find_program(DPKG_EXE dpkg)
 
-# ROCM Path
-if(DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
-elseif(ROCM_PATH)
-  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
-else()
-  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
-endif()
 # avoid setting the default installation path to /usr/local
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${ROCM_PATH} CACHE PATH "rocDecode default installation path" FORCE)
@@ -78,7 +81,6 @@ message("-- ${BoldBlue}rocDecode Install Path -- ${CMAKE_INSTALL_PREFIX}${Colour
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
 
 # rocDecode Build Type
 if(NOT CMAKE_BUILD_TYPE)
