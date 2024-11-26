@@ -100,8 +100,17 @@ else()
 endif()
 message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
+# Add an option for enabling the rocprofiler-register
+option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" OFF)
+
 find_package(HIP QUIET)
 find_package(Libva QUIET)
+
+if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
+  find_package(rocprofiler-register QUIET
+    HINTS $ENV{rocprofiler_register_ROOT} $ENV{ROCPROFILER_REGISTER_ROOT} ${CMAKE_INSTALL_PREFIX}
+    PATHS ${ROCM_PATH})
+endif()
 
 if(HIP_FOUND AND Libva_FOUND)
 
@@ -115,6 +124,11 @@ if(HIP_FOUND AND Libva_FOUND)
   #filesystem: c++ compilers less than equal to 8.5 need explicit link with stdc++fs
   if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL "8.5")
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
+  endif()
+
+  # rocprofiler
+  if (rocprofiler-register_FOUND)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
   endif()
 
   # local include files
@@ -131,6 +145,18 @@ if(HIP_FOUND AND Libva_FOUND)
   set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
   set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 
+  # rocprofiler
+  if (rocprofiler-register_FOUND)
+    string(REPLACE "." ";" VERSION_LIST ${VERSION})
+    list(GET VERSION_LIST 0 VERSION_MAJOR)
+    list(GET VERSION_LIST 1 VERSION_MINOR)
+    list(GET VERSION_LIST 2 VERSION_PATCH)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ROCDECODE_ROCPROFILER_REGISTER=1
+      ROCDECODE_ROCP_REG_VERSION_MAJOR=${VERSION_MAJOR}
+      ROCDECODE_ROCP_REG_VERSION_MINOR=${VERSION_MINOR}
+      ROCDECODE_ROCP_REG_VERSION_PATCH=${VERSION_PATCH})
+  endif()
+
   # install rocDecode libs -- {ROCM_PATH}/lib
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
@@ -138,6 +164,10 @@ if(HIP_FOUND AND Libva_FOUND)
   # install rocDecode include files -- {ROCM_PATH}/include/rocdecode
   install(FILES api/rocdecode.h api/rocparser.h api/rocdecode_version.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
+  # install rocDecode api trace include file -- {ROCM_PATH}/include/rocdecode/amd_detail
+  install(FILES api/amd_detail/rocdecode_api_trace.h
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/amd_detail COMPONENT dev)
+
   # install rocDecode samples -- {ROCM_PATH}/share/rocdecode
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} COMPONENT dev)
   install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
@@ -205,6 +235,12 @@ if(HIP_FOUND AND Libva_FOUND)
   set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST  "rocm-hip-runtime, libva2-amdgpu, libva-amdgpu-drm2, libva-amdgpu-wayland2, libva-amdgpu-x11-2, mesa-amdgpu-va-drivers")
   # Unfortunately RPM has a mix of versions; RHEL has "libva", SLE has "libva2"
   set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "rocm-hip-runtime, (libva >= 2.16.0 or libva2 >= 2.16.0 or libva-amdgpu), mesa-amdgpu-va-drivers")
+  # Add rocprofiler-register dependencies
+  if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
+    set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST "${ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST}, rocprofiler-register")
+    set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST "${ROCDECODE_RPM_RUNTIME_PACKAGE_LIST}, rocprofiler-register")
+  endif()
+
   # Set the dev dependent packages
   set(ROCDECODE_DEBIAN_DEV_PACKAGE_LIST  "rocm-hip-runtime-dev, libva-amdgpu-dev, pkg-config, ffmpeg, libavcodec-dev, libavformat-dev, libavutil-dev")
   if(UBUNTU_22_FOUND)
