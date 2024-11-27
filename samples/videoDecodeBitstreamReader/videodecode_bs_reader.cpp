@@ -36,7 +36,8 @@ THE SOFTWARE.
 #else
     #include <experimental/filesystem>
 #endif
-#include "video_demuxer.h"
+ 
+#include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
 #include "common.h"
 
@@ -53,11 +54,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
-    << "-seek_criteria - Demux seek criteria & value - optional; default - 0,0; "
-    << "[0: no seek; 1: SEEK_CRITERIA_FRAME_NUM, frame number; 2: SEEK_CRITERIA_TIME_STAMP, frame number (time calculated internally)]" << std::endl
-    << "-seek_mode - Seek to previous key frame or exact - optional; default - 0"
-    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
     exit(0);
 }
 
@@ -79,9 +76,6 @@ int main(int argc, char **argv) {
     ReconfigParams reconfig_params = { 0 };
     ReconfigDumpFileStruct reconfig_user_struct = { 0 };
     uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
-    // seek options
-    uint64_t seek_to_frame = 0;
-    int seek_criteria = 0, seek_mode = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -179,23 +173,6 @@ int main(int argc, char **argv) {
             b_flush_frames_during_reconfig = atoi(argv[i]) ? true : false;
             continue;
         }
-        if (!strcmp(argv[i], "-seek_criteria")) {
-            if (++i == argc || 2 != sscanf(argv[i], "%d,%lu", &seek_criteria, &seek_to_frame)) {
-                ShowHelpAndExit("-seek_criteria");
-            }
-            if (0 > seek_criteria || seek_criteria >= 3)
-                ShowHelpAndExit("-seek_criteria");
-            continue;
-        }
-        if (!strcmp(argv[i], "-seek_mode")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-seek_mode");
-            }
-            seek_mode = atoi(argv[i]);
-            if (seek_mode != 0 && seek_mode != 1)
-                ShowHelpAndExit("-seek_mode");
-            continue;
-        }
 
         ShowHelpAndExit(argv[i]);
     }
@@ -203,14 +180,27 @@ int main(int argc, char **argv) {
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
-        VideoDemuxer demuxer(input_file_path.c_str());
-        VideoSeekContext video_seek_ctx;
-        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
+        RocdecBitstreamReader bs_reader = nullptr;
+        rocDecVideoCodec rocdec_codec_id;
+        int bit_depth;
+        if (rocDecCreateBitstreamReader(&bs_reader, const_cast<char*>(input_file_path.c_str())) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to create the bitstream reader." << std::endl;
+            return 1;
+        }
+        if (rocDecGetBitstreamCodecType(bs_reader, &rocdec_codec_id) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to get stream codec type." << std::endl;
+            return 1;
+        }
+        if (rocDecGetBitstreamBitDepth(bs_reader, &bit_depth) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to get stream bit depth." << std::endl;
+            return 1;
+        }
+
         RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+        if(!viddec.CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
             std::cerr << "GPU doesn't support codec!" << std::endl;
             return 0;
-        }
+        }        
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -250,26 +240,9 @@ int main(int argc, char **argv) {
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            if (seek_criteria == 1 && first_frame) {
-                // use VideoSeekContext class to seek to given frame number
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
-                first_frame = false;
-            } else if (seek_criteria == 2 && first_frame) {
-                // use VideoSeekContext class to seek to given timestamp
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
-                first_frame = false;
-            } else {
-                demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+            if (rocDecGetBitstreamPicData(bs_reader, &pvideo, &n_video_bytes, &pts) != ROCDEC_SUCCESS) {
+                std::cerr << "Failed to get picture data." << std::endl;
+                return 1;
             }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
