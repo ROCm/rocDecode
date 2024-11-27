@@ -44,7 +44,7 @@ enum {
 
 class RocVideoESParser {
     public:
-        RocVideoESParser(const char *input_file_path);
+        RocVideoESParser(char *input_file_path);
         RocVideoESParser();
         ~RocVideoESParser();
 
@@ -56,8 +56,9 @@ class RocVideoESParser {
         /*! \brief Function to retrieve the bitstream of a picture
          * \param [out] p_pic_data Pointer to the picture data
          * \param [out] pic_size Size of the picture in bytes
+         * \param [out] pts Presentation time stamp
          */
-        int GetPicData(uint8_t **p_pic_data, int *pic_size);
+        int GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *pts);
 
         /*! \brief Function to return the bit depth of the stream
          */

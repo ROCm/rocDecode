@@ -21,13 +21,13 @@ THE SOFTWARE.
 */
 
 #include <string.h>
-#include "video_es_parser.h"
-#include "../../src/parser/hevc_defines.h"
-#include "../../src/parser/avc_defines.h"
-#include "../../src/parser/av1_defines.h"
-#include "../../src/parser/roc_video_parser.h"
+#include "es_reader.h"
+#include "hevc_defines.h"
+#include "avc_defines.h"
+#include "av1_defines.h"
+#include "roc_video_parser.h"
 
-RocVideoESParser::RocVideoESParser(const char *input_file_path) {
+RocVideoESParser::RocVideoESParser(char *input_file_path) {
     p_stream_file_ = fopen(input_file_path, "rb");
     if ( !p_stream_file_) {
         ERR("Failed to open the bitstream file.");
@@ -497,7 +497,8 @@ int RocVideoESParser::GetPicDataIvfAv1(uint8_t **p_pic_data, int *pic_size) {
     return 0;
 }
 
-int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size) {
+int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *pts) {
+    *pts = 0;
     switch (stream_type_) {
         case Stream_Type_Avc_Elementary:
         case Stream_Type_Hevc_Elementary:
