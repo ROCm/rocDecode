@@ -22,7 +22,7 @@ THE SOFTWARE.
 #include "parser_handle.h"
 #include "../commons.h"
 
-
+namespace rocdecode {
 /************************************************************************************************/
 //! \ingroup FUNCTS
 //! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *parser_params)
@@ -130,3 +130,4 @@ rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
     delete roc_parser_handle;
     return ret;
 }
+} //namespace rocdecode
