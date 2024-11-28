@@ -38,6 +38,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "roc_md5.h"
 #include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -230,6 +231,8 @@ int main(int argc, char **argv) {
         uint32_t width, height;
         double total_dec_time = 0;
         bool first_frame = true;
+        MD5Generator *md5_generator = nullptr;
+
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
@@ -244,7 +247,9 @@ int main(int argc, char **argv) {
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
         if (b_generate_md5) {
-            viddec.InitMd5();
+            md5_generator = new MD5Generator();
+            md5_generator->InitMd5();
+            reconfig_user_struct.md5_generator_handle = static_cast<void*>(md5_generator);
         }
         viddec.SetReconfigParams(&reconfig_params);
 
@@ -284,7 +289,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
                 if (b_generate_md5) {
-                    viddec.UpdateMd5ForFrame(pframe, surf_info);
+                    md5_generator->UpdateMd5ForFrame(pframe, surf_info);
                 }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
@@ -320,7 +325,7 @@ int main(int argc, char **argv) {
         }
         if (b_generate_md5) {
             uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
+            md5_generator->FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
@@ -348,9 +353,10 @@ int main(int argc, char **argv) {
                 } else {
                     std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
-                std::cout << ref_md5_string << std::endl;
+                std::cout << ref_md5_string.c_str() << std::endl;
                 ref_md5_file.close();
             }
+            delete md5_generator;
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

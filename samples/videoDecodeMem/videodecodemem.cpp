@@ -37,6 +37,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "roc_md5.h"
 
 class FileStreamProvider : public VideoDemuxer::StreamProvider {
 public:
@@ -210,9 +211,11 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
+        MD5Generator *md5_generator = nullptr;
 
         if (b_generate_md5) {
-            viddec.InitMd5();
+            md5_generator = new MD5Generator();
+            md5_generator->InitMd5();
         }
 
         do {
@@ -233,7 +236,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
                 if (b_generate_md5) {
-                    viddec.UpdateMd5ForFrame(pframe, surf_info);
+                    md5_generator->UpdateMd5ForFrame(pframe, surf_info);
                 }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
@@ -258,7 +261,7 @@ int main(int argc, char **argv) {
         }
         if (b_generate_md5) {
             uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
+            md5_generator->FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
@@ -289,6 +292,7 @@ int main(int argc, char **argv) {
                 std::cout << ref_md5_string << std::endl;
                 ref_md5_file.close();
             }
+            delete md5_generator;
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

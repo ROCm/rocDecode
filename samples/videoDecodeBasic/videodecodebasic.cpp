@@ -39,7 +39,51 @@ THE SOFTWARE.
  
 #include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
-#include "common.h"
+
+typedef enum ReconfigFlushMode_enum {
+    RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = 2,      /**<  Calculate the MD5 of the flushed frames */
+} ReconfigFlushMode;
+
+// this struct is used by videodecode and videodecodeMultiFiles to dump last frames to file
+typedef struct ReconfigDumpFileStruct_t {
+    bool b_dump_frames_to_file;
+    std::string output_file_name;
+    void *md5_generator_handle;
+} ReconfigDumpFileStruct;
+
+
+// callback function to flush last frames and save it to file when reconfigure happens
+int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_user_struct) {
+    int n_frames_flushed = 0;
+    if ((p_viddec_obj == nullptr) ||  (p_user_struct == nullptr)) return n_frames_flushed;
+
+    RocVideoDecoder *viddec = static_cast<RocVideoDecoder *> (p_viddec_obj);
+    OutputSurfaceInfo *surf_info;
+    if (!viddec->GetOutputSurfaceInfo(&surf_info)) {
+        std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+        return n_frames_flushed;
+    }
+
+    uint8_t *pframe = nullptr;
+    int64_t pts;
+    while ((pframe = viddec->GetFrame(&pts))) {
+        if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
+            ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
+            if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
+                if (p_dump_file_struct->b_dump_frames_to_file) {
+                    viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
+                }
+            }
+        }
+        // release and flush frame
+        viddec->ReleaseFrame(pts, true);
+        n_frames_flushed ++;
+    }
+
+    return n_frames_flushed;
+}
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -50,8 +94,6 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
-    << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
-    << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
     << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
@@ -59,16 +101,12 @@ void ShowHelpAndExit(const char *option = NULL) {
 }
 
 int main(int argc, char **argv) {
-
-    std::string input_file_path, output_file_path, md5_file_path;
-    std::fstream ref_md5_file;
+    std::string input_file_path, output_file_path;
     int dump_output_frames = 0;
     int device_id = 0;
     int disp_delay = 1;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
-    bool b_generate_md5 = false;
-    bool b_md5_check = false;
     bool b_flush_frames_during_reconfig = true;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
@@ -133,22 +171,6 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-sei");
             }
             b_extract_sei_messages = true;
-            continue;
-        }
-        if (!strcmp(argv[i], "-md5")) {
-            if (i == argc) {
-                ShowHelpAndExit("-md5");
-            }
-            b_generate_md5 = true;
-            continue;
-        }
-        if (!strcmp(argv[i], "-md5_check")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-md5_check");
-            }
-            b_generate_md5 = true;
-            b_md5_check = true;
-            md5_file_path = argv[i];
             continue;
         }
         if (!strcmp(argv[i], "-crop")) {
@@ -226,16 +248,11 @@ int main(int argc, char **argv) {
         reconfig_user_struct.output_file_name = output_file_path;
         if (dump_output_frames) {
             reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
-        } else if (b_generate_md5) {
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_CALCULATE_MD5;
         } else {
             reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
         }
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
-        if (b_generate_md5) {
-            viddec.InitMd5();
-        }
         viddec.SetReconfigParams(&reconfig_params);
 
         do {
@@ -256,9 +273,6 @@ int main(int argc, char **argv) {
             }
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
-                if (b_generate_md5) {
-                    viddec.UpdateMd5ForFrame(pframe, surf_info);
-                }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
@@ -289,40 +303,6 @@ int main(int argc, char **argv) {
                 std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
             } else {
                 std::cout << "info: saved frames into " << output_file_path << std::endl;
-            }
-        }
-        if (b_generate_md5) {
-            uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
-            std::cout << "MD5 message digest: ";
-            for (int i = 0; i < 16; i++) {
-                std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
-            }
-            std::cout << std::endl;
-            if (b_md5_check) {
-                std::string ref_md5_string(33, 0);
-                uint8_t ref_md5[16];
-                ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
-                if ((ref_md5_file.rdstate() & std::ifstream::failbit) != 0) {
-                    std::cerr << "Failed to open MD5 file." << std::endl;
-                    return 1;
-                }
-                ref_md5_file.getline(ref_md5_string.data(), ref_md5_string.length());
-                if ((ref_md5_file.rdstate() & std::ifstream::badbit) != 0) {
-                    std::cerr << "Failed to read MD5 digest string." << std::endl;
-                    return 1;
-                }
-                for (int i = 0; i < 16; i++) {
-                    std::string part = ref_md5_string.substr(i * 2, 2);
-                    ref_md5[i] = std::stoi(part, nullptr, 16);
-                }
-                if (memcmp(digest, ref_md5, 16) == 0) {
-                    std::cout << "MD5 digest matches the reference MD5 digest: ";
-                } else {
-                    std::cout << "MD5 digest does not match the reference MD5 digest: ";
-                }
-                std::cout << ref_md5_string << std::endl;
-                ref_md5_file.close();
             }
         }
     } catch (const std::exception &ex) {
