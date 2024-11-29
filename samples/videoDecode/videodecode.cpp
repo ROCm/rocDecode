@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
         } else {
             std::cout << "info: Using built-in bitstream reader" << std::endl;
             if (rocDecCreateBitstreamReader(&bs_reader, const_cast<char*>(input_file_path.c_str())) != ROCDEC_SUCCESS) {
-            std::cerr << "Failed to create the bitstream reader." << std::endl;
-            return 1;
+                std::cerr << "Failed to create the bitstream reader." << std::endl;
+                return 1;
             }
             if (rocDecGetBitstreamCodecType(bs_reader, &rocdec_codec_id) != ROCDEC_SUCCESS) {
                 std::cerr << "Failed to get stream codec type." << std::endl;
