@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "avc_parser.h"
 #include "av1_parser.h"
 #include "hevc_parser.h"
+#include "vp9_parser.h"
 
 class RocParserHandle {
 public:
@@ -37,6 +38,7 @@ public:
     const char* ErrorMsg() { return error_.c_str(); }
     void CaptureError(const std::string& err_msg) { error_ = err_msg; }
     rocDecStatus ParseVideoData(RocdecSourceDataPacket *packet) { return roc_parser_->ParseVideoData(packet); }
+    rocDecStatus MarkFrameForReuse(int pic_idx) { return roc_parser_->MarkFrameForReuse(pic_idx); }
     rocDecStatus DestroyParser() { return DestroyParserInternal(); };
 
 private:
@@ -49,6 +51,9 @@ private:
                 break;
             case rocDecVideoCodec_HEVC:
                 roc_parser_ = std::make_shared<HevcVideoParser>();
+                break;
+            case rocDecVideoCodec_VP9:
+                roc_parser_ = std::make_shared<Vp9VideoParser>();
                 break;
             case rocDecVideoCodec_AV1:
                 roc_parser_ = std::make_shared<Av1VideoParser>();

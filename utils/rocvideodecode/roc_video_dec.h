@@ -336,7 +336,7 @@ class RocVideoDecoder {
         /**
          * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
         */
-       void ResetSaveFrameToFile();
+        void ResetSaveFrameToFile();
 
         /**
          * @brief Helper function to start MD5 calculation
@@ -365,6 +365,10 @@ class RocVideoDecoder {
          * @return int32_t 
          */
         int32_t GetNumOfFlushedFrames() { return num_frames_flushed_during_reconfig_;}
+
+        /*! \brief Function to wait for the decode completion of the last submitted picture
+         */
+        void WaitForDecodeCompletion();
 
         // Session overhead refers to decoder initialization and deinitialization time
         void AddDecoderSessionOverHead(std::thread::id session_id, double duration) { session_overhead_[session_id] += duration; }
@@ -480,6 +484,7 @@ class RocVideoDecoder {
         int decoded_pic_cnt_ = 0;
         int decode_poc_ = 0, pic_num_in_dec_order_[MAX_FRAME_NUM];
         int num_alloced_frames_ = 0;
+        int last_decode_surf_idx_ = 0;
         std::ostringstream input_video_info_str_;
         int bitdepth_minus_8_ = 0;
         uint32_t byte_per_pixel_ = 1;

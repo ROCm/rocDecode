@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "roc_decoder_caps.h"
 #include "../commons.h"
 
-
+namespace rocdecode {
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *decoder_create_info)
 //! Create the decoder object based on decoder_create_info. A handle to the created decoder is returned
@@ -220,3 +220,4 @@ const char* ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status) {
             return "UNKNOWN_ERROR";
     }
 }
+} //namespace rocdecode

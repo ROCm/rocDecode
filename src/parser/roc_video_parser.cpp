@@ -73,6 +73,14 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
     return ROCDEC_SUCCESS;
 }
 
+rocDecStatus RocVideoParser::MarkFrameForReuse(int pic_idx) {
+    if (pic_idx < 0) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    //todo::
+    return ROCDEC_NOT_IMPLEMENTED;
+}
+
 void RocVideoParser::InitDecBufPool() {
     for (int i = 0; i < dec_buf_pool_size_; i++) {
         decode_buffer_pool_[i].use_status = kNotUsed;
@@ -106,7 +114,6 @@ ParserResult RocVideoParser::OutputDecodedPictures(bool no_delay) {
             pfn_display_picture_cb_(parser_params_.user_data, &disp_info);
             decode_buffer_pool_[output_pic_list_[i]].use_status &= ~kFrameUsedForDisplay;
         }
-
         num_output_pics_ = disp_delay;
         // Shift the remaining frames to the top
         if (num_output_pics_) {
@@ -136,7 +143,7 @@ ParserResult RocVideoParser::GetNalUnit() {
             curr_byte_offset_ += 3;
 
             // For the very first NAL unit, search for the next start code (or reach the end of frame)
-            if (start_code_num_ == 1) {
+            if (start_code_num_ == 1 ) {
                 start_code_found = false;
                 curr_start_code_offset_ = next_start_code_offset_;
                 continue;
@@ -145,7 +152,7 @@ ParserResult RocVideoParser::GetNalUnit() {
             }
         }
         curr_byte_offset_++;
-    }    
+    }
     if (start_code_num_ == 0) {
         // No NAL unit in the frame data
         return PARSER_NOT_FOUND;
@@ -156,7 +163,7 @@ ParserResult RocVideoParser::GetNalUnit() {
     } else {
         nal_unit_size_ = pic_data_size_ - curr_start_code_offset_;
         return PARSER_EOF;
-    }        
+    }
 }
 
 size_t RocVideoParser::EbspToRbsp(uint8_t *streamBuffer,size_t begin_bytepos, size_t end_bytepos) {

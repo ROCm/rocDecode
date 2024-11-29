@@ -22,7 +22,7 @@ THE SOFTWARE.
 #include "parser_handle.h"
 #include "../commons.h"
 
-
+namespace rocdecode {
 /************************************************************************************************/
 //! \ingroup FUNCTS
 //! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *parser_params)
@@ -36,6 +36,7 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
 
     if (parser_params->codec_type != rocDecVideoCodec_HEVC &&
         parser_params->codec_type != rocDecVideoCodec_AVC &&
+        parser_params->codec_type != rocDecVideoCodec_VP9 &&
         parser_params->codec_type != rocDecVideoCodec_AV1) {
         ERR("The current version of rocDecode officially supports only the H.265 (HEVC), H.264 (AVC) and AV1 codecs.");
         return ROCDEC_NOT_IMPLEMENTED;
@@ -82,6 +83,30 @@ rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *pa
 }
 
 /************************************************************************************************/
+//! \ingroup group_rocparser
+//! \fn rocDecStatus ROCDECAPI rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx)
+//! Release frame with index pic_idx from parser's buffer pool and mark it for reuse 
+/************************************************************************************************/
+rocDecStatus ROCDECAPI
+rocDecParserMarkFrameForReuse(RocdecVideoParser parser_handle, int pic_idx) {
+    if (parser_handle == nullptr || pic_idx < 0) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    auto roc_parser_handle = static_cast<RocParserHandle *>(parser_handle);
+    rocDecStatus ret;
+    try {
+        ret = roc_parser_handle->MarkFrameForReuse(pic_idx);
+    }
+    catch(const std::exception& e) {
+        roc_parser_handle->CaptureError(e.what());
+        ERR(e.what())
+        return ROCDEC_RUNTIME_ERROR;
+    }
+    return ret;
+
+}
+
+/************************************************************************************************/
 //! \ingroup FUNCTS
 //! \fn rocDecStatus ROCDECAPI rocDecDestroyVideoParser(RocdecVideoParser parser_handle)
 //! Destroy the video parser object
@@ -105,3 +130,4 @@ rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
     delete roc_parser_handle;
     return ret;
 }
+} //namespace rocdecode

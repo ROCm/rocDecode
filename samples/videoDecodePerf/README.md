@@ -35,4 +35,9 @@ make -j
                   -disp_delay <display delay - specify the number of frames to be delayed for display [optional]>
                   -d <Device ID (>= 0) [optional - default:0]>
                   -z <force_zero_latency - Decoded frames will be flushed out for display immediately [optional]>
+                  -m <Memory type (integer values between 0 to 3: specifies where to store the decoded output:
+                                                                  0 = decoded output will be in internal interopped memory,
+                                                                  1 = decoded output will be copied to a separate device memory
+                                                                  2 = decoded output will be copied to a separate host memory
+                                                                  3 = decoded output will not be available (decode only)) [optional; default: 3]>
 ```

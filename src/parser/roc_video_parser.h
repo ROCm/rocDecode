@@ -80,6 +80,21 @@ typedef struct {
 #define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 #define DECODE_BUF_POOL_EXTENSION 2
 
+#define CHECK_ALLOWED_RANGE(val, min, max) { \
+    if (val < min || val > max) { \
+        ERR ("value not in range: " + TOSTR(val) + "allowed<min,max>: " + TOSTR(min) + " " + TOSTR(max));\
+        return PARSER_OUT_OF_RANGE; \
+    } \
+}
+
+#define CHECK_ALLOWED_MAX(val, max) { \
+    if (val > max) { \
+        ERR ("value greater than maximum allowed value: " + TOSTR(val) + " max: " + TOSTR(max));\
+        return PARSER_OUT_OF_RANGE; \
+    } \
+}
+
+
 enum {
     kNotUsed = 0,
     kTopFieldUsedForDecode = 1,
@@ -102,6 +117,14 @@ public:
     virtual rocDecStatus Initialize(RocdecParserParams *pParams);
     virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *pData) = 0;     // pure virtual: implemented by derived class
     virtual rocDecStatus UnInitialize() = 0;     // pure virtual: implemented by derived class
+    /**
+     * @brief function to to release surface with pic_idx and mark it for reuse, can be called from a different thread than decode thread
+     * @brief calling thread is responsible for syncronizing
+     * \param [in] pic_idx surface index for the picture to be released
+     * 
+     * @return rocDecStatus 
+     */
+    virtual rocDecStatus MarkFrameForReuse(int pic_idx);
 
 protected:
     RocdecParserParams parser_params_ = {};
@@ -251,12 +274,11 @@ namespace Parser {
                 return 0; // assert(0)
             }
 
-            uint32_t left_part = (0x1 << zero_bits_count) - 1;
+            uint32_t value = (0x1 << zero_bits_count) - 1;
             start_bit_idx++;
-            uint32_t rightPart = ReadBits(data, start_bit_idx, zero_bits_count);
-            return left_part + rightPart;
+            value += ReadBits(data, start_bit_idx, zero_bits_count);
+            return value;
         }
-
         inline uint32_t ReadSe(const uint8_t *data, size_t &start_bit_idx) {
             uint32_t ue = ReadUe(data, start_bit_idx);
             // se From Ue 

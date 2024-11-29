@@ -643,6 +643,7 @@ int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     }
     pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));
+    last_decode_surf_idx_ = pPicParams->curr_pic_idx;
     decoded_pic_cnt_++;
     if (b_force_zero_latency_ && ((!pPicParams->field_pic_flag) || (pPicParams->second_field))) {
         RocdecParserDispInfo disp_info;
@@ -1188,4 +1189,12 @@ bool RocVideoDecoder::CodecSupported(int device_id, rocDecVideoCodec codec_id, u
         return false;
     }
     return true;
+}
+
+void RocVideoDecoder::WaitForDecodeCompletion() {
+    RocdecDecodeStatus dec_status;
+    memset(&dec_status, 0, sizeof(dec_status));
+    do {
+        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, last_decode_surf_idx_, &dec_status);
+    } while (dec_status.decode_status == rocDecodeStatus_InProgress);
 }
