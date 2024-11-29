@@ -202,6 +202,7 @@ int main(int argc, char **argv) {
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        std::cout << "info: Using built-in bitstream reader" << std::endl;
         RocdecBitstreamReader bs_reader = nullptr;
         rocDecVideoCodec rocdec_codec_id;
         int bit_depth;
@@ -304,6 +305,9 @@ int main(int argc, char **argv) {
             } else {
                 std::cout << "info: saved frames into " << output_file_path << std::endl;
             }
+        }
+        if (bs_reader) {
+            rocDecDestroyBitstreamReader(bs_reader);
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;
