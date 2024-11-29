@@ -214,6 +214,10 @@ int main(int argc, char **argv) {
             std::cerr << "Failed to get stream codec type." << std::endl;
             return 1;
         }
+        if (rocdec_codec_id >= rocDecVideoCodec_NumCodecs) {
+            std::cerr << "Unsupported stream file type or codec type by the bitstream reader. Exiting." << std::endl;
+            return 1;
+        }
         if (rocDecGetBitstreamBitDepth(bs_reader, &bit_depth) != ROCDEC_SUCCESS) {
             std::cerr << "Failed to get stream bit depth." << std::endl;
             return 1;

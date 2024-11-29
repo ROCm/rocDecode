@@ -523,7 +523,6 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *p
             return 0;
         }
     }
-
 }
 
 rocDecVideoCodec RocVideoESParser::GetCodecId() {
