@@ -22,8 +22,6 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 3.10)
-project(videodecode)
-set(CMAKE_CXX_STANDARD 17)
 
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
@@ -33,10 +31,16 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 endif()
+# Set AMD Clang as default compiler
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
+endif()
+
+project(videodecode)
+set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 
 # rocDecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
