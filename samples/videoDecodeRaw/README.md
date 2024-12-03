@@ -1,6 +1,6 @@
 # Video decode sample
 
-The video decode basic sample illustrates decoding a single packetized video stream using the built-in bitstream reader, video parser, and rocDecoder to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample uses the high-level RocVideoDecoder class which connects both the video parser and Rocdecoder. This process repeats in a loop until all frames have been decoded.
+The video decode raw sample illustrates decoding a single packetized video stream using the built-in bitstream reader, video parser, and rocDecoder to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample uses the high-level RocVideoDecoder class which connects both the video parser and Rocdecoder. This process repeats in a loop until all frames have been decoded.
 
 ## Prerequisites:
 
@@ -9,7 +9,7 @@ The video decode basic sample illustrates decoding a single packetized video str
 ## Build
 
 ```shell
-mkdir video_decode_basic_sample && cd video_decode_basic_sample
+mkdir video_decode_raw_sample && cd video_decode_raw_sample
 cmake ../
 make -j
 ```
@@ -17,7 +17,7 @@ make -j
 ## Run
 
 ```shell
-./videodecodebasic -i <input video file [required]>
+./videodecoderaw -i <input video file [required]>
               -o <output path to save decoded YUV frames [optional]> 
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
               -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
