@@ -729,7 +729,6 @@ void FFMpegVideoDecoder::DecodeThread()
     AVPacket *pkt;
     do {
         pkt = PopPacket();
-        //std::cout << "pop packet" << std::endl;
         DecodeAvFrame(pkt, dec_frames_[av_frame_cnt_]);
     } while (!end_of_stream_);
 }
@@ -744,7 +743,6 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     while (status >= 0) {
         status = avcodec_receive_frame(dec_context_, p_frame);
         if (status == AVERROR(EAGAIN) || status == AVERROR_EOF) {
-            //av_frame_free(&p_frame);
             end_of_stream_ = (status == AVERROR_EOF);
             return 0;
         }
@@ -756,15 +754,12 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
         if (dec_context_->frame_number == 1) {
             InitOutputFrameInfo(p_frame);
         }
-        //std::cout<<"Decoding frame: " << dec_context_->frame_number << "<pframe, index>: " << p_frame << " " << av_frame_cnt_ << std::endl;
         decoded_pic_cnt_++;
         
-#if NO_DECODE_THREAD
-        av_frame_q_.push(p_frame);
-#else        
-        // add frame to the frame_q
-        PushFrame(p_frame);
-#endif    
+        if (no_multithreading_)
+            av_frame_q_.push(p_frame);
+        else
+            PushFrame(p_frame);  // add frame to the frame_q
         av_frame_cnt_ = (av_frame_cnt_ + 1) % dec_frames_.size();
         p_frame = dec_frames_[av_frame_cnt_]; //advance for next frame decode
     }
