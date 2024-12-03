@@ -39,7 +39,6 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
-#include "roc_md5.h"
 #include "common.h"
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -227,7 +226,7 @@ int main(int argc, char **argv) {
             bit_depth = demuxer->GetBitDepth();
         } else {
             std::cout << "info: Using built-in bitstream reader" << std::endl;
-            if (rocDecCreateBitstreamReader(&bs_reader, const_cast<char*>(input_file_path.c_str())) != ROCDEC_SUCCESS) {
+            if (rocDecCreateBitstreamReader(&bs_reader, input_file_path.c_str()) != ROCDEC_SUCCESS) {
                 std::cerr << "Failed to create the bitstream reader." << std::endl;
                 return 1;
             }

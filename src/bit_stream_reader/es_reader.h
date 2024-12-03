@@ -44,7 +44,7 @@ enum {
 
 class RocVideoESParser {
     public:
-        RocVideoESParser(char *input_file_path);
+        RocVideoESParser(const char *input_file_path);
         RocVideoESParser();
         ~RocVideoESParser();
 

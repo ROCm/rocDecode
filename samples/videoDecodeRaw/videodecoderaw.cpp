@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
         RocdecBitstreamReader bs_reader = nullptr;
         rocDecVideoCodec rocdec_codec_id;
         int bit_depth;
-        if (rocDecCreateBitstreamReader(&bs_reader, const_cast<char*>(input_file_path.c_str())) != ROCDEC_SUCCESS) {
+        if (rocDecCreateBitstreamReader(&bs_reader, input_file_path.c_str()) != ROCDEC_SUCCESS) {
             std::cerr << "Failed to create the bitstream reader." << std::endl;
             return 1;
         }

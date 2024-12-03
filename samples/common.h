@@ -23,7 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "roc_video_dec.h"
-#include "roc_md5.h"
+#include "md5.h"
 
 typedef enum ReconfigFlushMode_enum {
     RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */

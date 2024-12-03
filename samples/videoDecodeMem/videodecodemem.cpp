@@ -37,7 +37,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
-#include "roc_md5.h"
+#include "md5.h"
 
 class FileStreamProvider : public VideoDemuxer::StreamProvider {
 public:

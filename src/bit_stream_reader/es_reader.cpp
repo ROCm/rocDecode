@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "av1_defines.h"
 #include "roc_video_parser.h"
 
-RocVideoESParser::RocVideoESParser(char *input_file_path) {
+RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     p_stream_file_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
     if (!p_stream_file_) {
         ERR("Failed to open the bitstream file.");
@@ -192,23 +192,14 @@ bool RocVideoESParser::FindStartCode() {
         }
         curr_byte_offset_ = (curr_byte_offset_ + 1) % BS_RING_SIZE;
     }
-    if (num_start_code_ == 0) {
-        // No NAL unit in the bitstream
-        return false;
-    } else {
-        return true;
-    }
+    return num_start_code_ ? true : false;
 }
 
 void RocVideoESParser::CopyNalUnitFromRing() {
     int nal_start, nal_end_plus_1;
     int nal_size;
     nal_start = curr_start_code_offset_;
-    if (curr_start_code_offset_ != next_start_code_offset_) {
-        nal_end_plus_1 = next_start_code_offset_;
-    } else {
-        nal_end_plus_1 = write_ptr_; // end of stream
-    }
+    nal_end_plus_1 = curr_start_code_offset_ != next_start_code_offset_ ? next_start_code_offset_ : write_ptr_;
     if (nal_end_plus_1 >= nal_start) {
         nal_size = nal_end_plus_1 - nal_start;
         if ((pic_data_size_ + nal_size) > pic_data_.size()) {
@@ -449,9 +440,8 @@ bool RocVideoESParser::CheckIvfFileHeader(uint8_t *stream) {
         if (ivf_version != 0) {
             ERR("Stream file error: Incorrect IVF version (" + TOSTR(ivf_version) + "). Should be 0.");
         }
-        ptr += 2;
         // bytes 6-7: length of header in bytes
-        ptr += 2;
+        ptr += 4;
         // bytes 8-11: codec FourCC (e.g., 'AV01')
         uint32_t codec_fourcc = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
         ptr += 4;
@@ -507,13 +497,11 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *p
             return GetPicDataAv1(p_pic_data, pic_size);
         case kStreamTypeAv1Ivf: {
             if (!ivf_file_header_read_) {
-            uint8_t file_header[32];
-            ReadBytes(curr_byte_offset_, 32, file_header);
-            if (CheckIvfFileHeader(file_header)) {
+                uint8_t file_header[32];
+                ReadBytes(curr_byte_offset_, 32, file_header);
                 curr_byte_offset_ = (curr_byte_offset_ + 32) % BS_RING_SIZE;
                 SetReadPointer(curr_byte_offset_);
-            }
-            ivf_file_header_read_ = true;
+                ivf_file_header_read_ = true;
             }
             return GetPicDataIvfAv1(p_pic_data, pic_size);
         }
@@ -1141,9 +1129,7 @@ int RocVideoESParser::CheckIvfAv1Stream(uint8_t *p_stream, int stream_size) {
         if (ivf_version != 0) {
             score = 0;
         } else {
-            ptr += 2;
-            // bytes 6-7: length of header in bytes
-            ptr += 2;
+            ptr += 4;
             // bytes 8-11: codec FourCC (e.g., 'AV01')
             if (memcmp(AV1_FourCC, ptr, 4)) {
                 score = 0;

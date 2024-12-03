@@ -44,10 +44,10 @@ typedef void *RocdecBitstreamReader;
 
 /************************************************************************************************/
 //! \ingroup group_roc_bitstream_reader
-//! \fn rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, char *input_file_path)
+//! \fn rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path)
 //! Create video bitstream reader object and initialize
 /************************************************************************************************/
-extern rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, char *input_file_path);
+extern rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path);
 
 /************************************************************************************************/
 //! \ingroup group_roc_bitstream_reader

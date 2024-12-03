@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 class RocBitstreamReaderHandle {
 public:
-    explicit RocBitstreamReaderHandle(char *input_file_path) : bs_reader_(std::make_shared<RocVideoESParser>(input_file_path)) {};
+    explicit RocBitstreamReaderHandle(const char *input_file_path) : bs_reader_(std::make_shared<RocVideoESParser>(input_file_path)) {};
     ~RocBitstreamReaderHandle() { ClearErrors(); }
     bool NoError() { return error_.empty(); }
     const char* ErrorMsg() { return error_.c_str(); }
