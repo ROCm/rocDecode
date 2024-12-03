@@ -21,7 +21,7 @@
 #
 ################################################################################
 
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(videodecodergb)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -36,7 +36,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
+set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 
 # rocDecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
@@ -57,10 +57,7 @@ else()
 endif()
 
 # Set supported GPU Targets
-set(DEFAULT_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102")
-if (BUILD_WITH_AMD_ADVANCE)
-  set(DEFAULT_GPU_TARGETS ${DEFAULT_GPU_TARGETS} "gfx1200;gfx1201")
-endif()
+set(DEFAULT_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201")
 
 # Set AMD GPU_TARGETS
 if((AMDGPU_TARGETS OR DEFINED ENV{AMDGPU_TARGETS}) AND (NOT GPU_TARGETS))

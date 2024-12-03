@@ -22,7 +22,7 @@ THE SOFTWARE.
 #include "parser_handle.h"
 #include "../commons.h"
 
-
+namespace rocdecode {
 /************************************************************************************************/
 //! \ingroup FUNCTS
 //! \fn rocParserStatus ROCDECAPI rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *parser_params)
@@ -36,6 +36,7 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
 
     if (parser_params->codec_type != rocDecVideoCodec_HEVC &&
         parser_params->codec_type != rocDecVideoCodec_AVC &&
+        parser_params->codec_type != rocDecVideoCodec_VP9 &&
         parser_params->codec_type != rocDecVideoCodec_AV1) {
         ERR("The current version of rocDecode officially supports only the H.265 (HEVC), H.264 (AVC) and AV1 codecs.");
         return ROCDEC_NOT_IMPLEMENTED;
@@ -129,3 +130,4 @@ rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
     delete roc_parser_handle;
     return ret;
 }
+} //namespace rocdecode

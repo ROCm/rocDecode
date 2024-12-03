@@ -21,7 +21,7 @@
 #
 ################################################################################
 
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(videodecodebatch)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -36,7 +36,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
+set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 
 # rocDecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")

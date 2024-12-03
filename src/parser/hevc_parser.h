@@ -28,14 +28,6 @@ THE SOFTWARE.
 #include <map>
 #include <algorithm>
 
-//size_id = 0
-extern int scaling_list_default_0[1][6][16];
-//size_id = 1, 2
-extern int scaling_list_default_1_2[2][6][64];
-//size_id = 3
-extern int scaling_list_default_3[1][2][64];
-
-
 class HevcVideoParser : public RocVideoParser {
 
 public:
@@ -127,10 +119,10 @@ protected:
     int32_t             m_active_vps_id_;
     int32_t             m_active_sps_id_;
     int32_t             m_active_pps_id_;
-    HevcVideoParamSet*  m_vps_ = nullptr;
-    HevcSeqParamSet*    m_sps_ = nullptr;
-    HevcPicParamSet*    m_pps_ = nullptr;
-    HevcSliceSegHeader* m_sh_copy_ = nullptr;
+    HevcVideoParamSet   vps_list_[MAX_VPS_COUNT];
+    HevcSeqParamSet     sps_list_[MAX_SPS_COUNT];
+    HevcPicParamSet     pps_list_[MAX_PPS_COUNT];
+    HevcSliceSegHeader  slice_header_copy_;
     std::vector<HevcSliceInfo> slice_info_list_;
     std::vector<RocdecHevcSliceParams> slice_param_list_;
 

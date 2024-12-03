@@ -8,15 +8,21 @@ subtrees:
 
 - caption: Install
   entries:
-  - file: install/quick-start.rst
-    title: Quick start
-  - file: install/install.md
-    title: Installation guide
+  - file: install/prerequisites.rst
+    title: rocDecode prerequisites
+  - file: install/rocDecode-package-install.rst
+    title: Installing rocDecode with the package installer
+  - file: install/rocDecode-build-and-install.rst
+    title: Installing rocDecode from its source code
+  - url: https://github.com/ROCm/rocDecode/tree/develop/docker
+    title: rocDecode Docker containers
 
-- caption: Tutorials
+- caption: Samples
   entries:
+  - file: tutorials/rocDecode-samples.rst
+    title: rocDecode samples
   - url: https://github.com/ROCm/rocDecode/tree/develop/samples
-    title: GitHub samples
+    title: rocDecode samples on GitHub
 
 - caption: How to
   entries:
@@ -30,12 +36,16 @@ subtrees:
 
 - caption: Reference
   entries:
+  - file: reference/rocDecode-formats-and-architectures.rst
+    title: rocDecode supported codecs and architectures
+  - file: reference/rocDecode-tested-configurations.rst
+    title: rocDecode tested configurations
   - file: doxygen/html/files
-    title: API library
+    title: rocDecode API library
   - file: doxygen/html/globals
-    title: Functions
+    title: rocDecode functions
   - file: doxygen/html/annotated
-    title: Data structures
+    title: rocDecode data structures
 
 - caption: About
   entries:

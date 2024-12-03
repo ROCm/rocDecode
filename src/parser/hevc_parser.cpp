@@ -22,49 +22,27 @@ THE SOFTWARE.
 
 #include "hevc_parser.h"
 
-template <typename T>
-inline T *AllocStruct(const int max_cnt) {
-    T *p = nullptr;
-    try {
-        p = (max_cnt == 1) ? new T : new T [max_cnt];
-    }
-    catch(const std::exception& e) {
-        ERR(STR("Failed to alloc HEVC header struct Data, ") + STR(e.what()))
-    }
-    memset(p, 0, sizeof(T) * max_cnt);
-    return p;
-}
-
 HevcVideoParser::HevcVideoParser() {
     first_pic_after_eos_nal_unit_ = 0;
     m_active_vps_id_ = -1; 
     m_active_sps_id_ = -1;
     m_active_pps_id_ = -1;
-    // allocate all fixed size structors here
-    m_vps_ = AllocStruct<HevcVideoParamSet>(MAX_VPS_COUNT);
-    m_sps_ = AllocStruct<HevcSeqParamSet>(MAX_SPS_COUNT);
-    m_pps_ = AllocStruct<HevcPicParamSet>(MAX_PPS_COUNT);
-    m_sh_copy_ = AllocStruct<HevcSliceSegHeader>(1);
     slice_info_list_.assign(INIT_SLICE_LIST_NUM, {0});
     slice_param_list_.assign(INIT_SLICE_LIST_NUM, {0});
-
     memset(&curr_pic_info_, 0, sizeof(HevcPicInfo));
+    for (int i = 0; i < MAX_VPS_COUNT; i++) {
+        vps_list_[i].is_received = 0;
+    }
+    for (int i = 0; i < MAX_SPS_COUNT; i++) {
+        sps_list_[i].is_received = 0;
+    }
+    for (int i = 0; i < MAX_PPS_COUNT; i++) {
+        pps_list_[i].is_received = 0;
+    }
     InitDpb();
 }
 
 HevcVideoParser::~HevcVideoParser() {
-    if (m_vps_) {
-        delete [] m_vps_;
-    }
-    if (m_sps_) {
-        delete [] m_sps_;
-    }
-    if (m_pps_) {
-        delete [] m_pps_;
-    }
-    if (m_sh_copy_) {
-        delete m_sh_copy_;
-    }
 }
 
 rocDecStatus HevcVideoParser::Initialize(RocdecParserParams *p_params) {
@@ -86,7 +64,7 @@ rocDecStatus HevcVideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
 
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_seq_activated_) {
-            if (FillSeqCallbackFn(&m_sps_[m_active_sps_id_]) != PARSER_OK) {
+            if (FillSeqCallbackFn(&sps_list_[m_active_sps_id_]) != PARSER_OK) {
                 return ROCDEC_RUNTIME_ERROR;
             }
             new_seq_activated_ = false;
@@ -243,8 +221,8 @@ void HevcVideoParser::SendSeiMsgPayload() {
 
 int HevcVideoParser::SendPicForDecode() {
     int i, j, ref_idx, buf_idx;
-    HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
-    HevcPicParamSet *pps_ptr = &m_pps_[m_active_pps_id_];
+    HevcSeqParamSet *sps_ptr = &sps_list_[m_active_sps_id_];
+    HevcPicParamSet *pps_ptr = &pps_list_[m_active_pps_id_];
     dec_pic_params_ = {0};
 
     dec_pic_params_.pic_width = sps_ptr->pic_width_in_luma_samples;
@@ -566,7 +544,7 @@ ParserResult HevcVideoParser::ParsePictureData(const uint8_t* p_stream, uint32_t
             return ret;
         }
         // Parse the NAL unit
-        if (nal_unit_size_) {
+        if (nal_unit_size_ >= 5) {
             // start code + NAL unit header = 5 bytes
             int ebsp_size = nal_unit_size_ - 5 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 5; // only copy enough bytes for header parsing
 
@@ -1223,7 +1201,7 @@ void HevcVideoParser::ParseVui(HevcVuiParameters *vui, uint32_t max_num_sub_laye
 void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     size_t offset = 0; // current bit offset
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
-    HevcVideoParamSet *p_vps = &m_vps_[vps_id];
+    HevcVideoParamSet *p_vps = &vps_list_[vps_id];
     memset(p_vps, 0, sizeof(HevcVideoParamSet));
 
     p_vps->vps_video_parameter_set_id = vps_id;
@@ -1292,7 +1270,7 @@ void HevcVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     ParsePtl(&ptl, true, max_sub_layer_minus1, nalu, size, offset);
 
     uint32_t sps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    sps_ptr = &m_sps_[sps_id];
+    sps_ptr = &sps_list_[sps_id];
 
     memset(sps_ptr, 0, sizeof(HevcSeqParamSet));
     sps_ptr->sps_video_parameter_set_id = vps_id;
@@ -1412,7 +1390,7 @@ void HevcVideoParser::ParsePps(uint8_t *nalu, size_t size) {
     int i;
     size_t offset = 0;
     uint32_t pps_id = Parser::ExpGolomb::ReadUe(nalu, offset);
-    HevcPicParamSet *pps_ptr = &m_pps_[pps_id];
+    HevcPicParamSet *pps_ptr = &pps_list_[pps_id];
     memset(pps_ptr, 0, sizeof(HevcPicParamSet));
 
     pps_ptr->pps_pic_parameter_set_id = pps_id;
@@ -1487,9 +1465,9 @@ void HevcVideoParser::ParsePps(uint8_t *nalu, size_t size) {
         // Set up default values first
         SetDefaultScalingList(&pps_ptr->scaling_list_data);
 
-        ParseScalingList(&pps_ptr->scaling_list_data, nalu, size, offset, &m_sps_[pps_ptr->pps_seq_parameter_set_id]);
+        ParseScalingList(&pps_ptr->scaling_list_data, nalu, size, offset, &sps_list_[pps_ptr->pps_seq_parameter_set_id]);
     } else {
-        pps_ptr->scaling_list_data = m_sps_[pps_ptr->pps_seq_parameter_set_id].scaling_list_data;
+        pps_ptr->scaling_list_data = sps_list_[pps_ptr->pps_seq_parameter_set_id].scaling_list_data;
     }
     pps_ptr->lists_modification_present_flag = Parser::GetBit(nalu, offset);
     pps_ptr->log2_parallel_merge_level_minus2 = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1544,26 +1522,26 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
     CHECK_ALLOWED_MAX(m_active_pps_id_, (MAX_PPS_COUNT - 1));
     temp_sh.slice_pic_parameter_set_id = p_slice_header->slice_pic_parameter_set_id = m_active_pps_id_;
-    pps_ptr = &m_pps_[m_active_pps_id_];
+    pps_ptr = &pps_list_[m_active_pps_id_];
     if ( pps_ptr->is_received == 0) {
         ERR("Empty PPS is referred.");
         return PARSER_WRONG_STATE;
     }
     if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
-        sps_ptr = &m_sps_[m_active_sps_id_];
+        sps_ptr = &sps_list_[m_active_sps_id_];
         // Re-set DPB size.
         dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
         dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
-    sps_ptr = &m_sps_[m_active_sps_id_];
+    sps_ptr = &sps_list_[m_active_sps_id_];
     if (sps_ptr->is_received == 0) {
         ERR("Empty SPS is referred.");
         return PARSER_WRONG_STATE;
     }
     m_active_vps_id_ = sps_ptr->sps_video_parameter_set_id;
-    if (m_vps_[m_active_vps_id_].is_received == 0) {
+    if (vps_list_[m_active_vps_id_].is_received == 0) {
         ERR("Empty VPS is referred.");
         return PARSER_WRONG_STATE;
     }
@@ -1586,9 +1564,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
 
     // Set frame rate if available
     if (new_seq_activated_) {
-        if (m_vps_[m_active_vps_id_].vps_timing_info_present_flag) {
-            frame_rate_.numerator = m_vps_[m_active_vps_id_].vps_time_scale;
-            frame_rate_.denominator = m_vps_[m_active_vps_id_].vps_num_units_in_tick;
+        if (vps_list_[m_active_vps_id_].vps_timing_info_present_flag) {
+            frame_rate_.numerator = vps_list_[m_active_vps_id_].vps_time_scale;
+            frame_rate_.denominator = vps_list_[m_active_vps_id_].vps_num_units_in_tick;
         } else if (sps_ptr->vui_parameters.vui_timing_info_present_flag) {
             frame_rate_.numerator = sps_ptr->vui_parameters.vui_time_scale;
             frame_rate_.denominator = sps_ptr->vui_parameters.vui_num_units_in_tick;
@@ -1827,10 +1805,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->slice_loop_filter_across_slices_enabled_flag = Parser::GetBit(nalu, offset);
         }
 
-        memcpy(m_sh_copy_, p_slice_header, sizeof(HevcSliceSegHeader));
+        memcpy(&slice_header_copy_, p_slice_header, sizeof(HevcSliceSegHeader));
     } else {
         //dependant slice
-        memcpy(p_slice_header, m_sh_copy_, sizeof(HevcSliceSegHeader));
+        memcpy(p_slice_header, &slice_header_copy_, sizeof(HevcSliceSegHeader));
         p_slice_header->first_slice_segment_in_pic_flag = temp_sh.first_slice_segment_in_pic_flag;
         p_slice_header->no_output_of_prior_pics_flag = temp_sh.no_output_of_prior_pics_flag;
         p_slice_header->slice_pic_parameter_set_id = temp_sh.slice_pic_parameter_set_id;
@@ -1920,7 +1898,7 @@ void HevcVideoParser::CalculateCurrPoc() {
         curr_pic_info_.prev_poc_msb = 0;
         curr_pic_info_.slice_pic_order_cnt_lsb = 0;
     } else {
-        int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
+        int max_poc_lsb = 1 << (sps_list_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
         int poc_msb;  // PicOrderCntMsb
         // If the current picture is an IRAP picture with NoRaslOutputFlag equal to 1, PicOrderCntMsb is set equal to 0.
         if (IsIrapPic(&slice_nal_unit_header_) && no_rasl_output_flag_ == 1) {
@@ -1948,7 +1926,7 @@ void HevcVideoParser::DecodeRps() {
     int i, j, k;
     int curr_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // CurrDeltaPocMsbPresentFlag
     int foll_delta_poc_msb_present_flag[HEVC_MAX_NUM_REF_PICS] = {0}; // FollDeltaPocMsbPresentFlag
-    int max_poc_lsb = 1 << (m_sps_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
+    int max_poc_lsb = 1 << (sps_list_[m_active_sps_id_].log2_max_pic_order_cnt_lsb_minus4 + 4);  // MaxPicOrderCntLsb
     HevcSliceSegHeader *p_slice_header = &slice_info_list_[0].slice_header;
 
     // When the current picture is an IRAP picture with NoRaslOutputFlag equal to 1, all reference pictures with
@@ -2029,7 +2007,7 @@ void HevcVideoParser::DecodeRps() {
         /// Short term reference pictures
         for (i = 0; i < num_poc_st_curr_before_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_curr_before_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_curr_before_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_curr_before_[i] = j;  // RefPicSetStCurrBefore. Use DPB buffer index for now
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
@@ -2039,7 +2017,7 @@ void HevcVideoParser::DecodeRps() {
 
         for (i = 0; i < num_poc_st_curr_after_; i++) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_curr_after_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_curr_after_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_curr_after_[i] = j;  // RefPicSetStCurrAfter
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
@@ -2049,7 +2027,7 @@ void HevcVideoParser::DecodeRps() {
 
         for ( i = 0; i < num_poc_st_foll_; i++ ) {
             for (j = 0; j < HEVC_MAX_DPB_FRAMES; j++) {
-                if (poc_st_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt) {
+                if (poc_st_foll_[i] == dpb_buffer_.frame_buffer_list[j].pic_order_cnt && dpb_buffer_.frame_buffer_list[j].use_status != kNotUsed) {
                     ref_pic_set_st_foll_[i] = j;  // RefPicSetStFoll
                     dpb_buffer_.frame_buffer_list[j].is_reference = kUsedForShortTerm;
                     break;
@@ -2227,7 +2205,7 @@ int HevcVideoParser::MarkOutputPictures() {
             }
         }
 
-        HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
+        HevcSeqParamSet *sps_ptr = &sps_list_[m_active_sps_id_];
         uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
         uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
         uint32_t max_dec_pic_buffering = sps_ptr->sps_max_dec_pic_buffering_minus1[highest_tid] + 1;
@@ -2312,7 +2290,7 @@ ParserResult HevcVideoParser::FindFreeInDpbAndMark() {
     decode_buffer_pool_[curr_pic_info_.dec_buf_idx].pic_order_cnt = curr_pic_info_.pic_order_cnt;
     decode_buffer_pool_[curr_pic_info_.dec_buf_idx].pts = curr_pts_;
 
-    HevcSeqParamSet *sps_ptr = &m_sps_[m_active_sps_id_];
+    HevcSeqParamSet *sps_ptr = &sps_list_[m_active_sps_id_];
     uint32_t highest_tid = sps_ptr->sps_max_sub_layers_minus1; // HighestTid
     uint32_t max_num_reorder_pics = sps_ptr->sps_max_num_reorder_pics[highest_tid];
 

@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "avc_parser.h"
 #include "av1_parser.h"
 #include "hevc_parser.h"
+#include "vp9_parser.h"
 
 class RocParserHandle {
 public:
@@ -50,6 +51,9 @@ private:
                 break;
             case rocDecVideoCodec_HEVC:
                 roc_parser_ = std::make_shared<HevcVideoParser>();
+                break;
+            case rocDecVideoCodec_VP9:
+                roc_parser_ = std::make_shared<Vp9VideoParser>();
                 break;
             case rocDecVideoCodec_AV1:
                 roc_parser_ = std::make_shared<Av1VideoParser>();

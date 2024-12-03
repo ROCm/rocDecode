@@ -17,7 +17,7 @@ access the video decoding features available on your GPU.
 ## Prerequisites
 
 * Linux distribution
-  * Ubuntu - `20.04` / `22.04`
+  * Ubuntu - `22.04` / `24.04`
   * RHEL - `8` / `9`
   * SLES - `15 SP5`
 
@@ -25,17 +25,17 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT] 
 > `gfx908` or higher GPU required
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
+* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
-* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) - `Libva` is an implementation for VA-API
+* [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) - `libva-amdgpu-dev` is an AMD implementation for VA-API
   ```shell
   sudo apt install libva-amdgpu-dev
   ```
 > [!NOTE]
-> RPM Packages for `RHEL`/`SLES` - `libva-amdgpu-devel`
-> libva-amdgpu is strongly recommended over system libva as it is used for building mesa-amdgpu-va-driver
+> * RPM Packages for `RHEL`/`SLES` - `libva-amdgpu-devel`
+> * `libva-amdgpu` is strongly recommended over system `libva` as it is used for building mesa-amdgpu-va-driver
 
 * AMD VA Drivers
   ```shell
@@ -44,16 +44,13 @@ access the video decoding features available on your GPU.
 > [!NOTE]
 > RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
-* CMake Version `3.5` or later
+* CMake Version `3.10` or later
 
   ```shell
   sudo apt install cmake
   ```
 
-* Clang Version `5.0.1` or later
-  ```shell
-  sudo apt install clang
-  ```
+* AMD Clang++ Version `18.0.0` or later - installed with ROCm
 
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
 
@@ -76,7 +73,6 @@ access the video decoding features available on your GPU.
 
 >[!NOTE]
 > * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
-> * To install rocDecode with minimum requirements, follow the [quick-start](./docs/install/quick-start.rst) instructions
 
 ### Prerequisites setup script
 
@@ -94,9 +90,10 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.1.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
+* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
 
-* Use **either** [package install](#package-install) **or** [source install](#source-install) as described below.
+>[!IMPORTANT]
+> Use **either** [package install](#package-install) **or** [source install](#source-install) as described below.
 
 ### Package install
 
@@ -219,13 +216,11 @@ You can find rocDecode Docker containers in our
 ## Tested configurations
 
 * Linux
-  * Ubuntu - `20.04` / `22.04`
+  * Ubuntu - `22.04` / `24.04`
   * RHEL - `8` / `9`
   * SLES - `15 SP5`
-* ROCm:
-  * rocm-core - `6.2.0.60200-66`
-  * amdgpu-core - `1:6.2.60200-2009582`
-* libva-dev - `2.7.0-2` / `2.14.0-1`
-* mesa-amdgpu-va-drivers - `1:24.2.0.60200-2009582`
-* FFmpeg - `4.2.7` / `4.4.2-0`
-* rocDecode Setup Script - `V2.2.0`
+* ROCm: `6.3.0`
+* libva-amdgpu-dev - `2.16.0`
+* mesa-amdgpu-va-drivers - `1:24.3.0`
+* FFmpeg - `4.4.2` / `6.1.1`
+* rocDecode Setup Script - `V2.4.0`
