@@ -22,8 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <stdio.h>
-#include <stdint.h>
+#include <iostream>
+#include <fstream>
 #include <vector>
 #include "rocdecode.h"
 
@@ -31,12 +31,12 @@ THE SOFTWARE.
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
 
 enum {
-    Stream_Type_UnSupported = -1,
-    Stream_Type_Avc_Elementary = 0,
-    Stream_Type_Hevc_Elementary,
-    Stream_Type_Av1_Elementary,
-    Stream_Type_Av1_Ivf,
-    Stream_Type_Num_Supported
+    kStreamTypeUnsupported = -1,
+    kStreamTypeAvcElementary = 0,
+    kStreamTypeHevcElementary,
+    kStreamTypeAv1Elementary,
+    kStreamTypeAv1Ivf,
+    kStreamTypeNumSupported
 } StreamFileType;
 
 #define STREAM_PROBE_SIZE 2 * 1024
@@ -65,7 +65,7 @@ class RocVideoESParser {
         int GetBitDepth() {return bit_depth_;};
 
     private:
-        FILE *p_stream_file_ = NULL;
+        std::ifstream p_stream_file_;
         int stream_type_;
         int bit_depth_;
 

@@ -28,22 +28,18 @@ THE SOFTWARE.
 
 class RocBitstreamReaderHandle {
 public:
-    explicit RocBitstreamReaderHandle(char *input_file_path) { CreateBitstreamReader(input_file_path); };
+    explicit RocBitstreamReaderHandle(char *input_file_path) : bs_reader_(std::make_shared<RocVideoESParser>(input_file_path)) {};
     ~RocBitstreamReaderHandle() { ClearErrors(); }
     bool NoError() { return error_.empty(); }
     const char* ErrorMsg() { return error_.c_str(); }
     void CaptureError(const std::string& err_msg) { error_ = err_msg; }
     rocDecStatus GetBitstreamCodecType(rocDecVideoCodec *codec_type) { *codec_type = bs_reader_->GetCodecId(); return ROCDEC_SUCCESS; }
     rocDecStatus GetBitstreamBitDepth(int *bit_depth) { *bit_depth = bs_reader_->GetBitDepth(); return ROCDEC_SUCCESS; }
-    
     rocDecStatus GetBitstreamPicData(uint8_t **pic_data, int *pic_size, int64_t *pts) { return static_cast<rocDecStatus>(bs_reader_->GetPicData(pic_data, pic_size, pts)); }
 
 private:
     std::shared_ptr<RocVideoESParser> bs_reader_ = nullptr;
     void ClearErrors() { error_ = ""; }
-    void CreateBitstreamReader(char *input_file_path) {
-        bs_reader_ = std::make_shared<RocVideoESParser>(input_file_path);
-    }
 
     std::string error_;
 };

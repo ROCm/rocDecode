@@ -40,7 +40,7 @@ rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_rea
 }
 
 rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_reader_handle, rocDecVideoCodec *codec_type) {
-    if (bs_reader_handle == nullptr) {
+    if (bs_reader_handle == nullptr || codec_type == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
     auto roc_bs_reader_handle = static_cast<RocBitstreamReaderHandle*>(bs_reader_handle);
@@ -57,7 +57,7 @@ rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_read
 }
 
 rocDecStatus ROCDECAPI rocDecGetBitstreamBitDepth(RocdecBitstreamReader bs_reader_handle, int *bit_depth) {
-    if (bs_reader_handle == nullptr) {
+    if (bs_reader_handle == nullptr || bit_depth == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
     auto roc_bs_reader_handle = static_cast<RocBitstreamReaderHandle*>(bs_reader_handle);
@@ -74,7 +74,7 @@ rocDecStatus ROCDECAPI rocDecGetBitstreamBitDepth(RocdecBitstreamReader bs_reade
 }
 
 rocDecStatus ROCDECAPI rocDecGetBitstreamPicData(RocdecBitstreamReader bs_reader_handle, uint8_t **pic_data, int *pic_size, int64_t *pts) {
-    if (bs_reader_handle == nullptr || pic_data == nullptr) {
+    if (bs_reader_handle == nullptr || pic_data == nullptr || pic_size == nullptr || pts == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
     auto roc_bs_reader_handle = static_cast<RocBitstreamReaderHandle*>(bs_reader_handle);

@@ -28,8 +28,8 @@ THE SOFTWARE.
 #include "roc_video_parser.h"
 
 RocVideoESParser::RocVideoESParser(char *input_file_path) {
-    p_stream_file_ = fopen(input_file_path, "rb");
-    if ( !p_stream_file_) {
+    p_stream_file_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
+    if (!p_stream_file_) {
         ERR("Failed to open the bitstream file.");
     }
     end_of_file_ = false;
@@ -58,7 +58,7 @@ RocVideoESParser::RocVideoESParser(char *input_file_path) {
 
 RocVideoESParser::~RocVideoESParser() {
     if (p_stream_file_) {
-        fclose(p_stream_file_);
+        p_stream_file_.close();
     }
     if (bs_ring_) {
         free(bs_ring_);
@@ -90,7 +90,7 @@ int RocVideoESParser::FetchBitStream()
     // First fill the ending part of the ring
     if (write_ptr_ >= read_ptr_) {
         int fill_space = BS_RING_SIZE - (write_ptr_ == 0 ? 1 : write_ptr_);
-        read_size = fread(&bs_ring_[write_ptr_], 1, fill_space, p_stream_file_);
+        read_size = p_stream_file_.read(reinterpret_cast<char*>(&bs_ring_[write_ptr_]), fill_space).gcount();
         if (read_size > 0) {
             write_ptr_ = (write_ptr_ + read_size) % BS_RING_SIZE; // when we still have more bytes to fill, write_ptr_ becomes 0 to continue to the next step.
         }
@@ -109,7 +109,7 @@ int RocVideoESParser::FetchBitStream()
         
     // Continue filling the beginning part of the ring
     if (read_ptr_ > 0) {
-        read_size = fread(&bs_ring_[write_ptr_], 1, free_space, p_stream_file_);
+        read_size = p_stream_file_.read(reinterpret_cast<char*>(&bs_ring_[write_ptr_]), free_space).gcount();
         if (read_size > 0) {
             write_ptr_ = (write_ptr_ + read_size) % BS_RING_SIZE;
         }
@@ -313,7 +313,7 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
             break;
         }
         CopyNalUnitFromRing();
-        if ( stream_type_ == Stream_Type_Avc_Elementary) {
+        if ( stream_type_ == kStreamTypeAvcElementary) {
             CheckAvcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
         } else {
             CheckHevcNalForSlice(curr_start_code_offset_, &slice_nal_flag, &first_slice_flag);
@@ -326,7 +326,7 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
         if (curr_start_code_offset_ == next_start_code_offset_) {
             break; // end of stream
         } else if (num_slices) {
-            if ( stream_type_ == Stream_Type_Avc_Elementary) {
+            if ( stream_type_ == kStreamTypeAvcElementary) {
                 CheckAvcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
             } else {
                 CheckHevcNalForSlice(next_start_code_offset_, &slice_nal_flag, &first_slice_flag); // peek the next NAL
@@ -500,12 +500,12 @@ int RocVideoESParser::GetPicDataIvfAv1(uint8_t **p_pic_data, int *pic_size) {
 int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *pts) {
     *pts = 0;
     switch (stream_type_) {
-        case Stream_Type_Avc_Elementary:
-        case Stream_Type_Hevc_Elementary:
+        case kStreamTypeAvcElementary:
+        case kStreamTypeHevcElementary:
             return GetPicDataAvcHevc(p_pic_data, pic_size);
-        case Stream_Type_Av1_Elementary:
+        case kStreamTypeAv1Elementary:
             return GetPicDataAv1(p_pic_data, pic_size);
-        case Stream_Type_Av1_Ivf: {
+        case kStreamTypeAv1Ivf: {
             if (!ivf_file_header_read_) {
             uint8_t file_header[32];
             ReadBytes(curr_byte_offset_, 32, file_header);
@@ -527,12 +527,12 @@ int RocVideoESParser::GetPicData(uint8_t **p_pic_data, int *pic_size, int64_t *p
 
 rocDecVideoCodec RocVideoESParser::GetCodecId() {
     switch (stream_type_) {
-        case Stream_Type_Avc_Elementary:
+        case kStreamTypeAvcElementary:
             return rocDecVideoCodec_AVC;
-        case Stream_Type_Hevc_Elementary:
+        case kStreamTypeHevcElementary:
             return rocDecVideoCodec_HEVC;
-        case Stream_Type_Av1_Elementary:
-        case Stream_Type_Av1_Ivf:
+        case kStreamTypeAv1Elementary:
+        case kStreamTypeAv1Ivf:
             return rocDecVideoCodec_AV1;
         default:
             return rocDecVideoCodec_NumCodecs;
@@ -540,43 +540,47 @@ rocDecVideoCodec RocVideoESParser::GetCodecId() {
 }
 
 int RocVideoESParser::ProbeStreamType() {
-    int stream_type = Stream_Type_UnSupported;
+    int stream_type = kStreamTypeUnsupported;
     int stream_type_score = 0;
     uint8_t *stream_buf;
     int stream_size;
 
     stream_buf = static_cast<uint8_t*>(malloc(STREAM_PROBE_SIZE));
-    fseek(p_stream_file_, 0L, SEEK_SET);
-    stream_size = fread(stream_buf, 1, STREAM_PROBE_SIZE, p_stream_file_);
+    p_stream_file_.seekg (0, p_stream_file_.beg);
+    stream_size = p_stream_file_.read(reinterpret_cast<char*>(stream_buf), STREAM_PROBE_SIZE).gcount();
+    // When the file size is smaller than STREAM_PROBE_SIZE, the fail bit is set. If we don't clear the state, further operations will fail.
+    if (p_stream_file_.fail()) {
+        p_stream_file_.clear();
+    }
 
-    for (int i = Stream_Type_Avc_Elementary; i < Stream_Type_Num_Supported; i++) {
+    for (int i = kStreamTypeAvcElementary; i < kStreamTypeNumSupported; i++) {
         int curr_score = 0;
         switch (i) {
-            case Stream_Type_Avc_Elementary:
+            case kStreamTypeAvcElementary:
                 curr_score = CheckAvcEStream(stream_buf, stream_size);
                 if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
-                    stream_type = Stream_Type_Avc_Elementary;
+                    stream_type = kStreamTypeAvcElementary;
                     stream_type_score = curr_score;
                 }
                 break;
-            case Stream_Type_Hevc_Elementary:
+            case kStreamTypeHevcElementary:
                 curr_score = CheckHevcEStream(stream_buf, stream_size);
                 if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
-                    stream_type = Stream_Type_Hevc_Elementary;
+                    stream_type = kStreamTypeHevcElementary;
                     stream_type_score = curr_score;
                 }
                 break;
-            case Stream_Type_Av1_Elementary:
+            case kStreamTypeAv1Elementary:
                 curr_score = CheckAv1EStream(stream_buf, stream_size);
                 if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
-                    stream_type = Stream_Type_Av1_Elementary;
+                    stream_type = kStreamTypeAv1Elementary;
                     stream_type_score = curr_score;
                 }
                 break;
-            case Stream_Type_Av1_Ivf:
+            case kStreamTypeAv1Ivf:
                 curr_score = CheckIvfAv1Stream(stream_buf, stream_size);
                 if (curr_score > STREAM_TYPE_SCORE_THRESHOLD && curr_score > stream_type_score) {
-                    stream_type = Stream_Type_Av1_Ivf;
+                    stream_type = kStreamTypeAv1Ivf;
                     stream_type_score = curr_score;
                 }
                 break;
@@ -586,7 +590,7 @@ int RocVideoESParser::ProbeStreamType() {
     if (stream_buf) {
         free(stream_buf);
     }
-    fseek(p_stream_file_, 0L, SEEK_SET);
+    p_stream_file_.seekg (0, std::ios::beg);
     return stream_type;
 }
 
