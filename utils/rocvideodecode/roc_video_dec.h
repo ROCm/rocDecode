@@ -201,22 +201,20 @@ typedef struct ReconfigParams_t {
 
 class RocVideoDecoder {
     public:
-      /**
-       * @brief Construct a new Roc Video Decoder object
-       * 
-       * @param hip_ctx 
-       * @param b_use_device_mem 
-       * @param codec 
-       * @param device_id 
-       * @param b_low_latency 
-       * @param device_frame_pitched 
-       * @param p_crop_rect 
-       * @param extract_user_SEI_Message 
-       * @param max_width 
-       * @param max_height 
-       * @param clk_rate 
-       * @param force_zero_latency 
-       */
+        /**
+        * @brief Construct a new Roc Video Decoder object
+        * 
+        * @param device_id : device_id to initialize HIP and VCN
+        * @param out_mem_type : out_mem_type for the decoded surface
+        * @param codec : codec type
+        * @param force_zero_latency : to force zero latency (output in decoding orde)
+        * @param p_crop_rect : to crop output
+        * @param extract_user_SEI_Message : enable to extract SEI
+        * @param disp_delay : output delayed by #disp_delay surfaces
+        * @param max_width : Max. width for the output surface
+        * @param max_height : Max. height for the output surface
+        * @param clk_rate : FPS clock-rate
+        */
         RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
@@ -256,10 +254,6 @@ class RocVideoDecoder {
         */
         virtual int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
 
-        /**
-        *   @brief  This function is used to get the current frame size based on pitch
-        */
-        //int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)); }
 
         /**
          * @brief Get the Bit Depth and BytesPerPixel associated with the pixel format

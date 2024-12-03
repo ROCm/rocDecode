@@ -74,7 +74,7 @@ static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AV
     switch (av_pixel_format) {
         case AV_PIX_FMT_YUV420P : 
         case AV_PIX_FMT_YUVJ420P : 
-            return rocDecVideoSurfaceFormat_YUV420;           // need to see if this is actually correct
+            return rocDecVideoSurfaceFormat_YUV420;
         case AV_PIX_FMT_YUV444P : 
         case AV_PIX_FMT_YUVJ444P : 
             return rocDecVideoSurfaceFormat_YUV444;
@@ -88,8 +88,8 @@ static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AV
 }
 
 FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
-              const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
-              RocVideoDecoder(device_id, out_mem_type, codec, force_zero_latency, p_crop_rect, extract_user_sei_Message, disp_delay, max_width, max_height, clk_rate) {
+              const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, bool no_multithreading, int max_width, int max_height, uint32_t clk_rate) :
+              RocVideoDecoder(device_id, out_mem_type, codec, force_zero_latency, p_crop_rect, extract_user_sei_Message, disp_delay, max_width, max_height, clk_rate), no_multithreading_(no_multithreading) {
 
     if ((out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) || (out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)) {
         THROW("Output Memory Type is not supported");
@@ -103,20 +103,19 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
         parser_params.clock_rate = clk_rate;
         parser_params.max_display_delay = disp_delay_;
         parser_params.user_data = this;
-        parser_params.pfn_sequence_callback = FFMpegVideoDecoder::FFMpegHandleVideoSequenceProc;
-        parser_params.pfn_decode_picture = FFMpegVideoDecoder::FFMpegHandlePictureDecodeProc;
-        parser_params.pfn_display_picture = FFMpegVideoDecoder::FFMpegHandlePictureDisplayProc;
+        parser_params.pfn_sequence_callback = FFMpegHandleVideoSequenceProc;
+        parser_params.pfn_decode_picture = FFMpegHandlePictureDecodeProc;
+        parser_params.pfn_display_picture = FFMpegHandlePictureDisplayProc;
         parser_params.pfn_get_sei_msg = b_extract_sei_message_ ? RocVideoDecoder::HandleSEIMessagesProc : NULL;
         ROCDEC_API_CALL(rocDecCreateVideoParser(&rocdec_parser_, &parser_params));
     }
-#if !NO_DECODE_THREAD
-    // start the FFMpeg decoding thread
-    ffmpeg_decoder_thread_ = new std::thread(&FFMpegVideoDecoder::DecodeThread, this);
-    if (!ffmpeg_decoder_thread_) {
-        THROW("FFMpegVideoDecoder create thread failed");
+    if (!no_multithreading_) {
+        // start the FFMpeg decoding thread
+        ffmpeg_decoder_thread_ = new std::thread(&FFMpegVideoDecoder::DecodeThread, this);
+        if (!ffmpeg_decoder_thread_) {
+            THROW("FFMpegVideoDecoder create thread failed");
+        }
     }
-#endif
-
 }
 
 
@@ -207,14 +206,14 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     }
     // allocate av_frame buffer pool for number of surfaces
     if (dec_frames_.empty()) {
-        for (int i=0; i < num_decode_surfaces; i++) {
+        for (int i = 0; i < num_decode_surfaces; i++) {
             AVFrame *p_frame = av_frame_alloc();
             dec_frames_.push_back(p_frame);
         }
         av_frame_cnt_ = 0;
     }
     if (av_packet_data_.empty()) {
-        for (int i=0; i < num_decode_surfaces; i++) {
+        for (int i = 0; i < num_decode_surfaces; i++) {
             uint8_t *pkt_data = static_cast<uint8_t *> (av_malloc(MAX_AV_PACKET_DATA_SIZE));
             av_packet_data_.push_back(std::make_pair(pkt_data, MAX_AV_PACKET_DATA_SIZE));
         }
@@ -222,9 +221,9 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     // allocate av_packets_ for decoding
     if (av_packets_.empty()) {
-        for (int i=0; i < num_decode_surfaces; i++) {
+        for (int i = 0; i < num_decode_surfaces; i++) {
             AVPacket *pkt = av_packet_alloc();
-            pkt->data = static_cast<u_int8_t *> (av_packet_data_[i].first);
+            pkt->data = static_cast<uint8_t *> (av_packet_data_[i].first);
             pkt->size = av_packet_data_[i].second;
             av_packets_.push_back(pkt);
         }
@@ -267,9 +266,9 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
             max_height_ = vidFormatEx->max_height;
         }
     }
-    if (max_width_ < (int)p_video_format->coded_width)
+    if (max_width_ < static_cast<int>(p_video_format->coded_width))
         max_width_ = p_video_format->coded_width;
-    if (max_height_ < (int)p_video_format->coded_height)
+    if (max_height_ < static_cast<int>(p_video_format->coded_height))
         max_height_ = p_video_format->coded_height;
 
     if (!(crop_rect_.right && crop_rect_.bottom)) {
@@ -280,12 +279,12 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         target_height_ = (crop_rect_.bottom - crop_rect_.top + 1) & ~1;
     }
 
-    chroma_height_ = (int)(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
-    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
+    chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_width_ = static_cast<int>(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (video_chroma_format_ == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     surface_stride_ = target_width_ * byte_per_pixel_;   
-    chroma_vstride_ = (int)(ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    chroma_vstride_ = static_cast<int>(ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
     // fill output_surface_info_
     output_surface_info_.output_width = target_width_;
     output_surface_info_.output_height = target_height_;
@@ -390,7 +389,7 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
 
     surface_stride_ = target_width_ * byte_per_pixel_;
     chroma_height_ = static_cast<int>(std::ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
-    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
+    chroma_width_ = static_cast<int>(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
     chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
@@ -442,7 +441,7 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
         if (!new_pkt_data) {
             std::cerr << "ERROR: couldn't allocate packet data" << std::endl;
         }
-        packet_data->first   = static_cast<uint8_t *> (new_pkt_data);
+        packet_data->first   = static_cast<uint8_t *>(new_pkt_data);
         packet_data->second  = (last_packet_.payload_size + MAX_AV_PACKET_DATA_SIZE);
         av_pkt->data = packet_data->first;
     }
@@ -451,13 +450,12 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     av_pkt->flags = 0;
     av_pkt->pts = last_packet_.pts;
 
-#if NO_DECODE_THREAD
-    // for testing Decoding without threading
-    DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
-#else
-    //push packet into packet q for decoding
-    PushPacket(av_pkt);
-#endif
+    if (no_multithreading_) {
+        DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
+    } else {
+        //push packet into packet q for decoding
+        PushPacket(av_pkt);
+    }
     av_pkt_cnt_ = (av_pkt_cnt_ + 1) % av_packets_.size();
     if (!av_pkt->data || !av_pkt->size) {
         end_of_stream_ = true;
@@ -477,19 +475,18 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     // so we need to flush FFMpeg decoder when we have received the lastpacket with 0 bytes
     if (!last_packet_.payload_size && !end_of_stream_) {
         AVPacket pkt = { 0 };
-    #if NO_DECODE_THREAD
-        // for testing Decoding without threading
-        DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
-    #else
-        //push packet into packet q for decoding
-        PushPacket(&pkt);
-    #endif
+        if (no_multithreading_) {
+            DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
+        } else {
+            //push packet into packet q for decoding
+            PushPacket(&pkt);
+        }
     }
 
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
             // Write SEI Message
-            uint8_t *sei_buffer = (uint8_t *)(sei_message_display_q_[pDispInfo->picture_index].sei_data);
+            uint8_t *sei_buffer = static_cast<uint8_t *>(sei_message_display_q_[pDispInfo->picture_index].sei_data);
             uint32_t sei_num_messages = sei_message_display_q_[pDispInfo->picture_index].sei_message_count;
             RocdecSeiMessage *sei_message = sei_message_display_q_[pDispInfo->picture_index].sei_message;
             if (fp_sei_) {
@@ -521,19 +518,18 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     // vp_frames_ffmpeg_.size() is empty, wait for decoding to finish
     // this will happen during PopFrame()
     AVFrame *p_av_frame;
-    //std::cout << "Before pop frame " << std::endl;
-#if NO_DECODE_THREAD
+    if (no_multithreading_) {
         p_av_frame = av_frame_q_.front();
         av_frame_q_.pop();
-#else        
+    } else {
         p_av_frame = PopFrame();
-#endif        
+    }
 
     if (p_av_frame == nullptr) {
         std::cerr << "Invalid avframe decode output" << std::endl;
         return 0;
     }
-    void * src_ptr[3] = { 0 };
+    void* src_ptr[3] = { 0 };
     int32_t src_pitch[3] = { 0 };
     src_ptr[0] = p_av_frame->data[0];    
     src_ptr[1] = p_av_frame->data[1];
@@ -547,7 +543,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         // if not enough frames in stock, allocate
-        if ((unsigned)++output_frame_cnt_ > vp_frames_ffmpeg_.size()) {
+        if (++output_frame_cnt_ > vp_frames_ffmpeg_.size()) {
             num_alloced_frames_++;
             DecFrameBufferFFMpeg dec_frame = { 0 };
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
@@ -707,7 +703,7 @@ void FFMpegVideoDecoder::InitOutputFrameInfo(AVFrame *p_frame) {
     
     video_surface_format_ = AVPixelFormat2rocDecVideoSurfaceFormat((AVPixelFormat)p_frame->format);
     surface_stride_ = target_width_ * byte_per_pixel_;
-    chroma_width_ = (int)(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
+    chroma_width_ = static_cast<int>(ceil(target_width_ * GetChromaWidthFactor(video_surface_format_)));
     chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     // Fill output_surface_info_

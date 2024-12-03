@@ -37,8 +37,6 @@ extern "C" {
 #include <queue>
 #include <atomic>
 
-// enable this flag to test decoding without a separate thread for decode
-#define NO_DECODE_THREAD    0
 
 #define MAX_AV_PACKET_DATA_SIZE     4096
 
@@ -62,17 +60,18 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * 
          * @param num_threads : number of cpu threads for the decoder
          * @param out_mem_type : out_mem_type for the decoded surface
-         * @param codec 
-         * @param force_zero_latency 
-         * @param p_crop_rect 
-         * @param extract_user_SEI_Message 
-         * @param disp_delay 
-         * @param max_width 
-         * @param max_height 
-         * @param clk_rate 
+         * @param codec : codec type
+         * @param force_zero_latency : no support in FFMpeg decoding (false)
+         * @param p_crop_rect : to crop output
+         * @param extract_user_SEI_Message : enable to extract SEI
+         * @param disp_delay : output delayed by #disp_delay surfaces
+         * @param max_width : Max. width for the output surface
+         * @param max_height : Max. height for the output surface
+         * @param clk_rate : FPS clock-rate
+         * @param no_multithreading : run FFMpeg decoder in the main thread (no multithreading) 
          */
         FFMpegVideoDecoder(int num_threads,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
-                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
+                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, bool no_multithreading = false, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         /**
          * @brief destructor
@@ -175,7 +174,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         void DecodeThread();
         int DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame);
         void InitOutputFrameInfo(AVFrame *p_frame);
-        void PushPacket(AVPacket *pkt){
+        void PushPacket(AVPacket *pkt) {
             {
                 std::lock_guard<std::mutex> lock(mtx_pkt_q_);
                 av_packet_q_.push(pkt);
@@ -183,7 +182,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
             cv_pkt_.notify_one();
         }
         
-        AVPacket *PopPacket(){
+        AVPacket *PopPacket() {
             AVPacket *pkt;
             std::unique_lock<std::mutex> lock(mtx_pkt_q_);
             cv_pkt_.wait(lock, [&] { return !av_packet_q_.empty(); });
@@ -192,7 +191,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
             return pkt;
         }
 
-        void PushFrame(AVFrame *av_frame){
+        void PushFrame(AVFrame *av_frame) {
             {
                 std::lock_guard<std::mutex> lock(mtx_frame_q_);
                 av_frame_q_.push(av_frame);
@@ -200,7 +199,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
             cv_frame_.notify_one();
         };
 
-        AVFrame *PopFrame(){
+        AVFrame *PopFrame() {
             std::unique_lock<std::mutex> lock(mtx_frame_q_);
             cv_frame_.wait(lock, [&] { return !av_frame_q_.empty() || end_of_stream_; });
             if (end_of_stream_ && av_frame_q_.empty())
@@ -213,6 +212,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         typedef enum { CMD_ABORT, CMD_DECODE } CommandType;
         typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
 
+        bool no_multithreading_ = false;
         uint32_t av_frame_cnt_ = 0;
         uint32_t av_pkt_cnt_ = 0;
         RocdecSourceDataPacket last_packet_;
