@@ -196,38 +196,6 @@ static const char * GetVideoChromaFormatName(rocDecVideoChromaFormat e_chroma_fo
     return "Unknown";
 }
 
-static float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
-    float factor = 0.5;
-    switch (surface_format) {
-    case rocDecVideoSurfaceFormat_NV12:
-    case rocDecVideoSurfaceFormat_P016:
-        factor = 0.5;
-        break;
-    case rocDecVideoSurfaceFormat_YUV444:
-    case rocDecVideoSurfaceFormat_YUV444_16Bit:
-        factor = 1.0;
-        break;
-    }
-
-    return factor;
-}
-
-static int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
-    int num_planes = 1;
-    switch (surface_format) {
-    case rocDecVideoSurfaceFormat_NV12:
-    case rocDecVideoSurfaceFormat_P016:
-        num_planes = 1;
-        break;
-    case rocDecVideoSurfaceFormat_YUV444:
-    case rocDecVideoSurfaceFormat_YUV444_16Bit:
-        num_planes = 2;
-        break;
-    }
-
-    return num_planes;
-}
-
 static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, uint32_t width, uint32_t height, uint32_t *pitch, uint32_t *vstride) {
 
     switch (surface_format) {
@@ -247,6 +215,15 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
         *pitch = align(width, 128) * 2;
         *vstride = align(height, 16);
         break;
+    case rocDecVideoSurfaceFormat_YUV420:
+        *pitch = align(width, 256);
+        *vstride = align(height, 16);
+        break;
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        *pitch = align(width, 128) * 2;
+        *vstride = align(height, 16);
+        break;
+
     }
     return;
 }

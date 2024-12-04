@@ -36,6 +36,8 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * Clang is now the default CXX compiler.
 * The new minimum supported version of va-api is 1.16.
 * New build and runtime options have been added to the `rocDecode-setup.py` setup script.
+* Added FFMpeg based software decoding into utils.
+* Modified videodecode sample to allow FFMpeg based decoding
 
 ### Removed
 
