@@ -34,7 +34,6 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
     }
     end_of_file_ = false;
     end_of_stream_ = false;
-    bs_ring_ = static_cast<uint8_t*>(malloc(BS_RING_SIZE));
     read_ptr_ = 0;
     write_ptr_ = 0;
     curr_byte_offset_ = read_ptr_;
@@ -59,9 +58,6 @@ RocVideoESParser::RocVideoESParser(const char *input_file_path) {
 RocVideoESParser::~RocVideoESParser() {
     if (p_stream_file_) {
         p_stream_file_.close();
-    }
-    if (bs_ring_) {
-        free(bs_ring_);
     }
 }
 

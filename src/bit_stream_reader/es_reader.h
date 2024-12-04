@@ -70,7 +70,7 @@ class RocVideoESParser {
         int bit_depth_;
 
         // Bitstream ring buffer
-        uint8_t *bs_ring_;
+        uint8_t bs_ring_[BS_RING_SIZE];
         uint32_t read_ptr_; /// start position of unprocessed stream in the ring
         uint32_t write_ptr_;  /// end position of unprocessed stream in the ring
         bool end_of_file_;
