@@ -22,8 +22,6 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 3.10)
-project(videodecode)
-set(CMAKE_CXX_STANDARD 17)
 
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
@@ -33,10 +31,16 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 endif()
+# Set AMD Clang as default compiler
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
+endif()
+
+project(videodecode)
+set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 
 # rocDecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
@@ -68,10 +72,10 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
                         ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocDecode and utils
-    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
+    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
     # sample app exe
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})

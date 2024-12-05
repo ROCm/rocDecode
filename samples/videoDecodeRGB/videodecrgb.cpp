@@ -42,6 +42,7 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
 #include "video_post_process.h"
+#include "md5.h"
 
 std::vector<std::string> st_output_format_name = {"native", "bgr", "bgr48", "rgb", "rgb48", "bgra", "bgra64", "rgba", "rgba64"};
 
@@ -65,7 +66,7 @@ std::condition_variable cv[frame_buffers_size];
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
-        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, bool b_generate_md5) {
+        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, MD5Generator *md5_gen_handle, bool b_generate_md5) {
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
@@ -138,7 +139,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                 viddec.SaveFrameToFile(output_file_path, out_frame, p_surf_info);
         }
         if(b_generate_md5 && convert_to_rgb){
-            viddec.UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
+            md5_gen_handle->UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
         }
         
 
@@ -270,6 +271,7 @@ int main(int argc, char **argv) {
             return 0;
         }  
         VideoPostProcess post_process;
+        MD5Generator *md5_generator = nullptr;
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
@@ -282,7 +284,8 @@ int main(int argc, char **argv) {
         std::cout << "info: decoding started, please wait!" << std::endl;
 
         if (b_generate_md5) {
-            viddec.InitMd5();
+            md5_generator = new MD5Generator();
+            md5_generator->InitMd5();
         }
 
         int n_video_bytes = 0, n_frames_returned = 0, n_frame = 0;
@@ -296,7 +299,7 @@ int main(int argc, char **argv) {
         convert_to_rgb = e_output_format != native;
         std::atomic<bool> continue_processing(true);
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), b_generate_md5);
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), md5_generator, b_generate_md5);
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
@@ -379,7 +382,7 @@ int main(int argc, char **argv) {
         }
         if (b_generate_md5) {
             uint8_t *digest;
-            viddec.FinalizeMd5(&digest);
+            md5_generator->FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
@@ -410,6 +413,7 @@ int main(int argc, char **argv) {
                 std::cout << ref_md5_string << std::endl;
                 ref_md5_file.close();
             }
+            delete md5_generator;
         }
     } catch (const std::exception &ex) {
         std::cout << ex.what() << std::endl;

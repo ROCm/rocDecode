@@ -37,10 +37,6 @@ THE SOFTWARE.
 #include <unordered_map>
 #include <chrono>
 #include <hip/hip_runtime.h>
-extern "C" {
-#include "libavutil/md5.h"
-#include "libavutil/mem.h"
-}
 #include "rocdecode.h"
 #include "rocparser.h"
 
@@ -77,6 +73,45 @@ typedef enum OutputSurfaceMemoryType_enum {
 #define INFO(X) ;
 #endif
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+
+inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
+    int num_planes = 1;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+        num_planes = 1;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        num_planes = 2;
+        break;
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        num_planes = 2;
+        break;
+    }
+
+    return num_planes;
+};
+
+inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
+    float factor = 0.5;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+        factor = 0.5;
+        break;
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        factor = 1.0;
+        break;
+    }
+
+    return factor;
+};
+
 
 class RocVideoDecodeException : public std::exception {
 public:
@@ -142,16 +177,18 @@ typedef struct DecFrameBuffer_ {
 
 
 typedef struct OutputSurfaceInfoType {
-    uint32_t output_width;               /**< Output width of decoded surface*/
-    uint32_t output_height;              /**< Output height of decoded surface*/
-    uint32_t output_pitch;            /**< Output pitch in bytes of luma plane, chroma pitch can be inferred based on chromaFormat*/
-    uint32_t output_vstride;          /**< Output vertical stride in case of using internal mem pointer **/
-    uint32_t bytes_per_pixel;            /**< Output BytesPerPixel of decoded image*/
-    uint32_t bit_depth;                  /**< Output BitDepth of the image*/
-    uint32_t num_chroma_planes;          /**< Output Chroma number of planes*/
-    uint64_t output_surface_size_in_bytes; /**< Output Image Size in Bytes; including both luma and chroma planes*/ 
-    rocDecVideoSurfaceFormat surface_format;      /**< Chroma format of the decoded image*/
-    OutputSurfaceMemoryType mem_type;             /**< Output mem_type of the surface*/    
+    uint32_t output_width;                      /**< Output width of decoded surface*/
+    uint32_t output_height;                     /**< Output height of decoded surface*/
+    uint32_t output_pitch;                      /**< Output pitch in bytes of luma plane, chroma pitch can be inferred based on chromaFormat*/
+    uint32_t output_vstride;                    /**< Output vertical stride in case of using internal mem pointer **/
+    uint32_t chroma_height;                     /**< Chroma plane height **/
+    Rect     disp_rect;                         /**< Display area **/
+    uint32_t bytes_per_pixel;                   /**< Output BytesPerPixel of decoded image*/
+    uint32_t bit_depth;                         /**< Output BitDepth of the image*/
+    uint32_t num_chroma_planes;                 /**< Output Chroma number of planes*/
+    uint64_t output_surface_size_in_bytes;      /**< Output Image Size in Bytes; including both luma and chroma planes*/
+    rocDecVideoSurfaceFormat surface_format;    /**< Chroma format of the decoded image*/
+    OutputSurfaceMemoryType mem_type;           /**< Output mem_type of the surface*/
 } OutputSurfaceInfo;
 
 typedef struct ReconfigParams_t {
@@ -162,22 +199,20 @@ typedef struct ReconfigParams_t {
 
 class RocVideoDecoder {
     public:
-      /**
-       * @brief Construct a new Roc Video Decoder object
-       * 
-       * @param hip_ctx 
-       * @param b_use_device_mem 
-       * @param codec 
-       * @param device_id 
-       * @param b_low_latency 
-       * @param device_frame_pitched 
-       * @param p_crop_rect 
-       * @param extract_user_SEI_Message 
-       * @param max_width 
-       * @param max_height 
-       * @param clk_rate 
-       * @param force_zero_latency 
-       */
+        /**
+        * @brief Construct a new Roc Video Decoder object
+        * 
+        * @param device_id : device_id to initialize HIP and VCN
+        * @param out_mem_type : out_mem_type for the decoded surface
+        * @param codec : codec type
+        * @param force_zero_latency : to force zero latency (output in decoding orde)
+        * @param p_crop_rect : to crop output
+        * @param extract_user_SEI_Message : enable to extract SEI
+        * @param disp_delay : output delayed by #disp_delay surfaces
+        * @param max_width : Max. width for the output surface
+        * @param max_height : Max. height for the output surface
+        * @param clk_rate : FPS clock-rate
+        */
         RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
@@ -215,12 +250,8 @@ class RocVideoDecoder {
         /**
         *   @brief  This function is used to get the current frame size based on pixel format.
         */
-        int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
+        virtual int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
 
-        /**
-        *   @brief  This function is used to get the current frame size based on pitch
-        */
-        int GetFrameSizePitched() { assert(surface_stride_); return surface_stride_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)); }
 
         /**
          * @brief Get the Bit Depth and BytesPerPixel associated with the pixel format
@@ -285,12 +316,12 @@ class RocVideoDecoder {
          * @param num_decoded_pics - nummber of pictures decoded in this call
          * @return int - num of frames to display
          */
-        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
+        virtual int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
          * 
          */
-        uint8_t* GetFrame(int64_t *pts);
+        virtual uint8_t* GetFrame(int64_t *pts);
 
         /**
          * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
@@ -300,7 +331,7 @@ class RocVideoDecoder {
          * @return true      - success
          * @return false     - falied
          */
-        bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
+        virtual bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
 
         /**
          * @brief utility function to save image to a file
@@ -331,34 +362,13 @@ class RocVideoDecoder {
          * @param surf_info         - surface info
          * @param rgb_image_size    - image size for rgb (optional). A non_zero value indicates the surf_mem holds an rgb interleaved image and the entire size will be dumped to file
          */
-        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
+        virtual void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
 
         /**
          * @brief Helper funtion to close a existing file and dump to new file in case of multiple files using same decoder
         */
-        void ResetSaveFrameToFile();
+        virtual void ResetSaveFrameToFile();
 
-        /**
-         * @brief Helper function to start MD5 calculation
-         */
-        void InitMd5();
-
-        void UpdateMd5ForDataBuffer(void *pDevMem, int rgb_image_size);
-
-        /**
-         * @brief Helper function to dump decoded output surface to file
-         *
-         * @param dev_mem           - pointer to surface memory
-         * @param surf_info         - surface info
-         */
-        void UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_info);
-
-        /**
-         * @brief Helper function to complete MD5 calculation
-         *
-         * @param [out] digest Pointer to the 16 byte message digest
-         */
-        void FinalizeMd5(uint8_t **digest);
         /**
          * @brief Get the Num Of Flushed Frames from video decoder object
          * 
@@ -387,7 +397,12 @@ class RocVideoDecoder {
          */
         bool CodecSupported(int device_id, rocDecVideoCodec codec_id, uint32_t bit_depth);
 
-    private:
+        /**
+         *   @brief  This function reconfigure decoder if there is a change in sequence params.
+         */
+        virtual int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
+
+    protected:
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
          */
@@ -429,11 +444,6 @@ class RocVideoDecoder {
          *   @brief  This function gets called when all unregistered user SEI messages are parsed for a frame
          */
         int GetSEIMessage(RocdecSeiMessageInfo *p_sei_message_info);
-
-        /**
-         *   @brief  This function reconfigure decoder if there is a change in sequence params.
-         */
-        int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
         
         /**
          * @brief function to release all internal frames and clear the vp_frames_q_ (used with reconfigure): Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
@@ -495,7 +505,7 @@ class RocVideoDecoder {
         uint32_t target_width_ = 0;
         uint32_t target_height_ = 0;
         int max_width_ = 0, max_height_ = 0;
-        uint32_t chroma_height_ = 0;
+        uint32_t chroma_height_ = 0, chroma_width_ = 0;
         uint32_t num_chroma_planes_ = 0;
         uint32_t num_components_ = 0;
         uint32_t surface_stride_ = 0;
@@ -509,8 +519,6 @@ class RocVideoDecoder {
         Rect crop_rect_ = {}; // user specified region of interest within diplayable area disp_rect_
         FILE *fp_sei_ = NULL;
         FILE *fp_out_ = NULL;
-        struct AVMD5 *md5_ctx_;
-        uint8_t md5_digest_[16];
         bool is_decoder_reconfigured_ = false;
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;

@@ -22,12 +22,6 @@
 # ##############################################################################
 cmake_minimum_required(VERSION 3.10)
 
-project(rocdecode-test)
-
-# make test with CTest
-enable_testing()
-include(CTest)
-
 if(NOT DEFINED ENHANCED_MESSAGE)
   string(ASCII 27 Esc)
   set(ColourReset "${Esc}[m")
@@ -45,6 +39,12 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 endif()
+
+project(rocdecode-test)
+
+# make test with CTest
+enable_testing()
+include(CTest)
 
 # add find modules
 list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/share/rocdecode/cmake)
