@@ -37,6 +37,7 @@ THE SOFTWARE.
     #include <experimental/filesystem>
 #endif
 #include "video_demuxer.h"
+#include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
 #include "ffmpeg_video_dec.h"
 #include "common.h"
@@ -59,7 +60,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-seek_criteria - Demux seek criteria & value - optional; default - 0,0; "
     << "[0: no seek; 1: SEEK_CRITERIA_FRAME_NUM, frame number; 2: SEEK_CRITERIA_TIME_STAMP, frame number (time calculated internally)]" << std::endl
     << "-seek_mode - Seek to previous key frame or exact - optional; default - 0"
-    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl;
+    << "[0: SEEK_MODE_PREV_KEY_FRAME; 1: SEEK_MODE_EXACT_FRAME]" << std::endl
+    << "-no_ffmpeg_demux - use the built-in bitstream reader instead of FFMPEG demuxer to obtain picture data; optional." << std::endl;
     exit(0);
 }
 
@@ -85,6 +87,7 @@ int main(int argc, char **argv) {
     // seek options
     uint64_t seek_to_frame = 0;
     int seek_criteria = 0, seek_mode = 0;
+    bool b_use_ffmpeg_demuxer = true; // true by default to use FFMPEG demuxer. set to false to use the built-in bitstream reader.
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -207,6 +210,13 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-seek_mode");
             continue;
         }
+        if (!strcmp(argv[i], "-no_ffmpeg_demux")) {
+            if (i == argc) {
+                ShowHelpAndExit("-no_ffmpeg_demux");
+            }
+            b_use_ffmpeg_demuxer = false;
+            continue;
+        }
 
         ShowHelpAndExit(argv[i]);
     }
@@ -214,10 +224,38 @@ int main(int argc, char **argv) {
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
         std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        VideoDemuxer *demuxer;
+        RocdecBitstreamReader bs_reader = nullptr;
+        rocDecVideoCodec rocdec_codec_id;
+        int bit_depth;
+
+        if (b_use_ffmpeg_demuxer) {
+            std::cout << "info: Using FFMPEG demuxer" << std::endl;
+            demuxer = new VideoDemuxer(input_file_path.c_str());
+            rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
+            bit_depth = demuxer->GetBitDepth();
+        } else {
+            std::cout << "info: Using built-in bitstream reader" << std::endl;
+            if (rocDecCreateBitstreamReader(&bs_reader, input_file_path.c_str()) != ROCDEC_SUCCESS) {
+                std::cerr << "Failed to create the bitstream reader." << std::endl;
+                return 1;
+            }
+            if (rocDecGetBitstreamCodecType(bs_reader, &rocdec_codec_id) != ROCDEC_SUCCESS) {
+                std::cerr << "Failed to get stream codec type." << std::endl;
+                return 1;
+            }
+            if (rocdec_codec_id >= rocDecVideoCodec_NumCodecs) {
+                std::cerr << "Unsupported stream file type or codec type by the bitstream reader. Exiting." << std::endl;
+                return 1;
+            }
+            if (rocDecGetBitstreamBitDepth(bs_reader, &bit_depth) != ROCDEC_SUCCESS) {
+                std::cerr << "Failed to get stream bit depth." << std::endl;
+                return 1;
+            }
+        }
+
         RocVideoDecoder *viddec;
-        VideoDemuxer demuxer(input_file_path.c_str());
         VideoSeekContext video_seek_ctx;
-        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
         if (!backend)   // gpu backend
             viddec = new RocVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
         else {
@@ -230,10 +268,10 @@ int main(int argc, char **argv) {
                 viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay, true);
         }
 
-        if(!viddec->CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
+        if(!viddec->CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
             std::cerr << "rocDecode doesn't support codec!" << std::endl;
             return 0;
-        }        
+        }
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -253,6 +291,8 @@ int main(int argc, char **argv) {
         uint32_t width, height;
         double total_dec_time = 0;
         bool first_frame = true;
+        MD5Generator *md5_generator = nullptr;
+
         // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
@@ -267,32 +307,41 @@ int main(int argc, char **argv) {
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
         if (b_generate_md5) {
-            viddec->InitMd5();
+            md5_generator = new MD5Generator();
+            md5_generator->InitMd5();
+            reconfig_user_struct.md5_generator_handle = static_cast<void*>(md5_generator);
         }
         viddec->SetReconfigParams(&reconfig_params);
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            if (seek_criteria == 1 && first_frame) {
-                // use VideoSeekContext class to seek to given frame number
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
-                first_frame = false;
-            } else if (seek_criteria == 2 && first_frame) {
-                // use VideoSeekContext class to seek to given timestamp
-                video_seek_ctx.seek_frame_ = seek_to_frame;
-                video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
-                video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
-                demuxer.Seek(video_seek_ctx, &pvideo, &n_video_bytes);
-                pts = video_seek_ctx.out_frame_pts_;
-                std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
-                first_frame = false;
+            if (b_use_ffmpeg_demuxer) {
+                if (seek_criteria == 1 && first_frame) {
+                    // use VideoSeekContext class to seek to given frame number
+                    video_seek_ctx.seek_frame_ = seek_to_frame;
+                    video_seek_ctx.seek_crit_ = SEEK_CRITERIA_FRAME_NUM;
+                    video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                    demuxer->Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                    pts = video_seek_ctx.out_frame_pts_;
+                    std::cout << "info: Number of frames that were decoded during seek - " << video_seek_ctx.num_frames_decoded_ << std::endl;
+                    first_frame = false;
+                } else if (seek_criteria == 2 && first_frame) {
+                    // use VideoSeekContext class to seek to given timestamp
+                    video_seek_ctx.seek_frame_ = seek_to_frame;
+                    video_seek_ctx.seek_crit_ = SEEK_CRITERIA_TIME_STAMP;
+                    video_seek_ctx.seek_mode_ = (seek_mode ? SEEK_MODE_EXACT_FRAME : SEEK_MODE_PREV_KEY_FRAME);
+                    demuxer->Seek(video_seek_ctx, &pvideo, &n_video_bytes);
+                    pts = video_seek_ctx.out_frame_pts_;
+                    std::cout << "info: Duration of frame found after seek - " << video_seek_ctx.out_frame_duration_ << " ms" << std::endl;
+                    first_frame = false;
+                } else {
+                    demuxer->Demux(&pvideo, &n_video_bytes, &pts);
+                }
             } else {
-                demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+                if (rocDecGetBitstreamPicData(bs_reader, &pvideo, &n_video_bytes, &pts) != ROCDEC_SUCCESS) {
+                    std::cerr << "Failed to get picture data." << std::endl;
+                    return 1;
+                }
             }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
@@ -307,7 +356,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec->GetFrame(&pts);
                 if (b_generate_md5) {
-                    viddec->UpdateMd5ForFrame(pframe, surf_info);
+                    md5_generator->UpdateMd5ForFrame(pframe, surf_info);
                 }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec->SaveFrameToFile(output_file_path, pframe, surf_info);
@@ -323,7 +372,6 @@ int main(int argc, char **argv) {
             if (num_decoded_frames && num_decoded_frames <= n_frame) {
                 break;
             }
-
         } while (n_video_bytes);
         
         n_frame += viddec->GetNumOfFlushedFrames();
@@ -343,7 +391,7 @@ int main(int argc, char **argv) {
         }
         if (b_generate_md5) {
             uint8_t *digest;
-            viddec->FinalizeMd5(&digest);
+            md5_generator->FinalizeMd5(&digest);
             std::cout << "MD5 message digest: ";
             for (int i = 0; i < 16; i++) {
                 std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
@@ -371,9 +419,15 @@ int main(int argc, char **argv) {
                 } else {
                     std::cout << "MD5 digest does not match the reference MD5 digest: ";
                 }
-                std::cout << ref_md5_string << std::endl;
+                std::cout << ref_md5_string.c_str() << std::endl;
                 ref_md5_file.close();
             }
+            delete md5_generator;
+        }
+        if (b_use_ffmpeg_demuxer && demuxer) {
+            delete demuxer;
+        } else if (bs_reader) {
+            rocDecDestroyBitstreamReader(bs_reader);
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "roc_video_dec.h"
+#include "md5.h"
 
 typedef enum ReconfigFlushMode_enum {
     RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
@@ -34,6 +35,7 @@ typedef enum ReconfigFlushMode_enum {
 typedef struct ReconfigDumpFileStruct_t {
     bool b_dump_frames_to_file;
     std::string output_file_name;
+    void *md5_generator_handle;
 } ReconfigDumpFileStruct;
 
 
@@ -53,13 +55,14 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
     int64_t pts;
     while ((pframe = viddec->GetFrame(&pts))) {
         if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
+            ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
             if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
-                ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
                 if (p_dump_file_struct->b_dump_frames_to_file) {
                     viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
                 }
             } else if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
-                viddec->UpdateMd5ForFrame(pframe, surf_info);
+                MD5Generator *md5_generator = static_cast<MD5Generator*>(p_dump_file_struct->md5_generator_handle);
+                md5_generator->UpdateMd5ForFrame(pframe, surf_info);
             }
         }
         // release and flush frame

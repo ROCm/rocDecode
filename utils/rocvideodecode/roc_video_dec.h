@@ -37,10 +37,6 @@ THE SOFTWARE.
 #include <unordered_map>
 #include <chrono>
 #include <hip/hip_runtime.h>
-extern "C" {
-#include "libavutil/md5.h"
-#include "libavutil/mem.h"
-}
 #include "rocdecode.h"
 #include "rocparser.h"
 
@@ -181,16 +177,18 @@ typedef struct DecFrameBuffer_ {
 
 
 typedef struct OutputSurfaceInfoType {
-    uint32_t output_width;               /**< Output width of decoded surface*/
-    uint32_t output_height;              /**< Output height of decoded surface*/
-    uint32_t output_pitch;            /**< Output pitch in bytes of luma plane, chroma pitch can be inferred based on chromaFormat*/
-    uint32_t output_vstride;          /**< Output vertical stride in case of using internal mem pointer **/
-    uint32_t bytes_per_pixel;            /**< Output BytesPerPixel of decoded image*/
-    uint32_t bit_depth;                  /**< Output BitDepth of the image*/
-    uint32_t num_chroma_planes;          /**< Output Chroma number of planes*/
-    uint64_t output_surface_size_in_bytes; /**< Output Image Size in Bytes; including both luma and chroma planes*/ 
-    rocDecVideoSurfaceFormat surface_format;      /**< Chroma format of the decoded image*/
-    OutputSurfaceMemoryType mem_type;             /**< Output mem_type of the surface*/    
+    uint32_t output_width;                      /**< Output width of decoded surface*/
+    uint32_t output_height;                     /**< Output height of decoded surface*/
+    uint32_t output_pitch;                      /**< Output pitch in bytes of luma plane, chroma pitch can be inferred based on chromaFormat*/
+    uint32_t output_vstride;                    /**< Output vertical stride in case of using internal mem pointer **/
+    uint32_t chroma_height;                     /**< Chroma plane height **/
+    Rect     disp_rect;                         /**< Display area **/
+    uint32_t bytes_per_pixel;                   /**< Output BytesPerPixel of decoded image*/
+    uint32_t bit_depth;                         /**< Output BitDepth of the image*/
+    uint32_t num_chroma_planes;                 /**< Output Chroma number of planes*/
+    uint64_t output_surface_size_in_bytes;      /**< Output Image Size in Bytes; including both luma and chroma planes*/
+    rocDecVideoSurfaceFormat surface_format;    /**< Chroma format of the decoded image*/
+    OutputSurfaceMemoryType mem_type;           /**< Output mem_type of the surface*/
 } OutputSurfaceInfo;
 
 typedef struct ReconfigParams_t {
@@ -372,27 +370,6 @@ class RocVideoDecoder {
         virtual void ResetSaveFrameToFile();
 
         /**
-         * @brief Helper function to start MD5 calculation
-         */
-        void InitMd5();
-
-        void UpdateMd5ForDataBuffer(void *pDevMem, int rgb_image_size);
-
-        /**
-         * @brief Helper function to dump decoded output surface to file
-         *
-         * @param dev_mem           - pointer to surface memory
-         * @param surf_info         - surface info
-         */
-        void UpdateMd5ForFrame(void *surf_mem, OutputSurfaceInfo *surf_info);
-
-        /**
-         * @brief Helper function to complete MD5 calculation
-         *
-         * @param [out] digest Pointer to the 16 byte message digest
-         */
-        void FinalizeMd5(uint8_t **digest);
-        /**
          * @brief Get the Num Of Flushed Frames from video decoder object
          * 
          * @return int32_t 
@@ -542,8 +519,6 @@ class RocVideoDecoder {
         Rect crop_rect_ = {}; // user specified region of interest within diplayable area disp_rect_
         FILE *fp_sei_ = NULL;
         FILE *fp_out_ = NULL;
-        struct AVMD5 *md5_ctx_;
-        uint8_t md5_digest_[16];
         bool is_decoder_reconfigured_ = false;
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;

@@ -38,7 +38,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # NOTE: Match version with api/rocdecode_version.h
-set(VERSION "0.9.0")
+set(VERSION "0.10.0")
 set(CMAKE_CXX_STANDARD 17)
 
 # Set Project Version and Language
@@ -162,7 +162,7 @@ if(HIP_FOUND AND Libva_FOUND)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
   # install rocDecode include files -- {ROCM_PATH}/include/rocdecode
-  install(FILES api/rocdecode.h api/rocparser.h api/rocdecode_version.h
+  install(FILES api/rocdecode.h api/rocparser.h api/roc_bitstream_reader.h api/rocdecode_version.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
   # install rocDecode api trace include file -- {ROCM_PATH}/include/rocdecode/amd_detail
   install(FILES api/amd_detail/rocdecode_api_trace.h
@@ -178,6 +178,7 @@ if(HIP_FOUND AND Libva_FOUND)
   install(FILES samples/videoDecodeRGB/CMakeLists.txt samples/videoDecodeRGB/README.md samples/videoDecodeRGB/videodecrgb.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeRGB COMPONENT dev)
   install(FILES samples/videoDecodeBatch/CMakeLists.txt samples/videoDecodeBatch/README.md samples/videoDecodeBatch/videodecodebatch.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeBatch COMPONENT dev)
   install(FILES samples/common.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples COMPONENT dev)
+  install(FILES utils/md5.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/video_demuxer.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/colorspace_kernels.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/colorspace_kernels.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
