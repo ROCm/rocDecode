@@ -625,7 +625,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
                 HIP_API_CALL(hipMemcpyDtoDAsync(p_frame_v, p_src_ptr_v, chroma_size, hip_stream_));
             } else {
                 // use 2d copy to copy an ROI
-                HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyDeviceToDevice, hip_stream_));
+                HIP_API_CALL(hipMemcpy2DAsync(p_frame_v, dst_pitch, p_src_ptr_v, src_pitch[2], dst_pitch, chroma_height_, hipMemcpyHostToDevice, hip_stream_));
             }            
         }
         else {
@@ -755,7 +755,6 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             InitOutputFrameInfo(p_frame);
         }
         decoded_pic_cnt_++;
-        
         if (no_multithreading_)
             av_frame_q_.push(p_frame);
         else
