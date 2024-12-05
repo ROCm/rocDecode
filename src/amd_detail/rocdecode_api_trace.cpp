@@ -43,7 +43,7 @@ rocDecStatus ROCDECAPI rocDecGetDecoderCaps(RocdecDecodeCaps *decode_caps);
 rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_params);
 rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus *decode_status);
 rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params);
-rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params);
+rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t *horizontal_pitch, RocdecProcParams *vid_postproc_params);
 const char *ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status);
 rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path);
 rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_reader_handle, rocDecVideoCodec *codec_type);

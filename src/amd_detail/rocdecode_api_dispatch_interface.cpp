@@ -52,7 +52,7 @@ rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle,
 rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params) {
     return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_reconfigure_decoder(decoder_handle, reconfig_params);
 }
-rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params) {
+rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t *horizontal_pitch, RocdecProcParams *vid_postproc_params) {
     return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_video_frame(decoder_handle, pic_idx, dev_mem_ptr, horizontal_pitch, vid_postproc_params);
 }
 const char *ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status) {
