@@ -23,6 +23,7 @@ THE SOFTWARE.
 
 #include "rocdecode.h"
 #include "rocparser.h"
+#include "roc_bitstream_reader.h"
 
 // Define version macros for the rocDecode API dispatch table, specifying the MAJOR and STEP versions.
 //
@@ -46,7 +47,7 @@ THE SOFTWARE.
 
 // Increment the ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION when new runtime API functions are added.
 // If the corresponding ROCDECODE_RUNTIME_API_TABLE_MAJOR_VERSION increases reset the ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION to zero.
-#define ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION 0
+#define ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION 1
 
 // rocDecode API interface
 typedef rocDecStatus (ROCDECAPI *PfnRocDecCreateVideoParser)(RocdecVideoParser *parser_handle, RocdecParserParams *params);
@@ -60,6 +61,11 @@ typedef rocDecStatus (ROCDECAPI *PfnRocDecGetDecodeStatus)(rocDecDecoderHandle d
 typedef rocDecStatus (ROCDECAPI *PfnRocDecReconfigureDecoder)(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params);
 typedef rocDecStatus (ROCDECAPI *PfnRocDecGetVideoFrame)(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params);
 typedef const char* (ROCDECAPI *PfnRocDecGetErrorName)(rocDecStatus rocdec_status);
+typedef rocDecStatus (ROCDECAPI *PfnRocDecCreateBitstreamReader)(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path);
+typedef rocDecStatus (ROCDECAPI *PfnRocDecGetBitstreamCodecType)(RocdecBitstreamReader bs_reader_handle, rocDecVideoCodec *codec_type);
+typedef rocDecStatus (ROCDECAPI *PfnRocDecGetBitstreamBitDepth)(RocdecBitstreamReader bs_reader_handle, int *bit_depth);
+typedef rocDecStatus (ROCDECAPI *PfnRocDecGetBitstreamPicData)(RocdecBitstreamReader bs_reader_handle, uint8_t **pic_data, int *pic_size, int64_t *pts);
+typedef rocDecStatus (ROCDECAPI *PfnRocDecDestroyBitstreamReader)(RocdecBitstreamReader bs_reader_handle);
 
 // rocDecode API dispatch table
 struct RocDecodeDispatchTable {
@@ -78,6 +84,13 @@ struct RocDecodeDispatchTable {
     PfnRocDecGetErrorName pfn_rocdec_get_error_name;
     // PLEASE DO NOT EDIT ABOVE!
     // ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 1
+    PfnRocDecCreateBitstreamReader pfn_rocdec_create_bitstream_reader;
+    PfnRocDecGetBitstreamCodecType pfn_rocdec_get_bitstream_codec_type;
+    PfnRocDecGetBitstreamBitDepth pfn_rocdec_get_bitstream_bit_depth;
+    PfnRocDecGetBitstreamPicData pfn_rocdec_get_bitstream_pic_data;
+    PfnRocDecDestroyBitstreamReader pfn_rocdec_destroy_bitstream_reader;
+    // PLEASE DO NOT EDIT ABOVE!
+    // ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 2
 
     // ******************************************************************************************* //
     //                                            READ BELOW
