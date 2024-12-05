@@ -45,6 +45,11 @@ rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle,
 rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params);
 rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params);
 const char *ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status);
+rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path);
+rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_reader_handle, rocDecVideoCodec *codec_type);
+rocDecStatus ROCDECAPI rocDecGetBitstreamBitDepth(RocdecBitstreamReader bs_reader_handle, int *bit_depth);
+rocDecStatus ROCDECAPI rocDecGetBitstreamPicData(RocdecBitstreamReader bs_reader_handle, uint8_t **pic_data, int *pic_size, int64_t *pts);
+rocDecStatus ROCDECAPI rocDecDestroyBitstreamReader(RocdecBitstreamReader bs_reader_handle);
 }
 
 namespace rocdecode {
@@ -62,6 +67,11 @@ void UpdateDispatchTable(RocDecodeDispatchTable* ptr_dispatch_table) {
     ptr_dispatch_table->pfn_rocdec_reconfigure_decoder = rocdecode::rocDecReconfigureDecoder;
     ptr_dispatch_table->pfn_rocdec_get_video_frame = rocdecode::rocDecGetVideoFrame;
     ptr_dispatch_table->pfn_rocdec_get_error_name = rocdecode::rocDecGetErrorName;
+    ptr_dispatch_table->pfn_rocdec_create_bitstream_reader = rocdecode::rocDecCreateBitstreamReader;
+    ptr_dispatch_table->pfn_rocdec_get_bitstream_codec_type = rocdecode::rocDecGetBitstreamCodecType;
+    ptr_dispatch_table->pfn_rocdec_get_bitstream_bit_depth = rocdecode::rocDecGetBitstreamBitDepth;
+    ptr_dispatch_table->pfn_rocdec_get_bitstream_pic_data = rocdecode::rocDecGetBitstreamPicData;
+    ptr_dispatch_table->pfn_rocdec_destroy_bitstream_reader = rocdecode::rocDecDestroyBitstreamReader;
 }
 
 #if ROCDECODE_ROCPROFILER_REGISTER > 0
@@ -155,14 +165,21 @@ ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_decode_status, 7)
 ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_reconfigure_decoder, 8)
 ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_video_frame, 9)
 ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_error_name, 10)
+// ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 1
+ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_create_bitstream_reader, 11)
+ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_bitstream_codec_type, 12)
+ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_bitstream_bit_depth, 13)
+ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_get_bitstream_pic_data, 14)
+ROCDECODE_ENFORCE_ABI(RocDecodeDispatchTable, pfn_rocdec_destroy_bitstream_reader, 15)
+// ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 2
 
 // If ROCDECODE_ENFORCE_ABI entries are added for each new function pointer in the table,
 // the number below will be one greater than the number in the last ROCDECODE_ENFORCE_ABI line. For example:
-//  ROCDECODE_ENFORCE_ABI(<table>, <functor>, 10)
-//  ROCDECODE_ENFORCE_ABI_VERSIONING(<table>, 11) <- 10 + 1 = 11
-ROCDECODE_ENFORCE_ABI_VERSIONING(RocDecodeDispatchTable, 11)
+//  ROCDECODE_ENFORCE_ABI(<table>, <functor>, 15)
+//  ROCDECODE_ENFORCE_ABI_VERSIONING(<table>, 16) <- 15 + 1 = 16
+ROCDECODE_ENFORCE_ABI_VERSIONING(RocDecodeDispatchTable, 16)
 
-static_assert(ROCDECODE_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 0,
+static_assert(ROCDECODE_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && ROCDECODE_RUNTIME_API_TABLE_STEP_VERSION == 1,
               "If you encounter this error, add the new ROCDECODE_ENFORCE_ABI(...) code for the updated function pointers, "
               "and then modify this check to ensure it evaluates to true.");
 #endif
