@@ -22,11 +22,12 @@ THE SOFTWARE.
 
 #include <iostream>
 #include <fstream>
+#include <cstring>
+#include <string>
 #include <iomanip>
 #include <unistd.h>
 #include <vector>
 #include <string>
-#include <fstream>
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -35,68 +36,85 @@ THE SOFTWARE.
 #else
     #include <experimental/filesystem>
 #endif
-#include "video_demuxer.h"
+ 
+#include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
-#include "md5.h"
 
-class FileStreamProvider : public VideoDemuxer::StreamProvider {
-public:
-    FileStreamProvider(const char *input_file_path) {
-        fp_in_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
-        if (!fp_in_) {
-            std::cerr << "Unable to open input file: " << input_file_path << std::endl;
-            exit(-1);
+typedef enum ReconfigFlushMode_enum {
+    RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = 2,      /**<  Calculate the MD5 of the flushed frames */
+} ReconfigFlushMode;
+
+// this struct is used by videodecode and videodecodeMultiFiles to dump last frames to file
+typedef struct ReconfigDumpFileStruct_t {
+    bool b_dump_frames_to_file;
+    std::string output_file_name;
+    void *md5_generator_handle;
+} ReconfigDumpFileStruct;
+
+
+// callback function to flush last frames and save it to file when reconfigure happens
+int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_user_struct) {
+    int n_frames_flushed = 0;
+    if ((p_viddec_obj == nullptr) ||  (p_user_struct == nullptr)) return n_frames_flushed;
+
+    RocVideoDecoder *viddec = static_cast<RocVideoDecoder *> (p_viddec_obj);
+    OutputSurfaceInfo *surf_info;
+    if (!viddec->GetOutputSurfaceInfo(&surf_info)) {
+        std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
+        return n_frames_flushed;
+    }
+
+    uint8_t *pframe = nullptr;
+    int64_t pts;
+    while ((pframe = viddec->GetFrame(&pts))) {
+        if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
+            ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
+            if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
+                if (p_dump_file_struct->b_dump_frames_to_file) {
+                    viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
+                }
+            }
         }
-        fp_in_.seekg (0, fp_in_.end);
-        int length = fp_in_.tellg();
-        fp_in_.seekg (0, fp_in_.beg);
-        io_buffer_size_ = length;
+        // release and flush frame
+        viddec->ReleaseFrame(pts, true);
+        n_frames_flushed ++;
     }
-    ~FileStreamProvider() {
-        fp_in_.close();
-    }
-    // Fill in the buffer owned by the demuxer
-    int GetData(uint8_t *p_buf, int n_buf) {
-        // We read a file for this example. You may get your data from network or somewhere else
-        return static_cast<int>(fp_in_.read(reinterpret_cast<char*>(p_buf), n_buf).gcount());
-    }
-    size_t GetBufferSize() { return io_buffer_size_; };
 
-private:
-    std::ifstream fp_in_;
-    size_t  io_buffer_size_;
-};
+    return n_frames_flushed;
+}
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+    << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
     << "-sei extract SEI messages; optional;" << std::endl
-    << "-md5 generate MD5 message digest on the decoded YUV image sequence; optional;" << std::endl
-    << "-md5_check MD5 File Path - generate MD5 message digest on the decoded YUV image sequence and compare to the reference MD5 string in a file; optional;" << std::endl
     << "-crop crop rectangle for output (not used when using interopped decoded frame); optional; default: 0" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
-    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl
-    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl;
+    << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
     exit(0);
 }
 
 int main(int argc, char **argv) {
-
-    std::string input_file_path, output_file_path, md5_file_path;
-    std::fstream ref_md5_file;
+    std::string input_file_path, output_file_path;
     int dump_output_frames = 0;
     int device_id = 0;
+    int disp_delay = 1;
     bool b_force_zero_latency = false;     // false by default: enabling this option might affect decoding performance
     bool b_extract_sei_messages = false;
-    bool b_generate_md5 = false;
-    bool b_md5_check = false;
-    int disp_delay = 1;
+    bool b_flush_frames_during_reconfig = true;
     Rect crop_rect = {};
     Rect *p_crop_rect = nullptr;
-    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;        // set to internal
+    OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;      // set to internal
+    ReconfigParams reconfig_params = { 0 };
+    ReconfigDumpFileStruct reconfig_user_struct = { 0 };
+    uint32_t num_decoded_frames = 0;  // default value is 0, meaning decode the entire stream
+
     // Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
@@ -127,6 +145,20 @@ int main(int argc, char **argv) {
             device_id = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-disp_delay")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-disp_delay");
+            }
+            disp_delay = atoi(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i], "-f")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-d");
+            }
+            num_decoded_frames = atoi(argv[i]);
+            continue;
+        }
         if (!strcmp(argv[i], "-z")) {
             if (i == argc) {
                 ShowHelpAndExit("-z");
@@ -139,22 +171,6 @@ int main(int argc, char **argv) {
                 ShowHelpAndExit("-sei");
             }
             b_extract_sei_messages = true;
-            continue;
-        }
-        if (!strcmp(argv[i], "-md5")) {
-            if (i == argc) {
-                ShowHelpAndExit("-md5");
-            }
-            b_generate_md5 = true;
-            continue;
-        }
-        if (!strcmp(argv[i], "-md5_check")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-md5_check");
-            }
-            b_generate_md5 = true;
-            b_md5_check = true;
-            md5_file_path = argv[i];
             continue;
         }
         if (!strcmp(argv[i], "-crop")) {
@@ -175,25 +191,43 @@ int main(int argc, char **argv) {
             mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
-        if (!strcmp(argv[i], "-disp_delay")) {
-            if (++i == argc) {
-                ShowHelpAndExit("-disp_delay");
-            }
-            disp_delay = atoi(argv[i]);
+        if (!strcmp(argv[i], "flush")) {
+            b_flush_frames_during_reconfig = atoi(argv[i]) ? true : false;
             continue;
         }
+
         ShowHelpAndExit(argv[i]);
     }
+
     try {
-        FileStreamProvider stream_provider(input_file_path.c_str());
-        VideoDemuxer demuxer(&stream_provider);
-        rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer.GetCodecID());
-        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-        if(!viddec.CodecSupported(device_id, rocdec_codec_id, demuxer.GetBitDepth())) {
-            std::cerr << "GPU doesn't support codec!" << std::endl;
-            return 0;
+        std::size_t found_file = input_file_path.find_last_of('/');
+        std::cout << "info: Input file: " << input_file_path.substr(found_file + 1) << std::endl;
+        std::cout << "info: Using built-in bitstream reader" << std::endl;
+        RocdecBitstreamReader bs_reader = nullptr;
+        rocDecVideoCodec rocdec_codec_id;
+        int bit_depth;
+        if (rocDecCreateBitstreamReader(&bs_reader, input_file_path.c_str()) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to create the bitstream reader." << std::endl;
+            return 1;
+        }
+        if (rocDecGetBitstreamCodecType(bs_reader, &rocdec_codec_id) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to get stream codec type." << std::endl;
+            return 1;
+        }
+        if (rocdec_codec_id >= rocDecVideoCodec_NumCodecs) {
+            std::cerr << "Unsupported stream file type or codec type by the bitstream reader. Exiting." << std::endl;
+            return 1;
+        }
+        if (rocDecGetBitstreamBitDepth(bs_reader, &bit_depth) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to get stream bit depth." << std::endl;
+            return 1;
         }
 
+        RocVideoDecoder viddec(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
+        if(!viddec.CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
+            std::cerr << "GPU doesn't support codec!" << std::endl;
+            return 0;
+        }        
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
 
@@ -204,6 +238,7 @@ int main(int argc, char **argv) {
         std::cout << "info: decoding started, please wait!" << std::endl;
 
         int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
+        int n_pic_decoded = 0, decoded_pics = 0;
         uint8_t *pvideo = nullptr;
         int pkg_flags = 0;
         uint8_t *pframe = nullptr;
@@ -211,88 +246,72 @@ int main(int argc, char **argv) {
         OutputSurfaceInfo *surf_info;
         uint32_t width, height;
         double total_dec_time = 0;
-        MD5Generator *md5_generator = nullptr;
-
-        if (b_generate_md5) {
-            md5_generator = new MD5Generator();
-            md5_generator->InitMd5();
+        bool first_frame = true;
+        // initialize reconfigure params: the following is configured to dump to output which is relevant for this sample
+        reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
+        reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
+        reconfig_user_struct.output_file_name = output_file_path;
+        if (dump_output_frames) {
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+        } else {
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
         }
+        reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
+
+        viddec.SetReconfigParams(&reconfig_params);
 
         do {
             auto start_time = std::chrono::high_resolution_clock::now();
-            demuxer.Demux(&pvideo, &n_video_bytes, &pts);
+            if (rocDecGetBitstreamPicData(bs_reader, &pvideo, &n_video_bytes, &pts) != ROCDEC_SUCCESS) {
+                std::cerr << "Failed to get picture data." << std::endl;
+                return 1;
+            }
             // Treat 0 bitstream size as end of stream indicator
             if (n_video_bytes == 0) {
                 pkg_flags |= ROCDEC_PKT_ENDOFSTREAM;
             }
-            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts);
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            total_dec_time += time_per_frame;
+            n_frame_returned = viddec.DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
+
             if (!n_frame && !viddec.GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec.GetFrame(&pts);
-                if (b_generate_md5) {
-                    md5_generator->UpdateMd5ForFrame(pframe, surf_info);
-                }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
                     viddec.SaveFrameToFile(output_file_path, pframe, surf_info);
                 }
                 // release frame
                 viddec.ReleaseFrame(pts);
             }
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            total_dec_time += time_per_decode;
             n_frame += n_frame_returned;
-        } while (n_video_bytes);
+            n_pic_decoded += decoded_pics;
+            if (num_decoded_frames && num_decoded_frames <= n_frame) {
+                break;
+            }
 
-        std::cout << "info: Total frame decoded: " << n_frame << std::endl;
+        } while (n_video_bytes);
+        
+        n_frame += viddec.GetNumOfFlushedFrames();
+        std::cout << "info: Total pictures decoded: " << n_pic_decoded << std::endl;
+        std::cout << "info: Total frames output/displayed: " << n_frame << std::endl;
         if (!dump_output_frames) {
-            std::cout << "info: avg decoding time per frame (ms): " << total_dec_time / n_frame << std::endl;
-            std::cout << "info: avg FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
+            std::cout << "info: avg decoding time per picture: " << total_dec_time / n_pic_decoded << " ms" <<std::endl;
+            std::cout << "info: avg decode FPS: " << (n_pic_decoded / total_dec_time) * 1000 << std::endl;
+            std::cout << "info: avg output/display time per frame: " << total_dec_time / n_frame << " ms" <<std::endl;
+            std::cout << "info: avg output/display FPS: " << (n_frame / total_dec_time) * 1000 << std::endl;
         } else {
             if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
                 std::cout << "info: saving frames with -m 3 option is not supported!" << std::endl;
             } else {
                 std::cout << "info: saved frames into " << output_file_path << std::endl;
             }
-
         }
-        if (b_generate_md5) {
-            uint8_t *digest;
-            md5_generator->FinalizeMd5(&digest);
-            std::cout << "MD5 message digest: ";
-            for (int i = 0; i < 16; i++) {
-                std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(digest[i]);
-            }
-            std::cout << std::endl;
-            if (b_md5_check) {
-                std::string ref_md5_string(33, 0);
-                uint8_t ref_md5[16];
-                ref_md5_file.open(md5_file_path.c_str(), std::ios::in);
-                if ((ref_md5_file.rdstate() & std::ifstream::failbit) != 0) {
-                    std::cerr << "Failed to open MD5 file." << std::endl;
-                    return 1;
-                }
-                ref_md5_file.getline(ref_md5_string.data(), ref_md5_string.length());
-                if ((ref_md5_file.rdstate() & std::ifstream::badbit) != 0) {
-                    std::cerr << "Failed to read MD5 digest string." << std::endl;
-                    return 1;
-                }
-                for (int i = 0; i < 16; i++) {
-                    std::string part = ref_md5_string.substr(i * 2, 2);
-                    ref_md5[i] = std::stoi(part, nullptr, 16);
-                }
-                if (memcmp(digest, ref_md5, 16) == 0) {
-                    std::cout << "MD5 digest matches the reference MD5 digest: ";
-                } else {
-                    std::cout << "MD5 digest does not match the reference MD5 digest: ";
-                }
-                std::cout << ref_md5_string << std::endl;
-                ref_md5_file.close();
-            }
-            delete md5_generator;
+        if (bs_reader) {
+            rocDecDestroyBitstreamReader(bs_reader);
         }
     } catch (const std::exception &ex) {
       std::cout << ex.what() << std::endl;

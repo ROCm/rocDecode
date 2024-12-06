@@ -45,6 +45,8 @@ parser.add_argument('--files_directory',    type=str, default='',
                     help='The path to a dirctory containing one or more supported files for decoding (e.g., mp4, mov, etc.) and their corresponding reference MD5 digests - required')
 parser.add_argument('--results_directory',    type=str, default='',
                     help='The path to a dirctory to store results - optional')
+parser.add_argument('--use_ffmpeg_demuxer',   type=int, default=1,
+                    help='Indicator to use FFMPEG demuxer - optional (default:1). If set to 0, built-in bitstream reader is used.')
 
 args = parser.parse_args()
 
@@ -53,6 +55,12 @@ gpuDeviceID = args.gpu_device_id
 filesDir = args.files_directory
 videoDecodeEXE = args.videodecode_exe
 resultsDir = args.results_directory
+useFFDemuxer = args.use_ffmpeg_demuxer
+
+if useFFDemuxer == 1:
+    bsReaderOption = ''
+else:
+    bsReaderOption = '-no_ffmpeg_demux'
 
 print("\nrunrocDecodeTests V"+__version__+"\n")
 
@@ -108,7 +116,7 @@ if streamListSize != md5ListSize:
 for i in range(streamListSize):
     streamFilePath = streamFileDir + streamFileList[i]
     md5FilePath = md5FileDir + md5FileList[i]
-    os.system(run_rocDecode_app +' -i ' + streamFilePath + ' -md5_check ' + md5FilePath + ' -d ' + str(gpuDeviceID) + ' | tee -a ' + resultsPath + '/rocDecode_output.log')
+    os.system(run_rocDecode_app +' -i ' + streamFilePath + ' ' + bsReaderOption + ' -md5_check ' + md5FilePath + ' -d ' + str(gpuDeviceID) + ' | tee -a ' + resultsPath + '/rocDecode_output.log')
     print("======================================================================================\n")
 
 fileString = 'Input file'
