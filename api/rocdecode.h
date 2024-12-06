@@ -1735,9 +1735,10 @@ extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decod
 //! \ingroup group_amd_rocdecode
 //! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
+//! horizontal_pitch is a pointer to an unsigned 32-bit integer array of size 3.
 /************************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
-                                                    void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3],
+                                                    void *dev_mem_ptr[3], uint32_t *horizontal_pitch,
                                                     RocdecProcParams *vid_postproc_params);
 
 /*****************************************************************************************************/
