@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
         std::cout << "info: Number of threads: " << n_thread << std::endl;
 
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer(num_files);
-        std::unique_ptr<RocVideoDecoder> dec_8bit_avc(nullptr), dec_8bit_hevc(nullptr), dec_10bit_hevc(nullptr), dec_8bit_av1(nullptr), dec_10bit_av1(nullptr);
+        std::unique_ptr<RocVideoDecoder> dec_8bit_avc(nullptr), dec_8bit_hevc(nullptr), dec_10bit_hevc(nullptr), dec_8bit_av1(nullptr), dec_10bit_av1(nullptr), dec_8bit_vp9(nullptr), dec_10bit_vp9(nullptr);
         std::vector<std::unique_ptr<DecoderInfo>> v_dec_info;
         ThreadPool thread_pool(n_thread);
 
@@ -359,6 +359,12 @@ int main(int argc, char **argv) {
                 } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_AV1) {
                     std::unique_ptr<RocVideoDecoder> dec_8bit_av1(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
                     v_dec_info[i]->viddec = std::move(dec_8bit_av1);
+                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_VP9) {
+                    std::unique_ptr<RocVideoDecoder> dec_8bit_vp9(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
+                    v_dec_info[i]->viddec = std::move(dec_8bit_vp9);
+                } else {
+                    ERR("ERROR: codec type is not supported!");
+                    return -1;
                 }
             } else { //bit depth = 10bit
                 if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_HEVC) {
@@ -367,6 +373,12 @@ int main(int argc, char **argv) {
                 } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_AV1) {
                     std::unique_ptr<RocVideoDecoder> dec_10bit_av1(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
                     v_dec_info[i]->viddec = std::move(dec_10bit_av1);
+                } else if (v_dec_info[i]->rocdec_codec_id == rocDecVideoCodec_VP9) {
+                    std::unique_ptr<RocVideoDecoder> dec_10bit_vp9(new RocVideoDecoder(v_dec_info[i]->dec_device_id, mem_type, v_dec_info[i]->rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
+                    v_dec_info[i]->viddec = std::move(dec_10bit_vp9);
+                } else {
+                    ERR("ERROR: codec type is not supported!");
+                    return -1;
                 }
             }
 
@@ -399,13 +411,21 @@ int main(int argc, char **argv) {
                         } else if (dec_8bit_av1 == nullptr && codec_id == rocDecVideoCodec_AV1) {
                             std::unique_ptr<RocVideoDecoder> dec_8bit_av1(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
                             v_dec_info[thread_idx]->viddec = std::move(dec_8bit_av1);
+                        } else if (dec_8bit_av1 == nullptr && codec_id == rocDecVideoCodec_VP9) {
+                            std::unique_ptr<RocVideoDecoder> dec_8bit_vp9(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_8bit_vp9);
                         } else {
                             if (codec_id == rocDecVideoCodec_AVC) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_8bit_avc);
                             } else if (codec_id == rocDecVideoCodec_HEVC) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_8bit_hevc);
-                            } else {
+                            } else if (codec_id == rocDecVideoCodec_AV1) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_8bit_av1);
+                            } else if (codec_id == rocDecVideoCodec_VP9) {
+                                v_dec_info[thread_idx]->viddec.swap(dec_8bit_vp9);
+                            } else {
+                                ERR("ERROR: codec type is not supported!");
+                                return -1;
                             }
                         }
                         v_dec_info[thread_idx]->bit_depth = bit_depth;
@@ -417,11 +437,19 @@ int main(int argc, char **argv) {
                         } else if (dec_10bit_av1 == nullptr && codec_id == rocDecVideoCodec_AV1) {
                             std::unique_ptr<RocVideoDecoder> dec_10bit_av1(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
                             v_dec_info[thread_idx]->viddec = std::move(dec_10bit_av1);
+                        } else if (dec_10bit_vp9 == nullptr && codec_id == rocDecVideoCodec_VP9) {
+                            std::unique_ptr<RocVideoDecoder> dec_10bit_vp9(new RocVideoDecoder(v_dec_info[thread_idx]->dec_device_id, mem_type, codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay));
+                            v_dec_info[thread_idx]->viddec = std::move(dec_10bit_vp9);
                         } else {
                             if (codec_id == rocDecVideoCodec_HEVC) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_10bit_hevc);
-                            } else {
+                            } else if (codec_id == rocDecVideoCodec_AV1) {
                                 v_dec_info[thread_idx]->viddec.swap(dec_10bit_av1);
+                            } else if (codec_id == rocDecVideoCodec_VP9) {
+                                v_dec_info[thread_idx]->viddec.swap(dec_10bit_vp9);
+                            } else {
+                                ERR("ERROR: codec type is not supported!");
+                                return -1;
                             }
                         }
                         v_dec_info[thread_idx]->bit_depth = bit_depth;

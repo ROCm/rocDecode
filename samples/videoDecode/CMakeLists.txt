@@ -63,8 +63,9 @@ endif()
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 find_package(rocDecode QUIET)
+find_package(Threads REQUIRED)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
+if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND AND Threads_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # FFMPEG
@@ -74,6 +75,9 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    # threads
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
@@ -95,5 +99,8 @@ else()
     endif()
     if (NOT ROCDECODE_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+    endif()
+    if (NOT Threads_FOUND)
+        message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please insatll Threads!")
     endif()
 endif()

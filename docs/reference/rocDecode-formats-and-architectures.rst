@@ -11,6 +11,7 @@ rocDecode supports the following codecs:
 * H.265 (HEVC): 8 bit and 10 bit
 * H.264 (AVC): 8 bit
 * AV1: 8 bit and 10 bit
+* VP9: 8 bit and 10 bit
 
 The following table shows the codec support and capabilities of the VCN for each supported GPU
 architecture:
