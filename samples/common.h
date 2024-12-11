@@ -23,7 +23,9 @@ THE SOFTWARE.
 #pragma once
 
 #include "roc_video_dec.h"
-#include "md5.h"
+#if USE_FFMPEG
+    #include "md5.h"
+#endif
 
 typedef enum ReconfigFlushMode_enum {
     RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
@@ -60,10 +62,13 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
                 if (p_dump_file_struct->b_dump_frames_to_file) {
                     viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
                 }
-            } else if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
+            } 
+#if USE_FFMPEG
+            else if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
                 MD5Generator *md5_generator = static_cast<MD5Generator*>(p_dump_file_struct->md5_generator_handle);
                 md5_generator->UpdateMd5ForFrame(pframe, surf_info);
             }
+#endif
         }
         // release and flush frame
         viddec->ReleaseFrame(pts, true);

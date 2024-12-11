@@ -33,10 +33,14 @@ THE SOFTWARE.
 #else
     #include <experimental/filesystem>
 #endif
-#include "video_demuxer.h"
+#if USE_FFMPEG
+    #include "video_demuxer.h"
+#endif
+#include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
 #include "common.h"
 
+#if USE_FFMPEG
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {
     int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
     int n_pic_decoded = 0, decoded_pics = 0;
@@ -72,6 +76,47 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *
     *pn_frame = n_frame;
     *pn_pic_dec = n_pic_decoded;
 }
+#endif
+
+void DecProcBitStream(RocVideoDecoder *p_dec, RocdecBitstreamReader bs_reader, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {
+    int n_video_bytes = 0, n_frame_returned = 0, n_frame = 0;
+    int n_pic_decoded = 0, decoded_pics = 0;
+    uint8_t *p_video = nullptr;
+    int64_t pts = 0;
+    double total_dec_time = 0.0;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    do {
+        if (rocDecGetBitstreamPicData(bs_reader, &p_video, &n_video_bytes, &pts) != ROCDEC_SUCCESS) {
+            std::cerr << "Failed to get picture data." << std::endl;
+        }
+        n_frame_returned = p_dec->DecodeFrame(p_video, n_video_bytes, 0, pts, &decoded_pics);
+        n_frame += n_frame_returned;
+        n_pic_decoded += decoded_pics;
+        if (max_num_frames && max_num_frames <= n_frame) {
+            break;
+        }
+    } while (n_video_bytes);
+    
+    if (mem_type == OUT_SURFACE_MEM_NOT_MAPPED) {
+        p_dec->WaitForDecodeCompletion();
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto time_per_decode = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto session_overhead = p_dec->GetDecoderSessionOverHead(std::this_thread::get_id());
+    // Calculate average decoding time
+    total_dec_time = time_per_decode - session_overhead;
+    double average_output_time = total_dec_time / n_frame;
+    double average_decoding_time = total_dec_time / n_pic_decoded;
+    double n_fps = 1000 / average_output_time;
+    double n_fps_dec = 1000 / average_decoding_time;
+    *pn_fps = n_fps;
+    *pn_fps_dec = n_fps_dec;
+    *pn_frame = n_frame;
+    *pn_pic_dec = n_pic_decoded;
+}
+
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -84,7 +129,8 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "                                               0 = decoded output will be in internal interopped memory," << std::endl
     << "                                               1 = decoded output will be copied to a separate device memory," << std::endl
     << "                                               2 = decoded output will be copied to a separate host memory," << std::endl
-    << "                                               3 = decoded output will not be available (decode only)) - optional; default: 3" << std::endl;
+    << "                                               3 = decoded output will not be available (decode only)) - optional; default: 3" << std::endl
+    << "-no_ffmpeg_demux - use the built-in bitstream reader instead of FFMPEG demuxer to obtain picture data; optional." << std::endl;
     exit(0);
 }
 
@@ -98,6 +144,10 @@ int main(int argc, char **argv) {
     bool b_force_zero_latency = false;
     uint32_t max_num_frames = 0;  // max number of frames to be decoded. default value is 0, meaning decode the entire stream
     int disp_delay = 0;
+    bool b_use_ffmpeg_demuxer = false;  // only use ffmpeg demuxer if ffmpef is available
+#if USE_FFMPEG
+    b_use_ffmpeg_demuxer = true; // true by default to use FFMPEG demuxer. set to false to use the built-in bitstream reader.
+#endif
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -162,6 +212,13 @@ int main(int argc, char **argv) {
             mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
+        if (!strcmp(argv[i], "-no_ffmpeg_demux")) {
+            if (i == argc) {
+                ShowHelpAndExit("-no_ffmpeg_demux");
+            }
+            b_use_ffmpeg_demuxer = false;
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
     
@@ -196,10 +253,15 @@ int main(int argc, char **argv) {
         if (!gcn_arch_name_base.compare("gfx90a") && num_devices > 1) {
             sd = 1;
         }
-
+#if USE_FFMPEG
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
+        std::unique_ptr<VideoDemuxer> demuxer;
+#endif
+        std::vector<RocdecBitstreamReader> v_bs_reader = {nullptr};
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         std::vector<int> v_device_id(n_thread);
+        rocDecVideoCodec rocdec_codec_id;
+        int bit_depth;
 
         int hip_vis_dev_count = 0;
         GetEnvVar("HIP_VISIBLE_DEVICES", hip_vis_dev_count);
@@ -209,8 +271,33 @@ int main(int argc, char **argv) {
         std::cout << "info: Number of threads: " << n_thread << std::endl;
 
         for (int i = 0; i < n_thread; i++) {
-            std::unique_ptr<VideoDemuxer> demuxer(new VideoDemuxer(input_file_path.c_str()));
-            rocDecVideoCodec rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
+            if (!b_use_ffmpeg_demuxer) {
+                std::cout << "info: Using built-in bitstream reader" << std::endl;
+                if (rocDecCreateBitstreamReader(&v_bs_reader[i], input_file_path.c_str()) != ROCDEC_SUCCESS) {
+                    std::cerr << "Failed to create the bitstream reader." << std::endl;
+                    return 1;
+                }
+                if (rocDecGetBitstreamCodecType(v_bs_reader[i], &rocdec_codec_id) != ROCDEC_SUCCESS) {
+                    std::cerr << "Failed to get stream codec type." << std::endl;
+                    return 1;
+                }
+                if (rocdec_codec_id >= rocDecVideoCodec_NumCodecs) {
+                    std::cerr << "Unsupported stream file type or codec type by the bitstream reader. Exiting." << std::endl;
+                    return 1;
+                }
+                if (rocDecGetBitstreamBitDepth(v_bs_reader[i], &bit_depth) != ROCDEC_SUCCESS) {
+                    std::cerr << "Failed to get stream bit depth." << std::endl;
+                    return 1;
+                }
+            }
+#if USE_FFMPEG
+            else {
+                std::cout << "info: Using FFMPEG demuxer" << std::endl;
+                demuxer = std::make_unique<VideoDemuxer>(input_file_path.c_str());
+                rocdec_codec_id = AVCodec2RocDecVideoCodec(demuxer->GetCodecID());
+                bit_depth = demuxer->GetBitDepth();
+            }
+#endif 
             if (!hip_vis_dev_count) {
                 if (device_id % 2 == 0)
                     v_device_id[i] = (i % 2 == 0) ? device_id : device_id + sd;
@@ -220,11 +307,15 @@ int main(int argc, char **argv) {
                 v_device_id[i] = i % hip_vis_dev_count;
             }
             std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, false, disp_delay));
-            if (!dec->CodecSupported(v_device_id[i], rocdec_codec_id, demuxer->GetBitDepth())) {
+            if (!dec->CodecSupported(v_device_id[i], rocdec_codec_id, bit_depth)) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
                 continue;
             }
-            v_demuxer.push_back(std::move(demuxer));
+#if USE_FFMPEG
+            if (b_use_ffmpeg_demuxer) {
+                v_demuxer.push_back(std::move(demuxer));
+            }
+#endif
             v_viddec.push_back(std::move(dec));
         }
 
@@ -253,7 +344,14 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < n_thread; i++) {
-            v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames, mem_type));
+            if (!b_use_ffmpeg_demuxer) {
+                v_thread.push_back(std::thread(DecProcBitStream, v_viddec[i].get(), v_bs_reader[i], &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames, mem_type));
+            }
+#if USE_FFMPEG
+            else {
+                v_thread.push_back(std::thread(DecProc, v_viddec[i].get(), v_demuxer[i].get(), &v_frame[i], &v_frame_dec[i], &v_fps[i], &v_fps_dec[i], max_num_frames, mem_type));
+            }
+#endif
         }
 
         for (int i = 0; i < n_thread; i++) {
@@ -262,6 +360,12 @@ int main(int argc, char **argv) {
             total_fps_dec += v_fps_dec[i];
             n_total += v_frame[i];
             n_total_dec += v_frame_dec[i];
+        }
+
+        for (int i = 0; i < n_thread; i++) {
+            if (!b_use_ffmpeg_demuxer) {
+                rocDecDestroyBitstreamReader(v_bs_reader[i]);
+            }
         }
 
         std::cout << "info: Total pictures decoded: " << n_total_dec  << std::endl;
