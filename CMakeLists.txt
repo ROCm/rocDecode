@@ -101,7 +101,7 @@ endif()
 message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
 # Add an option for enabling the rocprofiler-register
-option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" OFF)
+option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
 
 find_package(HIP QUIET)
 find_package(Libva QUIET)
