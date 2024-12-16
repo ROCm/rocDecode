@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 #include "dec_handle.h"
 #include "rocdecode.h"
-#include "roc_decoder_caps.h"
+#include "vaapi_videodecoder.h"
 #include "../commons.h"
 
 namespace rocdecode {
@@ -72,30 +72,14 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
     if (pdc == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    hipError_t hip_status = hipSuccess;
-    int num_devices = 0;
-    hipDeviceProp_t hip_dev_prop;
-    hip_status = hipGetDeviceCount(&num_devices);
-    if (hip_status != hipSuccess) {
-        ERR("ERROR: hipGetDeviceCount failed!" + TOSTR(hip_status));
+    GpuVaContext& va_ctx = GpuVaContext::GetInstance();
+    va_ctx.Initialize(pdc->device_id);
+    if (va_ctx.CheckDecCapForCodecType(pdc) != ROCDEC_SUCCESS) {
+        ERR("Failed to obtain decoder capabilities from driver.");
         return ROCDEC_DEVICE_INVALID;
+    } else {
+        return ROCDEC_SUCCESS;
     }
-    if (num_devices < 1) {
-        ERR("ERROR: didn't find any GPU!");
-        return ROCDEC_DEVICE_INVALID;
-    }
-    if (pdc->device_id >= num_devices) {
-        ERR("ERROR: the requested device_id is not found! ");
-        return ROCDEC_DEVICE_INVALID;
-    }
-    hip_status = hipGetDeviceProperties(&hip_dev_prop, pdc->device_id);
-    if (hip_status != hipSuccess) {
-        ERR("ERROR: hipGetDeviceProperties for device (" +TOSTR(pdc->device_id) + " ) failed! (" + TOSTR(hip_status) + ")" );
-        return ROCDEC_DEVICE_INVALID;
-    }
-
-    RocDecVcnCodecSpec& vcn_codec_spec = RocDecVcnCodecSpec::GetInstance();
-    return vcn_codec_spec.GetDecoderCaps(pdc);
 }
 
 /*****************************************************************************************************/

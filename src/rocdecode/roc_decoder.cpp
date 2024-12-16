@@ -45,11 +45,6 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
 
  rocDecStatus RocDecoder::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    rocdec_status = InitHIP(decoder_create_info_.device_id);
-    if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to initilize the HIP.");
-        return rocdec_status;
-    }
     if (decoder_create_info_.num_decode_surfaces < 1) {
         ERR("Invalid number of decode surfaces.");
         return ROCDEC_INVALID_PARAMETER;
@@ -183,19 +178,6 @@ rocDecStatus RocDecoder::FreeVideoFrame(int pic_idx) {
         CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
 
     memset((void *)&hip_interop_[pic_idx], 0, sizeof(hip_interop_[pic_idx]));
-
-    return ROCDEC_SUCCESS;
-}
-
-
-rocDecStatus RocDecoder::InitHIP(int device_id) {
-    CHECK_HIP(hipGetDeviceCount(&num_devices_));
-    if (num_devices_ < 1) {
-        ERR("Didn't find any GPU.");
-        return ROCDEC_DEVICE_INVALID;
-    }
-    CHECK_HIP(hipSetDevice(device_id));
-    CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop_, device_id));
 
     return ROCDEC_SUCCESS;
 }
