@@ -26,7 +26,6 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
               const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
               b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
-    // Jefftest: check if we and avoid calling init hip twice
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
     }

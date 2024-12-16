@@ -82,7 +82,6 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
         return ROCDEC_NOT_SUPPORTED;
     }
 
-    // Jefftest
     GpuVaContext& va_ctx = GpuVaContext::GetInstance();
     va_ctx.Initialize(decoder_create_info_.device_id);
     va_display_ = va_ctx.va_display_;
