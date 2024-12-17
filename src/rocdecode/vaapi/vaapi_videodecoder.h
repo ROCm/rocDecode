@@ -88,12 +88,14 @@ private:
     uint32_t num_slices_;
     VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;
+    std::unordered_map<std::string, std::string> uuid_to_render_map_;
 
     rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
+    void GetUuids();
     void GetVisibleDevices(std::vector<int>& visible_devices);
     void GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions);
     void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,

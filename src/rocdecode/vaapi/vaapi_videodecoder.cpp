@@ -75,7 +75,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
 
     std::vector<int> visible_devices;
     GetVisibleDevices(visible_devices);
-
+    GetUuids();
     int offset = 0;
     if (gcn_arch_name_base.compare("gfx942") == 0) {
             std::vector<ComputePartition> current_compute_partitions;
@@ -639,5 +639,48 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
                 }
                 break;
         }
+    }
+}
+
+void VaapiVideoDecoder::GetUuids() {
+ // Path to the DRI directory
+    std::string dri_path = "/dev/dri";
+
+    // Iterate through all render nodes
+    for (const auto& entry : fs::directory_iterator(dri_path)) {
+        try {
+            if (entry.path().filename().string().find("renderD") != std::string::npos) {
+                std::string render_node = entry.path().filename();
+                std::string sys_device_path = "/sys/class/drm/" + render_node + "/device";
+
+                // Check if the device path exists
+                if (fs::exists(sys_device_path)) {
+                    std::string unique_id_path = sys_device_path + "/unique_id";
+
+                    // Check if the unique_id file exists
+                    if (fs::exists(unique_id_path)) {
+                        std::ifstream unique_id_file(unique_id_path);
+                        std::string unique_id;
+
+                        // Read the unique_id from the file
+                        if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
+                            // Add to the map only if unique_id is valid
+                            if (!unique_id.empty()) {
+                                uuid_to_render_map_[unique_id] = render_node;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            // Handle any exception and continue with the next entry
+            std::cerr << "Error processing entry: " << entry.path() << " - " << e.what() << std::endl;
+            continue;
+        }
+    }
+
+     // Print the map
+    for (const auto& pair : uuid_to_render_map_) {
+        std::cout << "UUID: " << pair.first << " -> Render Node: " << pair.second << std::endl;
     }
 }
