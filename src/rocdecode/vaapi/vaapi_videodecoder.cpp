@@ -536,7 +536,12 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
 }
 
 void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
-    char *visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    // First, check if the ROCR_VISIBLE_DEVICES environment variable is present
+    char *visible_devices = std::getenv("ROCR_VISIBLE_DEVICES");
+    // If ROCR_VISIBLE_DEVICES is not present, check if HIP_VISIBLE_DEVICES is present
+    if (visible_devices == nullptr) {
+        visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    }
     if (visible_devices != nullptr) {
         char *token = std::strtok(visible_devices,",");
         while (token != nullptr) {
