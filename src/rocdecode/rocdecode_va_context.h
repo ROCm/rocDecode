@@ -356,10 +356,16 @@ private:
     std::mutex mutex;
     bool config_attributes_probed_;
 
-    GpuVaContext() : initialized_{false}, drm_fd_{-1}, num_dec_engines_{1}, va_profile_{VAProfileNone}, config_attributes_probed_{false} {};
+    GpuVaContext() : initialized_{false}, drm_fd_{-1}, va_display_{0}, num_dec_engines_{1}, va_profile_{VAProfileNone}, config_attributes_probed_{false} {};
     GpuVaContext(const GpuVaContext&) = delete;
     GpuVaContext& operator = (const GpuVaContext) = delete;
-    ~GpuVaContext() = default;
+    ~GpuVaContext() {
+        if (va_display_) {
+            if (vaTerminate(va_display_) != VA_STATUS_SUCCESS) {
+                ERR("Failed to termiate VA");
+            }
+        }
+    };
 
     rocDecStatus InitHIP(int device_id) {
         CHECK_HIP(hipGetDeviceCount(&num_devices_));

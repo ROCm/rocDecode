@@ -52,10 +52,6 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
             if (va_status != VA_STATUS_SUCCESS) {
                 ERR("vaDestroyConfig failed");
             }
-        va_status = vaTerminate(va_display_);
-        if (va_status != VA_STATUS_SUCCESS) {
-            ERR("vaTerminate failed");
-        }
     }
 }
 
