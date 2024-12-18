@@ -105,7 +105,7 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
         parser_params.user_data = this;
         parser_params.pfn_sequence_callback = FFMpegHandleVideoSequenceProc;
         parser_params.pfn_decode_picture = FFMpegHandlePictureDecodeProc;
-        parser_params.pfn_display_picture = FFMpegHandlePictureDisplayProc;
+        parser_params.pfn_display_picture = nullptr;  // HandlePictureDisplay will be controlled by FFMpegDecoder
         parser_params.pfn_get_sei_msg = b_extract_sei_message_ ? RocVideoDecoder::HandleSEIMessagesProc : NULL;
         ROCDEC_API_CALL(rocDecCreateVideoParser(&rocdec_parser_, &parser_params));
     }
@@ -194,19 +194,27 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         if (!dec_context_) {
             THROW("Could not allocate video codec context");
         }
+        // set codec to automatically determine how many threads suits best for the decoding job
+        dec_context_->thread_count = 0;
+
+        if (decoder_->capabilities & AV_CODEC_CAP_FRAME_THREADS)
+            dec_context_->thread_type = FF_THREAD_FRAME;
+        else if (decoder_->capabilities & AV_CODEC_CAP_SLICE_THREADS)
+            dec_context_->thread_type = FF_THREAD_SLICE;
+        else
+            dec_context_->thread_count = 1;
+
         // open the codec
         if (avcodec_open2(dec_context_, decoder_, NULL) < 0) {
             THROW("Could not open codec");
         }
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
-        dec_context_->thread_count = 4;
-        dec_context_->thread_type = FF_THREAD_FRAME;
-
+        //std::cout << "AVCodec delay: " << dec_context_->delay << "num B frames: " << dec_context_->max_b_frames<< std::endl;
     }
-    // allocate av_frame buffer pool for number of surfaces
+    // allocate av_frame buffer pool for number of surfaces to be in the decoder pool (we need delay + 4 to account for B frames)
     if (dec_frames_.empty()) {
-        for (int i = 0; i < num_decode_surfaces; i++) {
+        for (int i = 0; i < (dec_context_->delay + 4); i++) {
             AVFrame *p_frame = av_frame_alloc();
             dec_frames_.push_back(p_frame);
         }
@@ -452,9 +460,29 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
 
     if (no_multithreading_) {
         DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
+        int num_frames_to_display = decoded_pic_cnt_;
+        while (num_frames_to_display) {
+            RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+            HandlePictureDisplay(&dispInfo);
+            num_frames_to_display--;
+        };
+        if (!last_packet_.payload_size && !end_of_stream_) {
+            AVPacket pkt = { 0 };
+            DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
+            int num_frames_to_display = decoded_pic_cnt_;
+            while (num_frames_to_display) {
+                RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+                HandlePictureDisplay(&dispInfo);
+                num_frames_to_display--;
+            };
+        }
     } else {
         //push packet into packet q for decoding
         PushPacket(av_pkt);
+        if (!last_packet_.payload_size && !end_of_stream_) {
+            AVPacket pkt = { 0 };
+            PushPacket(&pkt);
+        }
     }
     av_pkt_cnt_ = (av_pkt_cnt_ + 1) % av_packets_.size();
     if (!av_pkt->data || !av_pkt->size) {
@@ -471,18 +499,6 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
  * @return int 0:fail 1: success
  */
 int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
-    // check if we reached eos here. This is a hack since HandlePictureDecode won't be called at the end_of_sequece. 
-    // so we need to flush FFMpeg decoder when we have received the lastpacket with 0 bytes
-    if (!last_packet_.payload_size && !end_of_stream_) {
-        AVPacket pkt = { 0 };
-        if (no_multithreading_) {
-            DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
-        } else {
-            //push packet into packet q for decoding
-            PushPacket(&pkt);
-        }
-    }
-
     if (b_extract_sei_message_) {
         if (sei_message_display_q_[pDispInfo->picture_index].sei_data) {
             // Write SEI Message
@@ -515,12 +531,13 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             sei_message_display_q_[pDispInfo->picture_index].sei_message = NULL; // to avoid double free
         }
     }
-    // vp_frames_ffmpeg_.size() is empty, wait for decoding to finish
     // this will happen during PopFrame()
-    AVFrame *p_av_frame;
-    if (no_multithreading_) {
-        p_av_frame = av_frame_q_.front();
-        av_frame_q_.pop();
+    AVFrame *p_av_frame = nullptr;
+    if (no_multithreading_ ) {
+        if (!av_frame_q_.empty()) {
+            p_av_frame = av_frame_q_.front();
+            av_frame_q_.pop();
+        }
     } else {
         p_av_frame = PopFrame();
     }
@@ -554,8 +571,8 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             }
 
             dec_frame.av_frame_ptr = p_av_frame;
-            dec_frame.pts = pDispInfo->pts;
-            dec_frame.picture_index = pDispInfo->picture_index;
+            dec_frame.pts = p_av_frame->pts;
+            dec_frame.picture_index = p_av_frame->display_picture_number;
             vp_frames_ffmpeg_.push_back(dec_frame);
         }
         p_dec_frame = vp_frames_ffmpeg_[output_frame_cnt_ - 1].frame_ptr;
@@ -660,6 +677,11 @@ int FFMpegVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_fl
         last_packet_.flags |= ROCDEC_PKT_ENDOFSTREAM;
     }
     ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &last_packet_));
+    if (last_packet_.flags & ROCDEC_PKT_ENDOFSTREAM) {
+        // flush last packet and let FFMpeg decode last frames
+        FlushDecoder();
+    }
+
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
     }
@@ -723,6 +745,30 @@ void FFMpegVideoDecoder::InitOutputFrameInfo(AVFrame *p_frame) {
         output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
     }
 }
+
+/**
+ * @brief Flush decoder with decoding of last frames
+ * 
+ * @return int 1: success 0: fail
+ */
+int FFMpegVideoDecoder::FlushDecoder() {
+    AVPacket pkt = { 0 };
+    if (no_multithreading_) {
+        DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
+        int num_frames_to_display = decoded_pic_cnt_;
+        while (num_frames_to_display) {
+            RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+            HandlePictureDisplay(&dispInfo);
+            num_frames_to_display--;
+        };
+
+    } else {
+        //push packet into packet q for decoding
+        PushPacket(&pkt);
+    }
+    return 0;
+}
+
 
 void FFMpegVideoDecoder::DecodeThread()
 {

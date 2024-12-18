@@ -174,6 +174,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         void DecodeThread();
         int DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame);
         void InitOutputFrameInfo(AVFrame *p_frame);
+        int FlushDecoder();
         void PushPacket(AVPacket *pkt) {
             {
                 std::lock_guard<std::mutex> lock(mtx_pkt_q_);
