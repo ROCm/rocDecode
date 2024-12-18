@@ -8,6 +8,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * The new bitstream reader feature. The bitstream reader contains a few built-in stream file parsers, including elementary stream file parser and IVF container file parser. Currently the reader can parse AVC, HEVC and AV1 elementary stream files and AV1 IVF container files. More format support will be added in the future.
 * A new sample app, called videodecoderaw which uses the bitstream reader instead of FFMPEG demuxer to get picture data.
+* More CTests: VP9 test and tests on video decode raw sample.
 
 ### Changed
 

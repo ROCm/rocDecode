@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "../commons.h"
 #include "bs_reader_handle.h"
 
+namespace rocdecode {
 rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path) {
     if (bs_reader_handle == nullptr || input_file_path == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
@@ -98,3 +99,4 @@ rocDecStatus ROCDECAPI rocDecDestroyBitstreamReader(RocdecBitstreamReader bs_rea
     delete roc_bs_reader_handle;
     return ROCDEC_SUCCESS;
 }
+} // namespace rocdecode

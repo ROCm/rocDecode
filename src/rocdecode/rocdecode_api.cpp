@@ -176,7 +176,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDe
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
-                    void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params) {
+                    void *dev_mem_ptr[3], uint32_t *horizontal_pitch, RocdecProcParams *vid_postproc_params) {
     if (decoder_handle == nullptr || dev_mem_ptr == nullptr || horizontal_pitch == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }

@@ -52,9 +52,25 @@ rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle,
 rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params) {
     return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_reconfigure_decoder(decoder_handle, reconfig_params);
 }
-rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t (&horizontal_pitch)[3], RocdecProcParams *vid_postproc_params) {
+rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, void *dev_mem_ptr[3], uint32_t *horizontal_pitch, RocdecProcParams *vid_postproc_params) {
     return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_video_frame(decoder_handle, pic_idx, dev_mem_ptr, horizontal_pitch, vid_postproc_params);
 }
 const char *ROCDECAPI rocDecGetErrorName(rocDecStatus rocdec_status) {
     return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_error_name(rocdec_status);
 }
+rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_reader_handle, const char *input_file_path) {
+    return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_create_bitstream_reader(bs_reader_handle, input_file_path);
+}
+rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_reader_handle, rocDecVideoCodec *codec_type) {
+    return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_bitstream_codec_type(bs_reader_handle, codec_type);
+}
+rocDecStatus ROCDECAPI rocDecGetBitstreamBitDepth(RocdecBitstreamReader bs_reader_handle, int *bit_depth) {
+    return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_bitstream_bit_depth(bs_reader_handle, bit_depth);
+}
+rocDecStatus ROCDECAPI rocDecGetBitstreamPicData(RocdecBitstreamReader bs_reader_handle, uint8_t **pic_data, int *pic_size, int64_t *pts) {
+    return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_get_bitstream_pic_data(bs_reader_handle, pic_data, pic_size, pts);
+}
+rocDecStatus ROCDECAPI rocDecDestroyBitstreamReader(RocdecBitstreamReader bs_reader_handle) {
+    return rocdecode::GetRocDecodeDispatchTable()->pfn_rocdec_destroy_bitstream_reader(bs_reader_handle);
+}
+

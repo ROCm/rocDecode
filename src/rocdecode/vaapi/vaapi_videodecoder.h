@@ -80,6 +80,7 @@ private:
     VAProfile va_profile_;
     VAContextID va_context_id_;
     std::vector<VASurfaceID> va_surface_ids_;
+    bool supports_modifiers_;
 
     VABufferID pic_params_buf_id_;
     VABufferID iq_matrix_buf_id_;

@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
     drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
-    pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, num_slices_{0}, slice_data_buf_id_{0} {
+    supports_modifiers_{false}, pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, num_slices_{0}, slice_data_buf_id_{0} {
 };
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
@@ -171,6 +171,16 @@ rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
     va_config_attrib_.type = VAConfigAttribRTFormat;
     CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
     CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
+    unsigned int num_attribs = 0;
+    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, nullptr, &num_attribs));
+    std::vector<VASurfaceAttrib> attribs(num_attribs);
+    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, attribs.data(), &num_attribs));
+    for (auto attrib : attribs) {
+        if (attrib.type == VASurfaceAttribDRMFormatModifiers) {
+            supports_modifiers_ = true;
+            break;
+        }
+    }
     return ROCDEC_SUCCESS;
 }
 
@@ -180,6 +190,7 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
         return ROCDEC_INVALID_PARAMETER;
     }
     va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
+    std::vector<VASurfaceAttrib> surf_attribs;
     VASurfaceAttrib surf_attrib;
     surf_attrib.type = VASurfaceAttribPixelFormat;
     surf_attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
@@ -216,8 +227,20 @@ rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
             ERR("The surface type is not supported");
             return ROCDEC_NOT_SUPPORTED;
     }
+    surf_attribs.push_back(surf_attrib);
+    uint64_t mod_linear = 0;
+    VADRMFormatModifierList modifier_list = {
+        .num_modifiers = 1,
+        .modifiers = &mod_linear,
+    };
+    if (supports_modifiers_) {
+        surf_attrib.type = VASurfaceAttribDRMFormatModifiers;
+        surf_attrib.value.type = VAGenericValueTypePointer;
+        surf_attrib.value.value.p = &modifier_list;
+        surf_attribs.push_back(surf_attrib);
+    }
     CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.width,
-        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), &surf_attrib, 1));
+        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), surf_attribs.data(), surf_attribs.size()));
     return ROCDEC_SUCCESS;
 }
 
@@ -513,7 +536,12 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
 }
 
 void VaapiVideoDecoder::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
-    char *visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    // First, check if the ROCR_VISIBLE_DEVICES environment variable is present
+    char *visible_devices = std::getenv("ROCR_VISIBLE_DEVICES");
+    // If ROCR_VISIBLE_DEVICES is not present, check if HIP_VISIBLE_DEVICES is present
+    if (visible_devices == nullptr) {
+        visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    }
     if (visible_devices != nullptr) {
         char *token = std::strtok(visible_devices,",");
         while (token != nullptr) {
