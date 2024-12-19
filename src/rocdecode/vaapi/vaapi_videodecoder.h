@@ -65,7 +65,7 @@ class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
-    rocDecStatus InitializeDecoder(std::string device_name, std::string gcn_arch_name);
+    rocDecStatus InitializeDecoder(std::string device_name, std::string gcn_arch_name, std::string& gpu_uuid);
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
@@ -88,7 +88,7 @@ private:
     uint32_t num_slices_;
     VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;
-    std::unordered_map<std::string, std::string> uuid_to_render_map_;
+    std::unordered_map<std::string, int> uuid_to_render_map_;
 
     rocDecStatus InitVAAPI(std::string drm_node);
     rocDecStatus CreateDecoderConfig();

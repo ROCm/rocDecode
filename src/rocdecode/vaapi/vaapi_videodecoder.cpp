@@ -59,7 +59,7 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
     }
 }
 
-rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name) {
+rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name, std::string& gpu_uuid) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
     //Before initializing the VAAPI, first check to see if the requested codec config is supported
@@ -93,10 +93,11 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
         }
 
     std::string drm_node = "/dev/dri/renderD";
+    int render_node_id = (uuid_to_render_map_.find(gpu_uuid) != uuid_to_render_map_.end()) ? uuid_to_render_map_[gpu_uuid] : 128;
     if (decoder_create_info_.device_id < visible_devices.size()) {
-        drm_node += std::to_string(128 + offset + visible_devices[decoder_create_info_.device_id]);
+        drm_node += std::to_string(render_node_id + offset + visible_devices[decoder_create_info_.device_id]);
     } else {
-        drm_node += std::to_string(128 + offset + decoder_create_info_.device_id);
+        drm_node += std::to_string(render_node_id + offset + decoder_create_info_.device_id);
     }
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
@@ -643,44 +644,37 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
 }
 
 void VaapiVideoDecoder::GetUuids() {
- // Path to the DRI directory
+    // Path to the DRI directory
     std::string dri_path = "/dev/dri";
-
     // Iterate through all render nodes
-    for (const auto& entry : fs::directory_iterator(dri_path)) {
+    for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {
         try {
-            if (entry.path().filename().string().find("renderD") != std::string::npos) {
-                std::string render_node = entry.path().filename();
-                std::string sys_device_path = "/sys/class/drm/" + render_node + "/device";
-
+            std::string filename = entry.path().filename().string();
+            // Check if the file name starts with "renderD"
+            if (filename.find("renderD") == 0) {
+                // Extract the integer part from the render node name
+                int render_id = std::stoi(filename.substr(7));
+                std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
                 // Check if the device path exists
                 if (fs::exists(sys_device_path)) {
                     std::string unique_id_path = sys_device_path + "/unique_id";
-
                     // Check if the unique_id file exists
                     if (fs::exists(unique_id_path)) {
                         std::ifstream unique_id_file(unique_id_path);
                         std::string unique_id;
-
                         // Read the unique_id from the file
                         if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
                             // Add to the map only if unique_id is valid
                             if (!unique_id.empty()) {
-                                uuid_to_render_map_[unique_id] = render_node;
+                                uuid_to_render_map_[unique_id] = render_id;
                             }
                         }
                     }
                 }
             }
         } catch (const std::exception& e) {
-            // Handle any exception and continue with the next entry
-            std::cerr << "Error processing entry: " << entry.path() << " - " << e.what() << std::endl;
+            // If an exception occurs, continue with the next entry
             continue;
         }
-    }
-
-     // Print the map
-    for (const auto& pair : uuid_to_render_map_) {
-        std::cout << "UUID: " << pair.first << " -> Render Node: " << pair.second << std::endl;
     }
 }
