@@ -95,7 +95,7 @@ private:
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
-    void GetUuids();
+    void GetGpuUuids();
     void GetVisibleDevices(std::vector<int>& visible_devices);
     void GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions);
     void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
