@@ -86,7 +86,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
         }
 
     std::string drm_node = "/dev/dri/renderD";
-    int render_node_id = (uuid_to_render_map_.find(gpu_uuid) != uuid_to_render_map_.end()) ? uuid_to_render_map_[gpu_uuid] : 128;
+    int render_node_id = (gpu_uuids_to_render_nodes_map_.find(gpu_uuid) != gpu_uuids_to_render_nodes_map_.end()) ? gpu_uuids_to_render_nodes_map_[gpu_uuid] : 128;
     drm_node += std::to_string(render_node_id + offset);
 
     rocdec_status = InitVAAPI(drm_node);
@@ -607,9 +607,9 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
                 }
                 break;
             case kCpx:
-                // Please note that MI300 series have the same gfx_arch_name which is
-                // gfx942. Therefore we cannot use the gfx942 to identify MI300A, NI308, etc.
-                // instead use the device name and look for MI300A, MI308
+                // Note: The MI300 series share the same gfx_arch_name (gfx942).
+                // Therefore, we cannot use gfx942 to distinguish between MI300A, MI308, etc.
+                // Instead, use the device name to identify MI300A, MI308, etc.
                 std::string mi300a = "MI300A";
                 size_t found_mi300a = device_name.find(mi300a);
                 std::string mi308 = "MI308";
@@ -638,8 +638,15 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
     }
 }
 
+/**
+ * @brief Retrieves GPU UUIDs and maps them to render node IDs.
+ *
+ * This function iterates through all render nodes in the /dev/dri directory,
+ * extracts the render node ID from the filename, and then reads the unique GPU
+ * UUID from the corresponding sysfs path. It maps each unique GPU UUID to its
+ * corresponding render node ID and stores this mapping in the gpu_uuids_to_render_nodes_map_.
+ */
 void VaapiVideoDecoder::GetGpuUuids() {
-    // Path to the DRI directory
     std::string dri_path = "/dev/dri";
     // Iterate through all render nodes
     for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {
@@ -647,21 +654,18 @@ void VaapiVideoDecoder::GetGpuUuids() {
             std::string filename = entry.path().filename().string();
             // Check if the file name starts with "renderD"
             if (filename.find("renderD") == 0) {
-                // Extract the integer part from the render node name
+                // Extract the integer part from the render node name (e.g., 128 from renderD128)
                 int render_id = std::stoi(filename.substr(7));
                 std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
-                // Check if the device path exists
                 if (fs::exists(sys_device_path)) {
                     std::string unique_id_path = sys_device_path + "/unique_id";
-                    // Check if the unique_id file exists
                     if (fs::exists(unique_id_path)) {
                         std::ifstream unique_id_file(unique_id_path);
                         std::string unique_id;
-                        // Read the unique_id from the file
                         if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
-                            // Add to the map only if unique_id is valid
                             if (!unique_id.empty()) {
-                                uuid_to_render_map_[unique_id] = render_id;
+                                // Map the unique GPU UUID to the render node ID
+                                gpu_uuids_to_render_nodes_map_[unique_id] = render_id;
                             }
                         }
                     }
