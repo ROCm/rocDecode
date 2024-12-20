@@ -59,7 +59,7 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
     }
 }
 
-rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name) {
+rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name, std::string& gpu_uuid) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
     //Before initializing the VAAPI, first check to see if the requested codec config is supported
@@ -75,29 +75,20 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
 
     std::vector<int> visible_devices;
     GetVisibleDevices(visible_devices);
-
+    GetGpuUuids();
     int offset = 0;
     if (gcn_arch_name_base.compare("gfx942") == 0) {
             std::vector<ComputePartition> current_compute_partitions;
             GetCurrentComputePartition(current_compute_partitions);
-            if (current_compute_partitions.empty()) {
-                //if the current_compute_partitions is empty then the default SPX mode is assumed.
-                if (decoder_create_info_.device_id < visible_devices.size()) {
-                    offset = visible_devices[decoder_create_info_.device_id] * 7;
-                } else {
-                    offset = decoder_create_info_.device_id * 7;
-                }
-            } else {
+            if (!current_compute_partitions.empty()) {
                 GetDrmNodeOffset(device_name, decoder_create_info_.device_id, visible_devices, current_compute_partitions, offset);
             }
         }
 
     std::string drm_node = "/dev/dri/renderD";
-    if (decoder_create_info_.device_id < visible_devices.size()) {
-        drm_node += std::to_string(128 + offset + visible_devices[decoder_create_info_.device_id]);
-    } else {
-        drm_node += std::to_string(128 + offset + decoder_create_info_.device_id);
-    }
+    int render_node_id = (gpu_uuids_to_render_nodes_map_.find(gpu_uuid) != gpu_uuids_to_render_nodes_map_.end()) ? gpu_uuids_to_render_nodes_map_[gpu_uuid] : 128;
+    drm_node += std::to_string(render_node_id + offset);
+
     rocdec_status = InitVAAPI(drm_node);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to initilize the VAAPI.");
@@ -592,52 +583,97 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
     if (!current_compute_partitions.empty()) {
         switch (current_compute_partitions[0]) {
             case kSpx:
-                if (device_id < visible_devices.size()) {
-                    offset = visible_devices[device_id] * 7;
-                } else {
-                    offset = device_id * 7;
-                }
+                offset = 0;
                 break;
             case kDpx:
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 2) * 6;
+                    offset = (visible_devices[device_id] % 2);
                 } else {
-                    offset = (device_id / 2) * 6;
+                    offset = (device_id % 2);
                 }
                 break;
             case kTpx:
-                // Please note that although there are only 6 XCCs per socket on MI300A,
-                // there are two dummy render nodes added by the driver.
-                // This needs to be taken into account when creating drm_node on each socket in TPX mode.
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 3) * 5;
+                    offset = (visible_devices[device_id] % 3);
                 } else {
-                    offset = (device_id / 3) * 5;
+                    offset = (device_id % 3);
                 }
                 break;
             case kQpx:
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 4) * 4;
+                    offset = (visible_devices[device_id] % 4);
                 } else {
-                    offset = (device_id / 4) * 4;
+                    offset = (device_id % 4);
                 }
                 break;
             case kCpx:
-                // Please note that both MI300A and MI300X have the same gfx_arch_name which is
-                // gfx942. Therefore we cannot use the gfx942 to identify MI300A.
-                // instead use the device name and look for MI300A
-                // Also, as explained aboe in the TPX mode section, we need to be taken into account
-                // the extra two dummy nodes when creating drm_node on each socket in CPX mode as well.
+                // Note: The MI300 series share the same gfx_arch_name (gfx942).
+                // Therefore, we cannot use gfx942 to distinguish between MI300A, MI308, etc.
+                // Instead, use the device name to identify MI300A, MI308, etc.
                 std::string mi300a = "MI300A";
                 size_t found_mi300a = device_name.find(mi300a);
-                if (found_mi300a != std::string::npos) {
+                std::string mi308 = "MI308";
+                size_t found_mi308 = device_name.find(mi308);
+                if (found_mi308 != std::string::npos) {
                     if (device_id < visible_devices.size()) {
-                        offset = (visible_devices[device_id] / 6) * 2;
+                        offset = (visible_devices[device_id] % 4);
                     } else {
-                        offset = (device_id / 6) * 2;
+                        offset = (device_id % 4);
+                    }
+                } else if (found_mi300a != std::string::npos) {
+                    if (device_id < visible_devices.size()) {
+                        offset = (visible_devices[device_id] % 6);
+                    } else {
+                        offset = (device_id % 6);
+                    }
+                } else {
+                    if (device_id < visible_devices.size()) {
+                        offset = (visible_devices[device_id] % 8);
+                    } else {
+                        offset = (device_id % 8);
                     }
                 }
                 break;
+        }
+    }
+}
+
+/**
+ * @brief Retrieves GPU UUIDs and maps them to render node IDs.
+ *
+ * This function iterates through all render nodes in the /dev/dri directory,
+ * extracts the render node ID from the filename, and then reads the unique GPU
+ * UUID from the corresponding sysfs path. It maps each unique GPU UUID to its
+ * corresponding render node ID and stores this mapping in the gpu_uuids_to_render_nodes_map_.
+ */
+void VaapiVideoDecoder::GetGpuUuids() {
+    std::string dri_path = "/dev/dri";
+    // Iterate through all render nodes
+    for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {
+        try {
+            std::string filename = entry.path().filename().string();
+            // Check if the file name starts with "renderD"
+            if (filename.find("renderD") == 0) {
+                // Extract the integer part from the render node name (e.g., 128 from renderD128)
+                int render_id = std::stoi(filename.substr(7));
+                std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
+                if (fs::exists(sys_device_path)) {
+                    std::string unique_id_path = sys_device_path + "/unique_id";
+                    if (fs::exists(unique_id_path)) {
+                        std::ifstream unique_id_file(unique_id_path);
+                        std::string unique_id;
+                        if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
+                            if (!unique_id.empty()) {
+                                // Map the unique GPU UUID to the render node ID
+                                gpu_uuids_to_render_nodes_map_[unique_id] = render_id;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            // If an exception occurs, continue with the next entry
+            continue;
         }
     }
 }
