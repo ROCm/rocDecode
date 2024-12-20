@@ -468,11 +468,11 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
             num_frames_to_display--;
         };
         if (!last_packet_.payload_size && !end_of_stream_) {
-            AVPacket pkt = { 0 };
+            AVPacket pkt = {0};
             DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
             int num_frames_to_display = decoded_pic_cnt_;
             while (num_frames_to_display) {
-                RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+                RocdecParserDispInfo dispInfo = {0}; // don't care about this as this will be igonored
                 HandlePictureDisplay(&dispInfo);
                 num_frames_to_display--;
             };
@@ -481,7 +481,7 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
         //push packet into packet q for decoding
         PushPacket(av_pkt);
         if (!last_packet_.payload_size && !end_of_stream_) {
-            AVPacket pkt = { 0 };
+            AVPacket pkt = {0};
             PushPacket(&pkt);
         }
     }
@@ -547,8 +547,8 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         std::cerr << "Invalid avframe decode output" << std::endl;
         return 0;
     }
-    void* src_ptr[3] = { 0 };
-    int32_t src_pitch[3] = { 0 };
+    void* src_ptr[3] = {0};
+    int32_t src_pitch[3] = {0};
     src_ptr[0] = p_av_frame->data[0];    
     src_ptr[1] = p_av_frame->data[1];
     src_ptr[2] = p_av_frame->data[2];
@@ -563,7 +563,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         // if not enough frames in stock, allocate
         if (++output_frame_cnt_ > vp_frames_ffmpeg_.size()) {
             num_alloced_frames_++;
-            DecFrameBufferFFMpeg dec_frame = { 0 };
+            DecFrameBufferFFMpeg dec_frame = {0};
             if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
                 // allocate device memory
                 HIP_API_CALL(hipMalloc((void **)&dec_frame.frame_ptr, GetFrameSize()));
@@ -669,7 +669,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 int FFMpegVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts, int *num_decoded_pics) {
     output_frame_cnt_ = 0, output_frame_cnt_ret_ = 0;
     decoded_pic_cnt_ = 0;
-    last_packet_ = { 0 };
+    last_packet_ = {0};
     last_packet_.payload = data;
     last_packet_.payload_size = size;
     last_packet_.flags = pkt_flags | ROCDEC_PKT_TIMESTAMP;
@@ -753,12 +753,12 @@ void FFMpegVideoDecoder::InitOutputFrameInfo(AVFrame *p_frame) {
  * @return int 1: success 0: fail
  */
 int FFMpegVideoDecoder::FlushDecoder() {
-    AVPacket pkt = { 0 };
+    AVPacket pkt = {0};
     if (no_multithreading_) {
         DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
         int num_frames_to_display = decoded_pic_cnt_;
         while (num_frames_to_display) {
-            RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+            RocdecParserDispInfo dispInfo = {0}; // don't care about this as this will be igonored
             HandlePictureDisplay(&dispInfo);
             num_frames_to_display--;
         };
