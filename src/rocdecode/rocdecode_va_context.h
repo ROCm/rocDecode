@@ -62,8 +62,6 @@ THE SOFTWARE.
     }\
 }
 
-#define INIT_SLICE_PARAM_LIST_NUM 16 // initial slice parameter buffer list size
-
 typedef enum {
     kSpx = 0, // Single Partition Accelerator
     kDpx = 1, // Dual Partition Accelerator
@@ -72,47 +70,70 @@ typedef enum {
     kCpx = 4, // Core Partition Accelerator
 } ComputePartition;
 
+typedef struct {
+    int num_devices;
+    int device_id;
+    int drm_fd;
+    VADisplay va_display;
+    hipDeviceProp_t hip_dev_prop;
+    uint32_t num_dec_engines;
+    int num_va_profiles;
+    std::vector<VAProfile> va_profile_list; // supported profiles by the current GPU
+    VAProfile va_profile; // current profile used
+    VAConfigID va_config_id;
+    bool config_attributes_probed;
+    uint32_t rt_format_attrib;
+    uint32_t output_format_mask;
+    uint32_t max_width;
+    uint32_t max_height;
+    uint32_t min_width;
+    uint32_t min_height;
+} VaContextInfo;
+
 // The GpuVaContext singleton class providing access to the the GPU VA services
 class GpuVaContext {
 public:
-    int num_devices_;
-    int device_id_;
-    int drm_fd_;
-    VADisplay va_display_;
-    hipDeviceProp_t hip_dev_prop_;
-    uint32_t num_dec_engines_;
-    int num_va_profiles_;
-    std::vector<VAProfile> va_profile_list_; // supported profiles by the current GPU
-    VAProfile va_profile_; // current profile used
-    VAConfigID va_config_id_;
-    uint32_t rt_format_attrib_;
-    uint32_t output_format_mask_;
-    uint32_t max_width_;
-    uint32_t max_height_;
-    uint32_t min_width_;
-    uint32_t min_height_;
+    std::vector<VaContextInfo> va_contexts_;
 
     static GpuVaContext& GetInstance() {
         static GpuVaContext instance;
         return instance;
     }
 
-    rocDecStatus Initialize(int device_id) {
-        if ( initialized_ && device_id != device_id_) {
-            CHECK_VAAPI(vaTerminate(va_display_));
-            initialized_ = false;
+    rocDecStatus GetVaContext(int device_id, uint32_t *va_ctx_id) {
+        std::lock_guard<std::mutex> lock(mutex);
+        bool found_existing = false;
+        uint32_t va_ctx_idx = 0;
+        if (!va_contexts_.empty()) {
+            for (va_ctx_idx = 0; va_ctx_idx < va_contexts_.size(); va_ctx_idx++) {
+                if (device_id == va_contexts_[va_ctx_idx].device_id) {
+                    found_existing = true;
+                    break;
+                }
+            }
         }
-        if (!initialized_) {
-            std::lock_guard<std::mutex> lock(mutex);
-            device_id_ = device_id;
+        if (found_existing) {
+            *va_ctx_id = va_ctx_idx;
+            return ROCDEC_SUCCESS;
+        } else {
+            va_contexts_.resize(va_contexts_.size() + 1);
+            va_ctx_idx = va_contexts_.size() - 1;
+
+            va_contexts_[va_ctx_idx].device_id = device_id;
+            va_contexts_[va_ctx_idx].drm_fd = -1;
+            va_contexts_[va_ctx_idx].va_display = 0;
+            va_contexts_[va_ctx_idx].num_dec_engines = 1;
+            va_contexts_[va_ctx_idx].va_profile = VAProfileNone;
+            va_contexts_[va_ctx_idx].config_attributes_probed = false;
+
             rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-            rocdec_status = InitHIP(device_id_);
+            rocdec_status = InitHIP(va_ctx_idx);
             if (rocdec_status != ROCDEC_SUCCESS) {
                 ERR("Failed to initilize the HIP.");
                 return rocdec_status;
             }
 
-            std::string gcn_arch_name = hip_dev_prop_.gcnArchName;
+            std::string gcn_arch_name = va_contexts_[va_ctx_idx].hip_dev_prop.gcnArchName;
             std::size_t pos = gcn_arch_name.find_first_of(":");
             std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
             std::vector<int> visible_devices;
@@ -124,24 +145,24 @@ public:
                 GetCurrentComputePartition(current_compute_partitions);
                 if (current_compute_partitions.empty()) {
                     //if the current_compute_partitions is empty then the default SPX mode is assumed.
-                    if (device_id_ < visible_devices.size()) {
-                        offset = visible_devices[device_id_] * 7;
+                    if (va_contexts_[va_ctx_idx].device_id < visible_devices.size()) {
+                        offset = visible_devices[va_contexts_[va_ctx_idx].device_id] * 7;
                     } else {
-                        offset = device_id_ * 7;
+                        offset = va_contexts_[va_ctx_idx].device_id * 7;
                     }
                 } else {
-                    GetDrmNodeOffset(hip_dev_prop_.name, device_id_, visible_devices, current_compute_partitions, offset);
+                    GetDrmNodeOffset(va_contexts_[va_ctx_idx].hip_dev_prop.name, va_contexts_[va_ctx_idx].device_id, visible_devices, current_compute_partitions, offset);
                 }
             }
 
             std::string drm_node = "/dev/dri/renderD";
-            if (device_id_ < visible_devices.size()) {
-                drm_node += std::to_string(128 + offset + visible_devices[device_id_]);
+            if (va_contexts_[va_ctx_idx].device_id < visible_devices.size()) {
+                drm_node += std::to_string(128 + offset + visible_devices[va_contexts_[va_ctx_idx].device_id]);
             } else {
-                drm_node += std::to_string(128 + offset + device_id_);
+                drm_node += std::to_string(128 + offset + va_contexts_[va_ctx_idx].device_id);
             }
 
-            rocdec_status = InitVAAPI(drm_node);
+            rocdec_status = InitVAAPI(va_ctx_idx, drm_node);
             if (rocdec_status != ROCDEC_SUCCESS) {
                 ERR("Failed to initilize the VAAPI.");
                 return rocdec_status;
@@ -149,23 +170,34 @@ public:
 
             amdgpu_device_handle dev_handle;
             uint32_t major_version = 0, minor_version = 0;
-            if (amdgpu_device_initialize(drm_fd_, &major_version, &minor_version, &dev_handle)) {
+            if (amdgpu_device_initialize(va_contexts_[va_ctx_idx].drm_fd, &major_version, &minor_version, &dev_handle)) {
                 ERR("GPU device initialization failed: " + drm_node);
                 return ROCDEC_DEVICE_INVALID;
             }
-            if (amdgpu_query_hw_ip_count(dev_handle, AMDGPU_HW_IP_VCN_DEC, &num_dec_engines_)) {
+            if (amdgpu_query_hw_ip_count(dev_handle, AMDGPU_HW_IP_VCN_DEC, &va_contexts_[va_ctx_idx].num_dec_engines)) {
                 ERR("Failed to get the number of video decode engines.");
             }
             amdgpu_device_deinitialize(dev_handle);
 
             // Prob VA profiles
-            num_va_profiles_ = vaMaxNumProfiles(va_display_);
-            va_profile_list_.resize(num_va_profiles_);
-            CHECK_VAAPI(vaQueryConfigProfiles(va_display_, va_profile_list_.data(), &num_va_profiles_));
+            va_contexts_[va_ctx_idx].num_va_profiles = vaMaxNumProfiles(va_contexts_[va_ctx_idx].va_display);
+            va_contexts_[va_ctx_idx].va_profile_list.resize(va_contexts_[va_ctx_idx].num_va_profiles);
+            CHECK_VAAPI(vaQueryConfigProfiles(va_contexts_[va_ctx_idx].va_display, va_contexts_[va_ctx_idx].va_profile_list.data(), &va_contexts_[va_ctx_idx].num_va_profiles));
 
-            initialized_ = true;
+            *va_ctx_id = va_ctx_idx;
+            return ROCDEC_SUCCESS;
         }
-        return ROCDEC_SUCCESS;
+    }
+
+    rocDecStatus GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display) {
+        if (va_ctx_id >= va_contexts_.size()) {
+            ERR("Invalid VA context Id.");
+            *va_display = 0;
+            return ROCDEC_INVALID_PARAMETER;
+        } else {
+            *va_display = va_contexts_[va_ctx_id].va_display;
+            return ROCDEC_SUCCESS;
+        }
     }
 
     rocDecStatus CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
@@ -173,86 +205,89 @@ public:
             ERR("Null decode capability struct pointer.");
             return ROCDEC_INVALID_PARAMETER;
         }
-        std::lock_guard<std::mutex> lock(mutex);
         rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-        if (!initialized_) {
-            rocdec_status = Initialize(dec_cap->device_id);
-            if (rocdec_status != ROCDEC_SUCCESS) {
-                ERR("Failed to initilize.");
-                return rocdec_status;
-            }
+        uint32_t va_ctx_id;
+        rocdec_status = GetVaContext(dec_cap->device_id, &va_ctx_id);
+        if (rocdec_status != ROCDEC_SUCCESS) {
+            ERR("Failed to initilize.");
+            return rocdec_status;
         }
 
+        std::lock_guard<std::mutex> lock(mutex);
         dec_cap->is_supported = 1; // init value
         VAProfile va_profile = VAProfileNone;
         switch (dec_cap->codec_type) {
-            case rocDecVideoCodec_HEVC:
+            case rocDecVideoCodec_HEVC: {
                 if (dec_cap->bit_depth_minus_8 == 0) {
                     va_profile = VAProfileHEVCMain;
                 } else if (dec_cap->bit_depth_minus_8 == 2) {
                     va_profile = VAProfileHEVCMain10;
                 }
                 break;
-            case rocDecVideoCodec_AVC:
+            }
+            case rocDecVideoCodec_AVC: {
                 va_profile = VAProfileH264Main;
                 break;
-            case rocDecVideoCodec_VP9:
+            }
+            case rocDecVideoCodec_VP9: {
                 if (dec_cap->bit_depth_minus_8 == 0) {
                     va_profile = VAProfileVP9Profile0;
                 } else if (dec_cap->bit_depth_minus_8 == 2) {
                     va_profile = VAProfileVP9Profile2;
                 }
                 break;
-            case rocDecVideoCodec_AV1:
+            }
+            case rocDecVideoCodec_AV1: {
             #if VA_CHECK_VERSION(1,6,0)
                 va_profile = VAProfileAV1Profile0;
             #else
                 va_profile = static_cast<VAProfile>(32); // VAProfileAV1Profile0;
             #endif
                 break;
-            default:
+            }
+            default: {
                 dec_cap->is_supported = 0;
                 return ROCDEC_SUCCESS;
+            }
         }
 
         int i;
-        for (i = 0; i < num_va_profiles_; i++) {
-            if (va_profile_list_[i] == va_profile) {
+        for (i = 0; i < va_contexts_[va_ctx_id].num_va_profiles; i++) {
+            if (va_contexts_[va_ctx_id].va_profile_list[i] == va_profile) {
                 break;
             }
         }
-        if (i == num_va_profiles_) {
+        if (i == va_contexts_[va_ctx_id].num_va_profiles) {
             dec_cap->is_supported = 0;
             return ROCDEC_SUCCESS;
         }
 
         // Check if the config attributes of the profile have been probed before
-        //if (config_attributes_probed_ == false)
-        if (va_profile != va_profile_ || config_attributes_probed_ == false) {
-            va_profile_ = va_profile;
+        if (va_profile != va_contexts_[va_ctx_id].va_profile || va_contexts_[va_ctx_id].config_attributes_probed == false) {
+            va_contexts_[va_ctx_id].va_profile = va_profile;
 
             VAConfigAttrib va_config_attrib;
             unsigned int attr_count;
             std::vector<VASurfaceAttrib> attr_list;
             va_config_attrib.type = VAConfigAttribRTFormat;
-            CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib, 1));
-            rt_format_attrib_ = va_config_attrib.value;
+            CHECK_VAAPI(vaGetConfigAttributes(va_contexts_[va_ctx_id].va_display, va_contexts_[va_ctx_id].va_profile, VAEntrypointVLD, &va_config_attrib, 1));
+            va_contexts_[va_ctx_id].rt_format_attrib = va_config_attrib.value;
 
-            CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib, 1, &va_config_id_));
-            CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, 0, &attr_count));
+            CHECK_VAAPI(vaCreateConfig(va_contexts_[va_ctx_id].va_display, va_contexts_[va_ctx_id].va_profile, VAEntrypointVLD, &va_config_attrib, 1, &va_contexts_[va_ctx_id].va_config_id));
+            CHECK_VAAPI(vaQuerySurfaceAttributes(va_contexts_[va_ctx_id].va_display, va_contexts_[va_ctx_id].va_config_id, 0, &attr_count));
             attr_list.resize(attr_count);
-            CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, attr_list.data(), &attr_count));
-            output_format_mask_ = 0;
-            CHECK_VAAPI(vaDestroyConfig(va_display_, va_config_id_));
+            CHECK_VAAPI(vaQuerySurfaceAttributes(va_contexts_[va_ctx_id].va_display, va_contexts_[va_ctx_id].va_config_id, attr_list.data(), &attr_count));
+            va_contexts_[va_ctx_id].output_format_mask = 0;
+            CHECK_VAAPI(vaDestroyConfig(va_contexts_[va_ctx_id].va_display, va_contexts_[va_ctx_id].va_config_id));
             for (int k = 0; k < attr_count; k++) {
                 switch (attr_list[k].type) {
                 case VASurfaceAttribPixelFormat: {
                     switch (attr_list[k].value.value.i) {
                         case VA_FOURCC_NV12:
-                            output_format_mask_ |= 1 << rocDecVideoSurfaceFormat_NV12;
+                            va_contexts_[va_ctx_id].output_format_mask |= 1 << rocDecVideoSurfaceFormat_NV12;
                             break;
                         case VA_FOURCC_P016:
-                            output_format_mask_ |= 1 << rocDecVideoSurfaceFormat_P016;
+                            va_contexts_[va_ctx_id].output_format_mask |= 1 << rocDecVideoSurfaceFormat_P016;
                             break;
                         default:
                             break;
@@ -260,49 +295,49 @@ public:
                 }
                     break;
                 case VASurfaceAttribMinWidth:
-                    min_width_ = attr_list[k].value.value.i;
+                    va_contexts_[va_ctx_id].min_width = attr_list[k].value.value.i;
                     break;
                 case VASurfaceAttribMinHeight:
-                    min_height_ = attr_list[k].value.value.i;
+                    va_contexts_[va_ctx_id].min_height = attr_list[k].value.value.i;
                     break;
                 case VASurfaceAttribMaxWidth:
-                    max_width_ = attr_list[k].value.value.i;
+                    va_contexts_[va_ctx_id].max_width = attr_list[k].value.value.i;
                     break;
                 case VASurfaceAttribMaxHeight:
-                    max_height_ = attr_list[k].value.value.i;
+                    va_contexts_[va_ctx_id].max_height = attr_list[k].value.value.i;
                     break;
                 default:
                     break;
                 }
             }
-            config_attributes_probed_ = true;
+            va_contexts_[va_ctx_id].config_attributes_probed = true;
         }
 
         // Check chroma format
         switch (dec_cap->chroma_format) {
             case rocDecVideoChromaFormat_Monochrome: {
-                if ((rt_format_attrib_ & VA_RT_FORMAT_YUV400) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & VA_RT_FORMAT_YUV400) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
                 break;
             }
             case rocDecVideoChromaFormat_420: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10 | VA_RT_FORMAT_YUV420_12)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10 | VA_RT_FORMAT_YUV420_12)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
                 break;
             }
             case rocDecVideoChromaFormat_422: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV422_10 | VA_RT_FORMAT_YUV422_12)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV422_10 | VA_RT_FORMAT_YUV422_12)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
                 break;
             }
             case rocDecVideoChromaFormat_444: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV444_10 | VA_RT_FORMAT_YUV444_12)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV444_10 | VA_RT_FORMAT_YUV444_12)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
@@ -316,21 +351,21 @@ public:
         // Check bit depth
         switch (dec_cap->bit_depth_minus_8) {
             case 0: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV400)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV400)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
                 break;
             }
             case 2: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV420_10 | VA_RT_FORMAT_YUV422_10 | VA_RT_FORMAT_YUV444_10)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV420_10 | VA_RT_FORMAT_YUV422_10 | VA_RT_FORMAT_YUV444_10)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
                 break;
             }
             case 4: {
-                if ((rt_format_attrib_ & (VA_RT_FORMAT_YUV420_12 | VA_RT_FORMAT_YUV422_12 | VA_RT_FORMAT_YUV444_12)) == 0) {
+                if ((va_contexts_[va_ctx_id].rt_format_attrib & (VA_RT_FORMAT_YUV420_12 | VA_RT_FORMAT_YUV422_12 | VA_RT_FORMAT_YUV444_12)) == 0) {
                     dec_cap->is_supported = 0;
                     return ROCDEC_SUCCESS;
                 }
@@ -342,60 +377,60 @@ public:
             }
         }
 
-        dec_cap->num_decoders = num_dec_engines_;
-        dec_cap->output_format_mask = output_format_mask_;
-        dec_cap->max_width = max_width_;
-        dec_cap->max_height = max_height_;
-        dec_cap->min_width = min_width_;
-        dec_cap->min_height = min_height_;
+        dec_cap->num_decoders = va_contexts_[va_ctx_id].num_dec_engines;
+        dec_cap->output_format_mask = va_contexts_[va_ctx_id].output_format_mask;
+        dec_cap->max_width = va_contexts_[va_ctx_id].max_width;
+        dec_cap->max_height = va_contexts_[va_ctx_id].max_height;
+        dec_cap->min_width = va_contexts_[va_ctx_id].min_width;
+        dec_cap->min_height = va_contexts_[va_ctx_id].min_height;
         return ROCDEC_SUCCESS;
     }
 
 private:
-    bool initialized_;
     std::mutex mutex;
-    bool config_attributes_probed_;
 
-    GpuVaContext() : initialized_{false}, drm_fd_{-1}, va_display_{0}, num_dec_engines_{1}, va_profile_{VAProfileNone}, config_attributes_probed_{false} {};
+    GpuVaContext() {};
     GpuVaContext(const GpuVaContext&) = delete;
     GpuVaContext& operator = (const GpuVaContext) = delete;
     ~GpuVaContext() {
-        if (va_display_) {
-            if (vaTerminate(va_display_) != VA_STATUS_SUCCESS) {
-                ERR("Failed to termiate VA");
+        for (int i = 0; i < va_contexts_.size(); i++) {
+            if (va_contexts_[i].va_display) {
+                if (vaTerminate(va_contexts_[i].va_display) != VA_STATUS_SUCCESS) {
+                    ERR("Failed to termiate VA");
+                }
             }
         }
     };
 
-    rocDecStatus InitHIP(int device_id) {
-        CHECK_HIP(hipGetDeviceCount(&num_devices_));
-        if (num_devices_ < 1) {
+    rocDecStatus InitHIP(int va_ctx_idx) {
+        CHECK_HIP(hipGetDeviceCount(&va_contexts_[va_ctx_idx].num_devices));
+        if (va_contexts_[va_ctx_idx].num_devices < 1) {
             ERR("Didn't find any GPU.");
             return ROCDEC_DEVICE_INVALID;
         }
-        if (device_id >= num_devices_) {
+        if (va_contexts_[va_ctx_idx].device_id >= va_contexts_[va_ctx_idx].num_devices) {
             ERR("ERROR: the requested device_id is not found! ");
             return ROCDEC_DEVICE_INVALID;
         }   
-        CHECK_HIP(hipSetDevice(device_id));
-        CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop_, device_id));
+        CHECK_HIP(hipSetDevice(va_contexts_[va_ctx_idx].device_id));
+        CHECK_HIP(hipGetDeviceProperties(&va_contexts_[va_ctx_idx].hip_dev_prop, va_contexts_[va_ctx_idx].device_id));
         return ROCDEC_SUCCESS;
     }
 
-    rocDecStatus InitVAAPI(std::string drm_node) {
-        drm_fd_ = open(drm_node.c_str(), O_RDWR);
-        if (drm_fd_ < 0) {
+    rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node) {
+        va_contexts_[va_ctx_idx].drm_fd = open(drm_node.c_str(), O_RDWR);
+        if (va_contexts_[va_ctx_idx].drm_fd < 0) {
             ERR("Failed to open drm node." + drm_node);
             return ROCDEC_NOT_INITIALIZED;
         }
-        va_display_ = vaGetDisplayDRM(drm_fd_);
-        if (!va_display_) {
-            ERR("Failed to create va_display_.");
+        va_contexts_[va_ctx_idx].va_display = vaGetDisplayDRM(va_contexts_[va_ctx_idx].drm_fd);
+        if (!va_contexts_[va_ctx_idx].va_display) {
+            ERR("Failed to create VA display.");
             return ROCDEC_NOT_INITIALIZED;
         }
-        vaSetInfoCallback(va_display_, NULL, NULL);
+        vaSetInfoCallback(va_contexts_[va_ctx_idx].va_display, NULL, NULL);
         int major_version = 0, minor_version = 0;
-        CHECK_VAAPI(vaInitialize(va_display_, &major_version, &minor_version));
+        CHECK_VAAPI(vaInitialize(va_contexts_[va_ctx_idx].va_display, &major_version, &minor_version));
         return ROCDEC_SUCCESS;
     }
 

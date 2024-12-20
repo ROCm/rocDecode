@@ -47,6 +47,8 @@ THE SOFTWARE.
 #include "../../../api/rocdecode.h"
 #include "rocdecode_va_context.h"
 
+#define INIT_SLICE_PARAM_LIST_NUM 16 // initial slice parameter buffer list size
+
 class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);

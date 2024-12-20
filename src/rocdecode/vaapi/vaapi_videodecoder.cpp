@@ -79,8 +79,15 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::
     }
 
     GpuVaContext& va_ctx = GpuVaContext::GetInstance();
-    va_ctx.Initialize(decoder_create_info_.device_id);
-    va_display_ = va_ctx.va_display_;
+    uint32_t va_ctx_id;
+    if ((rocdec_status = va_ctx.GetVaContext(decoder_create_info_.device_id, &va_ctx_id)) != ROCDEC_SUCCESS) {
+        ERR("Failed to get VA context.");
+        return rocdec_status;
+    }
+    if ((rocdec_status = va_ctx.GetVaDisplay(va_ctx_id, &va_display_)) != ROCDEC_SUCCESS) {
+        ERR("Failed to get VA display.");
+        return rocdec_status;
+    }
     rocdec_status = CreateDecoderConfig();
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to create a VAAPI decoder configuration.");
