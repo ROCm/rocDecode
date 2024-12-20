@@ -210,9 +210,10 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
         }
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
-        //std::cout << "AVCodec delay: " << dec_context_->delay << "num B frames: " << dec_context_->max_b_frames<< std::endl;
     }
-    // allocate av_frame buffer pool for number of surfaces to be in the decoder pool (we need delay + 4 to account for B frames)
+    // allocate av_frame buffer pool for number of surfaces to be in the decoder pool
+    // Note: with multi-threading, av_codec needs (dec_context_->delay + max_num_B_frames) number of av_frames. 
+    // max_num_B_frames is assumed to be 4 here: revisit this to fix with the correct number from seq_header
     if (dec_frames_.empty()) {
         for (int i = 0; i < (dec_context_->delay + 4); i++) {
             AVFrame *p_frame = av_frame_alloc();
@@ -462,7 +463,7 @@ int FFMpegVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
         DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
         int num_frames_to_display = decoded_pic_cnt_;
         while (num_frames_to_display) {
-            RocdecParserDispInfo dispInfo = { 0 }; // don't care about this as this will be igonored
+            RocdecParserDispInfo dispInfo = {0}; // dispinfo is not used in ffmpeg decoder, so setting it to zero
             HandlePictureDisplay(&dispInfo);
             num_frames_to_display--;
         };
