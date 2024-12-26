@@ -45,9 +45,52 @@ THE SOFTWARE.
 #include <va/va_drmcommon.h>
 #include "../../commons.h"
 #include "../../../api/rocdecode.h"
-#include "rocdecode_va_context.h"
+
+#define CHECK_HIP(call) {\
+    hipError_t hip_status = call;\
+    if (hip_status != hipSuccess) {\
+        std::cout << "HIP failure: " << #call << " failed with 'status: " << hipGetErrorName(hip_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
+}
+
+#define CHECK_VAAPI(call) {\
+    VAStatus va_status = call;\
+    if (va_status != VA_STATUS_SUCCESS) {\
+        std::cout << "VAAPI failure: " << #call << " failed with status: " << std::hex << "0x" << va_status << std::dec << " = '" << vaErrorStr(va_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
+}
 
 #define INIT_SLICE_PARAM_LIST_NUM 16 // initial slice parameter buffer list size
+
+typedef enum {
+    kSpx = 0, // Single Partition Accelerator
+    kDpx = 1, // Dual Partition Accelerator
+    kTpx = 2, // Triple Partition Accelerator
+    kQpx = 3, // Quad Partition Accelerator
+    kCpx = 4, // Core Partition Accelerator
+} ComputePartition;
+
+typedef struct {
+    int num_devices;
+    int device_id;
+    int drm_fd;
+    VADisplay va_display;
+    hipDeviceProp_t hip_dev_prop;
+    uint32_t num_dec_engines;
+    int num_va_profiles;
+    std::vector<VAProfile> va_profile_list; // supported profiles by the current GPU
+    VAProfile va_profile; // current profile used
+    VAConfigID va_config_id;
+    bool config_attributes_probed;
+    uint32_t rt_format_attrib;
+    uint32_t output_format_mask;
+    uint32_t max_width;
+    uint32_t max_height;
+    uint32_t min_width;
+    uint32_t min_height;
+} VaContextInfo;
 
 class VaapiVideoDecoder {
 public:
@@ -83,4 +126,33 @@ private:
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
+};
+
+// The GpuVaContext singleton class providing access to the the GPU VA services
+class GpuVaContext {
+public:
+    std::vector<VaContextInfo> va_contexts_;
+
+    static GpuVaContext& GetInstance() {
+        static GpuVaContext instance;
+        return instance;
+    }
+
+    rocDecStatus GetVaContext(int device_id, uint32_t *va_ctx_id);
+    rocDecStatus GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display);
+    rocDecStatus CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap);
+
+private:
+    std::mutex mutex;
+
+    GpuVaContext() {};
+    GpuVaContext(const GpuVaContext&) = delete;
+    GpuVaContext& operator = (const GpuVaContext) = delete;
+    ~GpuVaContext();
+
+    rocDecStatus InitHIP(int va_ctx_idx);
+    rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);
+    void GetVisibleDevices(std::vector<int>& visible_devices_vetor);
+    void GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions);
+    void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, std::vector<ComputePartition> &current_compute_partitions, int &offset);
 };
