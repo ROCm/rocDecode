@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <cstring>
 #include <mutex>
 #include <algorithm>
+#include <unordered_map>
 #if __cplusplus >= 201703L && __has_include(<filesystem>)
     #include <filesystem>
     namespace fs = std::filesystem;
@@ -75,6 +76,7 @@ typedef enum {
 typedef struct {
     int num_devices;
     int device_id;
+    std::string gpu_uuid;
     int drm_fd;
     VADisplay va_display;
     hipDeviceProp_t hip_dev_prop;
@@ -96,7 +98,7 @@ class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
-    rocDecStatus InitializeDecoder(std::string device_name, std::string gcn_arch_name);
+    rocDecStatus InitializeDecoder();
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
@@ -137,22 +139,30 @@ public:
         static GpuVaContext instance;
         return instance;
     }
-
     rocDecStatus GetVaContext(int device_id, uint32_t *va_ctx_id);
     rocDecStatus GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display);
     rocDecStatus CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap);
 
 private:
     std::mutex mutex;
+    /**
+     * @brief A map that associates GPU UUIDs with their corresponding render node indices.
+     * 
+     * This unordered map uses GPU UUIDs as keys (std::string) and maps them to their 
+     * respective render node indices (int). It provides a fast lookup mechanism to 
+     * retrieve the render node index for a given GPU UUID.
+     */
+    std::unordered_map<std::string, int> gpu_uuids_to_render_nodes_map_;
 
-    GpuVaContext() {};
+    GpuVaContext();
     GpuVaContext(const GpuVaContext&) = delete;
     GpuVaContext& operator = (const GpuVaContext) = delete;
     ~GpuVaContext();
 
-    rocDecStatus InitHIP(int va_ctx_idx);
+    rocDecStatus InitHIP(int device_id, int& num_devices, hipDeviceProp_t& hip_dev_prop);
     rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);
     void GetVisibleDevices(std::vector<int>& visible_devices_vetor);
     void GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions);
     void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, std::vector<ComputePartition> &current_compute_partitions, int &offset);
+    void GetGpuUuids();
 };

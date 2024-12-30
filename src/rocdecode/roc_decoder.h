@@ -59,6 +59,5 @@ private:
     int num_devices_;
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
-    hipDeviceProp_t hip_dev_prop_;
     std::vector<HipInteropDeviceMem> hip_interop_;
 };

@@ -68,7 +68,7 @@ bool VaapiVideoDecoder::IsCodecConfigSupported(int device_id, rocDecVideoCodec c
     }
 }
 
-rocDecStatus VaapiVideoDecoder::InitializeDecoder(std::string device_name, std::string gcn_arch_name) {
+rocDecStatus VaapiVideoDecoder::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
     // Before initializing the VAAPI, first check to see if the requested codec config is supported
@@ -503,6 +503,10 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
     return ROCDEC_SUCCESS;
 }
 
+GpuVaContext::GpuVaContext() {
+    GetGpuUuids();
+}
+
 GpuVaContext::~GpuVaContext() {
     for (int i = 0; i < va_contexts_.size(); i++) {
         if (va_contexts_[i].va_display) {
@@ -517,9 +521,19 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
     std::lock_guard<std::mutex> lock(mutex);
     bool found_existing = false;
     uint32_t va_ctx_idx = 0;
+    int num_devices;
+    hipDeviceProp_t hip_dev_prop;
+    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    rocdec_status = InitHIP(device_id, num_devices, hip_dev_prop);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("Failed to initilize the HIP.");
+        return rocdec_status;
+    }
+    std::string gpu_uuid(hip_dev_prop.uuid.bytes, sizeof(hip_dev_prop.uuid.bytes));
+
     if (!va_contexts_.empty()) {
         for (va_ctx_idx = 0; va_ctx_idx < va_contexts_.size(); va_ctx_idx++) {
-            if (device_id == va_contexts_[va_ctx_idx].device_id) {
+            if (gpu_uuid.compare(va_contexts_[va_ctx_idx].gpu_uuid) == 0) {
                 found_existing = true;
                 break;
             }
@@ -532,19 +546,15 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
         va_contexts_.resize(va_contexts_.size() + 1);
         va_ctx_idx = va_contexts_.size() - 1;
 
+        va_contexts_[va_ctx_idx].num_devices = num_devices;
         va_contexts_[va_ctx_idx].device_id = device_id;
+        va_contexts_[va_ctx_idx].gpu_uuid.assign(gpu_uuid);
+        va_contexts_[va_ctx_idx].hip_dev_prop = hip_dev_prop;
         va_contexts_[va_ctx_idx].drm_fd = -1;
         va_contexts_[va_ctx_idx].va_display = 0;
         va_contexts_[va_ctx_idx].num_dec_engines = 1;
         va_contexts_[va_ctx_idx].va_profile = VAProfileNone;
         va_contexts_[va_ctx_idx].config_attributes_probed = false;
-
-        rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-        rocdec_status = InitHIP(va_ctx_idx);
-        if (rocdec_status != ROCDEC_SUCCESS) {
-            ERR("Failed to initilize the HIP.");
-            return rocdec_status;
-        }
 
         std::string gcn_arch_name = va_contexts_[va_ctx_idx].hip_dev_prop.gcnArchName;
         std::size_t pos = gcn_arch_name.find_first_of(":");
@@ -554,27 +564,17 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
 
         int offset = 0;
         if (gcn_arch_name_base.compare("gfx942") == 0) {
-            std::vector<ComputePartition> current_compute_partitions;
-            GetCurrentComputePartition(current_compute_partitions);
-            if (current_compute_partitions.empty()) {
-                //if the current_compute_partitions is empty then the default SPX mode is assumed.
-                if (va_contexts_[va_ctx_idx].device_id < visible_devices.size()) {
-                    offset = visible_devices[va_contexts_[va_ctx_idx].device_id] * 7;
-                } else {
-                    offset = va_contexts_[va_ctx_idx].device_id * 7;
+                std::vector<ComputePartition> current_compute_partitions;
+                GetCurrentComputePartition(current_compute_partitions);
+                if (!current_compute_partitions.empty()) {
+                    GetDrmNodeOffset(va_contexts_[va_ctx_idx].hip_dev_prop.name, va_contexts_[va_ctx_idx].device_id, visible_devices, current_compute_partitions, offset);
+
                 }
-            } else {
-                GetDrmNodeOffset(va_contexts_[va_ctx_idx].hip_dev_prop.name, va_contexts_[va_ctx_idx].device_id, visible_devices, current_compute_partitions, offset);
-            }
         }
 
         std::string drm_node = "/dev/dri/renderD";
-        if (va_contexts_[va_ctx_idx].device_id < visible_devices.size()) {
-            drm_node += std::to_string(128 + offset + visible_devices[va_contexts_[va_ctx_idx].device_id]);
-        } else {
-            drm_node += std::to_string(128 + offset + va_contexts_[va_ctx_idx].device_id);
-        }
-
+        int render_node_id = (gpu_uuids_to_render_nodes_map_.find(gpu_uuid) != gpu_uuids_to_render_nodes_map_.end()) ? gpu_uuids_to_render_nodes_map_[gpu_uuid] : 128;
+        drm_node += std::to_string(render_node_id + offset);
         rocdec_status = InitVAAPI(va_ctx_idx, drm_node);
         if (rocdec_status != ROCDEC_SUCCESS) {
             ERR("Failed to initilize the VAAPI.");
@@ -799,6 +799,22 @@ rocDecStatus GpuVaContext::CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
     return ROCDEC_SUCCESS;
 }
 
+#if 1
+rocDecStatus GpuVaContext::InitHIP(int device_id, int& num_devices, hipDeviceProp_t& hip_dev_prop) {
+    CHECK_HIP(hipGetDeviceCount(&num_devices));
+    if (num_devices < 1) {
+        ERR("Didn't find any GPU.");
+        return ROCDEC_DEVICE_INVALID;
+    }
+    if (device_id >= num_devices) {
+        ERR("ERROR: the requested device_id is not found! ");
+        return ROCDEC_DEVICE_INVALID;
+    }   
+    CHECK_HIP(hipSetDevice(device_id));
+    CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop, device_id));
+    return ROCDEC_SUCCESS;
+}
+#else
 rocDecStatus GpuVaContext::InitHIP(int va_ctx_idx) {
     CHECK_HIP(hipGetDeviceCount(&va_contexts_[va_ctx_idx].num_devices));
     if (va_contexts_[va_ctx_idx].num_devices < 1) {
@@ -813,6 +829,7 @@ rocDecStatus GpuVaContext::InitHIP(int va_ctx_idx) {
     CHECK_HIP(hipGetDeviceProperties(&va_contexts_[va_ctx_idx].hip_dev_prop, va_contexts_[va_ctx_idx].device_id));
     return ROCDEC_SUCCESS;
 }
+#endif
 
 rocDecStatus GpuVaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
     va_contexts_[va_ctx_idx].drm_fd = open(drm_node.c_str(), O_RDWR);
@@ -832,7 +849,12 @@ rocDecStatus GpuVaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
 }
 
 void GpuVaContext::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
-    char *visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    // First, check if the ROCR_VISIBLE_DEVICES environment variable is present
+    char *visible_devices = std::getenv("ROCR_VISIBLE_DEVICES");
+    // If ROCR_VISIBLE_DEVICES is not present, check if HIP_VISIBLE_DEVICES is present
+    if (visible_devices == nullptr) {
+        visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+    }
     if (visible_devices != nullptr) {
         char *token = std::strtok(visible_devices,",");
         while (token != nullptr) {
@@ -881,52 +903,97 @@ void GpuVaContext::GetDrmNodeOffset(std::string device_name, uint8_t device_id, 
     if (!current_compute_partitions.empty()) {
         switch (current_compute_partitions[0]) {
             case kSpx:
-                if (device_id < visible_devices.size()) {
-                    offset = visible_devices[device_id] * 7;
-                } else {
-                    offset = device_id * 7;
-                }
+                offset = 0;
                 break;
             case kDpx:
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 2) * 6;
+                    offset = (visible_devices[device_id] % 2);
                 } else {
-                    offset = (device_id / 2) * 6;
+                    offset = (device_id % 2);
                 }
                 break;
             case kTpx:
-                // Please note that although there are only 6 XCCs per socket on MI300A,
-                // there are two dummy render nodes added by the driver.
-                // This needs to be taken into account when creating drm_node on each socket in TPX mode.
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 3) * 5;
+                    offset = (visible_devices[device_id] % 3);
                 } else {
-                    offset = (device_id / 3) * 5;
+                    offset = (device_id % 3);
                 }
                 break;
             case kQpx:
                 if (device_id < visible_devices.size()) {
-                    offset = (visible_devices[device_id] / 4) * 4;
+                    offset = (visible_devices[device_id] % 4);
                 } else {
-                    offset = (device_id / 4) * 4;
+                    offset = (device_id % 4);
                 }
                 break;
             case kCpx:
-                // Please note that both MI300A and MI300X have the same gfx_arch_name which is
-                // gfx942. Therefore we cannot use the gfx942 to identify MI300A.
-                // instead use the device name and look for MI300A
-                // Also, as explained aboe in the TPX mode section, we need to be taken into account
-                // the extra two dummy nodes when creating drm_node on each socket in CPX mode as well.
+                // Note: The MI300 series share the same gfx_arch_name (gfx942).
+                // Therefore, we cannot use gfx942 to distinguish between MI300A, MI308, etc.
+                // Instead, use the device name to identify MI300A, MI308, etc.
                 std::string mi300a = "MI300A";
                 size_t found_mi300a = device_name.find(mi300a);
-                if (found_mi300a != std::string::npos) {
+                std::string mi308 = "MI308";
+                size_t found_mi308 = device_name.find(mi308);
+                if (found_mi308 != std::string::npos) {
                     if (device_id < visible_devices.size()) {
-                        offset = (visible_devices[device_id] / 6) * 2;
+                        offset = (visible_devices[device_id] % 4);
                     } else {
-                        offset = (device_id / 6) * 2;
+                        offset = (device_id % 4);
+                    }
+                } else if (found_mi300a != std::string::npos) {
+                    if (device_id < visible_devices.size()) {
+                        offset = (visible_devices[device_id] % 6);
+                    } else {
+                        offset = (device_id % 6);
+                    }
+                } else {
+                    if (device_id < visible_devices.size()) {
+                        offset = (visible_devices[device_id] % 8);
+                    } else {
+                        offset = (device_id % 8);
                     }
                 }
                 break;
+        }
+    }
+}
+
+/**
+ * @brief Retrieves GPU UUIDs and maps them to render node IDs.
+ *
+ * This function iterates through all render nodes in the /dev/dri directory,
+ * extracts the render node ID from the filename, and then reads the unique GPU
+ * UUID from the corresponding sysfs path. It maps each unique GPU UUID to its
+ * corresponding render node ID and stores this mapping in the gpu_uuids_to_render_nodes_map_.
+ */
+void GpuVaContext::GetGpuUuids() {
+    std::string dri_path = "/dev/dri";
+    // Iterate through all render nodes
+    for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {
+        try {
+            std::string filename = entry.path().filename().string();
+            // Check if the file name starts with "renderD"
+            if (filename.find("renderD") == 0) {
+                // Extract the integer part from the render node name (e.g., 128 from renderD128)
+                int render_id = std::stoi(filename.substr(7));
+                std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
+                if (fs::exists(sys_device_path)) {
+                    std::string unique_id_path = sys_device_path + "/unique_id";
+                    if (fs::exists(unique_id_path)) {
+                        std::ifstream unique_id_file(unique_id_path);
+                        std::string unique_id;
+                        if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
+                            if (!unique_id.empty()) {
+                                // Map the unique GPU UUID to the render node ID
+                                gpu_uuids_to_render_nodes_map_[unique_id] = render_id;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            // If an exception occurs, continue with the next entry
+            continue;
         }
     }
 }
