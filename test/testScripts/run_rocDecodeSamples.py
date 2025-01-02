@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -256,7 +256,7 @@ with open(reportFilename, 'w') as f:
     f.write("\n")
 
     f.write(
-        "\n\n---\n**Copyright (c) 2023 - 2024 AMD ROCm rocDecode app -- run_rocDecode_tests.py V-"+__version__+"**\n")
+        "\n\n---\n**Copyright (c) 2023 - 2025 AMD ROCm rocDecode app -- run_rocDecode_tests.py V-"+__version__+"**\n")
     f.write("\n")
     # report file
     reportFileDir = os.path.abspath(reportFilename)
