@@ -40,7 +40,7 @@ left_nav_title = f"rocDecode {version_number} documentation"
 # for PDF output on Read the Docs
 project = "rocDecode documentation"
 author = "Advanced Micro Devices, Inc."
-copyright = "Copyright (c) 2024 Advanced Micro Devices, Inc. All rights reserved."
+copyright = "Copyright (c) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved."
 version = version_number
 release = version_number
 
