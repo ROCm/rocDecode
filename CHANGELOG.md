@@ -16,7 +16,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 ### Removed
 
-*
+* FFMPEG executable requirement for the package
 
 ### Resolved issues
 
@@ -32,7 +32,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * libva-amdgpu-dev - `2.16.0`
 * mesa-amdgpu-va-drivers - `1:24.3.0`
 * FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.4.0`
+* rocDecode Setup Script - `V2.5.0`
 
 ## (Unreleased) rocDecode 0.9.0
 

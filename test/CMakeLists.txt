@@ -1,5 +1,5 @@
 # ##############################################################################
-# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc.
+# Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,12 +33,19 @@ endif()
 
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
 elseif(ROCM_PATH)
-  message("-- ${White}${PROJECT_NAME} :ROCM_PATH Set -- ${ROCM_PATH}${ColourReset}")
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
 else()
-  set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+# Set AMD Clang as default compiler
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+  set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
+endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 project(rocdecode-test)
 

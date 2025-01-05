@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc.
+# Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,22 +22,23 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 3.10)
-
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
 elseif(ROCM_PATH)
-  message("-- ${White}${PROJECT_NAME} :ROCM_PATH Set -- ${ROCM_PATH}${ColourReset}")
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
 else()
-  set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
 # Set AMD Clang as default compiler
 if (NOT DEFINED CMAKE_CXX_COMPILER)
+  set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 project(videodecodebatch)
-set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
@@ -51,8 +52,7 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   # -O0 -- Don't Optimize output file 
   # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
-  # -Og -- Optimize for debugging experience rather than speed or size
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4 -Og")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4")
 else()
   # -O3       -- Optimize output file 
   # -DNDEBUG  -- turn off asserts 
@@ -71,10 +71,8 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                       ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
-    #filesystem: c++ compilers less than equal to 8.5 need explicit link with stdc++fs
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL "8.5")
-      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
-    endif()
+    # STD Filesystem
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
