@@ -63,8 +63,8 @@ protected:
     /*! \brief Decoded picture buffer
      */
     typedef struct {
-        Vp9Picture frame_store[VP9_NUM_REF_FRAMES]; // BufferPool
-        int dec_ref_count[VP9_NUM_REF_FRAMES]; // frame ref count
+        Vp9Picture frame_store[VP9_BUFFER_POOL_MAX_SIZE]; // BufferPool
+        int dec_ref_count[VP9_BUFFER_POOL_MAX_SIZE]; // frame ref count
         // A list of all frame buffers that may be used for reference of the current picture or any
         // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
         // not used as reference, the value should be -1. Borrowed from AV1.
