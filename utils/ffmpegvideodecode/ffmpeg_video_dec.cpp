@@ -798,8 +798,9 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             return 0;
         }
         // for the first frame, initialize OutputsurfaceInfo
-        if (dec_context_->frame_number == 1) {
+        if (!b_decoder_initialized) {
             InitOutputFrameInfo(p_frame);
+            b_decoder_initialized = true;
         }
         decoded_pic_cnt_++;
         if (no_multithreading_)
