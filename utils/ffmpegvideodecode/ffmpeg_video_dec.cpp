@@ -246,7 +246,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     if (coded_width_ && coded_height_) {
         end_of_stream_ = false;
-        // rocdecCreateDecoder() has been called before, and now there's possible config change
+        b_decoder_initialized = false; // reinitialize for reconfigure
         return ReconfigureDecoder(p_video_format);
     }
     // e_codec has been set in the constructor (for parser). Here it's set again for potential correction
