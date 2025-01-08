@@ -55,19 +55,6 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
     }
 }
 
-bool VaapiVideoDecoder::IsCodecConfigSupported(int device_id, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
-    RocdecDecodeCaps decode_caps;
-    decode_caps.device_id = device_id;
-    decode_caps.codec_type = codec_type;
-    decode_caps.chroma_format = chroma_format;
-    decode_caps.bit_depth_minus_8 = bit_depth_minus8;
-    if((rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) || (decode_caps.is_supported == false) || ((decode_caps.output_format_mask & (1 << output_format)) == 0)) {
-        return false;
-    } else {
-        return true;
-    }
-}
-
 rocDecStatus VaapiVideoDecoder::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
 
@@ -104,140 +91,6 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder() {
         return rocdec_status;
     }
     return rocdec_status;
-}
-
-rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
-    switch (decoder_create_info_.codec_type) {
-        case rocDecVideoCodec_HEVC:
-            if (decoder_create_info_.bit_depth_minus_8 == 0) {
-                va_profile_ = VAProfileHEVCMain;
-            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
-                va_profile_ = VAProfileHEVCMain10;
-            }
-            break;
-        case rocDecVideoCodec_AVC:
-            va_profile_ = VAProfileH264Main;
-            break;
-        case rocDecVideoCodec_VP9:
-            if (decoder_create_info_.bit_depth_minus_8 == 0) {
-                va_profile_ = VAProfileVP9Profile0;
-            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
-                va_profile_ = VAProfileVP9Profile2;
-            }
-            break;
-        case rocDecVideoCodec_AV1:
-#if VA_CHECK_VERSION(1,6,0)
-            va_profile_ = VAProfileAV1Profile0;
-#else
-            va_profile_ = static_cast<VAProfile>(32); // VAProfileAV1Profile0;
-#endif
-            break;
-        default:
-            ERR("The codec type is not supported.");
-            return ROCDEC_NOT_SUPPORTED;
-    }
-    va_config_attrib_.type = VAConfigAttribRTFormat;
-    CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
-    CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
-    unsigned int num_attribs = 0;
-    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, nullptr, &num_attribs));
-    std::vector<VASurfaceAttrib> attribs(num_attribs);
-    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, attribs.data(), &num_attribs));
-    for (auto attrib : attribs) {
-        if (attrib.type == VASurfaceAttribDRMFormatModifiers) {
-            supports_modifiers_ = true;
-            break;
-        }
-    }
-    return ROCDEC_SUCCESS;
-}
-
-rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
-    if (decoder_create_info_.num_decode_surfaces < 1) {
-        ERR("Invalid number of decode surfaces.");
-        return ROCDEC_INVALID_PARAMETER;
-    }
-    va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
-    std::vector<VASurfaceAttrib> surf_attribs;
-    VASurfaceAttrib surf_attrib;
-    surf_attrib.type = VASurfaceAttribPixelFormat;
-    surf_attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
-    surf_attrib.value.type = VAGenericValueTypeInteger;
-    uint32_t surface_format;
-    switch (decoder_create_info_.chroma_format) {
-        case rocDecVideoChromaFormat_Monochrome:
-            surface_format = VA_RT_FORMAT_YUV400;
-            surf_attrib.value.value.i = VA_FOURCC_Y800;
-            break;
-        case rocDecVideoChromaFormat_420:
-            if (decoder_create_info_.bit_depth_minus_8 == 2) {
-                surface_format = VA_RT_FORMAT_YUV420_10;
-                surf_attrib.value.value.i = VA_FOURCC_P010;
-            } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
-                surface_format = VA_RT_FORMAT_YUV420_12;
-#if VA_CHECK_VERSION(1,8,0)
-                surf_attrib.value.value.i = VA_FOURCC_P012;
-#else
-                surf_attrib.value.value.i = 0x32313050; // VA_FOURCC_P012
-#endif
-            } else {
-                surface_format = VA_RT_FORMAT_YUV420;
-                surf_attrib.value.value.i = VA_FOURCC_NV12;
-            }
-            break;
-        case rocDecVideoChromaFormat_422:
-            surface_format = VA_RT_FORMAT_YUV422;
-            break;
-        case rocDecVideoChromaFormat_444:
-            surface_format = VA_RT_FORMAT_YUV444;
-            break;
-        default:
-            ERR("The surface type is not supported");
-            return ROCDEC_NOT_SUPPORTED;
-    }
-    surf_attribs.push_back(surf_attrib);
-    uint64_t mod_linear = 0;
-    VADRMFormatModifierList modifier_list = {
-        .num_modifiers = 1,
-        .modifiers = &mod_linear,
-    };
-    if (supports_modifiers_) {
-        surf_attrib.type = VASurfaceAttribDRMFormatModifiers;
-        surf_attrib.value.type = VAGenericValueTypePointer;
-        surf_attrib.value.value.p = &modifier_list;
-        surf_attribs.push_back(surf_attrib);
-    }
-    CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.width,
-        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), surf_attribs.data(), surf_attribs.size()));
-    return ROCDEC_SUCCESS;
-}
-
-rocDecStatus VaapiVideoDecoder::CreateContext() {
-    CHECK_VAAPI(vaCreateContext(va_display_, va_config_id_, decoder_create_info_.width, decoder_create_info_.height,
-        VA_PROGRESSIVE, va_surface_ids_.data(), va_surface_ids_.size(), &va_context_id_));
-    return ROCDEC_SUCCESS;
-}
-
-rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
-    if (pic_params_buf_id_) {
-        CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
-        pic_params_buf_id_ = 0;
-    }
-    if (iq_matrix_buf_id_) {
-        CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
-        iq_matrix_buf_id_ = 0;
-    }
-    for (int i = 0; i < num_slices_; i++) {
-        if (slice_params_buf_id_[i]) {
-            CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_[i]));
-            slice_params_buf_id_[i] = 0;
-        }
-    }
-    if (slice_data_buf_id_) {
-        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
-        slice_data_buf_id_ = 0;
-    }
-    return ROCDEC_SUCCESS;
 }
 
 rocDecStatus VaapiVideoDecoder::SubmitDecode(RocdecPicParams *pPicParams) {
@@ -460,6 +313,18 @@ rocDecStatus VaapiVideoDecoder::ExportSurface(int pic_idx, VADRMPRIMESurfaceDesc
    return ROCDEC_SUCCESS;
 }
 
+rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
+    if (pic_idx >= va_surface_ids_.size()) {
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    VASurfaceStatus surface_status;
+    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
+    if (surface_status != VASurfaceReady) {
+        CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
+    }
+    return ROCDEC_SUCCESS;
+}
+
 rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
     if (reconfig_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
@@ -491,14 +356,149 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
     return rocdec_status;
 }
 
-rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
-    if (pic_idx >= va_surface_ids_.size()) {
+bool VaapiVideoDecoder::IsCodecConfigSupported(int device_id, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format) {
+    RocdecDecodeCaps decode_caps;
+    decode_caps.device_id = device_id;
+    decode_caps.codec_type = codec_type;
+    decode_caps.chroma_format = chroma_format;
+    decode_caps.bit_depth_minus_8 = bit_depth_minus8;
+    if((rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) || (decode_caps.is_supported == false) || ((decode_caps.output_format_mask & (1 << output_format)) == 0)) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+rocDecStatus VaapiVideoDecoder::CreateDecoderConfig() {
+    switch (decoder_create_info_.codec_type) {
+        case rocDecVideoCodec_HEVC:
+            if (decoder_create_info_.bit_depth_minus_8 == 0) {
+                va_profile_ = VAProfileHEVCMain;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                va_profile_ = VAProfileHEVCMain10;
+            }
+            break;
+        case rocDecVideoCodec_AVC:
+            va_profile_ = VAProfileH264Main;
+            break;
+        case rocDecVideoCodec_VP9:
+            if (decoder_create_info_.bit_depth_minus_8 == 0) {
+                va_profile_ = VAProfileVP9Profile0;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                va_profile_ = VAProfileVP9Profile2;
+            }
+            break;
+        case rocDecVideoCodec_AV1:
+#if VA_CHECK_VERSION(1,6,0)
+            va_profile_ = VAProfileAV1Profile0;
+#else
+            va_profile_ = static_cast<VAProfile>(32); // VAProfileAV1Profile0;
+#endif
+            break;
+        default:
+            ERR("The codec type is not supported.");
+            return ROCDEC_NOT_SUPPORTED;
+    }
+    va_config_attrib_.type = VAConfigAttribRTFormat;
+    CHECK_VAAPI(vaGetConfigAttributes(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1));
+    CHECK_VAAPI(vaCreateConfig(va_display_, va_profile_, VAEntrypointVLD, &va_config_attrib_, 1, &va_config_id_));
+    unsigned int num_attribs = 0;
+    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, nullptr, &num_attribs));
+    std::vector<VASurfaceAttrib> attribs(num_attribs);
+    CHECK_VAAPI(vaQuerySurfaceAttributes(va_display_, va_config_id_, attribs.data(), &num_attribs));
+    for (auto attrib : attribs) {
+        if (attrib.type == VASurfaceAttribDRMFormatModifiers) {
+            supports_modifiers_ = true;
+            break;
+        }
+    }
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::CreateSurfaces() {
+    if (decoder_create_info_.num_decode_surfaces < 1) {
+        ERR("Invalid number of decode surfaces.");
         return ROCDEC_INVALID_PARAMETER;
     }
-    VASurfaceStatus surface_status;
-    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-    if (surface_status != VASurfaceReady) {
-        CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
+    va_surface_ids_.resize(decoder_create_info_.num_decode_surfaces);
+    std::vector<VASurfaceAttrib> surf_attribs;
+    VASurfaceAttrib surf_attrib;
+    surf_attrib.type = VASurfaceAttribPixelFormat;
+    surf_attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
+    surf_attrib.value.type = VAGenericValueTypeInteger;
+    uint32_t surface_format;
+    switch (decoder_create_info_.chroma_format) {
+        case rocDecVideoChromaFormat_Monochrome:
+            surface_format = VA_RT_FORMAT_YUV400;
+            surf_attrib.value.value.i = VA_FOURCC_Y800;
+            break;
+        case rocDecVideoChromaFormat_420:
+            if (decoder_create_info_.bit_depth_minus_8 == 2) {
+                surface_format = VA_RT_FORMAT_YUV420_10;
+                surf_attrib.value.value.i = VA_FOURCC_P010;
+            } else if (decoder_create_info_.bit_depth_minus_8 == 4) {
+                surface_format = VA_RT_FORMAT_YUV420_12;
+#if VA_CHECK_VERSION(1,8,0)
+                surf_attrib.value.value.i = VA_FOURCC_P012;
+#else
+                surf_attrib.value.value.i = 0x32313050; // VA_FOURCC_P012
+#endif
+            } else {
+                surface_format = VA_RT_FORMAT_YUV420;
+                surf_attrib.value.value.i = VA_FOURCC_NV12;
+            }
+            break;
+        case rocDecVideoChromaFormat_422:
+            surface_format = VA_RT_FORMAT_YUV422;
+            break;
+        case rocDecVideoChromaFormat_444:
+            surface_format = VA_RT_FORMAT_YUV444;
+            break;
+        default:
+            ERR("The surface type is not supported");
+            return ROCDEC_NOT_SUPPORTED;
+    }
+    surf_attribs.push_back(surf_attrib);
+    uint64_t mod_linear = 0;
+    VADRMFormatModifierList modifier_list = {
+        .num_modifiers = 1,
+        .modifiers = &mod_linear,
+    };
+    if (supports_modifiers_) {
+        surf_attrib.type = VASurfaceAttribDRMFormatModifiers;
+        surf_attrib.value.type = VAGenericValueTypePointer;
+        surf_attrib.value.value.p = &modifier_list;
+        surf_attribs.push_back(surf_attrib);
+    }
+    CHECK_VAAPI(vaCreateSurfaces(va_display_, surface_format, decoder_create_info_.width,
+        decoder_create_info_.height, va_surface_ids_.data(), va_surface_ids_.size(), surf_attribs.data(), surf_attribs.size()));
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::CreateContext() {
+    CHECK_VAAPI(vaCreateContext(va_display_, va_config_id_, decoder_create_info_.width, decoder_create_info_.height,
+        VA_PROGRESSIVE, va_surface_ids_.data(), va_surface_ids_.size(), &va_context_id_));
+    return ROCDEC_SUCCESS;
+}
+
+rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
+    if (pic_params_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, pic_params_buf_id_));
+        pic_params_buf_id_ = 0;
+    }
+    if (iq_matrix_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, iq_matrix_buf_id_));
+        iq_matrix_buf_id_ = 0;
+    }
+    for (int i = 0; i < num_slices_; i++) {
+        if (slice_params_buf_id_[i]) {
+            CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_params_buf_id_[i]));
+            slice_params_buf_id_[i] = 0;
+        }
+    }
+    if (slice_data_buf_id_) {
+        CHECK_VAAPI(vaDestroyBuffer(va_display_, slice_data_buf_id_));
+        slice_data_buf_id_ = 0;
     }
     return ROCDEC_SUCCESS;
 }

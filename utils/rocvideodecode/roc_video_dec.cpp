@@ -1058,7 +1058,7 @@ bool RocVideoDecoder::CodecSupported(int device_id, rocDecVideoCodec codec_id, u
     decode_caps.codec_type = codec_id;
     decode_caps.chroma_format = rocDecVideoChromaFormat_420;
     decode_caps.bit_depth_minus_8 = bit_depth - 8;
-    if((rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) || (decode_caps.is_supported == false)) {
+    if((rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) || !decode_caps.is_supported) {
         return false;
     } else {
         return true;
