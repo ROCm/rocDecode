@@ -49,7 +49,7 @@ rocDecStatus Vp9VideoParser::Initialize(RocdecParserParams *p_params) {
     if (parser_params_.max_display_delay < DECODE_BUF_POOL_EXTENSION) {
         parser_params_.max_display_delay = DECODE_BUF_POOL_EXTENSION;
     }
-    CheckAndAdjustDecBufPoolSize(VP9_NUM_REF_FRAMES);
+    CheckAndAdjustDecBufPoolSize(VP9_BUFFER_POOL_MAX_SIZE);
     return ROCDEC_SUCCESS;
 }
 
@@ -352,7 +352,7 @@ void Vp9VideoParser::UpdateRefFrames() {
 void Vp9VideoParser::InitDpb() {
     int i;
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         dpb_buffer_.frame_store[i].pic_idx = i;
         dpb_buffer_.frame_store[i].use_status = kNotUsed;
         dpb_buffer_.dec_ref_count[i] = 0;
@@ -391,12 +391,12 @@ ParserResult Vp9VideoParser::FindFreeInDecBufPool() {
 
 ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
     int i;
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++ ) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++ ) {
         if (dpb_buffer_.dec_ref_count[i] == 0) {
             break;
         }
     }
-    if (i == VP9_NUM_REF_FRAMES) {
+    if (i == VP9_BUFFER_POOL_MAX_SIZE) {
         ERR("DPB buffer overflow!");
         return PARSER_NOT_FOUND;
     }
@@ -422,7 +422,7 @@ ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
 }
 
 void Vp9VideoParser::CheckAndUpdateDecStatus() {
-    for (int i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (int i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         if (dpb_buffer_.frame_store[i].use_status != kNotUsed && dpb_buffer_.dec_ref_count[i] == 0) {
             dpb_buffer_.frame_store[i].use_status = kNotUsed;
             decode_buffer_pool_[dpb_buffer_.frame_store[i].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
@@ -1112,7 +1112,7 @@ void Vp9VideoParser::PrintDpb() {
     MSG("DPB buffer content: ");
     MSG("=======================");
     MSG("Current frame: pic_idx = " << curr_pic_.pic_idx << ", dec_buf_idx = " << curr_pic_.dec_buf_idx);
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         MSG("Frame store " << i << ": " << "dec_ref_count = " << dpb_buffer_.dec_ref_count[i] << ", pic_idx = " << dpb_buffer_.frame_store[i].pic_idx << ", dec_buf_idx = " << dpb_buffer_.frame_store[i].dec_buf_idx << ", use_status = " << dpb_buffer_.frame_store[i].use_status);
     }
     MSG_NO_NEWLINE("virtual_buffer_index[] =");
