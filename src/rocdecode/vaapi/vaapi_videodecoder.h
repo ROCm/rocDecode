@@ -74,7 +74,6 @@ typedef enum {
 } ComputePartition;
 
 typedef struct {
-    int num_devices;
     int device_id;
     std::string gpu_uuid;
     int drm_fd;
@@ -133,6 +132,7 @@ private:
 // The GpuVaContext singleton class providing access to the the GPU VA services
 class GpuVaContext {
 public:
+    int num_devices_;
     std::vector<VaContextInfo> va_contexts_;
 
     static GpuVaContext& GetInstance() {
@@ -159,7 +159,7 @@ private:
     GpuVaContext& operator = (const GpuVaContext) = delete;
     ~GpuVaContext();
 
-    rocDecStatus InitHIP(int device_id, int& num_devices, hipDeviceProp_t& hip_dev_prop);
+    rocDecStatus InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop);
     rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);
     void GetVisibleDevices(std::vector<int>& visible_devices_vetor);
     void GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions);

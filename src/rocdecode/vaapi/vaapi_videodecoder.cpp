@@ -521,10 +521,9 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
     std::lock_guard<std::mutex> lock(mutex);
     bool found_existing = false;
     uint32_t va_ctx_idx = 0;
-    int num_devices;
     hipDeviceProp_t hip_dev_prop;
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    rocdec_status = InitHIP(device_id, num_devices, hip_dev_prop);
+    rocdec_status = InitHIP(device_id, hip_dev_prop);
     if (rocdec_status != ROCDEC_SUCCESS) {
         ERR("Failed to initilize the HIP.");
         return rocdec_status;
@@ -546,7 +545,6 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
         va_contexts_.resize(va_contexts_.size() + 1);
         va_ctx_idx = va_contexts_.size() - 1;
 
-        va_contexts_[va_ctx_idx].num_devices = num_devices;
         va_contexts_[va_ctx_idx].device_id = device_id;
         va_contexts_[va_ctx_idx].gpu_uuid.assign(gpu_uuid);
         va_contexts_[va_ctx_idx].hip_dev_prop = hip_dev_prop;
@@ -799,14 +797,13 @@ rocDecStatus GpuVaContext::CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
     return ROCDEC_SUCCESS;
 }
 
-#if 1
-rocDecStatus GpuVaContext::InitHIP(int device_id, int& num_devices, hipDeviceProp_t& hip_dev_prop) {
-    CHECK_HIP(hipGetDeviceCount(&num_devices));
-    if (num_devices < 1) {
+rocDecStatus GpuVaContext::InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop) {
+    CHECK_HIP(hipGetDeviceCount(&num_devices_));
+    if (num_devices_ < 1) {
         ERR("Didn't find any GPU.");
         return ROCDEC_DEVICE_INVALID;
     }
-    if (device_id >= num_devices) {
+    if (device_id >= num_devices_) {
         ERR("ERROR: the requested device_id is not found! ");
         return ROCDEC_DEVICE_INVALID;
     }   
@@ -814,22 +811,6 @@ rocDecStatus GpuVaContext::InitHIP(int device_id, int& num_devices, hipDevicePro
     CHECK_HIP(hipGetDeviceProperties(&hip_dev_prop, device_id));
     return ROCDEC_SUCCESS;
 }
-#else
-rocDecStatus GpuVaContext::InitHIP(int va_ctx_idx) {
-    CHECK_HIP(hipGetDeviceCount(&va_contexts_[va_ctx_idx].num_devices));
-    if (va_contexts_[va_ctx_idx].num_devices < 1) {
-        ERR("Didn't find any GPU.");
-        return ROCDEC_DEVICE_INVALID;
-    }
-    if (va_contexts_[va_ctx_idx].device_id >= va_contexts_[va_ctx_idx].num_devices) {
-        ERR("ERROR: the requested device_id is not found! ");
-        return ROCDEC_DEVICE_INVALID;
-    }   
-    CHECK_HIP(hipSetDevice(va_contexts_[va_ctx_idx].device_id));
-    CHECK_HIP(hipGetDeviceProperties(&va_contexts_[va_ctx_idx].hip_dev_prop, va_contexts_[va_ctx_idx].device_id));
-    return ROCDEC_SUCCESS;
-}
-#endif
 
 rocDecStatus GpuVaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
     va_contexts_[va_ctx_idx].drm_fd = open(drm_node.c_str(), O_RDWR);
