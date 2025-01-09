@@ -246,7 +246,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     if (coded_width_ && coded_height_) {
         end_of_stream_ = false;
-        // rocdecCreateDecoder() has been called before, and now there's possible config change
+        b_decoder_initialized = false; // reinitialize for reconfigure
         return ReconfigureDecoder(p_video_format);
     }
     // e_codec has been set in the constructor (for parser). Here it's set again for potential correction
@@ -798,8 +798,9 @@ int FFMpegVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             return 0;
         }
         // for the first frame, initialize OutputsurfaceInfo
-        if (dec_context_->frame_number == 1) {
+        if (!b_decoder_initialized) {
             InitOutputFrameInfo(p_frame);
+            b_decoder_initialized = true;
         }
         decoded_pic_cnt_++;
         if (no_multithreading_)
