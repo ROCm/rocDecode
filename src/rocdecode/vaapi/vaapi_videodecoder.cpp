@@ -608,19 +608,11 @@ void VaapiVideoDecoder::GetDrmNodeOffset(std::string device_name, uint8_t device
                 break;
             case kCpx:
                 // Note: The MI300 series share the same gfx_arch_name (gfx942).
-                // Therefore, we cannot use gfx942 to distinguish between MI300A, MI308, etc.
-                // Instead, use the device name to identify MI300A, MI308, etc.
+                // Therefore, we cannot use gfx942 to distinguish between MI300X, MI300A etc.
+                // Instead, use the device name to identify MI300A etc.
                 std::string mi300a = "MI300A";
                 size_t found_mi300a = device_name.find(mi300a);
-                std::string mi308 = "MI308";
-                size_t found_mi308 = device_name.find(mi308);
-                if (found_mi308 != std::string::npos) {
-                    if (device_id < visible_devices.size()) {
-                        offset = (visible_devices[device_id] % 4);
-                    } else {
-                        offset = (device_id % 4);
-                    }
-                } else if (found_mi300a != std::string::npos) {
+                if (found_mi300a != std::string::npos) {
                     if (device_id < visible_devices.size()) {
                         offset = (visible_devices[device_id] % 6);
                     } else {
