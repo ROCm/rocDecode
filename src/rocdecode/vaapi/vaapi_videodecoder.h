@@ -129,14 +129,14 @@ private:
     rocDecStatus DestroyDataBuffers();
 };
 
-// The GpuVaContext singleton class providing access to the the GPU VA services
-class GpuVaContext {
+// The VaContext singleton class providing access to the the GPU VA services
+class VaContext {
 public:
     int num_devices_;
     std::vector<VaContextInfo> va_contexts_;
 
-    static GpuVaContext& GetInstance() {
-        static GpuVaContext instance;
+    static VaContext& GetInstance() {
+        static VaContext instance;
         return instance;
     }
     rocDecStatus GetVaContext(int device_id, uint32_t *va_ctx_id);
@@ -154,10 +154,10 @@ private:
      */
     std::unordered_map<std::string, int> gpu_uuids_to_render_nodes_map_;
 
-    GpuVaContext();
-    GpuVaContext(const GpuVaContext&) = delete;
-    GpuVaContext& operator = (const GpuVaContext) = delete;
-    ~GpuVaContext();
+    VaContext();
+    VaContext(const VaContext&) = delete;
+    VaContext& operator = (const VaContext) = delete;
+    ~VaContext();
 
     rocDecStatus InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop);
     rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);

@@ -65,7 +65,7 @@ rocDecStatus VaapiVideoDecoder::InitializeDecoder() {
         return ROCDEC_NOT_SUPPORTED;
     }
 
-    GpuVaContext& va_ctx = GpuVaContext::GetInstance();
+    VaContext& va_ctx = VaContext::GetInstance();
     uint32_t va_ctx_id;
     if ((rocdec_status = va_ctx.GetVaContext(decoder_create_info_.device_id, &va_ctx_id)) != ROCDEC_SUCCESS) {
         ERR("Failed to get VA context.");
@@ -503,11 +503,11 @@ rocDecStatus VaapiVideoDecoder::DestroyDataBuffers() {
     return ROCDEC_SUCCESS;
 }
 
-GpuVaContext::GpuVaContext() {
+VaContext::VaContext() {
     GetGpuUuids();
 }
 
-GpuVaContext::~GpuVaContext() {
+VaContext::~VaContext() {
     for (int i = 0; i < va_contexts_.size(); i++) {
         if (va_contexts_[i].va_display) {
             if (vaTerminate(va_contexts_[i].va_display) != VA_STATUS_SUCCESS) {
@@ -517,7 +517,7 @@ GpuVaContext::~GpuVaContext() {
     }
 };
 
-rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
+rocDecStatus VaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
     std::lock_guard<std::mutex> lock(mutex);
     bool found_existing = false;
     uint32_t va_ctx_idx = 0;
@@ -600,7 +600,7 @@ rocDecStatus GpuVaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
     }
 }
 
-rocDecStatus GpuVaContext::GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display) {
+rocDecStatus VaContext::GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display) {
     if (va_ctx_id >= va_contexts_.size()) {
         ERR("Invalid VA context Id.");
         *va_display = 0;
@@ -611,7 +611,7 @@ rocDecStatus GpuVaContext::GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_displa
     }
 }
 
-rocDecStatus GpuVaContext::CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
+rocDecStatus VaContext::CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
     if (dec_cap == nullptr) {
         ERR("Null decode capability struct pointer.");
         return ROCDEC_INVALID_PARAMETER;
@@ -797,7 +797,7 @@ rocDecStatus GpuVaContext::CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap) {
     return ROCDEC_SUCCESS;
 }
 
-rocDecStatus GpuVaContext::InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop) {
+rocDecStatus VaContext::InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop) {
     CHECK_HIP(hipGetDeviceCount(&num_devices_));
     if (num_devices_ < 1) {
         ERR("Didn't find any GPU.");
@@ -812,7 +812,7 @@ rocDecStatus GpuVaContext::InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop)
     return ROCDEC_SUCCESS;
 }
 
-rocDecStatus GpuVaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
+rocDecStatus VaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
     va_contexts_[va_ctx_idx].drm_fd = open(drm_node.c_str(), O_RDWR);
     if (va_contexts_[va_ctx_idx].drm_fd < 0) {
         ERR("Failed to open drm node." + drm_node);
@@ -829,7 +829,7 @@ rocDecStatus GpuVaContext::InitVAAPI(int va_ctx_idx, std::string drm_node) {
     return ROCDEC_SUCCESS;
 }
 
-void GpuVaContext::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
+void VaContext::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
     // First, check if the ROCR_VISIBLE_DEVICES environment variable is present
     char *visible_devices = std::getenv("ROCR_VISIBLE_DEVICES");
     // If ROCR_VISIBLE_DEVICES is not present, check if HIP_VISIBLE_DEVICES is present
@@ -846,7 +846,7 @@ void GpuVaContext::GetVisibleDevices(std::vector<int>& visible_devices_vetor) {
     }
 }
 
-void GpuVaContext::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
+void VaContext::GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions) {
     std::string search_path = "/sys/devices/";
     std::string partition_file = "current_compute_partition";
     std::error_code ec;
@@ -880,7 +880,7 @@ void GpuVaContext::GetCurrentComputePartition(std::vector<ComputePartition> &cur
     }
 }
 
-void GpuVaContext::GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, std::vector<ComputePartition> &current_compute_partitions, int &offset) {
+void VaContext::GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, std::vector<ComputePartition> &current_compute_partitions, int &offset) {
     if (!current_compute_partitions.empty()) {
         switch (current_compute_partitions[0]) {
             case kSpx:
@@ -939,7 +939,7 @@ void GpuVaContext::GetDrmNodeOffset(std::string device_name, uint8_t device_id, 
  * UUID from the corresponding sysfs path. It maps each unique GPU UUID to its
  * corresponding render node ID and stores this mapping in the gpu_uuids_to_render_nodes_map_.
  */
-void GpuVaContext::GetGpuUuids() {
+void VaContext::GetGpuUuids() {
     std::string dri_path = "/dev/dri";
     // Iterate through all render nodes
     for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {

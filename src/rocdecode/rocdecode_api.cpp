@@ -72,7 +72,7 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
     if (pdc == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    GpuVaContext& va_ctx = GpuVaContext::GetInstance();
+    VaContext& va_ctx = VaContext::GetInstance();
     rocDecStatus ret = ROCDEC_SUCCESS;
     if ((ret = va_ctx.CheckDecCapForCodecType(pdc)) != ROCDEC_SUCCESS) {
         ERR("Failed to obtain decoder capabilities from driver.");
