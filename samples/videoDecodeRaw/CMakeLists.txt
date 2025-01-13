@@ -62,13 +62,16 @@ endif()
 
 find_package(HIP QUIET)
 find_package(rocDecode QUIET)
+find_package(rocprofiler-register QUIET)
 
-if(HIP_FOUND AND ROCDECODE_FOUND)
+if(HIP_FOUND AND ROCDECODE_FOUND AND rocprofiler-register_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    # rocprofiler-register
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecoderaw.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
@@ -81,5 +84,8 @@ else()
     endif()
     if (NOT ROCDECODE_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+    endif()
+    if (NOT rocprofiler-register_FOUND)
+        message(FATAL_ERROR "-- ERROR!: rocprofiler-register Not Found! - please install rocprofiler-register!")
     endif()
 endif()
