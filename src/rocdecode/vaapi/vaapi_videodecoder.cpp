@@ -554,20 +554,14 @@ rocDecStatus VaContext::GetVaContext(int device_id, uint32_t *va_ctx_id) {
         va_contexts_[va_ctx_idx].va_profile = VAProfileNone;
         va_contexts_[va_ctx_idx].config_attributes_probed = false;
 
-        std::string gcn_arch_name = va_contexts_[va_ctx_idx].hip_dev_prop.gcnArchName;
-        std::size_t pos = gcn_arch_name.find_first_of(":");
-        std::string gcn_arch_name_base = (pos != std::string::npos) ? gcn_arch_name.substr(0, pos) : gcn_arch_name;
         std::vector<int> visible_devices;
         GetVisibleDevices(visible_devices);
 
         int offset = 0;
-        if (gcn_arch_name_base.compare("gfx942") == 0) {
-                std::vector<ComputePartition> current_compute_partitions;
-                GetCurrentComputePartition(current_compute_partitions);
-                if (!current_compute_partitions.empty()) {
-                    GetDrmNodeOffset(va_contexts_[va_ctx_idx].hip_dev_prop.name, va_contexts_[va_ctx_idx].device_id, visible_devices, current_compute_partitions, offset);
-
-                }
+        std::vector<ComputePartition> current_compute_partitions;
+        GetCurrentComputePartition(current_compute_partitions);
+        if (!current_compute_partitions.empty()) {
+            GetDrmNodeOffset(va_contexts_[va_ctx_idx].hip_dev_prop.name, va_contexts_[va_ctx_idx].device_id, visible_devices, current_compute_partitions, offset);
         }
 
         std::string drm_node = "/dev/dri/renderD";
