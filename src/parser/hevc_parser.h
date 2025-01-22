@@ -241,6 +241,7 @@ protected:
     void ParseVui(HevcVuiParameters *vui, uint32_t max_num_sub_layers_minus1, uint8_t *data, size_t size, size_t &offset);
     
     /*! \brief Function to parse Short Term Reference Picture Set
+     * \param [in] sps_ptr The pointer to the associated SPS
      * \param [out] rps A pointer of <tt>HevcShortTermRps</tt> for the output from the parsed stream
      * \param [in] st_rps_idx specifies the index in the RPS buffer
      * \param [in] num_short_term_ref_pic_sets Specifies the count of Short Term RPS in <tt>uint32_t</tt>
@@ -250,7 +251,7 @@ protected:
      * \param [in] offset Reference to the offset in the input buffer
      * \return No return value
      */
-    void ParseShortTermRefPicSet(HevcShortTermRps *rps, uint32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, HevcShortTermRps rps_ref[], uint8_t *data, size_t size, size_t &offset);
+    ParserResult ParseShortTermRefPicSet(HevcSeqParamSet *sps_ptr, HevcShortTermRps *rps, uint32_t st_rps_idx, uint32_t num_short_term_ref_pic_sets, HevcShortTermRps rps_ref[], uint8_t *data, size_t size, size_t &offset);
     
     /*! \brief Function to parse weighted prediction table
      * \param [in/out] Slice_header_ptr Pointer to the slice segment header
