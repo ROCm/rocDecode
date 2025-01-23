@@ -55,7 +55,7 @@ VaapiVideoDecoder::~VaapiVideoDecoder() {
             }
         }
         if (vaTerminate(va_display_) != VA_STATUS_SUCCESS) {
-                ERR("Failed to termiate VA");
+            ERR("Failed to termiate VA");
         }
     }
 }
