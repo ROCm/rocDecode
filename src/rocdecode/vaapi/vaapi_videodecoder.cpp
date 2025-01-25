@@ -911,61 +911,56 @@ void VaContext::GetDrmNodeOffset(std::string device_name, uint8_t device_id, std
  */
 void VaContext::GetGpuUuids() {
     std::string dri_path = "/dev/dri";
-    // Iterate through all render nodes
-    if (fs::exists(dri_path)) {
-        for (const auto& entry : fs::directory_iterator(dri_path, fs::directory_options::skip_permission_denied)) {
-            try {
-                std::string filename = entry.path().filename().string();
-                // Check if the file name starts with "renderD"
-                if (filename.find("renderD") == 0) {
-                    // Extract the integer part from the render node name (e.g., 128 from renderD128)
-                    int render_id = std::stoi(filename.substr(7));
-                    std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
-                    if (fs::exists(sys_device_path)) {
-                        std::string unique_id_path = sys_device_path + "/unique_id";
-                        std::string unique_id;
-                        if (fs::exists(unique_id_path)) {
-                            std::ifstream unique_id_file(unique_id_path);
-                            if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
-                                if (!unique_id.empty()) {
-                                    // Map the unique GPU UUID to the render node ID
-                                    gpu_uuids_to_render_nodes_map_[unique_id] = render_id;
-                                }
-                            }
-                            unique_id_file.close();
-                        }
+    DIR* dir = opendir(dri_path.c_str());
+    if (dir) {
+        struct dirent* entry;
+        // Iterate through all render nodes
+        while ((entry = readdir(dir)) != nullptr) {
+            std::string filename = entry->d_name;
+            // Check if the file name starts with "renderD"
+            if (filename.find("renderD") == 0) {
+                // Extract the integer part from the render node name (e.g., 128 from renderD128)
+                int render_id = std::stoi(filename.substr(7));
+                std::string sys_device_path = "/sys/class/drm/" + filename + "/device";
+                struct stat info;
+                if (stat(sys_device_path.c_str(), &info) == 0) {
+                    std::string unique_id_path = sys_device_path + "/unique_id";
+                    std::ifstream unique_id_file(unique_id_path);
+                    std::string unique_id;
+                    if (unique_id_file.is_open() && std::getline(unique_id_file, unique_id)) {
                         if (!unique_id.empty()) {
-                            unique_id_path = sys_device_path + "/current_compute_partition";
-                            if (fs::exists(unique_id_path)) {
-                                std::ifstream unique_id_file(unique_id_path);
-                                std::string partition;
-                                ComputePartition current_compute_partition = kSpx;
-                                if (unique_id_file.is_open() && std::getline(unique_id_file, partition)) {
-                                    if (!partition.empty()) {
-                                        if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
-                                            current_compute_partition = kSpx;
-                                        } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
-                                            current_compute_partition = kDpx;
-                                        } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
-                                            current_compute_partition = kTpx;
-                                        } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
-                                            current_compute_partition = kQpx;
-                                        } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
-                                            current_compute_partition = kCpx;
-                                        }
-                                        // Map the unique GPU UUID to the compute partition
-                                        gpu_uuids_to_compute_partition_map_[unique_id] = current_compute_partition;
-                                    }
-                                    unique_id_file.close();
-                                }
-                            }
+                            // Map the unique GPU UUID to the render node ID
+                            gpu_uuids_to_render_nodes_map_[unique_id] = render_id;
                         }
                     }
+                    unique_id_file.close();
+                    if (!unique_id.empty()) {
+                        unique_id_path = sys_device_path + "/current_compute_partition";
+                        std::ifstream partition_file(unique_id_path);
+                        std::string partition;
+                        ComputePartition current_compute_partition = kSpx;
+                        if (partition_file.is_open() && std::getline(partition_file, partition)) {
+                            if (!partition.empty()) {
+                                if (partition.compare("SPX") == 0 || partition.compare("spx") == 0) {
+                                    current_compute_partition = kSpx;
+                                } else if (partition.compare("DPX") == 0 || partition.compare("dpx") == 0) {
+                                    current_compute_partition = kDpx;
+                                } else if (partition.compare("TPX") == 0 || partition.compare("tpx") == 0) {
+                                    current_compute_partition = kTpx;
+                                } else if (partition.compare("QPX") == 0 || partition.compare("qpx") == 0) {
+                                    current_compute_partition = kQpx;
+                                } else if (partition.compare("CPX") == 0 || partition.compare("cpx") == 0) {
+                                    current_compute_partition = kCpx;
+                                }
+                                // Map the unique GPU UUID to the compute partition
+                                gpu_uuids_to_compute_partition_map_[unique_id] = current_compute_partition;
+                            }
+                        }
+                        partition_file.close();
+                    }
                 }
-            } catch (const std::exception& e) {
-                // If an exception occurs, continue with the next entry
-                continue;
             }
         }
+        closedir(dir);
     }
 }

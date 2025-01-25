@@ -28,17 +28,12 @@ THE SOFTWARE.
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <cstring>
 #include <mutex>
 #include <algorithm>
 #include <unordered_map>
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-    #include <filesystem>
-    namespace fs = std::filesystem;
-#else
-    #include <experimental/filesystem>
-    namespace fs = std::experimental::filesystem;
-#endif
 #include <libdrm/amdgpu_drm.h>
 #include <libdrm/amdgpu.h>
 #include <va/va.h>

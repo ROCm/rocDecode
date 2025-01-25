@@ -119,8 +119,6 @@ if(HIP_FOUND AND Libva_FOUND)
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
-  # STD Filesystem
-  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
 
   # rocprofiler
   if (rocprofiler-register_FOUND)
