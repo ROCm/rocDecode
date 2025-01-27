@@ -263,7 +263,7 @@ if developerInstall == 'ON':
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
                 ' install https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm'))
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall+' '+linuxSystemInstall_check +
-                ' install ffmpeg ffmpeg-free-devel'))
+                ' install ffmpeg ffmpeg-devel'))
         elif "SLES" in platfromInfo:
             # FFMPEG-4 packages
             ERROR_CHECK(os.system(
