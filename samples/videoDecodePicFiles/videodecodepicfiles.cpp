@@ -46,7 +46,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input picture files - required" << std::endl
     << "-codec Codec type (0: HEVC, 1: AVC; 2: AV1; 3: VP9) - required" << std::endl
-    << "-l Number of iterations; optional; default: 1" << std::endl
+    << "-l Number of iterations - optional; default: 1" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-backend backend (0 for GPU, 1 CPU-FFMpeg, 2 CPU-FFMpeg No threading); optional; default: 0" << std::endl

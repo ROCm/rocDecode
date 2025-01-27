@@ -19,7 +19,7 @@ make -j
 ```shell
 ./videodecodepicfiles -i <Input picture files [required]>
                     -codec <Codec type (0: HEVC, 1: AVC; 2: AV1; 3: VP9) - [required]>
-                    -l Number of iterations; [optional - default: 1]>
+                    -l <Number of iterations [optional - default: 1]>
                     -o <output path to save decoded YUV frames [optional]> 
                     -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
                     -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
