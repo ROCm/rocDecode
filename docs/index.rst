@@ -10,42 +10,40 @@ rocDecode provides APIs, utilities, and samples that you can use to easily acces
 features of your media engines (VCNs). It also allows interoperability with other compute engines on
 the GPU using Video Acceleration API (VA-API)/HIP. To learn more, see :doc:`what-is-rocDecode`
 
-The code is open and hosted at `<https://github.com/ROCm/rocDecode>`_.
-
+The rocDecode public repository is located at `https://github.com/ROCm/rocDecode <https://github.com/ROCm/rocDecode>`_.
 
 .. grid:: 2
   :gutter: 3
 
   .. grid-item-card:: Install
 
-    * :doc:`Quick start <./install/quick-start>`
-    * :doc:`rocDecode installation <./install/install>`
-
-
-The documentation is structured as follows:
+    * :doc:`Installing rocDecode with the package installer <./install/rocDecode-package-install>`
+    * :doc:`Building and installing rocDecode from source code <./install/rocDecode-build-and-install>`
+    * `rocDecode Docker containers <https://github.com/ROCm/rocDecode/tree/develop/docker>`_
 
 .. grid:: 2
   :gutter: 3
 
-  .. grid-item-card:: Tutorials
+  .. grid-item-card:: Conceptual
 
-    * `GitHub samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_
+    * :doc:`Video decoding pipeline <./conceptual/video-decoding-pipeline>`
 
   .. grid-item-card:: How to
 
-    * :doc:`Using rocDecode <how-to/using-rocdecode>`
+    * :doc:`Using rocDecode <./how-to/using-rocdecode>`
 
-  .. grid-item-card:: Conceptual
+  .. grid-item-card:: Samples
 
-     * :doc:`Video decoding pipeline <./conceptual/video-decoding-pipeline>`
-  
+    * :doc:`rocDecode samples <./tutorials/rocDecode-samples>`
+
   .. grid-item-card:: Reference
 
+    * :doc:`rocDecode codec support and hardware capabilities <./reference/rocDecode-formats-and-architectures>`
+    * :doc:`rocDecode tested configurations <./reference/rocDecode-tested-configurations>`
     * :doc:`API library <../doxygen/html/files>`
     * :doc:`Functions <../doxygen/html/globals>`
     * :doc:`Data structures <../doxygen/html/annotated>`
   
-
 To contribute to the documentation, refer to
 `Contributing to ROCm <https://rocm.docs.amd.com/en/latest/contribute/contributing.html>`_.
 
