@@ -355,3 +355,19 @@ private:
     bool IsRadlPic(HevcNalUnitHeader *nal_header_ptr);
     bool IsRefPic(HevcNalUnitHeader *nal_header_ptr);
 };
+
+// HEVC video parser to work with Avcodec vide decoder
+class HevcVideoParserAvcodec : public HevcVideoParser {
+
+public:
+    /*! \brief Construct a new HevcVideoParserAvcodec object
+     */
+    HevcVideoParserAvcodec();
+    
+    /*! \brief Function to Parse video data: Typically called from application when a demuxed picture is ready to be parsed
+     * \param [in] p_data Pointer to picture data of type <tt>RocdecSourceDataPacket</tt>
+     * @return <tt>rocDecStatus</tt> Returns success on completion, else error_code for failure
+     */
+    virtual rocDecStatus ParseVideoData(RocdecSourceDataPacket *p_data);
+
+};
