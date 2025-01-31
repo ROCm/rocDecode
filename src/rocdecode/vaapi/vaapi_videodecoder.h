@@ -28,17 +28,12 @@ THE SOFTWARE.
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <cstring>
 #include <mutex>
 #include <algorithm>
 #include <unordered_map>
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-    #include <filesystem>
-    namespace fs = std::filesystem;
-#else
-    #include <experimental/filesystem>
-    namespace fs = std::experimental::filesystem;
-#endif
 #include <libdrm/amdgpu_drm.h>
 #include <libdrm/amdgpu.h>
 #include <va/va.h>
@@ -153,7 +148,7 @@ private:
      * retrieve the render node index for a given GPU UUID.
      */
     std::unordered_map<std::string, int> gpu_uuids_to_render_nodes_map_;
-
+    std::unordered_map<std::string, ComputePartition> gpu_uuids_to_compute_partition_map_;
     VaContext();
     VaContext(const VaContext&) = delete;
     VaContext& operator = (const VaContext) = delete;
@@ -162,7 +157,6 @@ private:
     rocDecStatus InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop);
     rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);
     void GetVisibleDevices(std::vector<int>& visible_devices_vetor);
-    void GetCurrentComputePartition(std::vector<ComputePartition> &current_compute_partitions);
-    void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, std::vector<ComputePartition> &current_compute_partitions, int &offset);
+    void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, ComputePartition current_compute_partition, int &offset);
     void GetGpuUuids();
 };

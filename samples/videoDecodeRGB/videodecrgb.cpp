@@ -66,13 +66,14 @@ std::condition_variable cv[frame_buffers_size];
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
-        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, MD5Generator *md5_gen_handle, bool b_generate_md5) {
+        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, MD5Generator *md5_gen_handle, bool b_generate_md5, int device_id) {
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
     int current_frame_index = 0;
     uint8_t *frame;
 
+    HIP_API_CALL(hipSetDevice(device_id));
     while (continue_processing || !frame_queue[current_frame_index].empty()) {
         OutputSurfaceInfo *p_surf_info;
         uint8_t *out_frame;
@@ -299,7 +300,7 @@ int main(int argc, char **argv) {
         convert_to_rgb = e_output_format != native;
         std::atomic<bool> continue_processing(true);
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), md5_generator, b_generate_md5);
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), md5_generator, b_generate_md5, device_id);
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
