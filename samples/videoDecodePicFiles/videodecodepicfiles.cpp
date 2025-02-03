@@ -31,11 +31,6 @@ THE SOFTWARE.
 #include <chrono>
 #include <sys/stat.h>
 #include <libgen.h>
-/* Jefftest #if __cplusplus >= 201703L && __has_include(<filesystem>)
-    #include <filesystem>
-#else
-    #include <experimental/filesystem>
-#endif*/
 #include "video_demuxer.h"
 #include "roc_bitstream_reader.h"
 #include "roc_video_dec.h"
@@ -286,7 +281,6 @@ int main(int argc, char **argv) {
         }
         viddec->SetReconfigParams(&reconfig_params);
 
-        // Jefftest add loop!!
         for (int i = 0; i < num_iterations; i++) {
             int num_frames_decoded_in_loop = 0;
             for ( const char* file_name : file_names) {
