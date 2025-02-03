@@ -9,7 +9,6 @@ access the video decoding features available on your GPU.
 > The published documentation is available at [rocDecode](https://rocm.docs.amd.com/projects/rocDecode/en/latest/index.html) in an organized, easy-to-read format, with search and a table of contents. The documentation source files reside in the `rocDecode/docs` folder of this repository. As with all ROCm projects, the documentation is open source. For more information on contributing to the documentation, see [Contribute to ROCm documentation](https://rocm.docs.amd.com/en/latest/contribute/contributing.html).
 
 ## Supported codecs
-
 * H.265 (HEVC) - 8 bit, and 10 bit
 * H.264 (AVC) - 8 bit
 * AV1 - 8 bit, and 10 bit
@@ -17,18 +16,30 @@ access the video decoding features available on your GPU.
 
 ## Prerequisites
 
-* Linux distribution
+### Operating Systems
+* Linux
   * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
+  * RedHat - `8` / `9`
+  * SLES - `15-SP5`
 
-* [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
+### Hardware
+* **GPU**: [AMD Radeon&trade; Graphics](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) / [AMD Instinct&trade; Accelerators](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
+
 > [!IMPORTANT] 
-> `gfx908` or higher GPU required
+> * `gfx908` or higher GPU required
 
-* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): Required usecase - rocm
+* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): **Required** usecase:`rocm`
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
+
+### Compiler
+* AMD Clang++ Version 18.0.0 or later - installed with ROCm
+
+### Libraries
+* CMake Version `3.10` or later
+  ```shell
+  sudo apt install cmake
+  ```
 
 * [Video Acceleration API](https://en.wikipedia.org/wiki/Video_Acceleration_API) - `libva-amdgpu-dev` is an AMD implementation for VA-API
   ```shell
@@ -45,16 +56,7 @@ access the video decoding features available on your GPU.
 > [!NOTE]
 > RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
-* CMake Version `3.10` or later
-
-  ```shell
-  sudo apt install cmake
-  ```
-
-* AMD Clang++ Version `18.0.0` or later - installed with ROCm
-
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
-
   ```shell
   sudo apt install pkg-config
   ```
@@ -71,10 +73,11 @@ access the video decoding features available on your GPU.
   sudo apt install libavcodec-dev libavformat-dev libavutil-dev
   ```
 
-
-> [!IMPORTANT] 
-> * On `Ubuntu 22.04` - Additional package required: `libstdc++-12-dev`
->
+> [!IMPORTANT]
+> * Required compiler support
+>   * C++17
+>   * Threads
+> * On Ubuntu 22.04 - Additional package required: libstdc++-12-dev
 >  ```shell
 >  sudo apt install libstdc++-12-dev
 >  ```

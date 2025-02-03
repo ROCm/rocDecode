@@ -573,7 +573,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
 
             dec_frame.av_frame_ptr = p_av_frame;
             dec_frame.pts = p_av_frame->pts;
-            dec_frame.picture_index = p_av_frame->display_picture_number;
+            dec_frame.picture_index = -1;     //picture_index is not used here since it is handled within FFMpeg decoder
             vp_frames_ffmpeg_.push_back(dec_frame);
         }
         p_dec_frame = vp_frames_ffmpeg_[output_frame_cnt_ - 1].frame_ptr;

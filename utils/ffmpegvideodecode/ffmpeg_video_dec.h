@@ -232,7 +232,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         AVCodecContext * dec_context_ = nullptr;
         AVPixelFormat decoder_pixel_format_;
 #if USE_AVCODEC_GREATER_THAN_58_134
-        const AVCodec *_decoder = nullptr;
+        const AVCodec *decoder_ = nullptr;
 #else
         AVCodec *decoder_ = nullptr;
 #endif
