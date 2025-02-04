@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased) rocDecode 0.10.0
+## rocDecode 0.10.0 for ROCm 6.4
 
 ### Added
 
@@ -12,54 +12,12 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 ### Changed
 
+* AMD Clang++ is now the default CXX compiler.
 * Moved MD5 code out of roc video decode utility.
 
 ### Removed
 
 * FFMPEG executable requirement for the package
-
-### Resolved issues
-
-*
-
-### Tested configurations
-
-* Linux
-  * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
-* ROCm: `6.3.0`
-* libva-amdgpu-dev - `2.16.0`
-* mesa-amdgpu-va-drivers - `1:24.3.0`
-* FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.5.0`
-
-## (Unreleased) rocDecode 0.9.0
-
-### Changed
-
-* AMD Clang++ is now the default CXX compiler.
-* `rocDecode-setup.py` setup script updates to common package install: Setup no longer installs public clang package.
-
-### Removed
-
-* 
-
-### Resolved issues
-
-* 
-
-### Tested configurations
-
-* Linux
-  * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
-* ROCm: `6.3.0`
-* libva-amdgpu-dev - `2.16.0`
-* mesa-amdgpu-va-drivers - `1:24.3.0`
-* FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.4.0`
 
 ## rocDecode 0.8.0 for ROCm 6.3
 
