@@ -19,22 +19,6 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * FFMPEG executable requirement for the package
 
-### Resolved issues
-
-*
-
-### Tested configurations
-
-* Linux
-  * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
-* ROCm: `6.3.0`
-* libva-amdgpu-dev - `2.16.0`
-* mesa-amdgpu-va-drivers - `1:24.3.0`
-* FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.5.0`
-
 ## rocDecode 0.8.0 for ROCm 6.3
 
 ### Changed
