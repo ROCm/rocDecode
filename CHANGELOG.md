@@ -2,64 +2,22 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased) rocDecode 0.10.0
+## rocDecode 0.10.0 for ROCm 6.4
 
 ### Added
 
 * The new bitstream reader feature. The bitstream reader contains a few built-in stream file parsers, including elementary stream file parser and IVF container file parser. Currently the reader can parse AVC, HEVC and AV1 elementary stream files and AV1 IVF container files. More format support will be added in the future.
-* A new sample app, called videodecoderaw which uses the bitstream reader instead of FFMPEG demuxer to get picture data.
 * More CTests: VP9 test and tests on video decode raw sample.
-
-### Changed
-
-* Moved MD5 code out of roc video decode utility.
-
-### Removed
-
-*
-
-### Resolved issues
-
-*
-
-### Tested configurations
-
-* Linux
-  * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
-* ROCm: `6.3.0`
-* libva-amdgpu-dev - `2.16.0`
-* mesa-amdgpu-va-drivers - `1:24.3.0`
-* FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.4.0`
-
-## (Unreleased) rocDecode 0.9.0
+* Two new samples, videodecoderaw and videodecodepicfiles, have been added. videodecoderaw uses the bitstream reader instead of the FFMPEG demuxer to get picture data, and videodecodepicfiles shows how to decode an elementary video stream stored in multiple files with each file containing bitstream data of a coded picutre
 
 ### Changed
 
 * AMD Clang++ is now the default CXX compiler.
-* `rocDecode-setup.py` setup script updates to common package install: Setup no longer installs public clang package.
+* Moved MD5 code out of roc video decode utility.
 
 ### Removed
 
-* 
-
-### Resolved issues
-
-* 
-
-### Tested configurations
-
-* Linux
-  * Ubuntu - `22.04` / `24.04`
-  * RHEL - `8` / `9`
-  * SLES - `15 SP5`
-* ROCm: `6.3.0`
-* libva-amdgpu-dev - `2.16.0`
-* mesa-amdgpu-va-drivers - `1:24.3.0`
-* FFmpeg - `4.4.2` / `6.1.1`
-* rocDecode Setup Script - `V2.4.0`
+* FFMPEG executable requirement for the package
 
 ## rocDecode 0.8.0 for ROCm 6.3
 

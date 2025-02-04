@@ -13,7 +13,7 @@ This sample uses HIP kernels to showcase the color conversion.  Whenever a frame
     * On `Ubuntu`
 
   ```shell
-  sudo apt install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+  sudo apt install libavcodec-dev libavformat-dev libavutil-dev
   ```
   
     * On `RHEL`/`SLES` - install ffmpeg development packages manually or use [rocDecode-setup.py](../../rocDecode-setup.py) script

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -63,8 +63,8 @@ protected:
     /*! \brief Decoded picture buffer
      */
     typedef struct {
-        Vp9Picture frame_store[VP9_NUM_REF_FRAMES]; // BufferPool
-        int dec_ref_count[VP9_NUM_REF_FRAMES]; // frame ref count
+        Vp9Picture frame_store[VP9_BUFFER_POOL_MAX_SIZE]; // BufferPool
+        int dec_ref_count[VP9_BUFFER_POOL_MAX_SIZE]; // frame ref count
         // A list of all frame buffers that may be used for reference of the current picture or any
         // subsequent pictures. The value is the index of a frame in DPB buffer pool. If an entry is
         // not used as reference, the value should be -1. Borrowed from AV1.

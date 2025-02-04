@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ rocDecStatus Vp9VideoParser::Initialize(RocdecParserParams *p_params) {
     if (parser_params_.max_display_delay < DECODE_BUF_POOL_EXTENSION) {
         parser_params_.max_display_delay = DECODE_BUF_POOL_EXTENSION;
     }
-    CheckAndAdjustDecBufPoolSize(VP9_NUM_REF_FRAMES);
+    CheckAndAdjustDecBufPoolSize(VP9_BUFFER_POOL_MAX_SIZE);
     return ROCDEC_SUCCESS;
 }
 
@@ -266,7 +266,7 @@ ParserResult Vp9VideoParser::SendPicForDecode() {
     p_pic_param->pic_fields.bits.error_resilient_mode = p_uncomp_header->error_resilient_mode;
     p_pic_param->pic_fields.bits.intra_only = p_uncomp_header->intra_only;
     p_pic_param->pic_fields.bits.allow_high_precision_mv = p_uncomp_header->allow_high_precision_mv;
-    p_pic_param->pic_fields.bits.mcomp_filter_type = p_uncomp_header->interpolation_filter ^ (p_uncomp_header->interpolation_filter <= 1);
+    p_pic_param->pic_fields.bits.mcomp_filter_type = p_uncomp_header->interpolation_filter;
     p_pic_param->pic_fields.bits.frame_parallel_decoding_mode = p_uncomp_header->frame_parallel_decoding_mode;
     p_pic_param->pic_fields.bits.reset_frame_context = p_uncomp_header->reset_frame_context;
     p_pic_param->pic_fields.bits.refresh_frame_context = p_uncomp_header->refresh_frame_context;
@@ -352,7 +352,7 @@ void Vp9VideoParser::UpdateRefFrames() {
 void Vp9VideoParser::InitDpb() {
     int i;
     memset(&dpb_buffer_, 0, sizeof(DecodedPictureBuffer));
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         dpb_buffer_.frame_store[i].pic_idx = i;
         dpb_buffer_.frame_store[i].use_status = kNotUsed;
         dpb_buffer_.dec_ref_count[i] = 0;
@@ -391,12 +391,12 @@ ParserResult Vp9VideoParser::FindFreeInDecBufPool() {
 
 ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
     int i;
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++ ) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++ ) {
         if (dpb_buffer_.dec_ref_count[i] == 0) {
             break;
         }
     }
-    if (i == VP9_NUM_REF_FRAMES) {
+    if (i == VP9_BUFFER_POOL_MAX_SIZE) {
         ERR("DPB buffer overflow!");
         return PARSER_NOT_FOUND;
     }
@@ -422,7 +422,7 @@ ParserResult Vp9VideoParser::FindFreeInDpbAndMark() {
 }
 
 void Vp9VideoParser::CheckAndUpdateDecStatus() {
-    for (int i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (int i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         if (dpb_buffer_.frame_store[i].use_status != kNotUsed && dpb_buffer_.dec_ref_count[i] == 0) {
             dpb_buffer_.frame_store[i].use_status = kNotUsed;
             decode_buffer_pool_[dpb_buffer_.frame_store[i].dec_buf_idx].use_status &= ~kFrameUsedForDecode;
@@ -995,7 +995,8 @@ void Vp9VideoParser::LoopFilterFrameInit(Vp9UncompressedHeader *p_uncomp_header)
         }
         if (p_uncomp_header->loop_filter_params.loop_filter_delta_update == 0) {
             memset(lvl_lookup_[seg_id], lvl_seg, VP9_MAX_REF_FRAMES * MAX_MODE_LF_DELTAS * sizeof(uint8_t));
-        } else {
+        }
+        if (p_uncomp_header->loop_filter_params.loop_filter_delta_enabled) {
             uint8_t intra_lvl = lvl_seg + (p_uncomp_header->loop_filter_params.loop_filter_ref_deltas[kVp9IntraFrame] << n_shift);
             lvl_lookup_[seg_id][kVp9IntraFrame][0] = std::clamp(static_cast<int>(intra_lvl), 0, VP9_MAX_LOOP_FILTER);
             for (int ref = kVp9LastFrame; ref < VP9_MAX_REF_FRAMES; ref++) {
@@ -1111,7 +1112,7 @@ void Vp9VideoParser::PrintDpb() {
     MSG("DPB buffer content: ");
     MSG("=======================");
     MSG("Current frame: pic_idx = " << curr_pic_.pic_idx << ", dec_buf_idx = " << curr_pic_.dec_buf_idx);
-    for (i = 0; i < VP9_NUM_REF_FRAMES; i++) {
+    for (i = 0; i < VP9_BUFFER_POOL_MAX_SIZE; i++) {
         MSG("Frame store " << i << ": " << "dec_ref_count = " << dpb_buffer_.dec_ref_count[i] << ", pic_idx = " << dpb_buffer_.frame_store[i].pic_idx << ", dec_buf_idx = " << dpb_buffer_.frame_store[i].dec_buf_idx << ", use_status = " << dpb_buffer_.frame_store[i].use_status);
     }
     MSG_NO_NEWLINE("virtual_buffer_index[] =");

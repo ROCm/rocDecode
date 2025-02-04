@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
               const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
               b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
-
     if (!InitHIP(device_id_)) {
         THROW("Failed to initilize the HIP");
     }
@@ -1059,10 +1058,11 @@ bool RocVideoDecoder::CodecSupported(int device_id, rocDecVideoCodec codec_id, u
     decode_caps.codec_type = codec_id;
     decode_caps.chroma_format = rocDecVideoChromaFormat_420;
     decode_caps.bit_depth_minus_8 = bit_depth - 8;
-    if(rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) {
+    if((rocDecGetDecoderCaps(&decode_caps) != ROCDEC_SUCCESS) || !decode_caps.is_supported) {
         return false;
+    } else {
+        return true;
     }
-    return true;
 }
 
 void RocVideoDecoder::WaitForDecodeCompletion() {

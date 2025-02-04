@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,20 +28,27 @@ THE SOFTWARE.
 #include <string>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <cstring>
-#if __cplusplus >= 201703L && __has_include(<filesystem>)
-    #include <filesystem>
-    namespace fs = std::filesystem;
-#else
-    #include <experimental/filesystem>
-    namespace fs = std::experimental::filesystem;
-#endif
+#include <mutex>
+#include <algorithm>
+#include <unordered_map>
+#include <libdrm/amdgpu_drm.h>
+#include <libdrm/amdgpu.h>
 #include <va/va.h>
 #include <va/va_drm.h>
 #include <va/va_drmcommon.h>
-#include "../roc_decoder_caps.h"
 #include "../../commons.h"
 #include "../../../api/rocdecode.h"
+
+#define CHECK_HIP(call) {\
+    hipError_t hip_status = call;\
+    if (hip_status != hipSuccess) {\
+        std::cout << "HIP failure: " << #call << " failed with 'status: " << hipGetErrorName(hip_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
+        return ROCDEC_RUNTIME_ERROR;\
+    }\
+}
 
 #define CHECK_VAAPI(call) {\
     VAStatus va_status = call;\
@@ -61,23 +68,44 @@ typedef enum {
     kCpx = 4, // Core Partition Accelerator
 } ComputePartition;
 
+typedef struct {
+    int device_id;
+    std::string gpu_uuid;
+    int drm_fd;
+    VADisplay va_display;
+    hipDeviceProp_t hip_dev_prop;
+    uint32_t num_dec_engines;
+    int num_va_profiles;
+    std::vector<VAProfile> va_profile_list; // supported profiles by the current GPU
+    VAProfile va_profile; // current profile used
+    VAConfigID va_config_id;
+    bool config_attributes_probed;
+    uint32_t rt_format_attrib;
+    uint32_t output_format_mask;
+    uint32_t max_width;
+    uint32_t max_height;
+    uint32_t min_width;
+    uint32_t min_height;
+} VaContextInfo;
+
 class VaapiVideoDecoder {
 public:
     VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info);
     ~VaapiVideoDecoder();
-    rocDecStatus InitializeDecoder(std::string device_name, std::string gcn_arch_name);
+    rocDecStatus InitializeDecoder();
     rocDecStatus SubmitDecode(RocdecPicParams *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ExportSurface(int pic_idx, VADRMPRIMESurfaceDescriptor &va_drm_prime_surface_desc);
     rocDecStatus SyncSurface(int pic_idx);
     rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
+
 private:
     RocDecoderCreateInfo decoder_create_info_;
     int drm_fd_;
     VADisplay va_display_;
+    VAProfile va_profile_;
     VAConfigAttrib va_config_attrib_;
     VAConfigID va_config_id_;
-    VAProfile va_profile_;
     VAContextID va_context_id_;
     std::vector<VASurfaceID> va_surface_ids_;
     bool supports_modifiers_;
@@ -89,13 +117,46 @@ private:
     VABufferID slice_data_buf_id_;
     uint32_t slice_data_buf_size_;
 
-    rocDecStatus InitVAAPI(std::string drm_node);
+    bool IsCodecConfigSupported(int device_id, rocDecVideoCodec codec_type, rocDecVideoChromaFormat chroma_format, uint32_t bit_depth_minus8, rocDecVideoSurfaceFormat output_format);
     rocDecStatus CreateDecoderConfig();
     rocDecStatus CreateSurfaces();
     rocDecStatus CreateContext();
     rocDecStatus DestroyDataBuffers();
-    void GetVisibleDevices(std::vector<int>& visible_devices);
-    void GetCurrentComputePartition(std::vector<ComputePartition> &currnet_compute_partitions);
-    void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices,
-                                    std::vector<ComputePartition> &current_compute_partitions, int &offset);
+};
+
+// The VaContext singleton class providing access to the the GPU VA services
+class VaContext {
+public:
+    int num_devices_;
+    std::vector<VaContextInfo> va_contexts_;
+
+    static VaContext& GetInstance() {
+        static VaContext instance;
+        return instance;
+    }
+    rocDecStatus GetVaContext(int device_id, uint32_t *va_ctx_id);
+    rocDecStatus GetVaDisplay(uint32_t va_ctx_id, VADisplay *va_display);
+    rocDecStatus CheckDecCapForCodecType(RocdecDecodeCaps *dec_cap);
+
+private:
+    std::mutex mutex;
+    /**
+     * @brief A map that associates GPU UUIDs with their corresponding render node indices.
+     * 
+     * This unordered map uses GPU UUIDs as keys (std::string) and maps them to their 
+     * respective render node indices (int). It provides a fast lookup mechanism to 
+     * retrieve the render node index for a given GPU UUID.
+     */
+    std::unordered_map<std::string, int> gpu_uuids_to_render_nodes_map_;
+    std::unordered_map<std::string, ComputePartition> gpu_uuids_to_compute_partition_map_;
+    VaContext();
+    VaContext(const VaContext&) = delete;
+    VaContext& operator = (const VaContext) = delete;
+    ~VaContext();
+
+    rocDecStatus InitHIP(int device_id, hipDeviceProp_t& hip_dev_prop);
+    rocDecStatus InitVAAPI(int va_ctx_idx, std::string drm_node);
+    void GetVisibleDevices(std::vector<int>& visible_devices_vetor);
+    void GetDrmNodeOffset(std::string device_name, uint8_t device_id, std::vector<int>& visible_devices, ComputePartition current_compute_partition, int &offset);
+    void GetGpuUuids();
 };

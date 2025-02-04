@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -962,7 +962,7 @@ void HevcVideoParser::ParseScalingList(HevcScalingListData * sl_ptr, uint8_t *na
     }
 }
 
-void HevcVideoParser::ParseShortTermRefPicSet(HevcShortTermRps *rps, uint32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, HevcShortTermRps rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
+ParserResult HevcVideoParser::ParseShortTermRefPicSet(HevcSeqParamSet *sps_ptr, HevcShortTermRps *rps, uint32_t st_rps_idx, uint32_t number_short_term_ref_pic_sets, HevcShortTermRps rps_ref[], uint8_t *nalu, size_t /*size*/, size_t& offset) {
     int i, j;
 
     memset(rps, 0, sizeof(HevcShortTermRps));
@@ -1040,6 +1040,7 @@ void HevcVideoParser::ParseShortTermRefPicSet(HevcShortTermRps *rps, uint32_t st
         rps->num_negative_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         rps->num_positive_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         rps->num_of_delta_pocs = rps->num_negative_pics + rps->num_positive_pics;
+        CHECK_ALLOWED_RANGE(rps->num_of_delta_pocs, 0, sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1]);
 
         for (i = 0; i < rps->num_negative_pics; i++) {
             rps->delta_poc_s0_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1061,6 +1062,7 @@ void HevcVideoParser::ParseShortTermRefPicSet(HevcShortTermRps *rps, uint32_t st
             rps->used_by_curr_pic_s1[i] = Parser::GetBit(nalu, offset);
         }
     }
+    return PARSER_OK;
 }
 
 void HevcVideoParser::ParsePredWeightTable(HevcSliceSegHeader *slice_header_ptr, int chroma_array_type, uint8_t *stream_ptr, size_t &offset) {
@@ -1357,7 +1359,9 @@ void HevcVideoParser::ParseSps(uint8_t *nalu, size_t size) {
     sps_ptr->num_short_term_ref_pic_sets = Parser::ExpGolomb::ReadUe(nalu, offset);
     for (int i=0; i<sps_ptr->num_short_term_ref_pic_sets; i++) {
         //short_term_ref_pic_set( i )
-        ParseShortTermRefPicSet(&sps_ptr->st_rps[i], i, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset);
+        if (ParseShortTermRefPicSet(sps_ptr, &sps_ptr->st_rps[i], i, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset) != PARSER_OK) {
+            return;
+        }
     }
     sps_ptr->long_term_ref_pics_present_flag = Parser::GetBit(nalu, offset);
     if (sps_ptr->long_term_ref_pics_present_flag) {
@@ -1530,11 +1534,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
     if (m_active_sps_id_ != pps_ptr->pps_seq_parameter_set_id) {
         m_active_sps_id_ = pps_ptr->pps_seq_parameter_set_id;
         sps_ptr = &sps_list_[m_active_sps_id_];
-        // Re-set DPB size.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
-        dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
+
     sps_ptr = &sps_list_[m_active_sps_id_];
     if (sps_ptr->is_received == 0) {
         ERR("Empty SPS is referred.");
@@ -1551,14 +1553,13 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
         pic_width_ = sps_ptr->pic_width_in_luma_samples;
         pic_height_ = sps_ptr->pic_height_in_luma_samples;
         // Take care of the case where a new SPS replaces the old SPS with the same id but with different dimensions
-        // Re-set DPB size.
-        dpb_buffer_.dpb_size = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
-        dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         new_seq_activated_ = true;  // Note: clear this flag after the actions are taken.
     }
-
-    // Check and adjust decode buffer pool size if needed
-    if (new_seq_activated_) {
+    // Check DPB buffer size change
+    uint32_t max_dec_pic_buffering = sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1] + 1;
+    if (dpb_buffer_.dpb_size != max_dec_pic_buffering) {
+        dpb_buffer_.dpb_size = max_dec_pic_buffering;
+        dpb_buffer_.dpb_size = dpb_buffer_.dpb_size > HEVC_MAX_DPB_FRAMES ? HEVC_MAX_DPB_FRAMES : dpb_buffer_.dpb_size;
         CheckAndAdjustDecBufPoolSize(dpb_buffer_.dpb_size);
     }
 
@@ -1608,7 +1609,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->short_term_ref_pic_set_sps_flag = Parser::GetBit(nalu, offset);
             int32_t pos = offset;
             if (!p_slice_header->short_term_ref_pic_set_sps_flag) {
-                ParseShortTermRefPicSet(&p_slice_header->st_rps, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset);
+                if ( ParseShortTermRefPicSet(sps_ptr, &p_slice_header->st_rps, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->num_short_term_ref_pic_sets, sps_ptr->st_rps, nalu, size, offset) != PARSER_OK) {
+                    return PARSER_WRONG_STATE;
+                }
             } else {
                 if (sps_ptr->num_short_term_ref_pic_sets > 1) {
                     int num_bits = 0;

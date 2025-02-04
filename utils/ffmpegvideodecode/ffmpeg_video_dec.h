@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -174,6 +174,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         void DecodeThread();
         int DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame);
         void InitOutputFrameInfo(AVFrame *p_frame);
+        int FlushDecoder();
         void PushPacket(AVPacket *pkt) {
             {
                 std::lock_guard<std::mutex> lock(mtx_pkt_q_);
@@ -213,6 +214,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
 
         bool no_multithreading_ = false;
+        bool b_decoder_initialized = false;
         uint32_t av_frame_cnt_ = 0;
         uint32_t av_pkt_cnt_ = 0;
         RocdecSourceDataPacket last_packet_;
@@ -229,7 +231,11 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         // Variables for FFMpeg decoding
         AVCodecContext * dec_context_ = nullptr;
         AVPixelFormat decoder_pixel_format_;
+#if USE_AVCODEC_GREATER_THAN_58_134
+        const AVCodec *decoder_ = nullptr;
+#else
         AVCodec *decoder_ = nullptr;
+#endif
         AVFormatContext * formatContext = nullptr;
         AVInputFormat * inputFormat = nullptr;
         AVStream *video = nullptr;

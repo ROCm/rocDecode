@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -96,7 +96,6 @@ void RocVideoParser::CheckAndAdjustDecBufPoolSize(int dpb_size) {
         dec_buf_pool_size_ = min_dec_buf_pool_size;
         decode_buffer_pool_.resize(dec_buf_pool_size_, {0});
         output_pic_list_.resize(dec_buf_pool_size_, 0xFF);
-        InitDecBufPool();
     }
 }
 

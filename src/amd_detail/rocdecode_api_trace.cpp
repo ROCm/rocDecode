@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -98,11 +98,6 @@ template <typename Tp> void ToolInit(Tp* table) {
     auto rocp_reg_status = rocprofiler_register_library_api_table(
         dispatch_table_info<Tp>::name, dispatch_table_info<Tp>::import_func,
         dispatch_table_info<Tp>::version, table_array.data(), table_array.size(), &lib_id);
-
-    bool report_register_errors = false;
-    if (report_register_errors && rocp_reg_status != ROCP_REG_SUCCESS)
-        fprintf(stderr, "rocprofiler-register failed for %s with error code %i: %s\n",
-            dispatch_table_info<Tp>::name, rocp_reg_status, rocprofiler_register_error_string(rocp_reg_status));
 #else
     (void)table;
 #endif

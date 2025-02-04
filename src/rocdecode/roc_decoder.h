@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,14 +34,6 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "vaapi/vaapi_videodecoder.h"
 
-#define CHECK_HIP(call) {\
-    hipError_t hip_status = call;\
-    if (hip_status != hipSuccess) {\
-        std::cout << "HIP failure: " << #call << " failed with 'status: " << hipGetErrorName(hip_status) << "' at " <<  __FILE__ << ":" << __LINE__ << std::endl;\
-        return ROCDEC_RUNTIME_ERROR;\
-    }\
-}
-
 struct HipInteropDeviceMem {
     hipExternalMemory_t hip_ext_mem; // Interface to the vaapi-hip interop
     uint8_t* hip_mapped_device_mem; // Mapped device memory for the YUV plane
@@ -63,11 +55,9 @@ public:
     rocDecStatus GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32_t horizontal_pitch[3], RocdecProcParams *vid_postproc_params);
 
 private:
-    rocDecStatus InitHIP(int device_id);
     rocDecStatus FreeVideoFrame(int pic_idx);
     int num_devices_;
     RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
-    hipDeviceProp_t hip_dev_prop_;
     std::vector<HipInteropDeviceMem> hip_interop_;
 };

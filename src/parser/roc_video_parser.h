@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,7 @@ typedef struct {
 
 #define CHECK_ALLOWED_RANGE(val, min, max) { \
     if (val < min || val > max) { \
-        ERR ("value not in range: " + TOSTR(val) + "allowed<min,max>: " + TOSTR(min) + " " + TOSTR(max));\
+        ERR ("value not in range: " + TOSTR(val) + " allowed (min,max): " + TOSTR(min) + " " + TOSTR(max));\
         return PARSER_OUT_OF_RANGE; \
     } \
 }
