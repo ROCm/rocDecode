@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
     bool b_force_zero_latency = false;
     uint32_t max_num_frames = 0;  // max number of frames to be decoded. default value is 0, meaning decode the entire stream
     int disp_delay = 0;
-    bool b_use_ffmpeg_demuxer = false;  // only use ffmpeg demuxer if ffmpef is available
+    bool b_use_ffmpeg_demuxer = false;  // only use ffmpeg demuxer if ffmpeg is available
 #if USE_FFMPEG
     b_use_ffmpeg_demuxer = true; // true by default to use FFMPEG demuxer. set to false to use the built-in bitstream reader.
 #endif
@@ -257,7 +257,7 @@ int main(int argc, char **argv) {
         std::vector<std::unique_ptr<VideoDemuxer>> v_demuxer;
         std::unique_ptr<VideoDemuxer> demuxer;
 #endif
-        std::vector<RocdecBitstreamReader> v_bs_reader = {nullptr};
+        std::vector<RocdecBitstreamReader> v_bs_reader(n_thread, nullptr);
         std::vector<std::unique_ptr<RocVideoDecoder>> v_viddec;
         std::vector<int> v_device_id(n_thread);
         rocDecVideoCodec rocdec_codec_id;
