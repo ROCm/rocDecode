@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased) rocDecode 0.10.0
+## rocDecode 0.10.0 for ROCm 6.4
 
 ### Added
 
@@ -34,7 +34,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * FFmpeg - `4.4.2` / `6.1.1`
 * rocDecode Setup Script - `V2.5.0`
 
-## (Unreleased) rocDecode 0.9.0
+## rocDecode 0.9.0
 
 ### Changed
 
