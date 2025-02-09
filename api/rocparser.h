@@ -89,7 +89,6 @@ typedef struct {
         int right;  /**< OUT: right position of display rect   */
         int bottom; /**< OUT: bottom position of display rect  */
     } display_area;
-
     rocDecVideoChromaFormat chroma_format; /**< OUT:  Chroma format                   */
     uint32_t bitrate;                      /**< OUT: video bitrate (bps, 0=unknown)   */
                                             /**
@@ -99,6 +98,7 @@ typedef struct {
         int x;
         int y;
     } display_aspect_ratio;
+    uint32_t reconfig_options;          /**< OUT: 0-Normal reconfig mode, 1-Keep existing surfaces */
     /**
      * Video Signal Description
      * Refer section E.2.1 (VUI parameters semantics) of H264 spec file

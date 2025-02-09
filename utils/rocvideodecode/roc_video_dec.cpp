@@ -528,15 +528,19 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         }
     }
 
-    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
-        GetSurfaceStrideInternal(video_surface_format_, coded_width_, coded_height_, &surface_stride_, &surface_vstride_);
-    } else {
-        surface_stride_ = target_width_ * byte_per_pixel_;
+    if (p_video_format->reconfig_options == 0) {
+        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
+            GetSurfaceStrideInternal(video_surface_format_, coded_width_, coded_height_, &surface_stride_, &surface_vstride_);
+        } else {
+            surface_stride_ = target_width_ * byte_per_pixel_;
+        }
     }
     chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
-    chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    if (p_video_format->reconfig_options == 0) {
+        chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    }
     // Fill output_surface_info_
     output_surface_info_.output_width = target_width_;
     output_surface_info_.output_height = target_height_;
@@ -590,8 +594,9 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigurition of the decoder detected but the decoder was not initialized previoulsy!", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-    ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
-
+    if (p_video_format->reconfig_options == 0) {
+        ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+    }
 
     input_video_info_str_.str("");
     input_video_info_str_.clear();
@@ -907,7 +912,6 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     }
     return true;
 }
-
 
 void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size) {
     uint8_t *hst_ptr = nullptr;
