@@ -46,6 +46,16 @@ extern "C" {
 typedef void *RocdecVideoParser;
 typedef uint64_t RocdecTimeStamp;
 
+/***************************************************************/
+//! \enum RocdecReconfigOptions
+//! Decoder reconfigure options for VP9 decode
+//! Used in RocdecVideoFormat structure
+/***************************************************************/
+typedef enum {
+    ROCDEC_RECONFIG_NEW_SURFACES  = 0,      /**< Allocate new surfaces during decoder reconfig                             */
+    ROCDEC_RECONFIG_KEEP_SURFACES = 1,      /**< Keep existing surfaces during decoder reconfig                            */
+} RocdecReconfigOptions;
+
 /**
  * @brief ROCDEC_VIDEO_FORMAT struct
  * @ingroup group_rocdec_struct
@@ -98,7 +108,6 @@ typedef struct {
         int x;
         int y;
     } display_aspect_ratio;
-    uint32_t reconfig_options;          /**< OUT: 0-Normal reconfig mode, 1-Keep existing surfaces */
     /**
      * Video Signal Description
      * Refer section E.2.1 (VUI parameters semantics) of H264 spec file
@@ -111,7 +120,8 @@ typedef struct {
         uint8_t transfer_characteristics;  /**< OUT: opto-electronic transfer characteristic of the source picture */
         uint8_t matrix_coefficients;       /**< OUT: used in deriving luma and chroma signals from RGB primaries   */
     } video_signal_description;
-    uint32_t seqhdr_data_length; /**< OUT: Additional bytes following (RocdecVideoFormatEx)                  */
+    uint32_t seqhdr_data_length;           /**< OUT: Additional bytes following (RocdecVideoFormatEx)                  */
+    uint32_t reconfig_options;             /**< OUT: Refer to RocdecReconfigOptions */
 } RocdecVideoFormat;
 
 /****************************************************************/

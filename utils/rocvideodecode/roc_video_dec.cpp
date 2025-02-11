@@ -528,7 +528,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         }
     }
 
-    if (p_video_format->reconfig_options == 0) {
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
         if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
             GetSurfaceStrideInternal(video_surface_format_, coded_width_, coded_height_, &surface_stride_, &surface_vstride_);
         } else {
@@ -538,7 +538,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
-    if (p_video_format->reconfig_options == 0) {
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
         chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
     }
     // Fill output_surface_info_
@@ -594,7 +594,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigurition of the decoder detected but the decoder was not initialized previoulsy!", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-    if (p_video_format->reconfig_options == 0) {
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
         ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
     }
 

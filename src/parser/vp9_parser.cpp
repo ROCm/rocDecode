@@ -37,7 +37,7 @@ Vp9VideoParser::Vp9VideoParser() {
     frame_sizes_.assign(1, 0);
     curr_surface_width_ = 0;
     curr_surface_height_ = 0;
-    reconfig_option_ = 0;
+    reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES;
 }
 
 Vp9VideoParser::~Vp9VideoParser() {
@@ -561,15 +561,15 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         if (p_uncomp_header->frame_type == kVp9KeyFrame) {
             curr_surface_width_ = pic_width_;
             curr_surface_height_ = pic_height_;
-            reconfig_option_ = 0; // Normal mode: free existing surfaces and allocate new surfaces.
+            reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES; // Normal mode: free existing surfaces and allocate new surfaces.
         } else {
             if (pic_width_ <= curr_surface_width_ && pic_height_ <= curr_surface_height_) {
-                reconfig_option_ = 1; // Keep the existing surfaces
+                reconfig_option_ = ROCDEC_RECONFIG_KEEP_SURFACES; // Keep the existing surfaces
             } else {
                 ERR("VP9 video size (up) change on non-key frames is not supported. Decode errors can occur.");
                 curr_surface_width_ = pic_width_;
                 curr_surface_height_ = pic_height_;
-                reconfig_option_ = 0; // Normal mode: free existing surfaces and allocate new surfaces.
+                reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES; // Normal mode: free existing surfaces and allocate new surfaces.
             }
         }
         new_seq_activated_ = true;
