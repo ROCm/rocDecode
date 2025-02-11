@@ -27,7 +27,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
               b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
     if (!InitHIP(device_id_)) {
-        THROW("Failed to initilize the HIP");
+        ROCDEC_THROW("Failed to initilize the HIP", ROCDEC_DEVICE_INVALID);
     }
     if (p_crop_rect) crop_rect_ = *p_crop_rect;
     if (b_extract_sei_message_) {
@@ -624,7 +624,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
  */
 int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     if (!roc_decoder_) {
-        THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
+        ROCDEC_THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED), ROCDEC_NOT_INITIALIZED);
     }
     pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));
@@ -789,19 +789,19 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
       RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->sei_message;
       size_t total_SEI_buff_size = 0;
       if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
-          ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
+          ROCDEC_ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
           return 0;
       }
       for (uint32_t i = 0; i < sei_num_mesages; i++) {
           total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
       }
       if (!curr_sei_message_ptr_) {
-          ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
+          ROCDEC_ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
           return 0;
       }
       curr_sei_message_ptr_->sei_data = malloc(total_SEI_buff_size);
       if (!curr_sei_message_ptr_->sei_data) {
-          ERR("Out of Memory, Allocation failed for SEI Buffer");
+          ROCDEC_ERR("Out of Memory, Allocation failed for SEI Buffer");
           return 0;
       }
       memcpy(curr_sei_message_ptr_->sei_data, pSEIMessageInfo->sei_data, total_SEI_buff_size);
