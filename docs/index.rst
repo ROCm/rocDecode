@@ -27,10 +27,14 @@ The rocDecode public repository is located at `https://github.com/ROCm/rocDecode
   .. grid-item-card:: Conceptual
 
     * :doc:`Video decoding pipeline <./conceptual/video-decoding-pipeline>`
+    * :doc:`rocDecode surface memory locations <./conceptual/rocDecode-memory-types>`
 
   .. grid-item-card:: How to
 
-    * :doc:`Using rocDecode <./how-to/using-rocdecode>`
+    * :doc:`Use rocDecode with the bitstream decoder <./how-to/using-rocDecode-bitstream>`
+    * :doc:`Use rocDecode with the FFmpeg decoder <./how-to/using-rocDecode-ffmpeg>`
+    * :doc:`Use the rocDecode core APIs <./how-to/using-rocdecode>`
+
 
   .. grid-item-card:: Samples
 
