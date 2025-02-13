@@ -63,6 +63,7 @@ constexpr int frame_buffers_size = 2;
 std::queue<uint8_t*> frame_queue[frame_buffers_size];
 std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
+hipStream_t hip_stream = 0;
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
@@ -74,6 +75,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
     uint8_t *frame;
 
     HIP_API_CALL(hipSetDevice(device_id));
+    HIP_API_CALL(hipStreamCreate(&hip_stream));
     while (continue_processing || !frame_queue[current_frame_index].empty()) {
         OutputSurfaceInfo *p_surf_info;
         uint8_t *out_frame;
@@ -105,10 +107,10 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                  // call resize kernel
                  if ((*surf_info)->bytes_per_pixel == 2) {
                     ResizeP016(p_resize_dev_mem, p_resize_dim->w * 2, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, (*surf_info)->output_width,
-                        (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, viddec.GetStream());
+                        (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, hip_stream);
                  } else {                        
                     ResizeNv12(p_resize_dev_mem, p_resize_dim->w, p_resize_dim->w, p_resize_dim->h, frame, (*surf_info)->output_pitch, (*surf_info)->output_width,
-                         (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, viddec.GetStream());
+                         (*surf_info)->output_height, (frame + (*surf_info)->output_vstride * (*surf_info)->output_pitch), nullptr, hip_stream);
                  }
                 (*res_surf_info)->output_width = p_resize_dim->w;
                 (*res_surf_info)->output_height = p_resize_dim->h;
@@ -131,7 +133,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
                     return;
                 }
             }
-            post_proc.ColorConvertYUV2RGB(out_frame, p_surf_info, p_rgb_dev_mem, e_output_format, viddec.GetStream());
+            post_proc.ColorConvertYUV2RGB(out_frame, p_surf_info, p_rgb_dev_mem, e_output_format, hip_stream);
         }
         if (dump_output_frames) {
             if (convert_to_rgb)
@@ -276,7 +278,6 @@ int main(int argc, char **argv) {
 
         std::string device_name, gcn_arch_name;
         int pci_bus_id, pci_domain_id, pci_device_id;
-        hipStream_t stream = viddec.GetStream();
 
         viddec.GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
         std::cout << "info: Using GPU device " << device_id << " " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
@@ -329,7 +330,7 @@ int main(int argc, char **argv) {
                     std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
                     cv[current_frame_index].wait(lock, [&] {return frame_queue[current_frame_index].empty();});
                     // copy the decoded frame into the frame_buffers at current_frame_index
-                    HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, viddec.GetStream()));
+                    HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream));
                     frame_queue[current_frame_index].push(frame_buffers[current_frame_index]);
                 }
 
@@ -367,6 +368,9 @@ int main(int argc, char **argv) {
             if (hip_status != hipSuccess) {
                 std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
             }
+        }
+        if (hip_stream) {
+            HIP_API_CALL(hipStreamDestroy(hip_stream));
         }
 
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;

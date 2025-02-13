@@ -219,8 +219,6 @@ class RocVideoDecoder {
         
         rocDecVideoCodec GetCodecId() { return codec_id_; }
 
-        hipStream_t GetStream() {return hip_stream_;}
-
         /**
          * @brief Get the output frame width
          */
