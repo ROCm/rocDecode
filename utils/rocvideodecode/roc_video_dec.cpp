@@ -1044,7 +1044,11 @@ bool RocVideoDecoder::InitHIP(int device_id) {
     }
     HIP_API_CALL(hipSetDevice(device_id));
     HIP_API_CALL(hipGetDeviceProperties(&hip_dev_prop_, device_id));
-    HIP_API_CALL(hipStreamCreate(&hip_stream_));
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
+        hip_stream_ = 0; // Null stream. For internal device or unmapped memory, we don't need to create a hip stream.
+    } else {
+        HIP_API_CALL(hipStreamCreate(&hip_stream_));
+    }
     return true;
 }
 
