@@ -63,7 +63,6 @@ constexpr int frame_buffers_size = 2;
 std::queue<uint8_t*> frame_queue[frame_buffers_size];
 std::mutex mutex[frame_buffers_size];
 std::condition_variable cv[frame_buffers_size];
-hipStream_t hip_stream = 0;
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
@@ -73,6 +72,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
     hipError_t hip_status = hipSuccess;
     int current_frame_index = 0;
     uint8_t *frame;
+    hipStream_t hip_stream = 0;
 
     HIP_API_CALL(hipSetDevice(device_id));
     HIP_API_CALL(hipStreamCreate(&hip_stream));
@@ -145,14 +145,15 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
             md5_gen_handle->UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
         }
         
-
         cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
+    }
+    if (hip_stream) {
+        HIP_API_CALL(hipStreamDestroy(hip_stream));
     }
 }
 
 int main(int argc, char **argv) {
-
     std::string input_file_path, output_file_path, md5_file_path;
     std::fstream ref_md5_file;
     bool b_generate_md5 = false;
@@ -175,7 +176,7 @@ int main(int argc, char **argv) {
     int rgb_width;
     uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
-    
+    hipStream_t hip_stream = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -330,6 +331,9 @@ int main(int argc, char **argv) {
                     std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
                     cv[current_frame_index].wait(lock, [&] {return frame_queue[current_frame_index].empty();});
                     // copy the decoded frame into the frame_buffers at current_frame_index
+                    if (hip_stream == 0) {
+                        HIP_API_CALL(hipStreamCreate(&hip_stream)); // delay HIP stream crateion and let CSC thread HIP stream creation go first so the larger latency of the first stream creation can be hidden from the main decode thread.
+                    }
                     HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream));
                     frame_queue[current_frame_index].push(frame_buffers[current_frame_index]);
                 }
