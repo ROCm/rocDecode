@@ -66,16 +66,14 @@ std::condition_variable cv[frame_buffers_size];
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
-        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, MD5Generator *md5_gen_handle, bool b_generate_md5, int device_id) {
+        std::string &output_file_path, RocVideoDecoder &viddec, VideoPostProcess &post_proc, MD5Generator *md5_gen_handle, bool b_generate_md5, int device_id, hipStream_t hip_stream) {
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
     int current_frame_index = 0;
     uint8_t *frame;
-    hipStream_t hip_stream = 0;
 
     HIP_API_CALL(hipSetDevice(device_id));
-    HIP_API_CALL(hipStreamCreate(&hip_stream));
     while (continue_processing || !frame_queue[current_frame_index].empty()) {
         OutputSurfaceInfo *p_surf_info;
         uint8_t *out_frame;
@@ -148,9 +146,6 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
         cv[current_frame_index].notify_one();
         current_frame_index = (current_frame_index + 1) % frame_buffers_size;
     }
-    if (hip_stream) {
-        HIP_API_CALL(hipStreamDestroy(hip_stream));
-    }
 }
 
 int main(int argc, char **argv) {
@@ -176,7 +171,9 @@ int main(int argc, char **argv) {
     int rgb_width;
     uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
-    hipStream_t hip_stream = 0;
+    // Jefftest 
+    hipStream_t hip_stream_dec = 0;
+    hipStream_t hip_stream_csc = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -285,6 +282,9 @@ int main(int argc, char **argv) {
         std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
         std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
         std::cout << "info: decoding started, please wait!" << std::endl;
+        // Jefftest
+        HIP_API_CALL(hipStreamCreate(&hip_stream_dec));
+        HIP_API_CALL(hipStreamCreate(&hip_stream_csc));
 
         if (b_generate_md5) {
             md5_generator = new MD5Generator();
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
         convert_to_rgb = e_output_format != native;
         std::atomic<bool> continue_processing(true);
         std::thread color_space_conversion_thread(ColorSpaceConversionThread, std::ref(continue_processing), std::ref(convert_to_rgb), &resize_dim, &surf_info, &resize_surf_info, std::ref(e_output_format),
-                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), md5_generator, b_generate_md5, device_id);
+                                    std::ref(p_rgb_dev_mem), std::ref(p_resize_dev_mem), std::ref(dump_output_frames), std::ref(output_file_path), std::ref(viddec), std::ref(post_process), md5_generator, b_generate_md5, device_id, hip_stream_csc);
 
         auto startTime = std::chrono::high_resolution_clock::now();
         do {
@@ -331,10 +331,7 @@ int main(int argc, char **argv) {
                     std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
                     cv[current_frame_index].wait(lock, [&] {return frame_queue[current_frame_index].empty();});
                     // copy the decoded frame into the frame_buffers at current_frame_index
-                    if (hip_stream == 0) {
-                        HIP_API_CALL(hipStreamCreate(&hip_stream)); // delay HIP stream crateion and let CSC thread HIP stream creation go first so the larger latency of the first stream creation can be hidden from the main decode thread.
-                    }
-                    HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream));
+                    HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream_dec));
                     frame_queue[current_frame_index].push(frame_buffers[current_frame_index]);
                 }
 
@@ -373,8 +370,11 @@ int main(int argc, char **argv) {
                 std::cout << "ERROR: hipFree failed! (" << hip_status << ")" << std::endl;
             }
         }
-        if (hip_stream) {
-            HIP_API_CALL(hipStreamDestroy(hip_stream));
+        if (hip_stream_dec) {
+            HIP_API_CALL(hipStreamDestroy(hip_stream_dec));
+        }
+        if (hip_stream_csc) {
+            HIP_API_CALL(hipStreamDestroy(hip_stream_csc));
         }
 
         std::cout << "info: Total frame decoded: " << n_frame << std::endl;
