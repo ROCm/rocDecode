@@ -120,7 +120,7 @@ The decoder is reused when there's a change to the video resolution without a ch
 
 To prevent the remaining frames from being deleted with the frame buffer, a callback function can be defined to save or post-process the remaining frames. 
 
-The |reconfig_struct|_ struct is used to store information on how to handle the reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
+The |reconfig_struct|_ struct stores information on how to handle the reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
 
 From |common|_ in the rocDecode samples:
 
