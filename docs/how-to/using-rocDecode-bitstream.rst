@@ -8,7 +8,7 @@ Using rocDecode with the bitstream decoder
 
 rocDecode core APIs are available in the |apifolder|_ of the `rocDecode GitHub repository <https://github.com/ROCm/rocDecode>`_. Utility classes that call the core APIs are available in the |utilsfolder|_ of the repository. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
 
-The `samples in the rocDecode GitHub repository <https://github.com/ROCm/rocDecode/tree/develop/samples>`_ use the utility classes. These classes are convenience classes that provide a high-level calls to the core APIs. 
+The `samples in the rocDecode GitHub repository <https://github.com/ROCm/rocDecode/tree/develop/samples>`_ use the utility classes. These classes are convenience classes that provide high-level calls to the core APIs. 
 
 A video stream can be decoded either with the rocDecode bitstream reader on GPU or with the FFmpeg decoder on CPU. For information about using the FFmpeg decoder, see :doc:`Using rocDecode with the FFmpeg decoder <./using-rocDecode-ffmpeg>`.
 
