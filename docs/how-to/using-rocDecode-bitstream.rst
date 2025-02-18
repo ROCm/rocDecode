@@ -116,7 +116,7 @@ From ``videodecoderaw.cpp``:
 
 ``RocVideoDecoder`` will create a parser and a decoder, and initialize HIP on the device. 
 
-The decoder is reused when there is a change to the video resolution without a change in the codec. When the video stream resolution changes, the existing frame buffer is deleted along with any decoded frames that are still within it, and the decoder is reconfigured for the new resolution.
+The decoder is reused when there's a change to the video resolution without a change in the codec. When the video stream resolution changes, the existing frame buffer is deleted along with any decoded frames that are still within it, and the decoder is reconfigured for the new resolution.
 
 To prevent the remaining frames from being deleted with the frame buffer, a callback function can be defined to save or post-process the remaining frames. 
 
