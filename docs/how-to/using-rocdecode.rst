@@ -51,7 +51,8 @@ the driver, which is called from the parser during decode.
   consumed by the caller.
 
 * The ``pfn_get_sei_msg`` callback function is triggered when your Supplementation Enhancement
-  Information (SEI) message is parsed and sent back to the caller.
+  Information (SEI) message is parsed and returned to the caller.
+
 
 Parse video data
 ====================================================
