@@ -37,7 +37,7 @@ Create a parser object
 
 The ``rocDecCreateVideoParser()`` API creates a video parser object for the codec that you specify. The
 API takes ``max_num_decode_surfaces``, which determines the Decoded Picture Buffer (DPB) size for
-decoding. When creating a parser object, the application must register certain callback functions with
+decoding. When creating a parser object, the application needs to register certain callback functions with
 the driver, which is called from the parser during decode.
 
 * ``pfn_sequence_callback`` is called when the parser encounters a new sequence header. The parser
@@ -111,7 +111,7 @@ Create a decoder
 with a handle upon successful creation. Refer to the ``RocDecoderCreateInfo`` structure for information
 about the parameters passed for creating the decoder. For example,
 ``RocDecoderCreateInfo::codec_type`` represents the codec type of the video. The decoder handle
-returned by ``rocDecCreateDecoder()`` must be retained for the entire decode session because the
+returned by ``rocDecCreateDecoder()`` needs to be retained for the entire decode session because the
 handle is passed along with the other decoding APIs. In addition, you can inform display or crop
 dimensions along with this API.
 
@@ -173,10 +173,10 @@ provide four different surface type modes for the mapped surface, as specified i
 
 
 If the mapped surface type is ``OUT_SURFACE_MEM_DEV_INTERNAL``, the direct pointer to the decoded
-surface is provided. You must call ``ReleaseFrame()`` (``RocVideoDecoder`` class). If the requested surface
+surface is provided. You need to call ``ReleaseFrame()`` (``RocVideoDecoder`` class). If the requested surface
 type is ``OUT_SURFACE_MEM_DEV_COPIED`` or ``OUT_SURFACE_MEM_HOST_COPIED``, the internal
 decoded frame is copied to another buffer, either in device memory or host memory. After that, it's
-immediately unmapped for re-use by the ``RocVideoDecoder`` class.
+immediately unmapped for reuse by the ``RocVideoDecoder`` class.
 
 Refer to the ``RocVideoDecoder`` class and
 `samples <https://github.com/ROCm/rocDecode/tree/develop/samples>`_ for details on how to use
@@ -193,19 +193,19 @@ ongoing decoder instance. This can improve performance and reduce overall latenc
 The API inputs are:
 
 * ``decoder_handle``: A ``RocDecoder`` handler, ``rocDecDecoderHandle``.
-* ``reconfig_params``: You must specify the parameters for the changes in
+* ``reconfig_params``: You need to specify the parameters for the changes in
   ``RocdecReconfigureDecoderInfo``. The width and height used for reconfiguration cannot exceed the
   values set for ``max_width`` and ``max_height``, defined in ``RocDecoderCreateInfo``. If you need to
   change these values, you have to destroy and recreate the session.
 
 .. note::
 
-  You must call ``rocDecReconfigureDecoder()`` during ``RocdecParserParams::pfn_sequence_callback``.
+  You need to call ``rocDecReconfigureDecoder()`` during ``RocdecParserParams::pfn_sequence_callback``.
 
 Destroy the decoder
 ====================================================
 
-You must call the ``rocDecDestroyDecoder()`` to destroy the session and free up resources.
+You need to call the ``rocDecDestroyDecoder()`` to destroy the session and free up resources.
 
 The API input is:
 
@@ -216,7 +216,7 @@ The API returns a ``RocdecDecodeStatus`` value.
 Destroy the parser
 ====================================================
 
-You must call ``rocDecDestroyVideoParser()`` to destroy the parser object and free up all allocated
+You need to call ``rocDecDestroyVideoParser()`` to destroy the parser object and free up all allocated
 resources at the end of video decoding.
 
 
