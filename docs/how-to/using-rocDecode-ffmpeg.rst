@@ -150,11 +150,11 @@ In the decode loop, demultiplex the video stream before calling ``DecodeFrame``.
 
 The demuxer will demultiplex frames sequentially starting at the beginning of the stream. To start the demultiplexing and decoding process from a different frame, create a demuxer seek context that specifies a seek criteria and a seek mode. 
 
-The seek criteria describes whether the demuxer needs to seek to a specific frame or seek to a specific timestamp. The seek mode indicates whether the demuxer should seek to the exact frame or to the previous key frame. 
+The seek criteria describes whether the demuxer needs to seek to a specific frame or seek to a specific timestamp. The seek mode indicates whether the demuxer should seek to the exact frame or to the previous keyframe. 
 
 The seek criteria is defined by the ``SeekCriteriaEnum`` enum and the seek mode is defined by the ``SeekModeEnum`` enum. Both the ``SeekCriteriaEnum`` and the ``SeekModeEnum`` are defined in ``video_demuxer.h``.
 
-Set the seek criteria to ``SEEK_CRITERIA_FRAME_NUM`` to seek to a frame or to ``SEEK_CRITERIA_TIME_STAMP`` to seek to a timestamp. Set the seek mode to ``SEEK_MODE_EXACT_FRAME`` to seek to the exact frame or to ``SEEK_MODE_PREV_KEY_FRAME`` to seek to the previous key frame.
+Set the seek criteria to ``SEEK_CRITERIA_FRAME_NUM`` to seek to a frame or to ``SEEK_CRITERIA_TIME_STAMP`` to seek to a timestamp. Set the seek mode to ``SEEK_MODE_EXACT_FRAME`` to seek to the exact frame or to ``SEEK_MODE_PREV_KEY_FRAME`` to seek to the previous keyframe.
 
 From ``videodecode.cpp``:
 
