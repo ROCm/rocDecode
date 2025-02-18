@@ -171,7 +171,6 @@ int main(int argc, char **argv) {
     int rgb_width;
     uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
-    // Jefftest 
     hipStream_t hip_stream_dec = 0;
     hipStream_t hip_stream_csc = 0;
 
@@ -282,7 +281,6 @@ int main(int argc, char **argv) {
         std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
         std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
         std::cout << "info: decoding started, please wait!" << std::endl;
-        // Jefftest
         HIP_API_CALL(hipStreamCreate(&hip_stream_dec));
         HIP_API_CALL(hipStreamCreate(&hip_stream_csc));
 
