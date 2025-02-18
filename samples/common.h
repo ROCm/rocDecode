@@ -67,7 +67,7 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
         }
         // release and flush frame
         viddec->ReleaseFrame(pts, true);
-        n_frames_flushed ++;
+        n_frames_flushed++;
     }
 
     return n_frames_flushed;

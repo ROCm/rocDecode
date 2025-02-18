@@ -165,7 +165,6 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
             n_frame = static_cast<int64_t> (pts * demuxer->GetFrameRate());     // start frame number
             seq_start = false;
             p_dec->FlushAndReconfigure();
-
         } else {
             demuxer->Demux(&p_video, &n_video_bytes, &pts);
         }
@@ -175,8 +174,8 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
-            for (int i = 0; i < n_frame_returned; i++) {    
-                if ((n_frame + i)  == next_frame_num) {    
+            for (int i = 0; i < n_frame_returned; i++) {
+                if ((n_frame + i) == next_frame_num) {
                     p_frame = p_dec->GetFrame(&pts);
                     if (n_frame_seq < seq_info.seq_length) {
                         p_dec->SaveFrameToFile(seq_output_file_name, p_frame, surf_info);
@@ -201,6 +200,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
                 seq_output_file_name = p_output_file_name[num_seq];
             }
             p_dec->ResetSaveFrameToFile();
+            n_frame_returned = p_dec->DecodeFrame(nullptr, 0, ROCDEC_PKT_ENDOFSTREAM, -1);
         }
     } while (n_video_bytes && num_seq < seq_info.batch_size);
     
