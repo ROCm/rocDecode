@@ -17,7 +17,7 @@ API overview
 ====================================================
 
 All rocDecode APIs are exposed in the header files ``rocdecode.h`` and ``rocparser.h``. You can find
-these files in the `api` folder in the rocDecode repository.
+these files in the ``api`` folder in the rocDecode repository.
 
 The samples use the ``RocVideoDecoder`` user class provided in ``roc_video_dec.h`` in the ``utils`` folder
 of the rocDecode repository.
