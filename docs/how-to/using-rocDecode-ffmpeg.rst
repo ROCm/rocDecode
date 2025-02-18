@@ -10,7 +10,7 @@ rocDecode core APIs are available in the |apifolder|_ of the `rocDecode GitHub r
 
 The `samples in the rocDecode GitHub repository <https://github.com/ROCm/rocDecode/tree/develop/samples>`_ use the utility classes. These classes are convenience classes that provide a high-level calls to the core APIs. 
 
-A video stream can be decoded either with the FFmpeg decoder on CPU or with the rocDecode bitstream reader on GPU. For information about using the rocDecode bitstream reader, see :doc:`Using rocDecode with the bitstream decoder <./using-rocDecode-bitstream>`.
+A video stream can be decoded either with the FFmpeg decoder on CPU or the rocDecode bitstream reader on GPU. For information about using the rocDecode bitstream reader, see :doc:`Using rocDecode with the bitstream decoder <./using-rocDecode-bitstream>`.
 
 Import the ``roc_video_dec.h``, ``video_demuxer.h``, and ``ffmpeg_video_dec.h`` header files. These headers contain the convenience classes and functions for decoding and demultiplexing (demuxing) video.
 
