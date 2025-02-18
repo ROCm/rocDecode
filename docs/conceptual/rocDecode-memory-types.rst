@@ -8,7 +8,8 @@ rocDecode surface data memory locations
 
 Surface data memory refers to the memory used by rocDecode for decoded frames and processing results. There are three locations where surface data memory can be stored: device memory, host memory, and internal memory.
 
-Device memory refers to GPU memory. It's optimized for operations performed by the GPU, avoiding unnecessary memory transfers between the device and the host. It's used for standalone GPU processing and for high-performance computing tasks where multiple operations are performed on the same data.
+Device memory refers to GPU memory. It's optimized for operations performed by the GPU, avoiding unnecessary memory transfers between the device and the host. It's used for standalone GPU processing and high-performance computing tasks where multiple operations are performed on the same data.
+
 
 Host memory refers to CPU memory. It's suitable for when the memory needs to be accessed or manipulated by CPU-side applications or when data needs to be transferred between systems.
 
