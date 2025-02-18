@@ -10,7 +10,8 @@ rocDecode core APIs are available in the |apifolder|_ of the `rocDecode GitHub r
 
 .. note::
 
-  The rocDecode samples use the utility classes in the |utilsfolder|_ instead of the core APIs. For information about using the utility classes, see :doc:`Using rocDecode with the FFmpeg decoder <./using-rocDecode-ffmpeg>` and :doc:`Using rocDecode with the bitstream decoder <./using-rocDecode-bitstream>`
+  The rocDecode samples use the utility classes in the |utilsfolder|_ instead of the core APIs. For information about using the utility classes, see :doc:`Using rocDecode with the FFmpeg decoder <./using-rocDecode-ffmpeg>` and :doc:`Using rocDecode with the bitstream decoder <./using-rocDecode-bitstream>`.
+
 
 API overview
 ====================================================
