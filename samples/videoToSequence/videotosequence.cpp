@@ -200,6 +200,7 @@ void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, doubl
                 seq_output_file_name = p_output_file_name[num_seq];
             }
             p_dec->ResetSaveFrameToFile();
+            // needed to flush the frames of the before the start of a new sequence by passing EOS to parser
             n_frame_returned = p_dec->DecodeFrame(nullptr, 0, ROCDEC_PKT_ENDOFSTREAM, -1);
         }
     } while (n_video_bytes && num_seq < seq_info.batch_size);
