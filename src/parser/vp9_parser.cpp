@@ -35,6 +35,9 @@ Vp9VideoParser::Vp9VideoParser() {
     InitDpb();
     num_frames_in_chunck_ = 1;
     frame_sizes_.assign(1, 0);
+    curr_surface_width_ = 0;
+    curr_surface_height_ = 0;
+    reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES;
 }
 
 Vp9VideoParser::~Vp9VideoParser() {
@@ -88,6 +91,9 @@ ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
         }
         // Init Roc decoder for the first time or reconfigure the existing decoder
         if (new_seq_activated_) {
+            if ((ret = FlushDpb()) != PARSER_OK) {
+                return ret;
+            }
             if ((ret = NotifyNewSequence(&uncompressed_header_)) != PARSER_OK) {
                 return ret;
             }
@@ -212,8 +218,8 @@ ParserResult Vp9VideoParser::NotifyNewSequence(Vp9UncompressedHeader *p_uncomp_h
 
     video_format_params_.display_area.left = 0;
     video_format_params_.display_area.top = 0;
-    video_format_params_.display_area.right = p_uncomp_header->render_size.render_width;
-    video_format_params_.display_area.bottom = p_uncomp_header->render_size.render_height;
+    video_format_params_.display_area.right = p_uncomp_header->frame_size.frame_width;
+    video_format_params_.display_area.bottom = p_uncomp_header->frame_size.frame_height;
     video_format_params_.bitrate = 0;
 
     // Dispaly aspect ratio
@@ -223,6 +229,7 @@ ParserResult Vp9VideoParser::NotifyNewSequence(Vp9UncompressedHeader *p_uncomp_h
     video_format_params_.display_aspect_ratio.x = disp_width / gcd;
     video_format_params_.display_aspect_ratio.y = disp_height / gcd;
 
+    video_format_params_.reconfig_options = reconfig_option_;
     video_format_params_.video_signal_description = {0};
     video_format_params_.seqhdr_data_length = 0;
 
@@ -546,12 +553,27 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
 
     p_uncomp_header->header_size_in_bytes = Parser::ReadBits(p_stream, offset, 16);
 
+    // Arbitrary size change is only supported on key frames. For other frame types, particularly inter-coded frames, only size down is
+    // supported where the existing surface can be re-used.
     if (pic_width_ != p_uncomp_header->frame_size.frame_width || pic_height_ != p_uncomp_header->frame_size.frame_height) {
         pic_width_ = p_uncomp_header->frame_size.frame_width;
         pic_height_ = p_uncomp_header->frame_size.frame_height;
+        if (p_uncomp_header->frame_type == kVp9KeyFrame) {
+            curr_surface_width_ = pic_width_;
+            curr_surface_height_ = pic_height_;
+            reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES; // Normal mode: free existing surfaces and allocate new surfaces.
+        } else {
+            if (pic_width_ <= curr_surface_width_ && pic_height_ <= curr_surface_height_) {
+                reconfig_option_ = ROCDEC_RECONFIG_KEEP_SURFACES; // Keep the existing surfaces
+            } else {
+                ERR("VP9 video size (up) change on non-key frames is not supported. Decode errors can occur.");
+                curr_surface_width_ = pic_width_;
+                curr_surface_height_ = pic_height_;
+                reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES; // Normal mode: free existing surfaces and allocate new surfaces.
+            }
+        }
         new_seq_activated_ = true;
     }
-
     uncomp_header_size_ = (offset + 7) >> 3;
     return PARSER_OK;
 }

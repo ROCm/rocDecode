@@ -47,7 +47,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
-    << "-backend backend (0 for GPU, 1 CPU-FFMpeg, 2 CPU-FFMpeg No threading); optional; default: 0" << std::endl
+    << "-backend backend (0 for GPU, 1 CPU-FFMpeg); optional; default: 0" << std::endl
     << "-f Number of decoded frames - specify the number of pictures to be decoded; optional" << std::endl
     << "-z force_zero_latency (force_zero_latency, Decoded frames will be flushed out for display immediately); optional;" << std::endl
     << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
@@ -262,10 +262,7 @@ int main(int argc, char **argv) {
             std::cout << "info: RocDecode is using CPU backend!" << std::endl;
             bool use_threading = false;
             if (mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) mem_type = OUT_SURFACE_MEM_DEV_COPIED;    // mem_type internal is not supported in this mode
-            if (backend == 1) {
-                viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
-            } else
-                viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay, true);
+            viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay, true);
         }
 
         if(!viddec->CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
