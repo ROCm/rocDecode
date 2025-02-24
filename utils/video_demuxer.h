@@ -26,9 +26,9 @@ THE SOFTWARE.
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
-    #if USE_AVCODEC_GREATER_THAN_58_134
+    //#if USE_AVCODEC_GREATER_THAN_58_134
         #include <libavcodec/bsf.h>
-    #endif
+    //#endif
 }
 
 #include "rocdecode.h"
@@ -473,7 +473,9 @@ class VideoDemuxer {
                         || !strcmp(av_fmt_input_ctx_->iformat->long_name, "Matroska / WebM"));
 
             // Check if the input file allow seek functionality.
-            is_seekable_ = av_fmt_input_ctx_->iformat->read_seek || av_fmt_input_ctx_->iformat->read_seek2;
+            // is_seekable_ = av_fmt_input_ctx_->iformat->read_seek || av_fmt_input_ctx_->iformat->read_seek2;
+            // TODO: find another method to determine if seekable! For now hardcoded to true (ea)
+            is_seekable_ = true;
 
             if (is_h264_) {
                 const AVBitStreamFilter *bsf = av_bsf_get_by_name("h264_mp4toannexb");

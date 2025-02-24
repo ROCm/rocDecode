@@ -184,7 +184,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
     // check if the codec is supported in FFMpeg
     // Initialize FFMpeg and find the decoder for codec
-    if (!decoder_) decoder_ = avcodec_find_decoder(RocDecVideoCodec2AVCodec(p_video_format->codec));
+    if (!decoder_) decoder_ = (AVCodec *) avcodec_find_decoder(RocDecVideoCodec2AVCodec(p_video_format->codec));
     if(!decoder_) {
         ROCDEC_THROW("rocDecode<FFMpeg>:: Codec not supported by FFMpeg ", ROCDEC_NOT_SUPPORTED);
         return 0;
