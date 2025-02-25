@@ -68,11 +68,11 @@ typedef enum OutputSurfaceMemoryType_enum {
 #define STR(X) std::string(X)
 
 #if DBGINFO
-#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#define ROCDEC_INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
 #else
-#define INFO(X) ;
+#define ROCDEC_INFO(X) ;
 #endif
-#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+#define ROCDEC_ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
 inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
     int num_planes = 1;
@@ -128,7 +128,6 @@ private:
 };
 
 #define ROCDEC_THROW(X, CODE) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X , CODE);
-#define THROW(X) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X);
 
 #define ROCDEC_API_CALL( rocDecAPI )                                                                         \
     do {                                                                                                     \
@@ -219,8 +218,6 @@ class RocVideoDecoder {
         ~RocVideoDecoder();
         
         rocDecVideoCodec GetCodecId() { return codec_id_; }
-
-        hipStream_t GetStream() {return hip_stream_;}
 
         /**
          * @brief Get the output frame width

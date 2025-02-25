@@ -19,6 +19,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 ### Removed
 
 * FFMPEG executable requirement for the package
+* GetStream() interface call from RocVideoDecoder utility class
 
 ## rocDecode 0.8.0 for ROCm 6.3
 
