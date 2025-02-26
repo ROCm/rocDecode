@@ -131,7 +131,7 @@ protected:
 
     /*! \brief callback function pointers for the parser
      */
-    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_;             /**< Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDSEQUENCECALLBACK pfn_sequence_cb_;             /**< Called before decoding frames and/or whenever there is a fmt change */
     PFNVIDDECODECALLBACK pfn_decode_picture_cb_;        /**< Called when a picture is ready to be decoded (decode order)         */
     PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_;      /**< Called whenever a picture is ready to be displayed (display order)  */
     PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_;       /**< Called when all SEI messages are parsed for particular frame        */
