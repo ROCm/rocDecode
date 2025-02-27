@@ -80,6 +80,7 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
         uint8_t *out_frame;
         {
             std::unique_lock<std::mutex> lock(mutex);
+            // Wait until there is a frame available in the queue or processing is complete
             cv.wait(lock, [&] {return !frame_indices_q.empty() || !continue_processing;});
             if (!continue_processing && frame_indices_q.empty()) {
                 break;
