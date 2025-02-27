@@ -339,6 +339,7 @@ int main(int argc, char **argv) {
                     cv.wait(lock, [&] {return frame_indices_q.size() < frame_buffers_size;});
                     // copy the decoded frame into the frame_buffers at current_frame_index
                     HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream_dec));
+                    HIP_API_CALL(hipStreamSynchronize(hip_stream_dec));
                     frame_indices_q.push(current_frame_index);
                 }
 
