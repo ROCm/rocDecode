@@ -1208,7 +1208,7 @@ int RocVideoESParser::CheckVp9EStream(uint8_t *p_stream, int stream_size) {
 
 int RocVideoESParser::CheckIvfVp9Stream(uint8_t *p_stream, int stream_size) {
     static const char *IVF_SIGNATURE = "DKIF";
-    static const char *AV1_FourCC = "VP90";
+    static const char *VP9_FourCC = "VP90";
     static const int IvfFileHeaderSize = 32;
     static const int IvfFrameHeaderSize = 12;
     uint8_t *ptr = p_stream;
@@ -1223,8 +1223,8 @@ int RocVideoESParser::CheckIvfVp9Stream(uint8_t *p_stream, int stream_size) {
             score = 0;
         } else {
             ptr += 4;
-            // bytes 8-11: codec FourCC (e.g., 'AV01')
-            if (memcmp(AV1_FourCC, ptr, 4)) {
+            // bytes 8-11: codec FourCC (e.g., 'VP90')
+            if (memcmp(VP9_FourCC, ptr, 4)) {
                 score = 0;
             } else {
                 ptr = p_stream + IvfFileHeaderSize;
