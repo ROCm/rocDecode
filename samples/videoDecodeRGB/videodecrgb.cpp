@@ -60,9 +60,10 @@ void ShowHelpAndExit(const char *option = NULL) {
 }
 
 constexpr int frame_buffers_size = 2;
-std::queue<uint8_t*> frame_queue[frame_buffers_size];
-std::mutex mutex[frame_buffers_size];
-std::condition_variable cv[frame_buffers_size];
+std::mutex mutex;
+std::condition_variable cv;
+std::queue<int> frame_indices_q;
+uint8_t* frame_buffers[frame_buffers_size] = {0};
 
 void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool convert_to_rgb, Dim *p_resize_dim, OutputSurfaceInfo **surf_info, OutputSurfaceInfo **res_surf_info,
         OutputFormatEnum e_output_format, uint8_t *p_rgb_dev_mem, uint8_t *p_resize_dev_mem, bool dump_output_frames,
@@ -70,23 +71,24 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
 
     size_t rgb_image_size, resize_image_size;
     hipError_t hip_status = hipSuccess;
-    int current_frame_index = 0;
+    int current_frame_index;
     uint8_t *frame;
 
     HIP_API_CALL(hipSetDevice(device_id));
-    while (continue_processing || !frame_queue[current_frame_index].empty()) {
+    while (continue_processing || !frame_indices_q.empty()) {
         OutputSurfaceInfo *p_surf_info;
         uint8_t *out_frame;
         {
-            std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
-            cv[current_frame_index].wait(lock, [&] {return !frame_queue[current_frame_index].empty() || !continue_processing;});
-            if (!continue_processing && frame_queue[current_frame_index].empty()) {
+            std::unique_lock<std::mutex> lock(mutex);
+            // Wait until there is a frame available in the queue or processing is complete
+            cv.wait(lock, [&] {return !frame_indices_q.empty() || !continue_processing;});
+            if (!continue_processing && frame_indices_q.empty()) {
                 break;
             }
             p_surf_info = *surf_info;
+            current_frame_index = frame_indices_q.front();
             // Get the current frame at the curren_buffer index for processing
-            frame = frame_queue[current_frame_index].front();
-            frame_queue[current_frame_index].pop();
+            frame = frame_buffers[current_frame_index];
             out_frame = frame;
         }
         if (p_resize_dim->w && p_resize_dim->h && *res_surf_info) {
@@ -139,12 +141,20 @@ void ColorSpaceConversionThread(std::atomic<bool>& continue_processing, bool con
             else
                 viddec.SaveFrameToFile(output_file_path, out_frame, p_surf_info);
         }
-        if(b_generate_md5 && convert_to_rgb){
-            md5_gen_handle->UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
+        if (b_generate_md5) {
+            if (convert_to_rgb) {
+                md5_gen_handle->UpdateMd5ForDataBuffer(p_rgb_dev_mem, rgb_image_size);
+            } else {
+                md5_gen_handle->UpdateMd5ForFrame(frame, p_surf_info);
+            }
         }
-        
-        cv[current_frame_index].notify_one();
-        current_frame_index = (current_frame_index + 1) % frame_buffers_size;
+
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            frame_indices_q.pop();
+        }
+
+        cv.notify_one();
     }
 }
 
@@ -169,7 +179,6 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     OutputFormatEnum e_output_format = native; 
     int rgb_width;
-    uint8_t* frame_buffers[frame_buffers_size] = {0};
     int current_frame_index = 0;
     hipStream_t hip_stream_dec = 0;
     hipStream_t hip_stream_csc = 0;
@@ -326,28 +335,29 @@ int main(int argc, char **argv) {
                 }
 
                 {
-                    std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
-                    cv[current_frame_index].wait(lock, [&] {return frame_queue[current_frame_index].empty();});
+                    std::unique_lock<std::mutex> lock(mutex);
+                    cv.wait(lock, [&] {return frame_indices_q.size() < frame_buffers_size;});
                     // copy the decoded frame into the frame_buffers at current_frame_index
                     HIP_API_CALL(hipMemcpyDtoDAsync(frame_buffers[current_frame_index], p_frame, surf_info->output_surface_size_in_bytes, hip_stream_dec));
-                    frame_queue[current_frame_index].push(frame_buffers[current_frame_index]);
+                    HIP_API_CALL(hipStreamSynchronize(hip_stream_dec));
+                    frame_indices_q.push(current_frame_index);
                 }
 
                 viddec.ReleaseFrame(pts);
-                cv[current_frame_index].notify_one(); // Notify the ColorSpaceConversionThread that a frame is available for post-processing
                 current_frame_index = (current_frame_index + 1) % frame_buffers_size; // update the current_frame_index to the next index in the frame_buffers
+                cv.notify_one(); // Notify the ColorSpaceConversionThread that a frame is available for post-processing
             }
 
             n_frame += n_frames_returned;
         } while (n_video_bytes);
 
         {
-            std::unique_lock<std::mutex> lock(mutex[current_frame_index]);
+            std::unique_lock<std::mutex> lock(mutex);
             //Signal ColorSpaceConversionThread to stop
             continue_processing = false;
-            lock.unlock();
-            cv[current_frame_index].notify_one();
         }
+
+        cv.notify_one();
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto time_per_frame = std::chrono::duration<double, std::milli>(end_time - startTime).count();
