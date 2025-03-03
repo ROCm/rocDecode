@@ -31,10 +31,12 @@ subtrees:
 
 - caption: How to
   entries:
-  - file: how-to/using-rocDecode-bitstream.rst
-    title: Use rocDecode with the bitstream decoder
+  - file: how-to/using-rocDecode-videodecode-sample.rst
+    title: Understand the rocDecode videodecode sample
+  - file: how-to/using-rocDecode-video-decoder.rst
+    title: Use the rocDecode RocVideoDecoder
   - file: how-to/using-rocDecode-ffmpeg.rst
-    title: Use rocDecode with the FFmpeg decoder
+    title: Use the rocDecode FFmpeg demultiplexer
   - file: how-to/using-rocdecode.rst
     title: Use the rocDecode core APIs
 
