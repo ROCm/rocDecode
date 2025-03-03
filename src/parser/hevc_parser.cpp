@@ -1674,6 +1674,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                     }
                 }
             }
+            if (p_slice_header->slice_type != HEVC_SLICE_TYPE_I) {
+                CHECK_ALLOWED_RANGE(p_slice_header->st_rps.num_of_delta_pocs + p_slice_header->num_long_term_pics, 1, dpb_buffer_.dpb_size);
+            }
             if (sps_ptr->sps_temporal_mvp_enabled_flag) {
                 p_slice_header->slice_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
             }
