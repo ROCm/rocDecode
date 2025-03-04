@@ -35,31 +35,31 @@ The ``videodecode.cpp`` sample lets the user choose which method to use through 
 
     * - ``-d`` 
       - GPU device ID 
-      - Optional. Set it to 0 for the first device, 1 for the second device, 2 for the third device, and so on for each subsequent device. Defaults to 0.
+      - Optional. Set it to 0 for the first device, 1 for the second device, 2 for the third device, and so on for each subsequent device. Set to 0 by default.
   
     * - ``-backend`` 
       - The backend to use for decoding
-      - Optional. Set it to 0 to use RocVideoDecode on GPU, 1 to use the FFMpeg decoder on CPU, or 2 to use the FFMpeg decoder with no multithreading on CPU. Defaults to using RocVideoDecode on GPU.
+      - Optional. Set it to 0 to use RocVideoDecode on GPU, 1 to use the FFMpeg decoder on CPU, or 2 to use the FFMpeg decoder with no multithreading on CPU. Uses RocVideoDecode on GPU by default.
 
     * - ``-f`` 
       - Number of frames to decode 
-      - Optional. Defaults to decoding the entire stream.
+      - Optional. Decodes the entire stream by default.
 
     * - ``-z`` 
       - Force zero latency 
-      - Optional. When set to ``true`` forces decoded frames to be flushed out for display immediately. Defaults to ``false``.
+      - Optional. When set to ``true`` forces decoded frames to be flushed out for display immediately. ``false`` by default.
 
     * - ``-disp_delay`` 
       - Display delay
-      - Optional. The number of frames to decode before displaying the results. Defaults to 1.
+      - Optional. The number of frames to decode before displaying the results. Set to 1 by default.
       
     * - ``-sei`` 
       - Extract Supplemental Enhancement Information (SEI)
-      - Optional. Set to ``true`` to extract SEI. Defaults to ``false``.
+      - Optional. Set to ``true`` to extract SEI. ``false`` by default.
 
     * - ``-md5`` 
       - Generate MD5 message digest
-      - Optional. Set to ``true`` to generate the MD5 message digest for the decoded YUV image sequence. Defaults to ``false``.
+      - Optional. Set to ``true`` to generate the MD5 message digest for the decoded YUV image sequence. ``false`` by default.
 
     * - ``-md5_check``
       - Compare the generated MD5 with a provided MD5 string
@@ -67,29 +67,29 @@ The ``videodecode.cpp`` sample lets the user choose which method to use through 
 
     * - ``-crop`` 
       - Crop rectangle 
-      - Optional. Takes four integers defining the crop rectangle to use with the output. This argument is ignored when using interopped decoded frame. See the documentation for the `Rect struct <https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/structRect.html>`_ for more information. Defaults to no cropping.
+      - Optional. Takes four integers defining the crop rectangle to use with the output. This argument is ignored when using interopped decoded frame. See the documentation for the `Rect struct <https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/structRect.html>`_ for more information. There is no cropping by default.
 
     * - ``-m`` 
       - The output surface memory type
-      - Optional. The memory type where the surface data, such as the decoded frames, resides. Set this to 0 for intermediate GPU memory, to 1 for GPU memory, and to 2 for CPU memory. See :doc:`Surface data memory locations <../conceptual/rocDecode-memory-types>` for more information. Defaults to 0. 
+      - Optional. The memory type where the surface data, such as the decoded frames, resides. Set this to 0 for intermediate GPU memory, to 1 for GPU memory, and to 2 for CPU memory. See :doc:`Surface data memory locations <../conceptual/rocDecode-memory-types>` for more information. Uses intermediate GPU memory by default. 
 
     * - ``-seek_criteria`` 
       - Seek criteria and seek starting point
-      - Optional. Set to 1 and the frame number to start demultiplexing from that specific frame. Set to 2 and the timestamp to start demultiplexing from that specific timestamp. The seek criteria and starting point must be comma-separated (``,``). Defaults to starting from the first frame. 
+      - Optional. Set to 1 and the frame number to start demultiplexing from that specific frame. Set to 2 and the timestamp to start demultiplexing from that specific timestamp. The seek criteria and starting point must be comma-separated (``,``). Demultiplexing begins at the first frame by default. 
 
       
     * - ``-seek_mode``
       - Seek mode 
-      - Optional. Set to 0 to seek to the previous keyframe. Set to 1 to seek to the exact frame. Defaults to seek to the previous keyframe.
+      - Optional. Set to 0 to seek to the previous keyframe. Set to 1 to seek to the exact frame. Seeks to previous keyframe by default.
     
     * - ``-no_ffmpeg_demux`` 
       - Don't use the FFMpeg demultiplexer
-      - Optional. Set to ``true`` to use the RocDecode bitstream reader to obtain picture data. The bitstream reader can only be used with an elementary stream. 
+      - Optional. Set to ``true`` to use the RocDecode bitstream reader to obtain picture data. The bitstream reader can only be used with an elementary stream. The FFmpeg demultiplexer is used by default.
 
 Because the ``videodecode.cpp`` example can use the RocDecode RocVideoDecoder, the FFMpeg decoder, the FFmpeg demultiplexer (demuxer), or the RocDecode bitstream reader, it imports the ``roc_video_dec.h``, ``video_demuxer.h``, and ``ffmpeg_video_dec.h`` header files. These headers contain the convenience classes and functions for decoding and demultiplexing video.
 
 
-Unless ``-no_ffmpeg_demux`` was set to ``true``, the FFMpeg demuxer is used to demultiplex the input stream.
+The FFMpeg demuxer is used to demultiplex the input stream unless the ``-no_ffmpeg_demux`` argument was set to ``true``.
 
 .. code:: C++
 
@@ -168,11 +168,11 @@ In the decode loop, the video stream is demultiplexed before being decoded.
 
 The demuxer will demultiplex frames sequentially starting at the beginning of the stream unless ``-seek_criteria`` was set to either 1 or 2. 
 
-If ``-seek_criteria`` was set to 1 and ``-seek_mode`` was set to 1, the demuxer will start demultiplexing the video at the frame provided. 
+If the ``-seek_criteria`` argument was set to 1 and ``-seek_mode`` was set to 1, the demuxer will start demultiplexing the video at the frame provided. 
 
-If ``-seek_criteria`` was set to 1 and ``-seek_mode`` wasn't set or was set to 0, the demuxer will start demultiplexing the video at the first keyframe before the frame provided.
+If the ``-seek_criteria`` argument was set to 1 and ``-seek_mode`` wasn't set or was set to 0, the demuxer will start demultiplexing the video at the first keyframe before the frame provided.
 
-If ``-seek_criteria`` was set to 2 the demuxer will start demultiplexing the video at the timestamp provided.
+If the ``-seek_criteria`` argument was set to 2 the demuxer will start demultiplexing the video at the timestamp provided.
 
 The seek criteria is defined by the ``SeekCriteriaEnum`` enum and the seek mode is defined by the ``SeekModeEnum`` enum. Both the ``SeekCriteriaEnum`` and the ``SeekModeEnum`` are defined in ``video_demuxer.h``.
 

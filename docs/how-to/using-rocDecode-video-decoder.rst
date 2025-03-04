@@ -18,52 +18,52 @@ To use the rocDecode video decoder, import the ``roc_video_dec.h`` header file a
 The ``RocVideoDecoder`` constructor takes the following parameters:
 
 .. list-table:: 
-    :widths: 10 30 60
+    :widths: 15 70 15
     :header-rows: 1
 
     *   - Parameter
-        - Type
         - Description 
+        - Default
 
     *   - ``device_id``
-        - ``int``
-        - The GPU device ID. |br| |br| Set it to 0 for the first device, 1 for the second device, 2 for the third device, and so on for each subsequent device.
+        - ``int`` |br| |br| The GPU device ID. |br| |br| Set it to 0 for the first device, 1 for the second device, 2 for the third device, and so on for each subsequent device. 
+        - 0
     
     *   - ``out_mem_type``
-        - ``OutputSurfaceMemoryType``
-        - The memory type where the surface data, such as the decoded frames, resides. |br| |br| ``OUT_SURFACE_MEM_DEV_INTERNAL``: The surface data is stored internally on memory shared by the GPU and CPU. |br| |br| ``OUT_SURFACE_MEM_DEV_COPIED``: The surface data resides on the GPU. |br| |br| ``OUT_SURFACE_MEM_HOST_COPIED``: The surface data resides on the CPU. |br| |br| See :doc:`Surface data memory locations <../conceptual/rocDecode-memory-types>` for more information.
+        - |OutputSurfaceMemoryType|_ |br| |br| The memory type where the surface data, such as the decoded frames, resides. |br| |br| 0: ``OUT_SURFACE_MEM_DEV_INTERNAL``. The surface data is stored internally on memory shared by the GPU and CPU. |br| |br| 1: ``OUT_SURFACE_MEM_DEV_COPIED``. The surface data resides on the GPU. |br| |br| 2: ``OUT_SURFACE_MEM_HOST_COPIED``. The surface data resides on the CPU. |br| |br| See :doc:`Surface data memory locations <../conceptual/rocDecode-memory-types>` for more information.
+        - 0, OUT_SURFACE_MEM_DEV_INTERNAL
 
     *   - ``codec``
-        - ``rocDecVideoCodec``
-        - The video file's codec ID converted to ``rocDecVideoCodec`` using ``AVCodec2RocDecVideoCodec``.
+        - |rocDecVideoCodec|_ |br| |br| The video file's codec ID converted to ``rocDecVideoCodec`` using ``AVCodec2RocDecVideoCodec``.
+        - No default, a value must be provided
 
     *   - ``force_zero_latency``
-        - ``bool``
-        - Set to ``true`` to flush decoded frames for immediate display.
+        - ``bool`` |br| |br| Set to ``true`` to flush decoded frames for immediate display.
+        - ``false``
 
     *   - ``p_crop_rect``
-        - ``const Rect *``
-        - The rectangle to use for cropping. Defaults to no cropping.
+        - ``const Rect *`` |br| |br| The rectangle to use for cropping.
+        - No cropping
 
     *   - ``extract_user_SEI_Message``
-        - ``bool``
-        - Set to ``true`` to extract Supplemental Enhancement Information (SEI) from the video stream.
+        - ``bool`` |br| |br| Set to ``true`` to extract Supplemental Enhancement Information (SEI) from the video stream.
+        - ``false``, no SEI will be extracted
 
     *   - ``disp_delay``
-        - ``uint32_t``    
-        - Delay the display by this number of frames. Defaults to 0 with no delay in displaying the frames.
+        - ``uint32_t`` |br| |br| Delay the display by this number of frames.
+        - 0, no delay in displaying the frames
 
     *   - ``max_width``
-        - ``int``    
-        - Max width. Defaults to 0.
+        - ``int`` |br| |br| Max width.
+        - 0
 
     *   - ``max_height``
-        - ``int``  
-        - Max height. Defaults to 0.
+        - ``int`` |br| |br| Max height. 
+        - 0
 
     *   - ``clk_rate``
-        - ``uint32_t``    
-        - Clock rate. Defaults to 1000.
+        - ``uint32_t`` |br| |br| Clock rate. 
+        - 1000
 
 
 .. |br| raw:: html
@@ -142,3 +142,9 @@ In the decode loop, the demultiplexed video stream is passed to ``DecodeFrame``.
 
 .. |reconfig_struct| replace:: ``ReconfigParams_t``
 .. _reconfig_struct: https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/structReconfigParams__t.html
+
+.. |OutputSurfaceMemoryType| replace:: ``OutputSurfaceMemoryType``
+.. _OutputSurfaceMemoryType: https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/roc__video__dec_8h.html
+
+.. |rocDecVideoCodec| replace:: ``rocDecVideoCodec``
+.. _rocDecVideoCodec: https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/rocdecode_8h.html
