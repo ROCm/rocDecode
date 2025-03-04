@@ -6,7 +6,7 @@
 Using the rocDecode FFmpeg demultiplexer
 ********************************************************************
 
-The rocDecode FFmpeg demultiplexer (demuxer) extracts data from an input video stream. 
+The rocDecode FFmpeg demultiplexer (demuxer) extracts coded picture data from digital media files.
 
 To use the rocDecode FFmpeg demuxer , import the ``video_demuxer.h`` header file. 
 
