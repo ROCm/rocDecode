@@ -1695,10 +1695,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->num_ref_idx_active_override_flag = Parser::GetBit(nalu, offset);
             if (p_slice_header->num_ref_idx_active_override_flag) {
                 p_slice_header->num_ref_idx_l0_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-                CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l0_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size)));
+                CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l0_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
                 if (p_slice_header->slice_type == HEVC_SLICE_TYPE_B) {
                     p_slice_header->num_ref_idx_l1_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-                    CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l1_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size)));
+                    CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l1_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
                 }
             } else {
                 p_slice_header->num_ref_idx_l0_active_minus1 = pps_ptr->num_ref_idx_l0_default_active_minus1;
