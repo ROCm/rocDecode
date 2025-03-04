@@ -8,7 +8,8 @@ Understanding the rocDecode videodecode sample
 
 The |videodecode|_ sample in the rocDecode GitHub repository |samplefolder|_ demonstrates how to decode a video stream.
 
-As with the other rocDecode samples, ``videodecode.cpp`` usesthe utility classes in the rocDecode repository's |utilsfolder|_. These classes are convenience classes that provide a high-level calls to the core APIs in the |apifolder|_. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
+As with the other rocDecode samples, ``videodecode.cpp`` uses the utility classes in the rocDecode repository's |utilsfolder|_. These classes are convenience classes that provide high-level calls to the core APIs in the |apifolder|_. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
+
 
 rocDecode provides two ways to decode a video stream: using the rocDecode RocVideoDecoder on GPU or using the FFMpeg video decoder on CPU.
 
