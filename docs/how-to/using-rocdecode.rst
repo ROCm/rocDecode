@@ -70,7 +70,8 @@ Query decode capabilities
 
 The ``rocDecGetDecoderCaps()`` API allows you to query the capabilities of the underlying hardware
 video decoder. Decoder capabilities usually include supported codecs, maximum resolution, and
-bit-depth.
+bit depth.
+
 
 The following pseudo-code illustrates the use of this API. The application handles the error
 appropriately for non-supported decoder capabilities.
