@@ -20,7 +20,7 @@ If you're building and installing rocDecode from its :doc:`source code <../insta
 
    python3 rocDecode-setup.py --developer ON
 
-The rocDecode-test package needs to be built and installed as well:
+The ``rocDecode-test`` package needs to be built and installed as well:
 
 .. code:: shell
 
