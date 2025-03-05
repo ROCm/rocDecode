@@ -8,12 +8,11 @@ Using the rocDecode RocVideoDecoder
 
 rocDecode provides two ways of decoding a video stream: using the rocDecode RocVideoDecoder on GPU or using the FFmpeg decoder on CPU. 
 
-This topic covers how to decode a video stream using the RocVideoDecoder and the utility classes in the |utilsfolder|_ of the rocDecode GitHub repository. These utility classes provide high-level calls to the core APIs in the |apifolder|_ of the rocDecode GitHub repository. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
+This topic covers how to decode a video stream using the RocVideoDecoder class in |roc_video_dec|_. The RocVideoDecode class provides high-level calls to the core APIs in the |apifolder|_ of the rocDecode GitHub repository. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
 
-The RocVideoDecoder takes a demultiplexed video stream as input. The video stream can be demultiplexed using the :doc:`FFmpeg demultiplexer <./using-rocDecode-ffmpeg>`.
+The RocVideoDecoder takes a demultiplexed coded picture as input. The picture can be demultiplexed from a video stream using the :doc:`FFmpeg demultiplexer <./using-rocDecode-ffmpeg>`.
 
 To use the rocDecode video decoder, import the ``roc_video_dec.h`` header file and instantiate ``RocVideoDecoder``.
-
 
 The ``RocVideoDecoder`` constructor takes the following parameters:
 
@@ -81,9 +80,9 @@ For example, from |videodecode|_:
 
 The same decoder instance is reused when there's a change to the video resolution without a change in the codec. 
 
-When the video stream resolution changes, the existing frame buffer is deleted along with any decoded frames that are still within it, and the decoder is reconfigured for the new resolution.
+The decoder maintains a pool of frame buffers for decoded images that haven't yet been displayed or processed. When the video stream resolution changes, the existing frame buffers in the buffer pool are deleted. The decoder is then reconfigured for the new resolution and new buffers are created.
 
-To prevent the remaining frames from being deleted with the frame buffer, a callback function can be defined to save or post-process the remaining frames. 
+To prevent the remaining frames in the buffers from being deleted along with the buffers, a callback function can be defined to consume the remaining frames. 
 
 The |reconfig_struct|_ struct stores information on how to handle the reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
 
@@ -139,6 +138,8 @@ In the decode loop, the demultiplexed video stream is passed to ``DecodeFrame``.
 .. |utilsfolder| replace:: ``utils`` folder
 .. _utilsfolder: https://github.com/ROCm/rocDecode/tree/develop/utils
 
+.. |roc_video_dec| replace:: ``roc_video_dec.h``
+.. _utilsfolder: https://github.com/ROCm/rocDecode/tree/develop/utils/rocvideodecode/roc_video_dec.h
 
 .. |reconfig_struct| replace:: ``ReconfigParams_t``
 .. _reconfig_struct: https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/structReconfigParams__t.html

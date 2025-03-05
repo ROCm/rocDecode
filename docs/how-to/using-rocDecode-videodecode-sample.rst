@@ -8,8 +8,7 @@ Understanding the rocDecode videodecode sample
 
 The |videodecode|_ sample in the rocDecode GitHub repository |samplefolder|_ demonstrates how to decode a video stream.
 
-As with the other rocDecode samples, ``videodecode.cpp`` uses the utility classes in the rocDecode repository's |utilsfolder|_. These classes are convenience classes that provide high-level calls to the core APIs in the |apifolder|_. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
-
+As with the other rocDecode samples, ``videodecode.cpp`` uses the utility classes in the rocDecode repository's |utilsfolder|_.
 
 rocDecode provides two ways to decode a video stream: using the rocDecode RocVideoDecoder on GPU or using the FFMpeg video decoder on CPU.
 
@@ -121,15 +120,15 @@ If the CPU backend was selected, the FFMpeg decoder is instantiated:
 
   viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
 
-The decoder instance is reused when there is a change to the video resolution without a change in the codec. When the video stream resolution changes, the existing frame buffer is deleted along with any decoded frames that are still within it, and the decoder is reconfigured for the new resolution.
+The decoder instance is reused when there is a change to the video resolution without a change in the codec. When the video stream resolution changes, the decoder is reconfigured for the new resolution and the pool of frame buffers that the decoder maintains is deleted.
 
-The |reconfig_struct|_ struct is used to store information on how to handle the frames that remain in the frame buffer at the time of  reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
+The |reconfig_struct|_ struct is used to store information on how to handle the frames that remain in the buffers at the time of  reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
 
 The reconfiguration structs are defined in |common|_ in the rocDecode samples. Three possibilities for the remaining frames in the frame buffer are provided:
 
-* ``RECONFIG_FLUSH_MODE_NONE``: delete the frames along with the buffer.
-* ``RECONFIG_FLUSH_MODE_DUMP_TO_FILE``: write the frames to the specified output file before deleting the buffer.
-* ``RECONFIG_FLUSH_MODE_CALCULATE_MD5``: calculate the MD5 of the frames before deleting the buffer.
+* ``RECONFIG_FLUSH_MODE_NONE``: delete the frames along with the buffers.
+* ``RECONFIG_FLUSH_MODE_DUMP_TO_FILE``: write the frames to the specified output file before deleting the buffers.
+* ``RECONFIG_FLUSH_MODE_CALCULATE_MD5``: calculate the MD5 of the frames before deleting the buffers.
 
 .. code:: C++
 
