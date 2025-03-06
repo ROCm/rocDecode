@@ -117,7 +117,7 @@ For example, the reconfiguration structs are defined in |common|_ in the rocDeco
     viddec.SetReconfigParams(&reconfig_params);
 
 
-In the decode loop, the demultiplexed video stream is passed to ``DecodeFrame``. Once the frame is decoded and processed, it is released with ``ReleaseFrame``. 
+In the decode loop, the demultiplexed coded picture is passed to ``DecodeFrame``. Once the frame is decoded and processed, it is released with ``ReleaseFrame``. 
 
 
 

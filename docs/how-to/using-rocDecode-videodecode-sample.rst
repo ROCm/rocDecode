@@ -145,7 +145,7 @@ The reconfiguration structs are defined in |common|_ in the rocDecode samples. T
   } ReconfigDumpFileStruct;
 
 
-If the ``-o`` output file path argument was set, the remaining frames in the frame buffer will be written to the output file upon reconfiguration. If the ``-md5`` argument was set to ``true``, the MD5 of the frames in the frame buffer will be calculated before they're flushed or written to file. If neither option was selected, the frames in the buffer will be deleted along with the buffer. 
+If the ``-o`` output file path argument was set, the remaining frames in the decoded frame buffer pool will be written to the output file upon reconfiguration. If the ``-md5`` argument was set to ``true``, the MD5 of the frames in the frame buffer will be calculated before they're flushed or written to file. If neither option was selected, the frames in the buffer will be deleted along with the buffer. 
 
 .. code:: C++
 
