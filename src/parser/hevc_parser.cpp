@@ -807,13 +807,13 @@ ParserResult HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool co
 
         if (hrd->fixed_pic_rate_within_cvs_flag[i]) {
             hrd->elemental_duration_in_tc_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            CHECK_ALLOWED_RANGE(hrd->elemental_duration_in_tc_minus1[i], 0, 2047);
+            CHECK_ALLOWED_RANGE("elemental_duration_in_tc_minus1", hrd->elemental_duration_in_tc_minus1[i], 0, 2047);
         } else {
             hrd->low_delay_hrd_flag[i] = Parser::GetBit(nalu, offset);
         }
         if (!hrd->low_delay_hrd_flag[i]) {
             hrd->cpb_cnt_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            CHECK_ALLOWED_RANGE(hrd->cpb_cnt_minus1[i], 0, 31);
+            CHECK_ALLOWED_RANGE("cpb_cnt_minus1", hrd->cpb_cnt_minus1[i], 0, 31);
         }
         if (hrd->nal_hrd_parameters_present_flag) {
             //sub_layer_hrd_parameters( i )
@@ -1044,7 +1044,7 @@ ParserResult HevcVideoParser::ParseShortTermRefPicSet(HevcSeqParamSet *sps_ptr, 
         rps->num_negative_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         rps->num_positive_pics = Parser::ExpGolomb::ReadUe(nalu, offset);
         rps->num_of_delta_pocs = rps->num_negative_pics + rps->num_positive_pics;
-        CHECK_ALLOWED_RANGE(rps->num_of_delta_pocs, 0, sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1]);
+        CHECK_ALLOWED_RANGE("num_of_delta_pocs", rps->num_of_delta_pocs, 0, sps_ptr->sps_max_dec_pic_buffering_minus1[sps_ptr->sps_max_sub_layers_minus1]);
 
         for (i = 0; i < rps->num_negative_pics; i++) {
             rps->delta_poc_s0_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
@@ -1226,9 +1226,9 @@ ParserResult HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     for (int i = 0; i <= p_vps->vps_max_sub_layers_minus1; i++) {
         if (p_vps->vps_sub_layer_ordering_info_present_flag || (i == 0)) {
             p_vps->vps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            CHECK_ALLOWED_RANGE(p_vps->vps_max_dec_pic_buffering_minus1[i], 0, HEVC_MAX_DPB_FRAMES - 1);
+            CHECK_ALLOWED_RANGE("vps_max_dec_pic_buffering_minus1", p_vps->vps_max_dec_pic_buffering_minus1[i], 0, HEVC_MAX_DPB_FRAMES - 1);
             p_vps->vps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            CHECK_ALLOWED_RANGE(p_vps->vps_max_num_reorder_pics[i], 0, p_vps->vps_max_dec_pic_buffering_minus1[i]);
+            CHECK_ALLOWED_RANGE("vps_max_num_reorder_pics", p_vps->vps_max_num_reorder_pics[i], 0, p_vps->vps_max_dec_pic_buffering_minus1[i]);
             p_vps->vps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         } else {
             p_vps->vps_max_dec_pic_buffering_minus1[i] = p_vps->vps_max_dec_pic_buffering_minus1[0];
@@ -1238,7 +1238,7 @@ ParserResult HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     }
     p_vps->vps_max_layer_id = Parser::ReadBits(nalu, offset, 6);
     p_vps->vps_num_layer_sets_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-    CHECK_ALLOWED_RANGE(p_vps->vps_num_layer_sets_minus1, 0, 1023);
+    CHECK_ALLOWED_RANGE("vps_num_layer_sets_minus1", p_vps->vps_num_layer_sets_minus1, 0, 1023);
     for (int i = 1; i <= p_vps->vps_num_layer_sets_minus1; i++) {
         for (int j = 0; j <= p_vps->vps_max_layer_id; j++) {
             p_vps->layer_id_included_flag[i][j] = Parser::GetBit(nalu, offset);
@@ -1253,10 +1253,10 @@ ParserResult HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
             p_vps->vps_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         p_vps->vps_num_hrd_parameters = Parser::ExpGolomb::ReadUe(nalu, offset);
-        CHECK_ALLOWED_RANGE(p_vps->vps_num_hrd_parameters, 0, p_vps->vps_num_layer_sets_minus1 + 1);
+        CHECK_ALLOWED_RANGE("vps_num_hrd_parameters", p_vps->vps_num_hrd_parameters, 0, p_vps->vps_num_layer_sets_minus1 + 1);
         for (int i = 0; i<p_vps->vps_num_hrd_parameters; i++) {
             p_vps->hrd_layer_set_idx[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
-            CHECK_ALLOWED_RANGE(p_vps->hrd_layer_set_idx[i], (p_vps->vps_base_layer_internal_flag ? 0 : 1), p_vps->vps_num_layer_sets_minus1);
+            CHECK_ALLOWED_RANGE("hrd_layer_set_idx", p_vps->hrd_layer_set_idx[i], (p_vps->vps_base_layer_internal_flag ? 0 : 1), p_vps->vps_num_layer_sets_minus1);
             if (i > 0) {
                 p_vps->cprms_present_flag[i] = Parser::GetBit(nalu, offset);
             }
@@ -1540,7 +1540,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
 
     // Set active VPS, SPS and PPS for the current slice
     m_active_pps_id_ = Parser::ExpGolomb::ReadUe(nalu, offset);
-    CHECK_ALLOWED_MAX(m_active_pps_id_, (MAX_PPS_COUNT - 1));
+    CHECK_ALLOWED_MAX("active_pps_id", m_active_pps_id_, (MAX_PPS_COUNT - 1));
     temp_sh.slice_pic_parameter_set_id = p_slice_header->slice_pic_parameter_set_id = m_active_pps_id_;
     pps_ptr = &pps_list_[m_active_pps_id_];
     if ( pps_ptr->is_received == 0) {
@@ -1607,7 +1607,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->slice_reserved_flag[i] = Parser::GetBit(nalu, offset);
         }
         p_slice_header->slice_type = Parser::ExpGolomb::ReadUe(nalu, offset);
-        CHECK_ALLOWED_MAX(p_slice_header->slice_type, 2);
+        CHECK_ALLOWED_MAX("slice_type", p_slice_header->slice_type, 2);
 
         if (pps_ptr->output_flag_present_flag) {
             p_slice_header->pic_output_flag = Parser::GetBit(nalu, offset);
@@ -1690,7 +1690,7 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 }
             }
             if (p_slice_header->slice_type != HEVC_SLICE_TYPE_I) {
-                CHECK_ALLOWED_RANGE(p_slice_header->st_rps.num_of_delta_pocs + p_slice_header->num_long_term_pics, 1, dpb_buffer_.dpb_size);
+                CHECK_ALLOWED_RANGE("num_of_delta_pocs + num_long_term_pics", p_slice_header->st_rps.num_of_delta_pocs + p_slice_header->num_long_term_pics, 1, dpb_buffer_.dpb_size);
             }
             if (sps_ptr->sps_temporal_mvp_enabled_flag) {
                 p_slice_header->slice_temporal_mvp_enabled_flag = Parser::GetBit(nalu, offset);
@@ -1710,10 +1710,10 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->num_ref_idx_active_override_flag = Parser::GetBit(nalu, offset);
             if (p_slice_header->num_ref_idx_active_override_flag) {
                 p_slice_header->num_ref_idx_l0_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-                CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l0_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
+                CHECK_ALLOWED_MAX("num_ref_idx_l0_active_minus1", p_slice_header->num_ref_idx_l0_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
                 if (p_slice_header->slice_type == HEVC_SLICE_TYPE_B) {
                     p_slice_header->num_ref_idx_l1_active_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
-                    CHECK_ALLOWED_MAX(p_slice_header->num_ref_idx_l1_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
+                    CHECK_ALLOWED_MAX("num_ref_idx_l1_active_minus1", p_slice_header->num_ref_idx_l1_active_minus1, std::min(14, static_cast<int>(dpb_buffer_.dpb_size - 1)));
                 }
             } else {
                 p_slice_header->num_ref_idx_l0_active_minus1 = pps_ptr->num_ref_idx_l0_default_active_minus1;
@@ -1785,9 +1785,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 if ((p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l0_active_minus1 > 0) || (!p_slice_header->collocated_from_l0_flag && p_slice_header->num_ref_idx_l1_active_minus1 > 0)) {
                     p_slice_header->collocated_ref_idx = Parser::ExpGolomb::ReadUe(nalu, offset);
                     if (p_slice_header->slice_type == HEVC_SLICE_TYPE_P || (p_slice_header->slice_type == HEVC_SLICE_TYPE_B && p_slice_header->collocated_from_l0_flag == 1)) {
-                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l0_active_minus1);
+                        CHECK_ALLOWED_MAX("collocated_ref_idx", p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l0_active_minus1);
                     } else {
-                        CHECK_ALLOWED_MAX(p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l1_active_minus1);
+                        CHECK_ALLOWED_MAX("collocated_ref_idx", p_slice_header->collocated_ref_idx, p_slice_header->num_ref_idx_l1_active_minus1);
                     }
                 }
             }
@@ -1796,15 +1796,15 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
                 ParsePredWeightTable(p_slice_header, chroma_array_type, nalu, offset);
             }
             p_slice_header->five_minus_max_num_merge_cand = Parser::ExpGolomb::ReadUe(nalu, offset);
-            //CHECK_ALLOWED_MAX(p_slice_header->five_minus_max_num_merge_cand, 4);
+            //CHECK_ALLOWED_MAX("five_minus_max_num_merge_cand", p_slice_header->five_minus_max_num_merge_cand, 4);
         }
 
         p_slice_header->slice_qp_delta = Parser::ExpGolomb::ReadSe(nalu, offset);
         if (pps_ptr->pps_slice_chroma_qp_offsets_present_flag) {
             p_slice_header->slice_cb_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-            CHECK_ALLOWED_RANGE(p_slice_header->slice_cb_qp_offset, -12, 12);
+            CHECK_ALLOWED_RANGE("slice_cb_qp_offset", p_slice_header->slice_cb_qp_offset, -12, 12);
             p_slice_header->slice_cr_qp_offset = Parser::ExpGolomb::ReadSe(nalu, offset);
-            CHECK_ALLOWED_RANGE(p_slice_header->slice_cr_qp_offset, -12, 12);
+            CHECK_ALLOWED_RANGE("slice_cr_qp_offset", p_slice_header->slice_cr_qp_offset, -12, 12);
         }
         if (pps_ptr->chroma_qp_offset_list_enabled_flag) {
             p_slice_header->cu_chroma_qp_offset_enabled_flag = Parser::GetBit(nalu, offset);
@@ -1816,9 +1816,9 @@ ParserResult HevcVideoParser::ParseSliceHeader(uint8_t *nalu, size_t size, HevcS
             p_slice_header->slice_deblocking_filter_disabled_flag = Parser::GetBit(nalu, offset);
             if ( !p_slice_header->slice_deblocking_filter_disabled_flag ) {
                 p_slice_header->slice_beta_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
-                CHECK_ALLOWED_RANGE(p_slice_header->slice_beta_offset_div2, -6, 6);
+                CHECK_ALLOWED_RANGE("slice_beta_offset_div2", p_slice_header->slice_beta_offset_div2, -6, 6);
                 p_slice_header->slice_tc_offset_div2 = Parser::ExpGolomb::ReadSe(nalu, offset);
-                CHECK_ALLOWED_RANGE(p_slice_header->slice_tc_offset_div2, -6, 6);
+                CHECK_ALLOWED_RANGE("slice_tc_offset_div2", p_slice_header->slice_tc_offset_div2, -6, 6);
             }
         }
 
