@@ -775,7 +775,7 @@ void HevcVideoParser::ParseSubLayerHrdParameters(HevcSubLayerHrdParameters *sub_
     }
 }
 
-void HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
+ParserResult HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool common_inf_present_flag, uint32_t max_num_sub_layers_minus1, uint8_t *nalu, size_t size,size_t &offset) {
     if (common_inf_present_flag) {
         hrd->nal_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
         hrd->vcl_hrd_parameters_present_flag = Parser::GetBit(nalu, offset);
@@ -807,11 +807,13 @@ void HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool common_inf
 
         if (hrd->fixed_pic_rate_within_cvs_flag[i]) {
             hrd->elemental_duration_in_tc_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            CHECK_ALLOWED_RANGE(hrd->elemental_duration_in_tc_minus1[i], 0, 2047);
         } else {
             hrd->low_delay_hrd_flag[i] = Parser::GetBit(nalu, offset);
         }
         if (!hrd->low_delay_hrd_flag[i]) {
             hrd->cpb_cnt_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            CHECK_ALLOWED_RANGE(hrd->cpb_cnt_minus1[i], 0, 31);
         }
         if (hrd->nal_hrd_parameters_present_flag) {
             //sub_layer_hrd_parameters( i )
@@ -822,6 +824,7 @@ void HevcVideoParser::ParseHrdParameters(HevcHrdParameters *hrd, bool common_inf
             ParseSubLayerHrdParameters(&hrd->sub_layer_hrd_parameters_1[i], hrd->cpb_cnt_minus1[i], hrd->sub_pic_hrd_params_present_flag, nalu, size, offset);
         }
     }
+    return PARSER_OK;
 }
 
 // Table 7-5. Default values of ScalingList[ 0 ][ matrixId ][ i ] with i = 0..15.
@@ -1201,7 +1204,7 @@ void HevcVideoParser::ParseVui(HevcVuiParameters *vui, uint32_t max_num_sub_laye
     }
 }
 
-void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
+ParserResult HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     size_t offset = 0; // current bit offset
     uint32_t vps_id = Parser::ReadBits(nalu, offset, 4);
     HevcVideoParamSet *p_vps = &vps_list_[vps_id];
@@ -1214,13 +1217,18 @@ void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     p_vps->vps_max_sub_layers_minus1 = Parser::ReadBits(nalu, offset, 3);
     p_vps->vps_temporal_id_nesting_flag = Parser::GetBit(nalu, offset);
     p_vps->vps_reserved_0xffff_16bits = Parser::ReadBits(nalu, offset, 16);
+    if (p_vps->vps_reserved_0xffff_16bits != 0xFFFF) {
+        ERR("vps_reserved_0xffff_16bits is not equal to 0xFFFF.");
+        return PARSER_INVALID_ARG;
+    }
     ParsePtl(&p_vps->profile_tier_level, true, p_vps->vps_max_sub_layers_minus1, nalu, size, offset);
     p_vps->vps_sub_layer_ordering_info_present_flag = Parser::GetBit(nalu, offset);
-
     for (int i = 0; i <= p_vps->vps_max_sub_layers_minus1; i++) {
         if (p_vps->vps_sub_layer_ordering_info_present_flag || (i == 0)) {
             p_vps->vps_max_dec_pic_buffering_minus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            CHECK_ALLOWED_RANGE(p_vps->vps_max_dec_pic_buffering_minus1[i], 0, HEVC_MAX_DPB_FRAMES - 1);
             p_vps->vps_max_num_reorder_pics[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            CHECK_ALLOWED_RANGE(p_vps->vps_max_num_reorder_pics[i], 0, p_vps->vps_max_dec_pic_buffering_minus1[i]);
             p_vps->vps_max_latency_increase_plus1[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
         } else {
             p_vps->vps_max_dec_pic_buffering_minus1[i] = p_vps->vps_max_dec_pic_buffering_minus1[0];
@@ -1230,6 +1238,7 @@ void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
     }
     p_vps->vps_max_layer_id = Parser::ReadBits(nalu, offset, 6);
     p_vps->vps_num_layer_sets_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
+    CHECK_ALLOWED_RANGE(p_vps->vps_num_layer_sets_minus1, 0, 1023);
     for (int i = 1; i <= p_vps->vps_num_layer_sets_minus1; i++) {
         for (int j = 0; j <= p_vps->vps_max_layer_id; j++) {
             p_vps->layer_id_included_flag[i][j] = Parser::GetBit(nalu, offset);
@@ -1244,13 +1253,18 @@ void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
             p_vps->vps_num_ticks_poc_diff_one_minus1 = Parser::ExpGolomb::ReadUe(nalu, offset);
         }
         p_vps->vps_num_hrd_parameters = Parser::ExpGolomb::ReadUe(nalu, offset);
+        CHECK_ALLOWED_RANGE(p_vps->vps_num_hrd_parameters, 0, p_vps->vps_num_layer_sets_minus1 + 1);
         for (int i = 0; i<p_vps->vps_num_hrd_parameters; i++) {
             p_vps->hrd_layer_set_idx[i] = Parser::ExpGolomb::ReadUe(nalu, offset);
+            CHECK_ALLOWED_RANGE(p_vps->hrd_layer_set_idx[i], (p_vps->vps_base_layer_internal_flag ? 0 : 1), p_vps->vps_num_layer_sets_minus1);
             if (i > 0) {
                 p_vps->cprms_present_flag[i] = Parser::GetBit(nalu, offset);
             }
             //parse HRD parameters
-            ParseHrdParameters(&p_vps->hrd_parameters[i], p_vps->cprms_present_flag[i], p_vps->vps_max_sub_layers_minus1, nalu, size, offset);
+            ParserResult ret;
+            if ((ret = ParseHrdParameters(&p_vps->hrd_parameters[i], p_vps->cprms_present_flag[i], p_vps->vps_max_sub_layers_minus1, nalu, size, offset)) != PARSER_OK) {
+                return ret;
+            }
         }
     }
     p_vps->vps_extension_flag = Parser::GetBit(nalu, offset);
@@ -1259,6 +1273,7 @@ void HevcVideoParser::ParseVps(uint8_t *nalu, size_t size) {
 #if DBGINFO
     PrintVps(p_vps);
 #endif // DBGINFO
+    return PARSER_OK;
 }
 
 void HevcVideoParser::ParseSps(uint8_t *nalu, size_t size) {
