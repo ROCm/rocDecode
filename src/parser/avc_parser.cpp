@@ -399,7 +399,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    if (pfn_sequece_cb_(parser_params_.user_data, &video_format_params_) == 0) {
+    if (pfn_sequence_cb_(parser_params_.user_data, &video_format_params_) == 0) {
         ERR("Sequence callback function failed.");
         return PARSER_FAIL;
     } else {
