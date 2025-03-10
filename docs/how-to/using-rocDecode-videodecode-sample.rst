@@ -30,7 +30,7 @@ The ``videodecode.cpp`` sample lets the user choose which method to use through 
     
     * - ``-o`` 
       - Output file path
-      - Optional. The file to which to write the decoded frames, including those that remain in the frame buffer when the RocVideoDecoder is being reconfigured.
+      - Optional. The file to which to write the decoded frames, including those that remain in the decoded frame buffer pool when the RocVideoDecoder is being reconfigured.
 
     * - ``-d`` 
       - GPU device ID 
@@ -124,7 +124,7 @@ The decoder instance is reused when there is a change to the video resolution wi
 
 The |reconfig_struct|_ struct is used to store information on how to handle the frames that remain in the buffers at the time of  reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
 
-The reconfiguration structs are defined in |common|_ in the rocDecode samples. Three possibilities for the remaining frames in the frame buffer are provided:
+The reconfiguration structs are defined in |common|_ in the rocDecode samples. Three possibilities for the remaining frames in the decoded frame buffer pool are provided:
 
 * ``RECONFIG_FLUSH_MODE_NONE``: delete the frames along with the buffers.
 * ``RECONFIG_FLUSH_MODE_DUMP_TO_FILE``: write the frames to the specified output file before deleting the buffers.
@@ -145,7 +145,7 @@ The reconfiguration structs are defined in |common|_ in the rocDecode samples. T
   } ReconfigDumpFileStruct;
 
 
-If the ``-o`` output file path argument was set, the remaining frames in the decoded frame buffer pool will be written to the output file upon reconfiguration. If the ``-md5`` argument was set to ``true``, the MD5 of the frames in the frame buffer will be calculated before they're flushed or written to file. If neither option was selected, the frames in the buffer will be deleted along with the buffer. 
+If the ``-o`` output file path argument was set, the remaining frames in the decoded frame buffer pool will be written to the output file upon reconfiguration. If the ``-md5`` argument was set to ``true``, the MD5 of the frames in the decoded frame buffer pool will be calculated before they're flushed or written to file. If neither option was selected, the frames in the decoded frame buffer pool will be deleted along with the buffers without being saved or processed. 
 
 .. code:: C++
 
