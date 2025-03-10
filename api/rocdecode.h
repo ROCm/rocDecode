@@ -226,6 +226,7 @@ typedef struct _RocdecReconfigureDecoderInfo {
     uint32_t height;              /**< IN: Coded sequence height in pixels, MUST be < = max_height defined at RocDecoderCreateInfo */
     uint32_t target_width;        /**< IN: Post processed output width */
     uint32_t target_height;       /**< IN: Post Processed output height */
+    uint32_t bit_depth_minus_8;   /**< IN: The Value "BitDepth minus 8" */
     uint32_t num_decode_surfaces; /**< IN: Maximum number of internal decode surfaces */
     uint32_t reserved_1[12];      /**< Reserved for future use. Set to Zero */
     struct {
