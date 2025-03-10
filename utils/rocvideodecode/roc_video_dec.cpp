@@ -607,7 +607,6 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
     }
 
-    // F Addeed bit depth change info and DPB size changee info here.
     input_video_info_str_.str("");
     input_video_info_str_.clear();
     if (is_decode_res_changed) {
