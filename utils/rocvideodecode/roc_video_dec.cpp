@@ -962,7 +962,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         if (!current_output_filename.compare(output_file_name)) {
             std::string::size_type const pos(output_file_name.find_last_of('.'));
             extra_output_file_count_++;
-            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height) + "_" + std::to_string(extra_output_file_count_);
+            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height) + "_" + std::to_string(surf_info->bit_depth) + "bit" + "_" + std::to_string(extra_output_file_count_);
             if (pos != std::string::npos) {
                 output_file_name.insert(pos, to_append);
             } else {
