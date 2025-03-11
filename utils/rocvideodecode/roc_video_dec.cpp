@@ -1076,6 +1076,10 @@ void RocVideoDecoder::WaitForDecodeCompletion() {
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
     do {
-        (void)rocDecGetDecodeStatus(roc_decoder_, last_decode_surf_idx_, &dec_status);
+        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, last_decode_surf_idx_, &dec_status);
+        if (result != ROCDEC_SUCCESS) {
+            std::cerr << "rocDecGetDecodeStatus failed for picture_index: " << last_decode_surf_idx_ << std::endl;
+            return;
+        }
     } while (dec_status.decode_status == rocDecodeStatus_InProgress);
 }
