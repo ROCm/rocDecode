@@ -298,7 +298,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     else if (video_chroma_format_ == rocDecVideoChromaFormat_444)
         video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
     else if (video_chroma_format_ == rocDecVideoChromaFormat_422)
-        video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
+        video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
 
     // Check if output format supported. If not, check falback options
     if (!(decode_caps.output_format_mask & (1 << video_surface_format_))){
@@ -533,7 +533,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         else if (video_chroma_format_ == rocDecVideoChromaFormat_444)
             video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
         else if (video_chroma_format_ == rocDecVideoChromaFormat_422)
-            video_surface_format_ = rocDecVideoSurfaceFormat_NV12;  
+            video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
     }
 
     if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
