@@ -57,7 +57,7 @@ include(CTest)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
 # find rocDecode
-find_package(rocdecode QUIET)
+find_package(ROCDECODE QUIET)
 
 if(ROCDECODE_FOUND)
   message("-- ${White}${PROJECT_NAME}: rocDecode found with find_package(ROCDECODE QUIET)${ColourReset}")
