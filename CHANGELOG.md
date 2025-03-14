@@ -10,7 +10,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * CTest for VP9 decode on bitstream reader.
 * HEVC stream syntax error handling.
 * HEVC stream bit depth change handling through decoder reconfiguration.
-* CMake config files for CMAKE_PREFIX_PATH to find package rocdecode.
+* rocDecode now uses the Cmake CMAKE_PREFIX_PATH directive.
 
 ### Changed
 
