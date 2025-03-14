@@ -11,11 +11,13 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * HEVC stream syntax error handling.
 * HEVC stream bit depth change handling through decoder reconfiguration.
 
-### Changed
+### Optimized
 
 * Bitstream type detection optimization in bitstream reader.
 
-### Removed
+### Resolved issues
+
+* Fixed a bug in picture files sample "videoDecodePicFiles" that can results in incorrect output frame count.
 
 ## rocDecode 0.10.0 for ROCm 6.4
 
