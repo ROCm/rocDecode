@@ -68,11 +68,11 @@ typedef enum OutputSurfaceMemoryType_enum {
 #define STR(X) std::string(X)
 
 #if DBGINFO
-#define INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
+#define ROCDEC_INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
 #else
-#define INFO(X) ;
+#define ROCDEC_INFO(X) ;
 #endif
-#define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
+#define ROCDEC_ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
 inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
     int num_planes = 1;
@@ -83,10 +83,10 @@ inline int GetChromaPlaneCount(rocDecVideoSurfaceFormat surface_format) {
         break;
     case rocDecVideoSurfaceFormat_YUV444:
     case rocDecVideoSurfaceFormat_YUV444_16Bit:
-        num_planes = 2;
-        break;
     case rocDecVideoSurfaceFormat_YUV420:
     case rocDecVideoSurfaceFormat_YUV420_16Bit:
+    case rocDecVideoSurfaceFormat_YUV422:
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
         num_planes = 2;
         break;
     }
@@ -103,6 +103,8 @@ inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     case rocDecVideoSurfaceFormat_YUV420_16Bit:
         factor = 0.5;
         break;
+    case rocDecVideoSurfaceFormat_YUV422:
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
     case rocDecVideoSurfaceFormat_YUV444:
     case rocDecVideoSurfaceFormat_YUV444_16Bit:
         factor = 1.0;
@@ -128,7 +130,6 @@ private:
 };
 
 #define ROCDEC_THROW(X, CODE) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X , CODE);
-#define THROW(X) throw RocVideoDecodeException(" { " + std::string(__func__) + " } " + X);
 
 #define ROCDEC_API_CALL( rocDecAPI )                                                                         \
     do {                                                                                                     \
@@ -219,8 +220,6 @@ class RocVideoDecoder {
         ~RocVideoDecoder();
         
         rocDecVideoCodec GetCodecId() { return codec_id_; }
-
-        hipStream_t GetStream() {return hip_stream_;}
 
         /**
          * @brief Get the output frame width
@@ -430,7 +429,7 @@ class RocVideoDecoder {
         int HandleVideoSequence(RocdecVideoFormat *p_video_format);
 
         /**
-         *   @brief  This function gets called when a picture is ready to be decoded. cuvidDecodePicture is called from this function
+         *   @brief  This function gets called when a picture is ready to be decoded. rocDecDecodeFrame is called from this function
          *   to decode the picture
          */
         int HandlePictureDecode(RocdecPicParams *p_pic_params);
@@ -476,15 +475,15 @@ class RocVideoDecoder {
         RocdecVideoParser rocdec_parser_ = nullptr;
         rocDecDecoderHandle roc_decoder_ = nullptr;
         OutputSurfaceMemoryType out_mem_type_ = OUT_SURFACE_MEM_DEV_INTERNAL;
-        bool b_extract_sei_message_ = false;
+        rocDecVideoCodec codec_id_ = rocDecVideoCodec_NumCodecs;
         bool b_force_zero_latency_ = false;
+        bool b_extract_sei_message_ = false;
         uint32_t disp_delay_;
         ReconfigParams *p_reconfig_params_ = nullptr;
         bool b_force_recofig_flush_ = false;
         int32_t num_frames_flushed_during_reconfig_ = 0;
         hipDeviceProp_t hip_dev_prop_;
         hipStream_t hip_stream_;
-        rocDecVideoCodec codec_id_ = rocDecVideoCodec_NumCodecs;
         rocDecVideoChromaFormat video_chroma_format_ = rocDecVideoChromaFormat_420;
         rocDecVideoSurfaceFormat video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
         RocdecSeiMessageInfo *curr_sei_message_ptr_ = nullptr;

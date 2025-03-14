@@ -26,6 +26,8 @@ RocVideoParser::RocVideoParser() {
     pic_count_ = 0;
     pic_width_ = 0;
     pic_height_ = 0;
+    bit_depth_luma_minus8_ = 0;
+    bit_depth_chroma_minus8_ = 0;
     new_seq_activated_ = false;
     frame_rate_.numerator = 0;
     frame_rate_.denominator = 0;
@@ -58,7 +60,7 @@ rocDecStatus RocVideoParser::Initialize(RocdecParserParams *pParams) {
         return ROCDEC_NOT_INITIALIZED;
     }
     // Initialize callback function pointers
-    pfn_sequece_cb_         = pParams->pfn_sequence_callback;     /**< Called before decoding frames and/or whenever there is a fmt change */
+    pfn_sequence_cb_         = pParams->pfn_sequence_callback;     /**< Called before decoding frames and/or whenever there is a fmt change */
     pfn_decode_picture_cb_  = pParams->pfn_decode_picture;        /**< Called when a picture is ready to be decoded (decode order)         */
     pfn_display_picture_cb_ = pParams->pfn_display_picture;       /**< Called whenever a picture is ready to be displayed (display order)  */
     pfn_get_sei_message_cb_ = pParams->pfn_get_sei_msg;           /**< Called when all SEI messages are parsed for particular frame        */

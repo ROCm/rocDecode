@@ -49,14 +49,14 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
     case rocDecVideoSurfaceFormat_P016:
-        factor = 1.0;
-        break;
     case rocDecVideoSurfaceFormat_YUV444:
     case rocDecVideoSurfaceFormat_YUV444_16Bit:
         factor = 1.0;
         break;
     case rocDecVideoSurfaceFormat_YUV420:
     case rocDecVideoSurfaceFormat_YUV420_16Bit:
+    case rocDecVideoSurfaceFormat_YUV422:
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
         factor = 0.5;
         break;
     }
@@ -92,7 +92,7 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
               RocVideoDecoder(device_id, out_mem_type, codec, force_zero_latency, p_crop_rect, extract_user_sei_Message, disp_delay, max_width, max_height, clk_rate), no_multithreading_(no_multithreading) {
 
     if ((out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) || (out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)) {
-        THROW("Output Memory Type is not supported");
+        ROCDEC_THROW("Output Memory Type is not supported", ROCDEC_INVALID_PARAMETER);
     }
     if (rocdec_parser_) {
         rocDecDestroyVideoParser(rocdec_parser_);       // need to do this here since it was already created in the base class
@@ -113,7 +113,7 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
         // start the FFMpeg decoding thread
         ffmpeg_decoder_thread_ = new std::thread(&FFMpegVideoDecoder::DecodeThread, this);
         if (!ffmpeg_decoder_thread_) {
-            THROW("FFMpegVideoDecoder create thread failed");
+            ROCDEC_THROW("FFMpegVideoDecoder create thread failed", -1);
         }
     }
 }
@@ -157,7 +157,7 @@ FFMpegVideoDecoder::~FFMpegVideoDecoder() {
 }
 
 /* Return value from HandleVideoSequence() are interpreted as   :
-*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
+*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::max_num_decode_surfaces while creating parser)
 */
 int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     if (p_video_format == nullptr) {
@@ -192,7 +192,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     if (!dec_context_) {
         dec_context_ = avcodec_alloc_context3(decoder_);        //alloc dec_context_
         if (!dec_context_) {
-            THROW("Could not allocate video codec context");
+            ROCDEC_THROW("Could not allocate video codec context", ROCDEC_RUNTIME_ERROR);
         }
         // set codec to automatically determine how many threads suits best for the decoding job
         dec_context_->thread_count = 0;
@@ -206,7 +206,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
         // open the codec
         if (avcodec_open2(dec_context_, decoder_, NULL) < 0) {
-            THROW("Could not open codec");
+            ROCDEC_THROW("Could not open codec", ROCDEC_RUNTIME_ERROR);
         }
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;

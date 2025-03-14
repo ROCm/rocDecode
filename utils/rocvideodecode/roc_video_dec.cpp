@@ -27,7 +27,7 @@ RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
               b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
     if (!InitHIP(device_id_)) {
-        THROW("Failed to initilize the HIP");
+        ROCDEC_THROW("Failed to initilize the HIP", ROCDEC_DEVICE_INVALID);
     }
     if (p_crop_rect) crop_rect_ = *p_crop_rect;
     if (b_extract_sei_message_) {
@@ -222,13 +222,20 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
         *pitch = align(width, 128) * 2;
         *vstride = align(height, 16);
         break;
-
+    case rocDecVideoSurfaceFormat_YUV422:
+        *pitch = align(width, 256);
+        *vstride = align(height, 16);
+        break;
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
+        *pitch = align(width, 128) * 2;
+        *vstride = align(height, 16);
+        break;
     }
     return;
 }
 
 /* Return value from HandleVideoSequence() are interpreted as   :
-*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
+*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::max_num_decode_surfaces while creating parser)
 */
 int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
 
@@ -298,7 +305,7 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     else if (video_chroma_format_ == rocDecVideoChromaFormat_444)
         video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
     else if (video_chroma_format_ == rocDecVideoChromaFormat_422)
-        video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
+        video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
 
     // Check if output format supported. If not, check falback options
     if (!(decode_caps.output_format_mask & (1 << video_surface_format_))){
@@ -469,17 +476,13 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigure Not supported for chroma format change", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-    if (p_video_format->bit_depth_luma_minus8 != bitdepth_minus_8_){
-        ROCDEC_THROW("Reconfigure Not supported for bit depth change", ROCDEC_NOT_SUPPORTED);
-        return 0;
-    }
     bool is_decode_res_changed = !(p_video_format->coded_width == coded_width_ && p_video_format->coded_height == coded_height_);
     bool is_display_rect_changed = !(p_video_format->display_area.bottom == disp_rect_.bottom &&
                                      p_video_format->display_area.top == disp_rect_.top &&
                                      p_video_format->display_area.left == disp_rect_.left &&
                                      p_video_format->display_area.right == disp_rect_.right);
-
-    if (!is_decode_res_changed && !is_display_rect_changed && !b_force_recofig_flush_) {
+    bool is_bit_depth_changed = p_video_format->bit_depth_luma_minus8 != bitdepth_minus_8_;
+    if (!is_decode_res_changed && !is_display_rect_changed && !is_bit_depth_changed && !b_force_recofig_flush_) {
         return 1;
     }
 
@@ -527,16 +530,32 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
             target_height_ = (crop_rect_.bottom - crop_rect_.top + 1) & ~1;
         }
     }
+    if (is_bit_depth_changed) {
+        bitdepth_minus_8_ = p_video_format->bit_depth_luma_minus8;
+        byte_per_pixel_ = bitdepth_minus_8_ > 0 ? 2 : 1;
+    
+        // Set the output surface format same as chroma format
+        if (video_chroma_format_ == rocDecVideoChromaFormat_420 || video_chroma_format_ == rocDecVideoChromaFormat_Monochrome)
+            video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_P016 : rocDecVideoSurfaceFormat_NV12;
+        else if (video_chroma_format_ == rocDecVideoChromaFormat_444)
+            video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
+        else if (video_chroma_format_ == rocDecVideoChromaFormat_422)
+            video_surface_format_ = bitdepth_minus_8_ ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
+    }
 
-    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
-        GetSurfaceStrideInternal(video_surface_format_, coded_width_, coded_height_, &surface_stride_, &surface_vstride_);
-    } else {
-        surface_stride_ = target_width_ * byte_per_pixel_;
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
+        if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
+            GetSurfaceStrideInternal(video_surface_format_, coded_width_, coded_height_, &surface_stride_, &surface_vstride_);
+        } else {
+            surface_stride_ = target_width_ * byte_per_pixel_;
+        }
     }
     chroma_height_ = static_cast<int>(ceil(target_height_ * GetChromaHeightFactor(video_surface_format_)));
     num_chroma_planes_ = GetChromaPlaneCount(video_surface_format_);
     if (p_video_format->chroma_format == rocDecVideoChromaFormat_Monochrome) num_chroma_planes_ = 0;
-    chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
+        chroma_vstride_ = static_cast<int>(std::ceil(surface_vstride_ * GetChromaHeightFactor(video_surface_format_)));
+    }
     // Fill output_surface_info_
     output_surface_info_.output_width = target_width_;
     output_surface_info_.output_height = target_height_;
@@ -564,7 +583,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
 
     // If the coded_width or coded_height hasn't changed but display resolution has changed, then need to update width and height for
     // correct output with cropping. There is no need to reconfigure the decoder.
-    if (!is_decode_res_changed && is_display_rect_changed) {
+    if (!is_decode_res_changed && is_display_rect_changed && !is_bit_depth_changed) {
         return 1;
     }
 
@@ -573,6 +592,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     reconfig_params.height = coded_height_;
     reconfig_params.target_width = target_width_;
     reconfig_params.target_height = target_height_;
+    reconfig_params.bit_depth_minus_8 = bitdepth_minus_8_;
     reconfig_params.num_decode_surfaces = p_video_format->min_num_decode_surfaces;
     if (!(crop_rect_.right && crop_rect_.bottom)) {
         reconfig_params.display_rect.top = disp_rect_.top;
@@ -590,15 +610,22 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         ROCDEC_THROW("Reconfigurition of the decoder detected but the decoder was not initialized previoulsy!", ROCDEC_NOT_SUPPORTED);
         return 0;
     }
-    ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
-
+    if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
+        ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+    }
 
     input_video_info_str_.str("");
     input_video_info_str_.clear();
-    input_video_info_str_ << "Input Video Resolution Changed:" << std::endl
-        << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
+    if (is_decode_res_changed) {
+        input_video_info_str_ << "Input Video Resolution Changed:" << std::endl;
+    }
+    if (is_bit_depth_changed) {
+        input_video_info_str_ << "Input Video Bit Depth Changed:" << std::endl;
+    }
+        input_video_info_str_ << "\tCoded size   : [" << p_video_format->coded_width << ", " << p_video_format->coded_height << "]" << std::endl
         << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
             << p_video_format->display_area.right << ", " << p_video_format->display_area.bottom << "]" << std::endl;
+        input_video_info_str_ << "\tBit depth   : " << reconfig_params.bit_depth_minus_8 + 8 << std::endl;
     input_video_info_str_ << std::endl;
     input_video_info_str_ << "Video Decoding Params:" << std::endl
         << "\tNum Surfaces : " << reconfig_params.num_decode_surfaces << std::endl
@@ -619,7 +646,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
  */
 int RocVideoDecoder::HandlePictureDecode(RocdecPicParams *pPicParams) {
     if (!roc_decoder_) {
-        THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED));
+        ROCDEC_THROW("RocDecoder not initialized: failed with ErrCode: " +  TOSTR(ROCDEC_NOT_INITIALIZED), ROCDEC_NOT_INITIALIZED);
     }
     pic_num_in_dec_order_[pPicParams->curr_pic_idx] = decode_poc_++;
     ROCDEC_API_CALL(rocDecDecodeFrame(roc_decoder_, pPicParams));
@@ -655,7 +682,7 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             RocdecSeiMessage *sei_message = sei_message_display_q_[pDispInfo->picture_index].sei_message;
             if (fp_sei_) {
                 for (uint32_t i = 0; i < sei_num_messages; i++) {
-                    if (codec_id_ == rocDecVideoCodec_AVC || rocDecVideoCodec_HEVC) {
+                    if (codec_id_ == rocDecVideoCodec_AVC || codec_id_ == rocDecVideoCodec_HEVC) {
                         switch (sei_message[i].sei_message_type) {
                             case SEI_TYPE_TIME_CODE: {
                                 //todo:: check if we need to write timecode
@@ -784,19 +811,19 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
       RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->sei_message;
       size_t total_SEI_buff_size = 0;
       if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
-          ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
+          ROCDEC_ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
           return 0;
       }
       for (uint32_t i = 0; i < sei_num_mesages; i++) {
           total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
       }
       if (!curr_sei_message_ptr_) {
-          ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
+          ROCDEC_ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
           return 0;
       }
       curr_sei_message_ptr_->sei_data = malloc(total_SEI_buff_size);
       if (!curr_sei_message_ptr_->sei_data) {
-          ERR("Out of Memory, Allocation failed for SEI Buffer");
+          ROCDEC_ERR("Out of Memory, Allocation failed for SEI Buffer");
           return 0;
       }
       memcpy(curr_sei_message_ptr_->sei_data, pSEIMessageInfo->sei_data, total_SEI_buff_size);
@@ -877,7 +904,6 @@ bool RocVideoDecoder::ReleaseFrame(int64_t pTimestamp, bool b_flushing) {
     if (!vp_frames_q_.empty()) {
         std::lock_guard<std::mutex> lock(mtx_vp_frame_);
         DecFrameBuffer *fb = &vp_frames_q_.front();
-        void *mapped_frame_ptr = fb->frame_ptr;
 
         if (pTimestamp != fb->pts) {
             std::cerr << "Decoded Frame is released out of order" << std::endl;
@@ -907,7 +933,6 @@ bool RocVideoDecoder::ReleaseInternalFrames() {
     }
     return true;
 }
-
 
 void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size) {
     uint8_t *hst_ptr = nullptr;
@@ -944,7 +969,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         if (!current_output_filename.compare(output_file_name)) {
             std::string::size_type const pos(output_file_name.find_last_of('.'));
             extra_output_file_count_++;
-            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height) + "_" + std::to_string(extra_output_file_count_);
+            std::string to_append = "_" + std::to_string(surf_info->output_width) + "_" + std::to_string(surf_info->output_height) + "_" + std::to_string(surf_info->bit_depth) + "bit" + "_" + std::to_string(extra_output_file_count_);
             if (pos != std::string::npos) {
                 output_file_name.insert(pos, to_append);
             } else {
@@ -1040,7 +1065,11 @@ bool RocVideoDecoder::InitHIP(int device_id) {
     }
     HIP_API_CALL(hipSetDevice(device_id));
     HIP_API_CALL(hipGetDeviceProperties(&hip_dev_prop_, device_id));
-    HIP_API_CALL(hipStreamCreate(&hip_stream_));
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL || out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED) {
+        hip_stream_ = 0; // Null stream. For internal device or unmapped memory, we don't need to create a hip stream.
+    } else {
+        HIP_API_CALL(hipStreamCreate(&hip_stream_));
+    }
     return true;
 }
 
@@ -1070,5 +1099,9 @@ void RocVideoDecoder::WaitForDecodeCompletion() {
     memset(&dec_status, 0, sizeof(dec_status));
     do {
         rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, last_decode_surf_idx_, &dec_status);
+        if (result != ROCDEC_SUCCESS) {
+            std::cerr << "rocDecGetDecodeStatus failed for picture_index: " << last_decode_surf_idx_ << std::endl;
+            return;
+        }
     } while (dec_status.decode_status == rocDecodeStatus_InProgress);
 }

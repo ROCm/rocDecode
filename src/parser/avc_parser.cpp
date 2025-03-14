@@ -387,6 +387,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.display_aspect_ratio.x = disp_width / gcd;
     video_format_params_.display_aspect_ratio.y = disp_height / gcd;
 
+    video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
     if (p_sps->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = p_sps->vui_seq_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = p_sps->vui_seq_parameters.video_full_range_flag;
@@ -398,7 +399,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    if (pfn_sequece_cb_(parser_params_.user_data, &video_format_params_) == 0) {
+    if (pfn_sequence_cb_(parser_params_.user_data, &video_format_params_) == 0) {
         ERR("Sequence callback function failed.");
         return PARSER_FAIL;
     } else {

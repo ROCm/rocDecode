@@ -230,11 +230,12 @@ ParserResult Av1VideoParser::NotifyNewSequence(Av1SequenceHeader *p_seq_header, 
     video_format_params_.display_aspect_ratio.x = disp_width / gcd;
     video_format_params_.display_aspect_ratio.y = disp_height / gcd;
 
+    video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
     video_format_params_.video_signal_description = {0};
     video_format_params_.seqhdr_data_length = 0;
 
     // callback function with RocdecVideoFormat params filled out
-    if (pfn_sequece_cb_(parser_params_.user_data, &video_format_params_) == 0) {
+    if (pfn_sequence_cb_(parser_params_.user_data, &video_format_params_) == 0) {
         ERR("Sequence callback function failed.");
         return PARSER_FAIL;
     } else {
