@@ -129,6 +129,7 @@ if(HIP_FOUND AND Libva_FOUND)
   include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
   # source files
   file(GLOB_RECURSE SOURCES "./src/*.cpp")
+  list(FILTER SOURCES EXCLUDE REGEX "./src/rocdecode_host/*.*" )
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
@@ -196,6 +197,9 @@ if(HIP_FOUND AND Libva_FOUND)
   enable_testing()
   include(CTest)
   add_subdirectory(test)
+
+  #make rocdecode-host for decoding on HOST
+  add_subdirectory(rocdecode-host)
 
   # set package information
   set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
