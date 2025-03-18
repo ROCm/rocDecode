@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include <memory>
 #include <string>
 #include <vector>
-#include "rocparser.h"
+#include "rocdecode/rocparser.h"
 #include "../commons.h"
 
 typedef enum ParserResult {
@@ -80,20 +80,19 @@ typedef struct {
 #define INIT_SEI_PAYLOAD_BUF_SIZE 1024 * 1024  // initial SEI payload buffer size, 1 MB
 #define DECODE_BUF_POOL_EXTENSION 2
 
-#define CHECK_ALLOWED_RANGE(val, min, max) { \
+#define CHECK_ALLOWED_RANGE(str, val, min, max) { \
     if (val < min || val > max) { \
-        ERR ("value not in range: " + TOSTR(val) + " allowed (min,max): " + TOSTR(min) + " " + TOSTR(max));\
+        ERR (STR(str) + " value not in valid range: " + TOSTR(val) + ", allowed (min,max): " + TOSTR(min) + "," + TOSTR(max));\
         return PARSER_OUT_OF_RANGE; \
     } \
 }
 
-#define CHECK_ALLOWED_MAX(val, max) { \
+#define CHECK_ALLOWED_MAX(str, val, max) { \
     if (val > max) { \
-        ERR ("value greater than maximum allowed value: " + TOSTR(val) + " max: " + TOSTR(max));\
+        ERR (STR(str) +  " value greater than maximum allowed value: " + TOSTR(val) + ", max: " + TOSTR(max));\
         return PARSER_OUT_OF_RANGE; \
     } \
 }
-
 
 enum {
     kNotUsed = 0,
@@ -139,6 +138,8 @@ protected:
     uint32_t pic_count_;  // decoded picture count for the current bitstream
     uint32_t pic_width_;
     uint32_t pic_height_;
+    uint32_t bit_depth_luma_minus8_;
+    uint32_t bit_depth_chroma_minus8_;
     bool new_seq_activated_;
 
     // Decoded buffer pool

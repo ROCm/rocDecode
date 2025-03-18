@@ -49,14 +49,14 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
     case rocDecVideoSurfaceFormat_P016:
-        factor = 1.0;
-        break;
     case rocDecVideoSurfaceFormat_YUV444:
     case rocDecVideoSurfaceFormat_YUV444_16Bit:
         factor = 1.0;
         break;
     case rocDecVideoSurfaceFormat_YUV420:
     case rocDecVideoSurfaceFormat_YUV420_16Bit:
+    case rocDecVideoSurfaceFormat_YUV422:
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
         factor = 0.5;
         break;
     }
@@ -157,7 +157,7 @@ FFMpegVideoDecoder::~FFMpegVideoDecoder() {
 }
 
 /* Return value from HandleVideoSequence() are interpreted as   :
-*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by CUVIDPARSERPARAMS::max_num_decode_surfaces while creating parser)
+*  0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::max_num_decode_surfaces while creating parser)
 */
 int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     if (p_video_format == nullptr) {
