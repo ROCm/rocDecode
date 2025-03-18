@@ -84,10 +84,6 @@ template <> struct dispatch_table_info<TYPE> { \
     static constexpr auto import_func = &ROCPROFILER_REGISTER_IMPORT_FUNC(NAME); \
 };
 
-constexpr auto ComputeTableSize(size_t num_funcs) {
-    return (num_funcs * sizeof(void*)) + sizeof(uint64_t);
-}
-
 ROCDECODE_DEFINE_DISPATCH_TABLE_INFO(RocDecodeDispatchTable, rocdecode)
 #endif
 
