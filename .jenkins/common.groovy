@@ -79,6 +79,7 @@ def runPackageCommand(platform, project) {
     String packageType = ''
     String packageInfo = ''
     String packageDetail = ''
+    String packageInstall = ''
     String osType = ''
     String packageRunTime = ''
 
@@ -86,6 +87,7 @@ def runPackageCommand(platform, project) {
         packageType = 'rpm'
         packageInfo = 'rpm -qlp'
         packageDetail = 'rpm -qi'
+        packageInstall = 'rpm -i'
         packageRunTime = 'rocdecode-*'
 
         if (platform.jenkinsLabel.contains('sles')) {
@@ -103,6 +105,7 @@ def runPackageCommand(platform, project) {
         packageType = 'deb'
         packageInfo = 'dpkg -c'
         packageDetail = 'dpkg -I'
+        packageInstall = 'dpkg -i'
         packageRunTime = 'rocdecode_*'
 
         if (platform.jenkinsLabel.contains('ubuntu20')) {
@@ -129,6 +132,9 @@ def runPackageCommand(platform, project) {
                 ${packageInfo} package/${osType}-rocdecode-dev.${packageType}
                 ${packageInfo} package/${osType}-rocdecode-test.${packageType}
                 ${packageInfo} package/${osType}-rocdecode.${packageType}
+                ${packageInstall} package/${osType}-rocdecode-dev.${packageType}
+                ${packageInstall} package/${osType}-rocdecode-test.${packageType}
+                ${packageInstall} package/${osType}-rocdecode.${packageType}
                 """
 
     platform.runCommand(this, command)
