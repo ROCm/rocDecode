@@ -132,9 +132,9 @@ def runPackageCommand(platform, project) {
                 ${packageInfo} package/${osType}-rocdecode-dev.${packageType}
                 ${packageInfo} package/${osType}-rocdecode-test.${packageType}
                 ${packageInfo} package/${osType}-rocdecode.${packageType}
-                ${packageInstall} package/${osType}-rocdecode.${packageType}
-                ${packageInstall} package/${osType}-rocdecode-dev.${packageType}
-                ${packageInstall} package/${osType}-rocdecode-test.${packageType}
+                sudo ${packageInstall} package/${osType}-rocdecode.${packageType}
+                sudo ${packageInstall} package/${osType}-rocdecode-dev.${packageType}
+                sudo ${packageInstall} package/${osType}-rocdecode-test.${packageType}
                 """
 
     platform.runCommand(this, command)
