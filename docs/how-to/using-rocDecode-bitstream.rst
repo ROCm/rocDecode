@@ -3,17 +3,17 @@
   :keywords: rocDecode, AMD, ROCm, bitstream decoder
 
 ********************************************************************
-Using the rocDecode bitstream reader API
+Using the rocDecode bitstream reader APIs
 ********************************************************************
 
-The rocDecode bitstream reader API is intended to be used as a testing tool for the decoder. The bitstream reader API extracts and parses coded picture data from an elementary video stream for the decoder to consume.
+The rocDecode bitstream reader APIs are a simplified set of APIs that provide a way to use and test the decoder without relying on FFMpeg. The bitstream reader APIs can be used to extract and parse coded picture data from an elementary video stream for the decoder to consume.
 
 .. note::
 
-    The bitstream reader API can only be used with elementary video streams and IVF container files.
+    The bitstream reader APIs can only be used with elementary video streams and IVF container files.
 
 
-The |videodecoderaw|_ sample demonstrates how to use the bitstream reader API. It demonstrates how to create a bitstream reader and use it to extract picture data and pass it to the decoder:
+The |videodecoderaw|_ sample demonstrates how to use the bitstream reader APIs, including how to create a bitstream reader and use it to extract picture data and pass it to the decoder:
 
 .. code:: C++
 
@@ -36,7 +36,7 @@ The |videodecoderaw|_ sample demonstrates how to use the bitstream reader API. I
     }
   
         
-The example also demonstrates other available bitstream APIs. For example, APIs for getting the bit depth and codec of the stream:
+The ``videodecoderaw.cpp`` example also demonstrates how to use the bitstream reader APIs to obtain the bit depth and codec of a stream:
 
 .. code:: C++
         
