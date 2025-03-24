@@ -1133,7 +1133,7 @@ ParserResult HevcVideoParser::ParsePredWeightTable(HevcSliceSegHeader *slice_hea
             if (pred_weight_table_ptr->luma_weight_l1_flag[i]) {
                 pred_weight_table_ptr->delta_luma_weight_l1[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
                 CHECK_ALLOWED_RANGE("delta_luma_weight_l1", pred_weight_table_ptr->delta_luma_weight_l1[i], -128, 127);
-            pred_weight_table_ptr->luma_offset_l1[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
+                pred_weight_table_ptr->luma_offset_l1[i] = Parser::ExpGolomb::ReadSe(stream_ptr, offset);
             }
             if (pred_weight_table_ptr->chroma_weight_l1_flag[i]) {
                 for (j = 0; j < 2; j++) {
