@@ -99,7 +99,7 @@ sampleMode = args.sample_mode
 numThreads = args.num_threads
 maxNumFrames = args.max_num_decoded_frames
 checkDecStatus = args.check_decode_status
-if checkDecStatus == 0:
+if checkDecStatus == 1:
     sampleMode = 0
 
 print("\nrunrocDecodeTests V"+__version__+"\n")
