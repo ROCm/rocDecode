@@ -13,7 +13,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 cd ${project.paths.project_build_prefix}
                 export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_CXX_FLAGS=\"-fprofile-instr-generate -fcoverage-mapping\" ../..
+                cmake ${buildTypeArg} -DCMAKE_CXX_FLAGS=\"-fprofile-instr-generate -fcoverage-mapping\" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
