@@ -16,7 +16,7 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
-                export LLVM_PROFILE_FILE="${project.paths.project_build_prefix}/rawdata/rocdecode-%p.profraw"
+                export LLVM_PROFILE_FILE=\"${project.paths.project_build_prefix}/rawdata/rocdecode-%p.profraw\"
                 objdump -x /opt/rocm/lib/librocdecode.so | grep NEEDED
                 ldd -v /opt/rocm/lib/librocdecode.so
                 """
@@ -72,6 +72,7 @@ def runTestCommand (platform, project) {
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
                 llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
                 lcov --list coverage.info
+                bash <(curl -s https://codecov.io/bash) || echo \"codecov did not collect coverage reports\"
                 """
 
     platform.runCommand(this, command)
