@@ -12,10 +12,11 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                cmake ${buildTypeArg} ../..
+                cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_CXX_FLAGS=\"-fprofile-instr-generate -fcoverage-mapping\" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
+                export LLVM_PROFILE_FILE="${project.paths.project_build_prefix}/rawdata/rocdecode-%p.profraw"
                 objdump -x /opt/rocm/lib/librocdecode.so | grep NEEDED
                 ldd -v /opt/rocm/lib/librocdecode.so
                 """
@@ -67,6 +68,10 @@ def runTestCommand (platform, project) {
                 cmake /opt/rocm/share/rocdecode/samples/videoDecodePerf/
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
+                cd ${project.paths.project_build_prefix}
+                llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
+                llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
+                lcov --list coverage.info
                 """
 
     platform.runCommand(this, command)
