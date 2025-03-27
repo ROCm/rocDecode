@@ -11,12 +11,12 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
+                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
                 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_CXX_FLAGS=\"-fprofile-instr-generate -fcoverage-mapping\" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
-                export LLVM_PROFILE_FILE=\"${project.paths.project_build_prefix}/rawdata/rocdecode-%p.profraw\"
                 objdump -x /opt/rocm/lib/librocdecode.so | grep NEEDED
                 ldd -v /opt/rocm/lib/librocdecode.so
                 """
@@ -42,8 +42,9 @@ def runTestCommand (platform, project) {
                 export HOME=/home/jenkins
                 ${libvaDriverPath}
                 echo make test
-                export LLVM_PROFILE_FILE=\"${project.paths.project_build_prefix}/rawdata/rocdecode-%p.profraw\"
-                cd ${project.paths.project_build_prefix}/build/release
+                cd ${project.paths.project_build_prefix}
+                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
+                cd build/release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 echo rocdecode-sample - videoDecode
                 mkdir -p rocdecode-sample && cd rocdecode-sample
