@@ -11,9 +11,9 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
-                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
+                export LLVM_PROFILE_FILE="\$(pwd)/rawdata/rocdecode-%p.profraw"
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                cmake ${buildTypeArg} -DCMAKE_CXX_FLAGS=\"-fprofile-instr-generate -fcoverage-mapping\" ../..
+                cmake ${buildTypeArg} -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
@@ -43,7 +43,7 @@ def runTestCommand (platform, project) {
                 ${libvaDriverPath}
                 echo make test
                 cd ${project.paths.project_build_prefix}
-                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
+                export LLVM_PROFILE_FILE="\$(pwd)/rawdata/rocdecode-%p.profraw"
                 cd build/release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 echo rocdecode-sample - videoDecode
@@ -75,7 +75,7 @@ def runTestCommand (platform, project) {
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
                 llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
                 lcov --list coverage.info
-                bash <(curl -s https://codecov.io/bash) || echo \"codecov did not collect coverage reports\"
+                bash <(curl -s https://codecov.io/bash) || echo "codecov did not collect coverage reports"
                 """
 
     platform.runCommand(this, command)
