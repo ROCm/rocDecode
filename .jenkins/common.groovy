@@ -41,9 +41,10 @@ def runTestCommand (platform, project) {
                 export HOME=/home/jenkins
                 ${libvaDriverPath}
                 echo make test
-                export LLVM_PROFILE_FILE="${project.paths.project_build_prefix}/build/rawdata/rocdecode-%p.profraw"
+                cd ${project.paths.project_build_prefix}/build
+                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
                 echo \$LLVM_PROFILE_FILE
-                cd ${project.paths.project_build_prefix}/build/release
+                cd release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 echo rocdecode-sample - videoDecode
                 mkdir -p rocdecode-sample && cd rocdecode-sample
