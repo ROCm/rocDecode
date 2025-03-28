@@ -70,7 +70,7 @@ def runTestCommand (platform, project) {
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
                 echo \$(pwd)
-                cd  ../../
+                cd  ../../../
                 echo \$(pwd)
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
                 llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
