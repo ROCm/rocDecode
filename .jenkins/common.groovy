@@ -6,19 +6,13 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
 
     String buildTypeArg = debug ? '-DCMAKE_BUILD_TYPE=Debug' : '-DCMAKE_BUILD_TYPE=Release'
     String buildTypeDir = debug ? 'debug' : 'release'
-
-    String cxxCompiler = "/usr/bin/clang++"
-    if (platform.jenkinsLabel.contains('ubuntu24'))
-    {
-        cxxCompiler = "/usr/bin/clang++-19"
-    }
     
     def command = """#!/usr/bin/env bash
                 set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${cxxCompiler} -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" ../..
+                cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
