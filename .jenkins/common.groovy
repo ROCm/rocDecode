@@ -27,13 +27,16 @@ def runTestCommand (platform, project) {
 
     String libLocation = ''
     String libvaDriverPath = ""
+    String packageManager = 'apt'
 
     if (platform.jenkinsLabel.contains('rhel')) {
         libLocation = ':/usr/local/lib'
+        packageManager = 'yum'
     }
     else if (platform.jenkinsLabel.contains('sles')) {
         libLocation = ':/usr/local/lib'
         libvaDriverPath = "export LIBVA_DRIVERS_PATH=/opt/amdgpu/lib64/dri"
+        packageManager = 'zypper'
     }
 
     def command = """#!/usr/bin/env bash
@@ -75,6 +78,7 @@ def runTestCommand (platform, project) {
                 echo \$(pwd)
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
                 llvm-cov export -object release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
+                sudo ${packageManager} install lcov
                 lcov --list coverage.info
                 bash <(curl -s https://codecov.io/bash) || echo "codecov did not collect coverage reports"
                 """
