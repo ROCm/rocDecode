@@ -74,7 +74,7 @@ def runTestCommand (platform, project) {
                 cd  ../../../
                 echo \$(pwd)
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
-                llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
+                llvm-cov export -object release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
                 lcov --list coverage.info
                 bash <(curl -s https://codecov.io/bash) || echo "codecov did not collect coverage reports"
                 """
