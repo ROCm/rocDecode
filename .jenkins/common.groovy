@@ -11,9 +11,8 @@ def runCompileCommand(platform, project, jobName, boolean debug=false, boolean s
                 set -ex
                 echo Build rocDecode - ${buildTypeDir}
                 cd ${project.paths.project_build_prefix}
-                export LLVM_PROFILE_FILE="\$(pwd)/rawdata/rocdecode-%p.profraw"
                 mkdir -p build/${buildTypeDir} && cd build/${buildTypeDir}
-                cmake ${buildTypeArg} -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" ../..
+                cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" ../..
                 make -j\$(nproc)
                 sudo make install
                 sudo make package
@@ -42,9 +41,9 @@ def runTestCommand (platform, project) {
                 export HOME=/home/jenkins
                 ${libvaDriverPath}
                 echo make test
-                cd ${project.paths.project_build_prefix}
-                export LLVM_PROFILE_FILE="\$(pwd)/rawdata/rocdecode-%p.profraw"
-                cd build/release
+                export LLVM_PROFILE_FILE="${project.paths.project_build_prefix}/build/rawdata/rocdecode-%p.profraw"
+                echo \$LLVM_PROFILE_FILE
+                cd ${project.paths.project_build_prefix}/build/release
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
                 echo rocdecode-sample - videoDecode
                 mkdir -p rocdecode-sample && cd rocdecode-sample
@@ -71,7 +70,8 @@ def runTestCommand (platform, project) {
                 make -j8
                 LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
                 echo \$(pwd)
-                cd  ../../../
+                cd  ../../
+                echo \$(pwd)
                 llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
                 llvm-cov export -object /build/release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
                 lcov --list coverage.info
