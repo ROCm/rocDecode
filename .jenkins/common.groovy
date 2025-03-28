@@ -27,16 +27,16 @@ def runTestCommand (platform, project) {
 
     String libLocation = ''
     String libvaDriverPath = ""
-    String packageManager = 'apt'
+    String packageManager = 'apt -y'
 
     if (platform.jenkinsLabel.contains('rhel')) {
         libLocation = ':/usr/local/lib'
-        packageManager = 'yum'
+        packageManager = 'yum -y'
     }
     else if (platform.jenkinsLabel.contains('sles')) {
         libLocation = ':/usr/local/lib'
         libvaDriverPath = "export LIBVA_DRIVERS_PATH=/opt/amdgpu/lib64/dri"
-        packageManager = 'zypper'
+        packageManager = 'zypper -n'
     }
 
     def command = """#!/usr/bin/env bash
