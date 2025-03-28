@@ -38,6 +38,10 @@ def runTestCommand (platform, project) {
         libvaDriverPath = "export LIBVA_DRIVERS_PATH=/opt/amdgpu/lib64/dri"
         packageManager = 'zypper -n'
     }
+    
+    String commitSha
+    String repoUrl
+    (commitSha, repoUrl) = util.getGitHubCommitInformation(project.paths.project_src_prefix)
 
     withCredentials([string(credentialsId: "mathlibs-codecov-token-rocdecode", variable: 'CODECOV_TOKEN')])
     {
@@ -84,7 +88,7 @@ def runTestCommand (platform, project) {
                     lcov --list coverage.info
                     curl -Os https://uploader.codecov.io/latest/linux/codecov
                     chmod +x codecov
-                    ./codecov -t ${CODECOV_TOKEN} --file coverage.info -v
+                    ./codecov -v -t ${CODECOV_TOKEN} --file coverage.info --name rocDecode --sha ${commitSha}
                     """
 
         platform.runCommand(this, command)
