@@ -39,51 +39,56 @@ def runTestCommand (platform, project) {
         packageManager = 'zypper -n'
     }
 
-    def command = """#!/usr/bin/env bash
-                set -ex
-                export HOME=/home/jenkins
-                ${libvaDriverPath}
-                echo make test
-                cd ${project.paths.project_build_prefix}/build
-                export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
-                echo \$LLVM_PROFILE_FILE
-                cd release
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
-                echo rocdecode-sample - videoDecode
-                mkdir -p rocdecode-sample && cd rocdecode-sample
-                cmake /opt/rocm/share/rocdecode/samples/videoDecode/
-                make -j8
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
-                echo rocdecode-test package verification
-                cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
-                cmake /opt/rocm/share/rocdecode/test/
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
-                echo rocdecode conformance tests
-                cd ../ && mkdir -p conformance && cd conformance
-                pip3 install pandas
-                wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
-                unzip HevcConformance.zip
-                python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
-                echo rocdecode-sample - videoDecode with data1 video test
-                cd ../ && cd rocdecode-sample
-                wget http://math-ci.amd.com/userContent/computer-vision/data1.img
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i ./data1.img
-                echo rocdecode-sample - videoDecodePerf with data1 video test
-                mkdir -p rocdecode-perf && cd rocdecode-perf
-                cmake /opt/rocm/share/rocdecode/samples/videoDecodePerf/
-                make -j8
-                LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
-                echo \$(pwd)
-                cd  ../../../
-                echo \$(pwd)
-                llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
-                llvm-cov export -object release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
-                sudo ${packageManager} install lcov
-                lcov --list coverage.info
-                bash <(curl -s https://codecov.io/bash) || echo "codecov did not collect coverage reports"
-                """
+    withCredentials([string(credentialsId: "mathlibs-codecov-token-rocdecode", variable: 'CODECOV_TOKEN')])
+    {
+        def command = """#!/usr/bin/env bash
+                    set -ex
+                    export HOME=/home/jenkins
+                    ${libvaDriverPath}
+                    echo make test
+                    cd ${project.paths.project_build_prefix}/build
+                    export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
+                    echo \$LLVM_PROFILE_FILE
+                    cd release
+                    LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
+                    echo rocdecode-sample - videoDecode
+                    mkdir -p rocdecode-sample && cd rocdecode-sample
+                    cmake /opt/rocm/share/rocdecode/samples/videoDecode/
+                    make -j8
+                    LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
+                    echo rocdecode-test package verification
+                    cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
+                    cmake /opt/rocm/share/rocdecode/test/
+                    LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
+                    echo rocdecode conformance tests
+                    cd ../ && mkdir -p conformance && cd conformance
+                    pip3 install pandas
+                    wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
+                    unzip HevcConformance.zip
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
+                    echo rocdecode-sample - videoDecode with data1 video test
+                    cd ../ && cd rocdecode-sample
+                    wget http://math-ci.amd.com/userContent/computer-vision/data1.img
+                    LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i ./data1.img
+                    echo rocdecode-sample - videoDecodePerf with data1 video test
+                    mkdir -p rocdecode-perf && cd rocdecode-perf
+                    cmake /opt/rocm/share/rocdecode/samples/videoDecodePerf/
+                    make -j8
+                    LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
+                    echo \$(pwd)
+                    cd  ../../../
+                    echo \$(pwd)
+                    llvm-profdata merge -sparse rawdata/*.profraw -o rocdecode.profdata
+                    llvm-cov export -object release/lib/librocdecode.so --instr-profile=rocdecode.profdata --format=lcov > coverage.info
+                    sudo ${packageManager} install lcov
+                    lcov --list coverage.info
+                    curl -Os https://uploader.codecov.io/latest/linux/codecov
+                    chmod +x codecov
+                    ./codecov -t ${CODECOV_TOKEN} --file coverage.info -v
+                    """
 
-    platform.runCommand(this, command)
+        platform.runCommand(this, command)
+    }
 }
 
 def runPackageCommand(platform, project) {
