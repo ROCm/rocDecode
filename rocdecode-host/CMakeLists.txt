@@ -38,7 +38,6 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
-
 # Set Project Version and Language
 project(rocdecode-host VERSION ${VERSION} LANGUAGES CXX)
 
@@ -119,3 +118,6 @@ else()
       message(FATAL_ERROR "-- ERROR!: rocprofiler-register Not Found! - please install rocprofiler-register!")
   endif()
 endif()
+
+  # install rocDecode libs -- {ROCM_PATH}/lib
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev)

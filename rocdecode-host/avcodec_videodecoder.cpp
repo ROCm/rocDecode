@@ -144,6 +144,7 @@ AvcodecVideoDecoder::~AvcodecVideoDecoder() {
 
     if (dec_context_) {
         avcodec_free_context(&dec_context_);
+        dec_context_ = nullptr;
     }
 
 }
@@ -203,7 +204,10 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
             av_packets_.push_back(pkt);
         }
     }
-
+    disp_rect_.left = decoder_create_info_.display_rect.left;
+    disp_rect_.top = decoder_create_info_.display_rect.top;
+    disp_rect_.right = decoder_create_info_.display_rect.right;
+    disp_rect_.bottom = decoder_create_info_.display_rect.bottom;
     return rocdec_status;
 }
 
@@ -256,10 +260,17 @@ rocDecStatus AvcodecVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatu
     return ROCDEC_SUCCESS;
 }
 
-rocDecStatus AvcodecVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params) {
+rocDecStatus AvcodecVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *preconfig_params) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
-    if (reconfig_params == nullptr) {
+    if (preconfig_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
+    }
+    //avcoded can handle reolution changes. So we just need to flush all remaining frames here.
+    bool is_decode_res_changed = !(preconfig_params->width == coded_width_ && preconfig_params->height == coded_height_);
+    if (is_decode_res_changed) {
+        AVPacket pkt = {0};
+        PushPacket(&pkt);
+        NotifyPictureDisplay();
     }
     return rocdec_status;
 }

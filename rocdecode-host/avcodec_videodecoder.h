@@ -60,6 +60,12 @@ typedef struct DecPacketBuffer_
     int av_frame_index;
 } DecPacketBuffer;
 
+typedef struct Rect_{
+    int16_t left;
+    int16_t top;
+    int16_t right;
+    int16_t bottom;
+} Rect;     
 
 class AvcodecVideoDecoder {
 public:
@@ -147,6 +153,7 @@ private:
     typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
     int decoded_pic_cnt_ = 0;
     int coded_width_ = 0, coded_height_ = 0;        // need to detect resolution changes for sps callback function
+    Rect disp_rect_ = {}; // displayable area specified in the bitstream
     int av_sample_format = -1;
     bool b_multithreading_ = true;
     uint32_t av_frame_cnt_ = 0;
