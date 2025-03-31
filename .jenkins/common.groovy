@@ -88,7 +88,7 @@ def runTestCommand (platform, project) {
                     lcov --list coverage.info
                     curl -Os https://uploader.codecov.io/latest/linux/codecov
                     chmod +x codecov
-                    ./codecov -v -t ${CODECOV_TOKEN} --file coverage.info --name rocDecode --sha ${commitSha}
+                    ./codecov -v -U \$http_proxy -t ${CODECOV_TOKEN} --file coverage.info --name rocDecode --sha ${commitSha}
                     """
 
         platform.runCommand(this, command)
