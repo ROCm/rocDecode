@@ -69,13 +69,12 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${ROCM_PATH}/lib)
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ROCDECODE_HOST_LIBRARY)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
     # rocDecode
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdec_decode.cpp )
     add_executable(${PROJECT_NAME} ${SOURCES})
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)

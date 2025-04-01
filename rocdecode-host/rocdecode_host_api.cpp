@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #include "dec_handle_host.h"
-#include "rocdecode.h"
+#include "../api/rocdecode/rocdecode.h"
 #include "../src/commons.h"
 
 namespace rocdecode {
@@ -153,7 +153,7 @@ rocDecReconfigureDecoderHost(rocDecDecoderHandle decoder_handle, RocdecReconfigu
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetVideoFrameHost(rocDecDecoderHandle decoder_handle, int pic_idx,
-                                                    void *frame_data[3], uint32_t *line_size,
+                                                    void **frame_data, uint32_t *line_size,
                                                     RocdecProcParams *vid_postproc_params) {
     if (decoder_handle == nullptr || line_size == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;

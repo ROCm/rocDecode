@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <hip/hip_runtime.h>
 #include <rocdecode/rocdecode.h>
-#include "rocdecode_host.h"
+#include <rocdecode/rocdecode_host.h>
 
 struct Rect {
     int left;

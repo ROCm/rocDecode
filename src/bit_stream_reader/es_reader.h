@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include "rocdecode.h"
+#include "rocdecode/rocdecode.h"
 
 #define BS_RING_SIZE (16 * 1024 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
@@ -181,11 +181,6 @@ class RocVideoESParser {
          * \return true if success
          */
         bool CopyObuFromRing();
-
-        /*! \brief Function to check the 32 byte stream for IVF file header identity
-         * \return true if IVF file header is identified; false: otherwise
-         */
-        bool CheckIvfFileHeader(uint8_t *stream);
 
         /*! \brief Function to probe the bitstream file and try to find if it is one of types supported.
          * \return Elementary stream file type

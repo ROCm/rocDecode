@@ -37,8 +37,8 @@ THE SOFTWARE.
 #include <unordered_map>
 #include <chrono>
 #include <hip/hip_runtime.h>
-#include "rocdecode.h"
-#include "rocparser.h"
+#include "rocdecode/rocdecode.h"
+#include "rocdecode/rocparser.h"
 
 /*!
  * \file
@@ -217,8 +217,8 @@ class RocVideoDecoder {
         RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
-        ~RocVideoDecoder();
-        
+        virtual ~RocVideoDecoder();
+
         rocDecVideoCodec GetCodecId() { return codec_id_; }
 
         /**
@@ -505,6 +505,7 @@ class RocVideoDecoder {
         uint32_t target_height_ = 0;
         int max_width_ = 0, max_height_ = 0;
         uint32_t chroma_height_ = 0, chroma_width_ = 0;
+        uint32_t num_decode_surfaces_ = 0;
         uint32_t num_chroma_planes_ = 0;
         uint32_t num_components_ = 0;
         uint32_t surface_stride_ = 0;

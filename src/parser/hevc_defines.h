@@ -406,8 +406,8 @@ typedef struct {
     uint32_t sps_max_latency_increase_plus1[7];          //ue(v)
     uint32_t log2_min_luma_coding_block_size_minus3;     //ue(v)
     uint32_t log2_diff_max_min_luma_coding_block_size;   //ue(v)
-    uint32_t log2_min_transform_block_size_minus2;       //ue(v)
-    uint32_t log2_diff_max_min_transform_block_size;     //ue(v)
+    uint32_t log2_min_luma_transform_block_size_minus2;       //ue(v)
+    uint32_t log2_diff_max_min_luma_transform_block_size;     //ue(v)
     uint32_t max_transform_hierarchy_depth_inter;        //ue(v)
     uint32_t max_transform_hierarchy_depth_intra;        //ue(v)
     bool scaling_list_enabled_flag;                      //u(1)
@@ -512,6 +512,7 @@ typedef struct {
 /*! \brief Structure for Slice Segment Header
  */
 typedef struct {
+    uint32_t is_received;
     bool first_slice_segment_in_pic_flag;                //u(1)
     bool no_output_of_prior_pics_flag;                   //u(1)
     uint32_t slice_pic_parameter_set_id;                 //ue(v)

@@ -43,6 +43,7 @@ static inline AVCodecID RocDecVideoCodec2AVCodec(rocDecVideoCodec rocdec_codec) 
     }
 }
 
+#if 0
 static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format) {
     float factor = 0.5;
     switch (surface_format) {
@@ -65,6 +66,7 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
     }
     return factor;
 };
+#endif
 
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat

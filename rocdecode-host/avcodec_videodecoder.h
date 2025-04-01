@@ -41,8 +41,8 @@ extern "C" {
 #include <queue>
 #include <atomic>
 #include "../src/commons.h"
-#include "../api/rocdecode.h"
-#include "../api/rocdecode_host.h"
+#include "../api/rocdecode/rocdecode.h"
+#include "../api/rocdecode/rocdecode_host.h"
 
 
 #define MAX_AV_PACKET_DATA_SIZE     4096

@@ -29,9 +29,13 @@ RocDecoderHost::~RocDecoderHost() {}
 
 rocDecStatus RocDecoderHost::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
+    if (!decoder_create_info_.user_data) {
+        ERR("Invalid function callback pointer passed");
+        return ROCDEC_NOT_INITIALIZED;
+    }
     rocdec_status = avcodec_video_decoder_.InitializeDecoder();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to initilize the VAAPI Video decoder.");
+        ERR("Failed to initilize the FFMpeg Video decoder.");
         return rocdec_status;
     }
      return rocdec_status;
@@ -68,7 +72,7 @@ rocDecStatus RocDecoderHost::ReconfigureDecoder(RocdecReconfigureDecoderInfo *re
     return rocdec_status;
 }
 
-rocDecStatus RocDecoderHost::GetVideoFrame(int pic_idx, void *frame_ptr[3], uint32_t line_size[3], RocdecProcParams *vid_postproc_params) {
+rocDecStatus RocDecoderHost::GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params) {
     if (vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }

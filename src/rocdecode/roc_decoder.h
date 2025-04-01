@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include <sstream>
 #include <string.h>
 #include <map>
-#include "../api/rocdecode.h"
+#include "../api/rocdecode/rocdecode.h"
 #include <hip/hip_runtime.h>
 #include "vaapi/vaapi_videodecoder.h"
 
@@ -56,8 +56,7 @@ public:
 
 private:
     rocDecStatus FreeVideoFrame(int pic_idx);
-    int num_devices_;
-    RocDecoderCreateInfo decoder_create_info_;
     VaapiVideoDecoder va_video_decoder_;
+    RocDecoderCreateInfo decoder_create_info_;
     std::vector<HipInteropDeviceMem> hip_interop_;
 };

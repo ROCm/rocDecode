@@ -39,19 +39,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 # Set Project Version and Language
-project(rocdecode-host VERSION ${VERSION} LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
-list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-
-# avoid setting the default installation path to /usr/local
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${ROCM_PATH} CACHE PATH "rocDecode default installation path" FORCE)
-endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+project(rocdecode-host LANGUAGES CXX)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../cmake)
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocDecode Default Build Type" FORCE)
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocdecode-host Default Build Type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -67,13 +61,9 @@ endif()
 
 message("-- ${BoldBlue}rocdecode-host Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
-# Add an option for enabling the rocprofiler-register
-option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
-
-find_package(HIP QUIET)
-find_package(FFmpeg QUIET)
-find_package(Threads REQUIRED)
 find_package(rocprofiler-register QUIET)
+#find_package(FFmpeg QUIET)
+find_package(FFmpeg)
 
 if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   # HIP
@@ -88,7 +78,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   endif()
 
   # local include files
-  include_directories(api src/rocdecode src/parser )
+  include_directories(api rocdecode-host src/rocdecode src/parser)
   # source files
   file(GLOB_RECURSE SOURCES "${PROJECT_SOURCE_DIR}/*.cpp")
   # rocdecode.so

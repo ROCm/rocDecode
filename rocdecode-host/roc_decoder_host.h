@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include <sstream>
 #include <string.h>
 #include <map>
-#include "../api/rocdecode_host.h"
 #include "avcodec_videodecoder.h"
 
 class RocDecoderHost {
@@ -44,6 +43,6 @@ public:
     rocDecStatus GetVideoFrame(int pic_idx, void *frame_ptr[3], uint32_t line_size[3], RocdecProcParams *vid_postproc_params);
 
 private:
-    RocDecoderHostCreateInfo decoder_create_info_;
     AvcodecVideoDecoder avcodec_video_decoder_;
+    RocDecoderHostCreateInfo decoder_create_info_;
 };
