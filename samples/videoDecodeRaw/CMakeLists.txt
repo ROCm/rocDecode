@@ -62,7 +62,7 @@ else()
 endif()
 
 find_package(HIP QUIET)
-find_package(ROCDECODE QUIET)
+find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 
 if(HIP_FOUND AND ROCDECODE_FOUND AND rocprofiler-register_FOUND)

@@ -98,7 +98,7 @@ endif()
 message("-- ${White}${PROJECT_NAME} -- AMD GPU_TARGETS: ${GPU_TARGETS}${ColourReset}")
 
 find_package(HIP QUIET)
-find_package(ROCDECODE QUIET)
+find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 

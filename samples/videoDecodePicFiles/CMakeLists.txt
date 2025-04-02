@@ -62,7 +62,7 @@ else()
 endif()
 
 find_package(HIP QUIET)
-find_package(ROCDECODE QUIET)
+find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 find_package(Threads REQUIRED)
