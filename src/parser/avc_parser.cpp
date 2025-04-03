@@ -160,7 +160,9 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 case kAvcNalTypeSeq_Parameter_Set: {
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
-                    ParseSps(rbsp_buf_, rbsp_size_);
+                    if ((ret2 = ParseSps(rbsp_buf_, rbsp_size_)) != PARSER_OK) {
+                        ERR("Error occurred in SPS parsing. This SPS NAL unit is skipped.");
+                    }
                     break;
                 }
 
@@ -168,7 +170,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     if ((ret2 = ParsePps(rbsp_buf_, rbsp_size_)) != PARSER_OK) {
-                        return ret2;
+                        ERR("Error occurred in PPS parsing. This PPS NAL unit is skipped.");
                     }
                     break;
                 }
@@ -186,15 +188,15 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                         slice_info_list_.resize(num_slices_ + 1, {{0}});
                     }
 
-                    slice_info_list_[num_slices_].slice_data_offset = curr_start_code_offset_;
-                    slice_info_list_[num_slices_].slice_data_size = nal_unit_size_;
-
                     memcpy(rbsp_buf_, (pic_data_buffer_ptr_ + curr_start_code_offset_ + 4), ebsp_size);
                     rbsp_size_ = EbspToRbsp(rbsp_buf_, 0, ebsp_size);
                     AvcSliceHeader *p_slice_header = &slice_info_list_[num_slices_].slice_header;
                     if ((ret2 = ParseSliceHeader(rbsp_buf_, rbsp_size_, p_slice_header)) != PARSER_OK) {
-                        return ret2;
+                        ERR("Error occurred in slice header parsing. This slice NAL unit is skipped.");
+                        break;      // ignore and continue to next nal_unit
                     }
+                    slice_info_list_[num_slices_].slice_data_offset = curr_start_code_offset_;
+                    slice_info_list_[num_slices_].slice_data_size = nal_unit_size_;
 
                     // Start decode process
                     if (num_slices_ == 0) {
@@ -1024,14 +1026,16 @@ ParserResult AvcVideoParser::ParsePps(uint8_t *p_stream, size_t stream_size_in_b
     CHECK_ALLOWED_RANGE("pic_parameter_set_id", pic_parameter_set_id, 0, 255);
     uint32_t seq_parameter_set_id = Parser::ExpGolomb::ReadUe(p_stream, offset);
     CHECK_ALLOWED_RANGE("seq_parameter_set_id", seq_parameter_set_id, 0, 31);
-
+    if (sps_list_[seq_parameter_set_id].is_received == 0) {
+        ERR("Empty SPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
     p_sps = &sps_list_[seq_parameter_set_id];
     p_pps = &pps_list_[pic_parameter_set_id];
     memset(p_pps, 0, sizeof(AvcPicParameterSet));	
 
     p_pps->pic_parameter_set_id = pic_parameter_set_id;
     p_pps->seq_parameter_set_id = seq_parameter_set_id;
-
     p_pps->entropy_coding_mode_flag = Parser::GetBit(p_stream, offset);
     p_pps->bottom_field_pic_order_in_frame_present_flag = Parser::GetBit(p_stream, offset);
 
@@ -1206,14 +1210,21 @@ ParserResult AvcVideoParser::ParseSliceHeader(uint8_t *p_stream, size_t stream_s
     p_slice_header->first_mb_in_slice = Parser::ExpGolomb::ReadUe(p_stream, offset); // range check below
     p_slice_header->slice_type = Parser::ExpGolomb::ReadUe(p_stream, offset);
     CHECK_ALLOWED_RANGE("slice_type", p_slice_header->slice_type, 0, 9);
-    p_slice_header->pic_parameter_set_id = Parser::ExpGolomb::ReadUe(p_stream, offset);
-    CHECK_ALLOWED_RANGE("pic_parameter_set_id", p_slice_header->pic_parameter_set_id, 0, 255);
 
     // Set active SPS and PPS for the current slice
-    active_pps_id_ = p_slice_header->pic_parameter_set_id;
-    p_pps = &pps_list_[active_pps_id_];
-    if (p_pps->is_received == 0) {
+    int32_t active_pps_id = Parser::ExpGolomb::ReadUe(p_stream, offset);
+    CHECK_ALLOWED_RANGE("pic_parameter_set_id", active_pps_id, 0, 255);
+    if (pps_list_[active_pps_id].is_received == 0) {
         ERR("Empty PPS is referred.");
+        return PARSER_WRONG_STATE;
+    }
+    active_pps_id_ = active_pps_id;
+    p_slice_header->pic_parameter_set_id = active_pps_id;
+    p_pps = &pps_list_[active_pps_id_];
+
+    int32_t active_sps_id = p_pps->seq_parameter_set_id;
+    if (sps_list_[active_sps_id].is_received == 0) {
+        ERR("Empty SPS is referred.");
         return PARSER_WRONG_STATE;
     }
     if (active_sps_id_ != p_pps->seq_parameter_set_id) {
