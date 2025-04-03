@@ -151,7 +151,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
         }
 
         // Parse the NAL unit
-        if (nal_unit_size_) {
+        if (nal_unit_size_ >= 4) {
             // start code + NAL unit header = 4 bytes
             int ebsp_size = nal_unit_size_ - 4 > RBSP_BUF_SIZE ? RBSP_BUF_SIZE : nal_unit_size_ - 4; // only copy enough bytes for header parsing
 
