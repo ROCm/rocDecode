@@ -73,22 +73,22 @@ def runTestCommand (platform, project) {
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
                     cd ../
                     mkdir avc-conformance && cd avc-conformance
-                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip/
+                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
                     unzip AvcConformance.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory ./AvcConformance --results_directory .
                     cd ../
                     mkdir vp9-conformance && cd vp9-conformance
-                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip/
+                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip
                     unzip Vp9Conformance.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory ./Vp9Conformance --results_directory .
                     cd ../
                     mkdir av1-conformance && cd av1-conformance
-                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip/
+                    wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
                     unzip Av1Conformance_v1.0.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory ./Av1Conformance_v1.0 --results_directory .
-                    cd ../
+                    cd ../../
                     echo rocdecode-sample - videoDecode with data1 video test
-                    cd ../ && cd rocdecode-sample
+                    cd rocdecode-sample
                     wget http://math-ci.amd.com/userContent/computer-vision/data1.img
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i ./data1.img
                     echo rocdecode-sample - videoDecodePerf with data1 video test
