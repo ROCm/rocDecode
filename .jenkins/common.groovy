@@ -67,9 +67,22 @@ def runTestCommand (platform, project) {
                     echo rocdecode conformance tests
                     cd ../ && mkdir -p conformance && cd conformance
                     pip3 install pandas
+                    mkdir hevc-conformance && cd hevc-conformance
                     wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
                     unzip HevcConformance.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./HevcConformance --results_directory .
+                    mkdir avc-conformance && cd avc-conformance
+                    wget http:/http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip/
+                    unzip AvcConformance.zip
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./AvcConformance --results_directory .
+                    mkdir vp9-conformance && cd vp9-conformance
+                    wget http:/http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip/
+                    unzip Vp9Conformance.zip
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./Vp9Conformance --results_directory .
+                    mkdir av1-conformance && cd av1-conformance
+                    wget http:/http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip/
+                    unzip Av1Conformance_v1.0.zip
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./Av1Conformance_v1.0 --results_directory .
                     echo rocdecode-sample - videoDecode with data1 video test
                     cd ../ && cd rocdecode-sample
                     wget http://math-ci.amd.com/userContent/computer-vision/data1.img
