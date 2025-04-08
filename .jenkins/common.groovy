@@ -86,6 +86,7 @@ def runTestCommand (platform, project) {
                     wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip/
                     unzip Av1Conformance_v1.0.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../rocdecode-sample/videodecode --files_directory ./Av1Conformance_v1.0 --results_directory .
+                    cd ../
                     echo rocdecode-sample - videoDecode with data1 video test
                     cd ../ && cd rocdecode-sample
                     wget http://math-ci.amd.com/userContent/computer-vision/data1.img
