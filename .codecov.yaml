@@ -2,7 +2,7 @@
 # https://docs.codecov.io/docs/codecov-yaml
 
 # Validate YAML
-# curl --data-binary @codecov.yaml https://codecov.io/validate
+# curl --data-binary @.codecov.yaml https://codecov.io/validate
 
 # Coverage configuration
 coverage:
