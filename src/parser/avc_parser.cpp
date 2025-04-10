@@ -239,7 +239,7 @@ ParserResult AvcVideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                     }
 
                     // Reference picture lists construction (8.2.4)
-                    if ((ret2 = SetupReflist(&slice_info_list_[num_slices_])) != PARSER_OK) {
+                    if (SetupReflist(&slice_info_list_[num_slices_]) != PARSER_OK) {
                         ERR("Error occurred in SetupReflist(). Ignore and continue.");
                     }
 
