@@ -205,10 +205,10 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H264.264
 )
 
-# 11 - videoDecodeRaw AV1
+# 11 - videoDecodeRaw AV1 IVF
 add_test(
   NAME
-    video_decodeRaw-AV1
+    video_decodeRaw-AV1-IVF
   COMMAND
     "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeRaw"
@@ -218,7 +218,20 @@ add_test(
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-AV1.ivf
 )
 
-# 12 - videoDecodeRaw VP9
+# 12 - videoDecodeRaw AV1 OBU
+add_test(
+  NAME
+    video_decodeRaw-AV1-OBU
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecodeRaw"
+                              "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeRaw"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "videodecoderaw"
+            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-AV1.obu
+)
+
+# 13 - videoDecodeRaw VP9
 add_test(
   NAME
     video_decodeRaw-VP9
