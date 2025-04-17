@@ -108,7 +108,6 @@ def runTestCommand (platform, project) {
                         unzip Vp9Conformance.zip
                         unzip Av1Conformance_v1.0.zip
                         unzip AvcConformance.zip
-                        mv raw/*.csr ./
                     fi
         """
         def command = """#!/usr/bin/env bash
