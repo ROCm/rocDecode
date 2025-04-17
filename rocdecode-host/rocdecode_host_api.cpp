@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include "../api/rocdecode/rocdecode.h"
 #include "../src/commons.h"
 
-namespace rocdecode {
+    //namespace rocdecodehost {
 /*****************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecCreateDecoderHost(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfoHost *decoder_create_info)
 //! Create the decoder object based on decoder_create_info. A handle to the created decoder is returned
@@ -198,4 +198,4 @@ const char* ROCDECAPI rocDecGetErrorNameHost(rocDecStatus rocdec_status) {
             return "UNKNOWN_ERROR";
     }
 }
-} //namespace rocdecode
+//} //namespace rocdecodehost

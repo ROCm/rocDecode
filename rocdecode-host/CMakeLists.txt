@@ -30,16 +30,18 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+
 # Set AMD Clang as default compiler
 if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 # Set Project Version and Language
-project(rocdecode-host LANGUAGES CXX)
+project(rocdecodehost LANGUAGES CXX)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
@@ -80,11 +82,10 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   # local include files
   include_directories(api rocdecode-host src/rocdecode src/parser)
   # source files
-  file(GLOB_RECURSE SOURCES "${PROJECT_SOURCE_DIR}/*.cpp")
+  file(GLOB_RECURSE SOURCES "./*.cpp")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
   # FFMPEG multi-version support
   if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.134.100)

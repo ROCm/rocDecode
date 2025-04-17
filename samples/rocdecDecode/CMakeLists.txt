@@ -22,8 +22,7 @@
 ################################################################################
 
 cmake_minimum_required (VERSION 3.5)
-project(rocdec_decode)
-set(CMAKE_CXX_STANDARD 17)
+project(rocdecdecode)
 
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
@@ -34,9 +33,16 @@ else()
   set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
 endif()
 
+# Set AMD Clang as default compiler
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+  set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
-list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
-set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/clang++)
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
 # rocDecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
@@ -57,11 +63,11 @@ endif()
 
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
-find_package(rocDecode QUIET)
+find_package(ROCDECODE QUIET)
 
 if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     # HIP
-    find_library(ROCDECODE_HOST_LIBRARY NAMES rocdecode-host HINTS ${ROCM_PATH}/lib)
+    find_library(ROCDECODE_HOST_LIBRARY rocdecodehost PATHS ${ROCM_PATH}/lib)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # FFMPEG
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
@@ -69,11 +75,18 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocDecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${ROCM_PATH}/lib)
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
+    if(ROCDECODE_HOST_LIBRARY)
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
+    else()
+      message(FATAL_ERROR "Library mylib not found!")
+    endif()
+    #set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
+    #set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} rocdecodehost)
     # rocDecode
     # sample app exe
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdec_decode.cpp )
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecdecode.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
