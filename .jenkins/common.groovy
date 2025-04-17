@@ -136,15 +136,12 @@ def runTestCommand (platform, project) {
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/HevcConformance --results_directory .
                     cd ../
                     mkdir avc-conformance && cd avc-conformance
-                    unzip AvcConformance.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode//AvcConformance --results_directory .
                     cd ../
                     mkdir vp9-conformance && cd vp9-conformance
-                    unzip Vp9Conformance.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode//Vp9Conformance --results_directory .
                     cd ../
                     mkdir av1-conformance && cd av1-conformance
-                    unzip Av1Conformance_v1.0.zip
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode//Av1Conformance_v1.0 --results_directory .
                     cd ../../
                     echo rocdecode-sample - videoDecode with data1 video test
