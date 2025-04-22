@@ -23,14 +23,11 @@ THE SOFTWARE.
 #include "vaapi_videodecoder.h"
 
 VaapiVideoDecoder::VaapiVideoDecoder(RocDecoderCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info},
-    drm_fd_{-1}, va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
+    va_display_{0}, va_config_attrib_{{}}, va_config_id_{0}, va_profile_ {VAProfileNone}, va_context_id_{0}, va_surface_ids_{{}},
     supports_modifiers_{false}, pic_params_buf_id_{0}, iq_matrix_buf_id_{0}, num_slices_{0}, slice_data_buf_id_{0} {
 };
 
 VaapiVideoDecoder::~VaapiVideoDecoder() {
-    if (drm_fd_ != -1) {
-        close(drm_fd_);
-    }
     if (va_display_) {
         rocDecStatus rocdec_status = ROCDEC_SUCCESS;
         rocdec_status = DestroyDataBuffers();
@@ -332,11 +329,15 @@ rocDecStatus VaapiVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo 
         return ROCDEC_NOT_SUPPORTED;
     }
     CHECK_VAAPI(vaDestroySurfaces(va_display_, va_surface_ids_.data(), va_surface_ids_.size()));
-    CHECK_VAAPI(vaDestroyContext(va_display_, va_context_id_));
+    if (va_context_id_) {
+        CHECK_VAAPI(vaDestroyContext(va_display_, va_context_id_));
+        va_context_id_ = 0;
+    }
     // Need to re-create VA config if bit deepth changes
     bool create_va_config = decoder_create_info_.bit_depth_minus_8 != reconfig_params->bit_depth_minus_8 ? true : false;
     if (create_va_config) {
         CHECK_VAAPI(vaDestroyConfig(va_display_, va_config_id_));
+        va_config_id_ = 0;
     }
 
     va_surface_ids_.clear();
@@ -513,6 +514,9 @@ VaContext::VaContext() {
 
 VaContext::~VaContext() {
     for (int i = 0; i < va_contexts_.size(); i++) {
+        if (va_contexts_[i].drm_fd != -1) {
+            close(va_contexts_[i].drm_fd);
+        }
         if (va_contexts_[i].va_display) {
             if (vaTerminate(va_contexts_[i].va_display) != VA_STATUS_SUCCESS) {
                 ERR("Failed to termiate VA");
