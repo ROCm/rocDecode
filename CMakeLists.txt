@@ -214,19 +214,19 @@ if(HIP_FOUND AND Libva_FOUND)
   set(INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_INCLUDEDIR}")
   set(BIN_INSTALL_DIR  "${CMAKE_INSTALL_BINDIR}")
 
+    ## Generate config Version File for rocdecode
+    write_basic_package_version_file(
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
+      VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+      COMPATIBILITY SameMajorVersion
+    )
+
   ## Generate Config File for rocdecode
   configure_package_config_file(
     ${CMAKE_MODULE_PATH}/${PROJECT_NAME}-config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
     INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
     PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
-  )
-
-  ## Generate config Version File for rocdecode
-  write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-    VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
-    COMPATIBILITY SameMajorVersion
   )
 
   ## Install the rocdecode-config.cmake and rocdecode-config-version.cmake
