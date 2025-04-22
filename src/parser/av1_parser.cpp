@@ -736,8 +736,9 @@ ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     if (curr_byte_offset_ > pic_data_size_) {
         ERR("Invalid obu_size value.");
         return PARSER_EOF;
+    } else {
+        return PARSER_OK;
     }
-    return PARSER_OK;
 }
 
 void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
