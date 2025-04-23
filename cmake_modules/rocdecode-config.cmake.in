@@ -10,7 +10,6 @@ get_filename_component(@PROJECT_NAME@_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PAT
 
 # version
 include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-config-version.cmake)
-
 set(@PROJECT_NAME@_VERSION ${PACKAGE_VERSION})
 
 @PACKAGE_INIT@
@@ -39,11 +38,9 @@ if(TARGET @PROJECT_NAME@::@PROJECT_NAME@)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args
-(
+find_package_handle_standard_args(
     @PROJECT_NAME@
     FOUND_VAR @PROJECT_NAME@_FOUND
     REQUIRED_VARS @PROJECT_NAME@_ROOT_DIR @PROJECT_NAME@_INCLUDE_DIR @PROJECT_NAME@_LIBRARY @PROJECT_NAME@_LIBRARIES
     VERSION_VAR @PROJECT_NAME@_VERSION
-    HANDLE_COMPONENTS
-)
+    HANDLE_COMPONENTS)
