@@ -1,8 +1,9 @@
 # - Config file for the rocdecode package
 # It defines the following variables
-#  ROCDECODE_INCLUDE_DIR - include directory for rocdecode
-#  ROCDECODE_LIB_DIR     - library directory for rocdecode
-#  ROCDECODE_LIBRARY     - library to link against
+#  ROCDECODE_INCLUDE_DIR/rocdecode_INCLUDE_DIR - include directory for rocdecode
+#  ROCDECODE_LIB_DIR/rocdecode_LIB_DIR         - library directory for rocdecode
+#  ROCDECODE_LIBRARY/rocdecode_LIBRARY         - library to link against
+#  ROCDECODE_LIBRARIES/rocdecode_LIBRARIES     - library to link against
 
 # compute paths
 get_filename_component(@PROJECT_NAME@_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
@@ -40,9 +41,11 @@ if(TARGET @PROJECT_NAME@::@PROJECT_NAME@)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(
+find_package_handle_standard_args
+(
     @PROJECT_NAME@
     FOUND_VAR @PROJECT_NAME@_FOUND
     REQUIRED_VARS @PROJECT_NAME@_ROOT_DIR @PROJECT_NAME@_INCLUDE_DIR @PROJECT_NAME@_LIBRARY @PROJECT_NAME@_LIBRARIES
     VERSION_VAR @PROJECT_NAME@_VERSION
-    HANDLE_COMPONENTS)
+    HANDLE_COMPONENTS
+)
