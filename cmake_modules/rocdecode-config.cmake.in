@@ -34,8 +34,6 @@ if(NOT @PROJECT_NAME@_BUILD_TREE)
     include("${@PROJECT_NAME@_CMAKE_DIR}/@PROJECT_NAME@-targets.cmake")
 endif()
 
-include("${ROCDECODE_CMAKE_DIR}/rocdecode-targets.cmake")
-
 if(TARGET @PROJECT_NAME@::@PROJECT_NAME@)
     set(@PROJECT_NAME@_LIBRARIES @PROJECT_NAME@::@PROJECT_NAME@)
 endif()
