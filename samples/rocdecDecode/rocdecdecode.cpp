@@ -2,12 +2,13 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include <filesystem>
 #include <hip/hip_runtime.h>
 #include <rocdecode/rocdecode.h>
 #include <rocdecode/rocdecode_host.h>
 
-
+namespace fs = std::filesystem;
 struct Rect {
     int left;
     int top;
@@ -119,13 +120,18 @@ inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     return factor;
 };
 
-
 // only 2 types of memory mode is supported in this sample for simplicity.
-// please refer to VideoDecode sample for all memory types support
 typedef enum OutputSurfaceMemoryType_enum {
     OUT_SURFACE_MEM_DEV_INTERNAL = 0,      /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
     OUT_SURFACE_MEM_HOST = 2,        /**<  decoded output will be in host memory (true for host based decoding) **/
 } OutputSurfaceMemoryType;
+
+// Enum for decoder backend
+typedef enum DecoderBackend_enum {
+    DECODER_BACKEND_DEVICE = 0,      /**<  Decoding using VCN hardware in the device specified by user */
+    DECODER_BACKEND_HOST = 1,        /**<  decoded using host and ffmpeg avcodec **/
+} DecoderBackend;
+
 
 #define CHECK(callable, ...)                                                             \
     do                                                                                   \
@@ -140,6 +146,7 @@ typedef enum OutputSurfaceMemoryType_enum {
 
 struct DecoderInfo {
     int dec_device_id;
+    DecoderBackend backend;                //0: device, 1: host
     rocDecDecoderHandle decoder;
     RocdecVideoParser parser;
     std::uint32_t bit_depth;
@@ -155,9 +162,9 @@ struct DecoderInfo {
     bool is_decoder_reconfigured;
     Rect disp_rect;
     FILE *fp_out;
-    DecoderInfo() : dec_device_id(0), decoder(nullptr), bit_depth(8), dump_decoded_frames(0), mem_type{OUT_SURFACE_MEM_DEV_INTERNAL},
+    DecoderInfo() : dec_device_id(0), backend(DECODER_BACKEND_DEVICE), decoder(nullptr), bit_depth(8), dump_decoded_frames(0), mem_type{OUT_SURFACE_MEM_DEV_INTERNAL},
                     surf_format{rocDecVideoSurfaceFormat_NV12}, video_chroma_format{rocDecVideoSurfaceFormat_NV12},
-                    output_file_path{nullptr}, is_decoder_reconfigured{false}, fp_out{nullptr} {}
+                    is_decoder_reconfigured{false}, fp_out{nullptr} {}
 };
 
 void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch, uint32_t vpitch, uint32_t num_chroma_planes) {
@@ -196,7 +203,7 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch
             tmp_hst_ptr += (p_dec_info->disp_rect.top * pitch[0]) + (p_dec_info->disp_rect.left * p_dec_info->bytes_per_pixel);
         }
         int img_width = p_dec_info->disp_rect.right - p_dec_info->disp_rect.left;
-        int img_height = p_dec_info->disp_rect.top - p_dec_info->disp_rect.bottom;
+        int img_height = p_dec_info->disp_rect.bottom - p_dec_info->disp_rect.top;
         int output_stride =  pitch[0];
         if (img_width * p_dec_info->bytes_per_pixel == output_stride && img_height == vpitch) {
             fwrite(tmp_hst_ptr, 1, p_dec_info->output_surface_size_in_bytes, p_dec_info->fp_out);
@@ -285,16 +292,16 @@ void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_
     }
 }
 
-
 std::vector<std::vector<uint8_t>> read_frames(std::vector<std::string>& names) {
     std::vector<std::vector<uint8_t>> frames;
+    // sort the frames file so it is consecutive
     for (std::string name : names) {
         std::ifstream inputFile(name.c_str(), std::ios::binary);
         if (!inputFile) {
             std::cerr << "Error opening " << name << " for reading." << std::endl;
             std::abort();
         }
-
+        std::cout << "Reading " << name << " for reading." << std::endl;
         // Determine the file size
         inputFile.seekg(0, std::ios::end);
         std::streamsize fileSize = inputFile.tellg();
@@ -309,7 +316,6 @@ std::vector<std::vector<uint8_t>> read_frames(std::vector<std::string>& names) {
 
         // Close the file
         inputFile.close();
-
         frames.push_back(std::move(frame));
     }
 
@@ -366,11 +372,14 @@ int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormat* for
         p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
     else if (video_chroma_format == rocDecVideoChromaFormat_422)
         p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
+    p_dec_info->coded_width = format->coded_width;
+    p_dec_info->coded_height = format->coded_height;
+    p_dec_info->bytes_per_pixel = bitdepth_minus_8 > 0 ? 2 : 1;
 
     return 1;
 }
 
-int ROCDECAPI handle_picture_display_host(void* user_data, void* disp_info) {
+int ROCDECAPI handle_picture_display_host(void* user_data, RocdecParserDispInfo* disp_info) {
     // std::cout << "handle_picture_display is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecParserDispInfo *p_disp_info = static_cast<RocdecParserDispInfo *>(disp_info);
@@ -388,7 +397,7 @@ int ROCDECAPI handle_picture_display_host(void* user_data, void* disp_info) {
     return 1;
 }
 
-void create_host_decoder(DecoderInfo& dec_info) {
+void create_decoder_host(DecoderInfo& dec_info) {
     RocDecoderHostCreateInfo create_info = {};
     create_info.codec_type = rocDecVideoCodec_HEVC;
     create_info.num_decode_threads = 0;     // default
@@ -410,6 +419,7 @@ void create_host_decoder(DecoderInfo& dec_info) {
     create_info.pfn_sequence_callback = handle_video_sequence_host;
     create_info.pfn_display_picture = handle_picture_display_host;
     CHECK(rocDecCreateDecoderHost(&dec_info.decoder, &create_info));
+    dec_info.backend = DECODER_BACKEND_HOST;
 }
 
 int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) {
@@ -426,6 +436,11 @@ int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) 
     reconfig_params.display_rect.top = 0;
     reconfig_params.display_rect.bottom = static_cast<short>(format->coded_height);
     CHECK(rocDecReconfigureDecoder(p_dec_info->decoder, &reconfig_params));
+    p_dec_info->is_decoder_reconfigured = true;
+    p_dec_info->disp_rect.top = format->display_area.top;
+    p_dec_info->disp_rect.bottom = format->display_area.bottom;
+    p_dec_info->disp_rect.left = format->display_area.left;
+    p_dec_info->disp_rect.right = format->display_area.right;
     rocDecVideoChromaFormat video_chroma_format = format->chroma_format;
     int bitdepth_minus_8 = format->bit_depth_luma_minus8;
     if (video_chroma_format == rocDecVideoChromaFormat_420 || rocDecVideoChromaFormat_Monochrome)
@@ -436,7 +451,8 @@ int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) 
 
     p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
     p_dec_info->coded_width = format->coded_width;
-    p_dec_info->coded_width = format->coded_height;
+    p_dec_info->coded_height = format->coded_height;
+    p_dec_info->bytes_per_pixel = bitdepth_minus_8 > 0 ? 2 : 1;
     return 1;
 }
 
@@ -450,6 +466,13 @@ int ROCDECAPI handle_picture_decode(void* user_data, RocdecPicParams* params) {
 int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp_info) {
     // std::cout << "handle_picture_display is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
+    RocdecProcParams params = {};
+    params.progressive_frame = disp_info->progressive_frame;
+    params.top_field_first = disp_info->top_field_first;
+    void* dev_mem_ptr[3] = { 0 };
+    uint32_t pitch[3] = { 0 };
+    CHECK(rocDecGetVideoFrame(p_dec_info->decoder, disp_info->picture_index, dev_mem_ptr, pitch, &params));
+    p_dec_info->mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     // check if decoding is complete
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
@@ -459,18 +482,11 @@ int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp
         return 0;
     }
 
-    RocdecProcParams params = {};
-    params.progressive_frame = disp_info->progressive_frame;
-    params.top_field_first = disp_info->top_field_first;
-    void* dev_mem_ptr[3] = {0};
-    uint32_t pitch[3] = {0};
-    CHECK(rocDecGetVideoFrame(p_dec_info->decoder, disp_info->picture_index, dev_mem_ptr, pitch, &params));
-    p_dec_info->mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     if (p_dec_info->dump_decoded_frames) {
         uint32_t vpitch, num_chroma_planes;
         GetSurfaceStrideInternal(p_dec_info->surf_format, p_dec_info->coded_width, p_dec_info->coded_height, &pitch[0], &vpitch, num_chroma_planes);
         p_dec_info->output_surface_size_in_bytes = pitch[0] * (vpitch + ((vpitch * GetChromaHeightFactor(p_dec_info->surf_format)) * num_chroma_planes));
-        save_frame_to_file(p_dec_info, dev_mem_ptr, pitch, vpitch, num_chroma_planes);
+        save_frame_to_file(p_dec_info, dev_mem_ptr[0], pitch, vpitch, num_chroma_planes);
     }
     return 1;
 }
@@ -489,22 +505,39 @@ void create_parser(DecoderInfo& dec_info) {
 }
 
 void decode_frames(DecoderInfo& dec_info, const std::vector<std::vector<uint8_t>>& frames) {
-    for (int i=0; i<frames.size(); ++i) {
-        std::cout << "Parsing frame " << i << std::endl;
-        RocdecSourceDataPacket packet = {};
-        packet.payload_size = frames[i].size();
-        packet.payload = frames[i].data();
-        packet.flags = ROCDEC_PKT_ENDOFPICTURE;
-        CHECK(rocDecParseVideoData(dec_info.parser, &packet));
+    // gpu backend using VCN
+    if (dec_info.backend == DECODER_BACKEND_DEVICE) {
+        for (int i=0; i < frames.size(); ++i) {
+            std::cout << "Parsing frame " << i << std::endl;
+            RocdecSourceDataPacket packet = {};
+            packet.payload_size = frames[i].size();
+            packet.payload = frames[i].data();
+            packet.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end of frame since there is only one frame
+            CHECK(rocDecParseVideoData(dec_info.parser, &packet));
+        }
+    } else if (dec_info.backend == DECODER_BACKEND_HOST) {
+        for (int i=0; i < frames.size(); ++i) {
+            std::cout << "Decoding frame in host " << i << std::endl;
+            RocdecPicParamsHost pic_params = {};
+            pic_params.bitstream_data_len = frames[i].size();
+            pic_params.bitstream_data = frames[i].data();
+            pic_params.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end of frame since there is only one frame
+            CHECK(rocDecDecodeFrameHost(dec_info.decoder, &pic_params));
+        }    
     }
 }
 
 void destroy_decoder(DecoderInfo& dec_info) {
-    CHECK(rocDecDestroyDecoder(dec_info.decoder));
+    if (dec_info.backend == DECODER_BACKEND_DEVICE)
+        CHECK(rocDecDestroyDecoder(dec_info.decoder));
+    else if (dec_info.backend == DECODER_BACKEND_HOST) {
+        CHECK(rocDecDestroyDecoderHost(dec_info.decoder));
+    }
 }
 
 void destroy_parser(DecoderInfo& dec_info) {
-    CHECK(rocDecDestroyVideoParser(dec_info.parser));
+    if (dec_info.backend == DECODER_BACKEND_DEVICE)
+        CHECK(rocDecDestroyVideoParser(dec_info.parser));
 }
 
 void ShowHelpAndExit(const char *option = NULL) {
@@ -519,15 +552,20 @@ void ShowHelpAndExit(const char *option = NULL) {
     exit(0);
 }
 
-
-
+std::string getLastPart(const std::string& str, char delimiter) {
+    size_t pos = str.find_last_of(delimiter);
+    if (pos == std::string::npos) {
+        return str; // Delimiter not found, return the whole string
+    }
+    return str.substr(pos + 1);
+}
 
 int main(int argc, char** argv) {
 
     std::string input_file_path, output_file_path;
     int dump_output_frames = 0;
     int device_id = 0;
-    int backend = 0;
+    DecoderBackend backend = DECODER_BACKEND_DEVICE;
     int num_iterations = 1; 
     bool b_extract_sei_messages = false;
     bool b_flush_frames_during_reconfig = true;
@@ -554,6 +592,20 @@ int main(int argc, char** argv) {
             } else {
                 input_file_names.push_back(input_file_path);
             }
+        
+            // Sort entries based on the numerical part of their filenames
+            std::sort(input_file_names.begin(), input_file_names.end(), [](const std::string& a_name, const std::string& b_name) {
+                // remove file extension
+                size_t pos = a_name.find_last_of(".");
+                std::string a_raw = a_name.substr(0, pos); 
+                pos = b_name.find_last_of(".");
+                std::string b_raw = b_name.substr(0, pos);
+                //sort
+                std::string num_a = getLastPart(a_raw, '_');
+                std::string num_b = getLastPart(b_raw, '_');
+                return stoi(num_a) < stoi(num_b);
+            });
+
             std::cout << "Read " << input_file_names.size() << " frames from disk." << std::endl;
             continue;
         }
@@ -563,13 +615,14 @@ int main(int argc, char** argv) {
             }
             output_file_path = argv[i];
             dec_info.output_file_path = output_file_path;
+            dump_output_frames = true;
             continue;
         }
         if (!strcmp(argv[i], "-b")) {
             if (++i == argc) {
                 ShowHelpAndExit("-b");
             }
-            backend = atoi(argv[i]);
+            backend = static_cast<DecoderBackend>(atoi(argv[i]));
             continue;
         }
 
@@ -591,18 +644,19 @@ int main(int argc, char** argv) {
     }
 
     init();
-    if (!backend) {
+    if (backend = DECODER_BACKEND_DEVICE) {
         create_parser(dec_info);
         create_decoder(dec_info);
     } else {
-        create_host_decoder(dec_info);
+        create_decoder_host(dec_info);
     }
     dec_info.dump_decoded_frames = dump_output_frames;
     auto input_frames = read_frames(input_file_names);
     decode_frames(dec_info, input_frames);  // warmup
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i=0; i<num_iterations; i++)
+    for (int i=0; i<num_iterations; i++) {
         decode_frames(dec_info, input_frames);
+    }
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     std::cout << "Decoding time: " << elapsed << " microseconds" << std::endl;

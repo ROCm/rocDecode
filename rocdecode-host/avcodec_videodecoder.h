@@ -82,9 +82,9 @@ protected:
     
     /*! \brief callback function pointers for the parser
      */
-    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_;             /**< Called before decoding frames and/or whenever there is a fmt change */
-    PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_;      /**< Called whenever a picture is ready to be displayed (display order)  */
-    PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_;       /**< Called when all SEI messages are parsed for particular frame        */
+    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_ = nullptr;             /**< Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_ = nullptr;      /**< Called whenever a picture is ready to be displayed (display order)  */
+    PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_ = nullptr;       /**< Called when all SEI messages are parsed for particular frame        */
 
 private:
     void DecodeThread();

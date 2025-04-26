@@ -98,7 +98,8 @@ typedef struct _RocDecoderHostCreateInfo {
     void *user_data;                              /**< IN: User data for callbacks                                             */
     // callback functions to enable users to consume decoded data 
     PFNVIDSEQUENCECALLBACK pfn_sequence_callback; /**< IN: Called before decoding frames and/or whenever there is a fmt change */
-    PFNVIDDISPLAYHOSTCALLBACK pfn_display_picture;    /**< IN: Called whenever a picture is ready to be displayed (display order)  */
+    PFNVIDDISPLAYCALLBACK pfn_display_picture;    /**< IN: Called whenever a picture is ready to be displayed (display order)  */
+    PFNVIDSEIMSGCALLBACK pfn_get_sei_msg;         /**< IN: Called when all SEI messages are parsed for particular frame        */
     uint32_t reserved[4];                         /**< Reserved for future use - set to zero */
 } RocDecoderHostCreateInfo;
 

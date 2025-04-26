@@ -68,6 +68,7 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
 };
 #endif
 
+#if 0
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
  * 
@@ -90,7 +91,7 @@ static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AV
             return rocDecVideoSurfaceFormat_NV12;       // for sanity
     }
 }
-
+#endif
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
  * 
@@ -121,6 +122,12 @@ static inline rocDecVideoChromaFormat AVPixelFormat2rocDecVideoChromaFormat(AVPi
  */
 
 AvcodecVideoDecoder::AvcodecVideoDecoder(RocDecoderHostCreateInfo &decoder_create_info) : decoder_create_info_{decoder_create_info} {
+
+    b_multithreading_ = false; // todo:: remove
+    pfn_sequece_cb_ = decoder_create_info_.pfn_sequence_callback;
+    pfn_display_picture_cb_ = decoder_create_info_.pfn_display_picture;
+    pfn_get_sei_message_cb_ = decoder_create_info_.pfn_get_sei_msg;
+
     // start the avcodec decoding thread for multi-threading
     if (b_multithreading_) {
         ffmpeg_decoder_thread_ = new std::thread(&AvcodecVideoDecoder::DecodeThread, this);
@@ -350,7 +357,8 @@ rocDecStatus AvcodecVideoDecoder::NotifyNewSequence(AVFrame *p_frame) {
     video_format_.bitrate = 0;
     video_format_.display_aspect_ratio.x = p_frame->sample_aspect_ratio.num;
     video_format_.display_aspect_ratio.y = p_frame->sample_aspect_ratio.den;
-    if (pfn_sequece_cb_(decoder_create_info_.user_data, &video_format_) == 0) {
+    if (pfn_sequece_cb_ && decoder_create_info_.user_data && 
+        pfn_sequece_cb_(decoder_create_info_.user_data, &video_format_) == 0) {
         ERR("Sequence callback function failed.");
         return ROCDEC_RUNTIME_ERROR;
     } else {
