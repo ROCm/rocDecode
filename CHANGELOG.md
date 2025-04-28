@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 0.12.0 for ROCm 6.5
+## rocDecode 0.13.0 for ROCm 6.5
 
 ### Added
 
@@ -22,6 +22,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * Fixed a bug in picture files sample "videoDecodePicFiles" that can results in incorrect output frame count.
 * Fixed a decoded frame output issue in video size change cases.
+* Removed a couple of incorrect asserts.
 
 ### Removed
 
