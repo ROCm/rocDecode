@@ -257,7 +257,7 @@ class RocVideoDecoder {
          * 
          * @return uint32_t 
          */
-        uint32_t GetBitDepth() { assert(bitdepth_minus_8_); return (bitdepth_minus_8_ + 8); }
+        uint32_t GetBitDepth() { return (bitdepth_minus_8_ + 8); }
         uint32_t GetBytePerPixel() { assert(byte_per_pixel_); return byte_per_pixel_; }
         /**
          * @brief Functions to get the output surface attributes
