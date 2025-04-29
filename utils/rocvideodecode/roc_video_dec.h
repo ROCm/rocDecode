@@ -153,7 +153,7 @@ private:
     while (0)
 
 #define CHECK_ZERO(str, value)              \
-    if ( value == 0) {                      \
+    if (value == 0) {                      \
         ROCDEC_ERR(STR(str) + " is 0.");    \
     }
 
