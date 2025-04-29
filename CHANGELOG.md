@@ -22,7 +22,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * Fixed a bug in picture files sample "videoDecodePicFiles" that can results in incorrect output frame count.
 * Fixed a decoded frame output issue in video size change cases.
-* Removed a couple of incorrect asserts.
+* Removed incorrect asserts of bitdepth_minus_8 in GetBitDepth() and num_chroma_planes in GetNumChromaPlanes() API calls in RocVideoDecoder utility class.
 
 ### Removed
 
