@@ -614,7 +614,9 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         return 0;
     }
     if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
-        ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+         if (rocDecReconfigureDecoder(roc_decoder_, &reconfig_params) != ROCDEC_SUCCESS) {
+            return 0;
+         }
     }
 
     input_video_info_str_.str("");
@@ -860,7 +862,9 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
     if (!data || size == 0) {
         packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
     }
-    ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
+    if (rocDecParseVideoData(rocdec_parser_, &packet) != ROCDEC_SUCCESS) {
+        ROCDEC_ERR("Error occurred in rocDecParseVideoData().");
+    }
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
     }
