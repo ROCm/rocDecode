@@ -28,6 +28,10 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * GetStream() interface call from RocVideoDecoder utility class
 
+### Changed
+
+* Changed asserts in RocVideoDecoder utility class query API calls to error checks.
+
 ## rocDecode 0.10.0 for ROCm 6.4
 
 ### Added

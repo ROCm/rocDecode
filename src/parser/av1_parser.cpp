@@ -119,7 +119,10 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 obu_byte_offset_ += bytes_parsed;
                 if (obu_size_ > bytes_parsed) {
                     obu_size_ -= bytes_parsed;
-                    ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
+                    if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
+                        ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                        break;
+                    }
                 } else {
                     ERR("Frame OBU size error.");
                     return PARSER_OUT_OF_RANGE;
@@ -127,7 +130,9 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 break;
             }
             case kObuTileGroup: {
-                ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
+                if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
+                    ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                }
                 break;
             }
             default:
@@ -1230,7 +1235,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     return PARSER_OK;
 }
 
-void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
+ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     size_t offset = 0;  // current bit offset
     Av1FrameHeader *p_frame_header = &frame_header_;
     Av1TileGroupDataInfo *p_tile_group = &tile_group_data_;
@@ -1272,6 +1277,7 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         } else {
             uint32_t tile_size_bytes = p_frame_header->tile_info.tile_size_bytes_minus_1 + 1;
             uint32_t tile_size = ReadLeBytes(p_tg_buf, tile_size_bytes) + 1;
+            CHECK_ALLOWED_MAX("Tile size", tile_size, tg_size);
             p_tile_group->tile_data_info[tile_num].tile_size = tile_size;
             p_tile_group->tile_data_info[tile_num].tile_offset = p_tg_buf + tile_size_bytes - p_tile_group->buffer_ptr;
             tg_size -= tile_size + tile_size_bytes;
@@ -1290,6 +1296,7 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         }
         seen_frame_header_ = 0;
     }
+    return PARSER_OK;
 }
 
 void Av1VideoParser::ParseColorConfig(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header) {
