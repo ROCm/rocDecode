@@ -30,7 +30,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 ### Changed
 
-* Changed asserts in RocVideoDecoder utility class query API calls to error checks.
+* Changed asserts in query API calls in RocVideoDecoder utility class to error checks.
 
 ## rocDecode 0.10.0 for ROCm 6.4
 
