@@ -1257,7 +1257,7 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     uint32_t tg_size = size;
 
     if (p_frame_header->is_received == 0) {
-        ERR("No valid frame header received before frame header.");
+        ERR("No valid frame header received before tile group.");
         return PARSER_WRONG_STATE;
     }
 
