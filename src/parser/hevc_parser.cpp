@@ -188,8 +188,10 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left) * sar.numerator;
     int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top) * sar.denominator;
     int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
-    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
-    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    if (gcd) {
+        video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+        video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    }
 
     video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
     if (sps_data->vui_parameters_present_flag) {

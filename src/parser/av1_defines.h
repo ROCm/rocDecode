@@ -185,6 +185,7 @@ typedef struct {
 } Av1ColorConfig;
 
 typedef struct {
+    uint32_t is_received;
     uint32_t seq_profile;
     uint32_t still_picture;
     uint32_t reduced_still_picture_header;
@@ -403,6 +404,7 @@ typedef struct {
 } Av1FilmGrainParams;
 
 typedef struct {
+    uint32_t is_received;
     uint32_t show_existing_frame;
     uint32_t frame_to_show_map_idx;
     Av1TemporalPointInfo temporal_point_info;

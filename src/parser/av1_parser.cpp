@@ -232,8 +232,10 @@ ParserResult Av1VideoParser::NotifyNewSequence(Av1SequenceHeader *p_seq_header, 
     int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left);
     int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top);
     int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
-    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
-    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    if (gcd) {
+        video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+        video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    }
 
     video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
     video_format_params_.video_signal_description = {0};
@@ -898,6 +900,7 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
     if (p_seq_header->film_grain_params_present) {
         CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE * 2);
     }
+    p_seq_header->is_received = 1;
 }
 
 ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size, int *p_bytes_parsed) {
@@ -929,6 +932,12 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     uint32_t frame_id_len = 0;
     uint32_t all_frames = (1 << NUM_REF_FRAMES) - 1;
     int i;
+
+    p_frame_header->is_received = 0;
+    if (p_seq_header->is_received == 0) {
+        ERR("No valid sequence header received before frame header.");
+        return PARSER_WRONG_STATE;
+    }
 
     if (p_seq_header->frame_id_numbers_present_flag) {
         frame_id_len = p_seq_header->additional_frame_id_length_minus_1 + p_seq_header-> delta_frame_id_length_minus_2 + 3;
@@ -1232,6 +1241,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     FilmGrainParams(p_stream, offset, p_seq_header, p_frame_header);
 
     *p_bytes_parsed = (offset + 7) >> 3;
+    p_frame_header->is_received = 1;
     return PARSER_OK;
 }
 
@@ -1245,6 +1255,11 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     uint32_t tile_rows = p_frame_header->tile_info.tile_rows;
     uint8_t *p_tg_buf = p_stream;
     uint32_t tg_size = size;
+
+    if (p_frame_header->is_received == 0) {
+        ERR("No valid frame header received before frame header.");
+        return PARSER_WRONG_STATE;
+    }
 
     if (p_tile_group->tile_group_num == 0) {
         p_tile_group->buffer_ptr = p_stream;
@@ -1268,6 +1283,10 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     p_tg_buf += header_bytes;
     tg_size -= header_bytes;
     for (int tile_num = p_tile_group->tg_start; tile_num <= p_tile_group->tg_end; tile_num++) {
+        if (tile_cols == 0) {
+            ERR("Tile columns is 0.");
+            return PARSER_WRONG_STATE;
+        }
         p_tile_group->tile_data_info[tile_num].tile_row = tile_num / tile_cols;
         p_tile_group->tile_data_info[tile_num].tile_col = tile_num % tile_cols;
         int last_tile = (tile_num == p_tile_group->tg_end);
