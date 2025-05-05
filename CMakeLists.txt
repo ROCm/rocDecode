@@ -135,7 +135,7 @@ if(HIP_FOUND AND Libva_FOUND)
 
   # DRM
   find_path(AMDGPU_DRM_INCLUDE_DIRS libdrm/amdgpu.h
-    PATHS /opt/amdgpu/include
+    PATHS /opt/amdgpu/include /usr/include /usr/ /usr/local/include
     NO_DEFAULT_PATH
   )
   target_include_directories(${PROJECT_NAME} PRIVATE ${AMDGPU_DRM_INCLUDE_DIRS})
