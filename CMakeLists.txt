@@ -126,16 +126,20 @@ if(HIP_FOUND AND Libva_FOUND)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
   endif()
 
-  # DRM
-  find_path(${AMDGPU_DRM_INCLUDE_DIRS} libdrm/amdgpu.h PATHS /usr/include /usr/local/include)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${AMDGPU_DRM_INCLUDE_DIRS})
-
   # local include files
   include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
   # source files
   file(GLOB_RECURSE SOURCES "./src/*.cpp")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
+
+  # DRM
+  find_path(AMDGPU_DRM_INCLUDE_DIRS libdrm/amdgpu.h
+    PATHS /opt/amdgpu/include
+    NO_DEFAULT_PATH
+  )
+  target_include_directories(${PROJECT_NAME} PRIVATE ${AMDGPU_DRM_INCLUDE_DIRS})
+
   # --all-warnings/-Wall       -- Enable most warning messages
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
