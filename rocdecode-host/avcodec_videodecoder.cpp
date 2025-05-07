@@ -43,60 +43,11 @@ static inline AVCodecID RocDecVideoCodec2AVCodec(rocDecVideoCodec rocdec_codec) 
     }
 }
 
-#if 0
-static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format) {
-    float factor = 0.5;
-    switch (surface_format) {
-    case rocDecVideoSurfaceFormat_NV12:
-    case rocDecVideoSurfaceFormat_P016:
-        factor = 1.0;
-        break;
-    case rocDecVideoSurfaceFormat_YUV444:
-    case rocDecVideoSurfaceFormat_YUV444_16Bit:
-        factor = 1.0;
-        break;
-    case rocDecVideoSurfaceFormat_YUV420:
-    case rocDecVideoSurfaceFormat_YUV420_16Bit:
-        factor = 0.5;
-        break;
-    case rocDecVideoSurfaceFormat_YUV422:
-    case rocDecVideoSurfaceFormat_YUV422_16Bit:
-        factor = 0.5;
-        break;
-    }
-    return factor;
-};
-#endif
-
-#if 0
 /**
  * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
  * 
- * @param rocdec_codec 
- * @return AVCodecID 
- */
-static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AVPixelFormat av_pixel_format) {
-    switch (av_pixel_format) {
-        case AV_PIX_FMT_YUV420P : 
-        case AV_PIX_FMT_YUVJ420P : 
-            return rocDecVideoSurfaceFormat_YUV420;
-        case AV_PIX_FMT_YUV444P : 
-        case AV_PIX_FMT_YUVJ444P : 
-            return rocDecVideoSurfaceFormat_YUV444;
-        case AV_PIX_FMT_YUV420P10LE :
-        case AV_PIX_FMT_YUV420P12LE :
-            return rocDecVideoSurfaceFormat_YUV420_16Bit;
-        default :
-            std::cerr << "ERROR: " << av_get_pix_fmt_name(av_pixel_format) << " pixel_format is not supported!" << std::endl;          
-            return rocDecVideoSurfaceFormat_NV12;       // for sanity
-    }
-}
-#endif
-/**
- * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
- * 
- * @param rocdec_codec 
- * @return AVCodecID 
+ * @param AVPixelFormat 
+ * @return rocDecVideoChromaFormat 
  */
 static inline rocDecVideoChromaFormat AVPixelFormat2rocDecVideoChromaFormat(AVPixelFormat av_pixel_format) {
     switch (av_pixel_format) {
@@ -118,6 +69,55 @@ static inline rocDecVideoChromaFormat AVPixelFormat2rocDecVideoChromaFormat(AVPi
 }
 
 /**
+ * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
+ * 
+ * @param AVPixelFormat 
+ * @return AVCodecID 
+ */
+static inline int BitDepthFromPixelFormat(AVPixelFormat av_pixel_format) {
+    switch (av_pixel_format) {
+        case AV_PIX_FMT_YUV420P : 
+        case AV_PIX_FMT_YUVJ420P : 
+            return 8;
+        case AV_PIX_FMT_YUV420P10LE :
+        case AV_PIX_FMT_YUV420P12LE :
+            return 16;
+        case AV_PIX_FMT_YUV422P : 
+        case AV_PIX_FMT_YUVJ422P :
+        case AV_PIX_FMT_YUV444P : 
+        case AV_PIX_FMT_YUVJ444P : 
+            return 16;
+        default :
+            std::cerr << "ERROR: " << av_get_pix_fmt_name(av_pixel_format) << " pixel_format is not supported!" << std::endl;          
+            return AV_PIX_FMT_YUV420P;       // for sanity
+    }
+}
+
+/**
+ * @brief helper function for inferring AVCodecID from rocDecVideoSurfaceFormat
+ * 
+ * @param AVPixelFormat
+ * @return rocDecVideoSurfaceFormat
+ */
+static inline rocDecVideoSurfaceFormat AVPixelFormat2rocDecVideoSurfaceFormat(AVPixelFormat av_pixel_format) {
+    switch (av_pixel_format) {
+        case AV_PIX_FMT_YUV420P :
+        case AV_PIX_FMT_YUVJ420P :
+            return rocDecVideoSurfaceFormat_YUV420;
+        case AV_PIX_FMT_YUV444P :
+        case AV_PIX_FMT_YUVJ444P :
+            return rocDecVideoSurfaceFormat_YUV444;
+        case AV_PIX_FMT_YUV420P10LE :
+        case AV_PIX_FMT_YUV420P12LE :
+            return rocDecVideoSurfaceFormat_YUV420_16Bit;
+        default :
+            std::cerr << "ERROR: " << av_get_pix_fmt_name(av_pixel_format) << " pixel_format is not supported!" << std::endl;
+            return rocDecVideoSurfaceFormat_NV12;      // for sanity
+    }
+}
+
+
+/**
  * @brief Constructor
  */
 
@@ -135,7 +135,6 @@ AvcodecVideoDecoder::AvcodecVideoDecoder(RocDecoderHostCreateInfo &decoder_creat
             THROW("FFMpegVideoDecoder create thread failed");
         }
     }
-    // Initialize avcodec
 };
 
 AvcodecVideoDecoder::~AvcodecVideoDecoder() {
@@ -150,25 +149,29 @@ AvcodecVideoDecoder::~AvcodecVideoDecoder() {
         av_packet_free(&av_packets_.back());
         av_packets_.pop_back();
     }
-
+    // free decoder context
     if (dec_context_) {
         avcodec_free_context(&dec_context_);
         dec_context_ = nullptr;
     }
-
 }
 
+/**
+ * @brief InitializeDecoder()
+ * 
+ * @return rocDecStatus 
+ */
 rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
-    rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     if (!decoder_) decoder_ = avcodec_find_decoder(RocDecVideoCodec2AVCodec(decoder_create_info_.codec_type));
     if(!decoder_) {
-        THROW("rocDecode<FFMpeg>:: Codec not supported by FFMpeg ");
+        ERR("rocDecode<FFMpeg>:: Codec not supported by FFMpeg ");
         return ROCDEC_NOT_SUPPORTED;
     }
     if (!dec_context_) {
         dec_context_ = avcodec_alloc_context3(decoder_);        //alloc dec_context_
         if (!dec_context_) {
-            THROW("Could not allocate video codec context");
+            ERR("Could not allocate video codec context");
+            return ROCDEC_RUNTIME_ERROR;
         }
         // set codec to automatically determine how many threads suits best for the decoding job
         dec_context_->thread_count = decoder_create_info_.num_decode_threads;
@@ -182,7 +185,8 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
 
         // open the codec
         if (avcodec_open2(dec_context_, decoder_, NULL) < 0) {
-            THROW("Could not open codec");
+            ERR("Could not open codec");
+            return ROCDEC_RUNTIME_ERROR;
         }
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
@@ -217,16 +221,18 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
     disp_rect_.top = decoder_create_info_.display_rect.top;
     disp_rect_.right = decoder_create_info_.display_rect.right;
     disp_rect_.bottom = decoder_create_info_.display_rect.bottom;
-    return rocdec_status;
+    return ROCDEC_SUCCESS;
 }
 
 rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) {
+    decoded_pic_cnt_ = 0;
     AVPacket *av_pkt = av_packets_[av_pkt_cnt_];
     std::pair<uint8_t *, int> *packet_data = &av_packet_data_[av_pkt_cnt_];
     if (pPicParams->bitstream_data_len > packet_data->second) {
         void *new_pkt_data = av_realloc(av_pkt->data, (pPicParams->bitstream_data_len + MAX_AV_PACKET_DATA_SIZE));  // add more to avoid frequence reallocation
         if (!new_pkt_data) {
-            std::cerr << "ERROR: couldn't allocate packet data" << std::endl;
+            ERR("ERROR: couldn't allocate packet data");
+            return ROCDEC_OUTOF_MEMORY;
         }
         packet_data->first   = static_cast<uint8_t *>(new_pkt_data);
         packet_data->second  = (pPicParams->bitstream_data_len + MAX_AV_PACKET_DATA_SIZE);
@@ -235,12 +241,12 @@ rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) 
     memcpy(av_pkt->data, pPicParams->bitstream_data, pPicParams->bitstream_data_len);
     av_pkt->size = pPicParams->bitstream_data_len;
     av_pkt->flags = 0;
-    av_pkt->pts = last_packet_.pts;
+    av_pkt->pts = pPicParams->pts;
 
     if (!b_multithreading_) {
         DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
         NotifyPictureDisplay();
-        if (!pPicParams->bitstream_data_len && !end_of_stream_) {
+        if ((!pPicParams->bitstream_data_len || pPicParams->flags == ROCDEC_PKT_ENDOFPICTURE) && !end_of_stream_) {
             AVPacket pkt = {0};
             DecodeAvFrame(&pkt, dec_frames_[av_frame_cnt_]);
             NotifyPictureDisplay();
@@ -248,9 +254,13 @@ rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) 
     } else {
         //push packet into packet q for decoding
         PushPacket(av_pkt);
-        if (!pPicParams->bitstream_data_len && !end_of_stream_) {
+        if ((!pPicParams->bitstream_data_len || pPicParams->flags == ROCDEC_PKT_ENDOFPICTURE) && !end_of_stream_) {
             AVPacket pkt = {0};
             PushPacket(&pkt);
+        }
+        // display frames
+        if (!disp_frames_q_.empty()) {
+            NotifyPictureDisplay();
         }
     }
     av_pkt_cnt_ = (av_pkt_cnt_ + 1) % av_packets_.size();
@@ -266,8 +276,34 @@ rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) 
 }
 
 rocDecStatus AvcodecVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus *decode_status) {
+    if (p_disp_frame_ && p_disp_frame_->picture_index == pic_idx)
+        return ROCDEC_SUCCESS;
+    else
+        return ROCDEC_RUNTIME_ERROR;
+}
+
+rocDecStatus AvcodecVideoDecoder::GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params){
+    //std::lock_guard<std::mutex> lock(mtx_disp_frame_);
+    AVFrame *p_av_frame = nullptr;
+    if (p_disp_frame_ == nullptr) {
+        ERR("GetVideoFrame: No frame available to display");
+        return ROCDEC_RUNTIME_ERROR;
+    }
+    if (p_disp_frame_->picture_index != pic_idx) {
+        ERR("GetVideoFrame: pic_index is invalid" );
+        return ROCDEC_INVALID_PARAMETER;
+    }
+    p_av_frame = p_disp_frame_->av_frame_ptr;
+    frame_ptr[0] = p_av_frame->data[0];
+    frame_ptr[1] = p_av_frame->data[1];
+    frame_ptr[2] = p_av_frame->data[2];
+    line_size[0] = p_av_frame->linesize[0];
+    line_size[1] = p_av_frame->linesize[1];
+    line_size[2] = p_av_frame->linesize[2];
+
     return ROCDEC_SUCCESS;
 }
+
 
 rocDecStatus AvcodecVideoDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *preconfig_params) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
@@ -290,8 +326,6 @@ void AvcodecVideoDecoder::DecodeThread()
     do {
         pkt = PopPacket();
         DecodeAvFrame(pkt, dec_frames_[av_frame_cnt_]);
-        // display frames
-        NotifyPictureDisplay();
     } while (!end_of_stream_);
 }
 
@@ -300,18 +334,21 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     //send packet to av_codec
     status = avcodec_send_packet(dec_context_, av_pkt);
     if (status < 0) {
-        std::cout << "Error sending av packet for decoding: status: " << status << std::endl;
+        ERR("Error sending av packet for decoding: status: ");
+        //return status;
     }
     while (status >= 0) {
         status = avcodec_receive_frame(dec_context_, p_frame);
         if (status == AVERROR(EAGAIN) || status == AVERROR_EOF) {
+            if (status == AVERROR_EOF) std::cout << "got end of stream from avcodec_receive_frame" << std::endl;
             end_of_stream_ = (status == AVERROR_EOF);
             return 0;
         }
         else if (status < 0) {
-            std::cout << "Error during decoding" << std::endl;
+            ERR("Error during decoding");
             return 0;
         }
+        decoded_pic_cnt_++;
         // for the first frame, initialize OutputsurfaceInfo
         if (p_frame->width != coded_width_ || p_frame->height != coded_height_ || p_frame->format != av_sample_format) {
             coded_width_ = p_frame->width;
@@ -319,21 +356,14 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             av_sample_format = p_frame->format;
             NotifyNewSequence(p_frame);
         }
-
-        decoded_pic_cnt_++;
+        //std::cout << "Decoding frame: " << dec_context_->frame_number << std::endl;
+        // push frame into q
         DecFrameBufferFFMpeg dec_frame = { 0 };
         dec_frame.av_frame_ptr = p_frame;
         dec_frame.pts = p_frame->pts;
         dec_frame.picture_index = av_frame_cnt_;     //picture_index is not used here since it is handled within FFMpeg decoder
-        // if (!b_multithreading_) {
-        //     disp_frames_q_.push_back(dec_frame);
-        //     av_frame_q_.push(p_frame);
-        // }
-        // else {
-        //     PushFrame(p_frame);  // add frame to the frame_q
-        //     PushDispFrame(dec_frame)
-        // }
-        PushDisplayFrame(&dec_frame);
+        PushDisplayFrame(dec_frame);
+
         av_frame_cnt_ = (av_frame_cnt_ + 1) % dec_frames_.size();
         p_frame = dec_frames_[av_frame_cnt_]; //advance for next frame decode
     }
@@ -343,22 +373,24 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
 rocDecStatus AvcodecVideoDecoder::NotifyNewSequence(AVFrame *p_frame) {
     if (!p_frame)
         return ROCDEC_INVALID_PARAMETER;
-    video_format_.codec = decoder_create_info_.codec_type;
-    video_format_.frame_rate.numerator = dec_context_->framerate.num;
-    video_format_.frame_rate.denominator = dec_context_->framerate.den;
-    video_format_.bit_depth_luma_minus8 = dec_context_->bits_per_coded_sample - 8;
-    video_format_.bit_depth_chroma_minus8 = dec_context_->bits_per_coded_sample - 8;
-    video_format_.progressive_sequence = !p_frame->interlaced_frame;
-    video_format_.min_num_decode_surfaces = dec_context_->delay + dec_context_->max_b_frames;
-    video_format_.coded_width = p_frame->linesize[0];
-    video_format_.coded_height = p_frame->height;
-    video_format_.chroma_format = AVPixelFormat2rocDecVideoChromaFormat(dec_context_->pix_fmt);
-    video_format_.display_area = { 0, 0, p_frame->width, p_frame->height };
-    video_format_.bitrate = 0;
-    video_format_.display_aspect_ratio.x = p_frame->sample_aspect_ratio.num;
-    video_format_.display_aspect_ratio.y = p_frame->sample_aspect_ratio.den;
+    video_format_host_.video_surface_format = AVPixelFormat2rocDecVideoSurfaceFormat((AVPixelFormat)p_frame->format);
+    RocdecVideoFormat *p_video_format = &video_format_host_.video_format;
+    p_video_format->codec = decoder_create_info_.codec_type;
+    p_video_format->frame_rate.numerator = dec_context_->framerate.num;
+    p_video_format->frame_rate.denominator = dec_context_->framerate.den;
+    p_video_format->bit_depth_luma_minus8 = BitDepthFromPixelFormat(dec_context_->pix_fmt) - 8;
+    p_video_format->bit_depth_chroma_minus8 = p_video_format->bit_depth_luma_minus8;
+    p_video_format->progressive_sequence = !p_frame->interlaced_frame;
+    p_video_format->min_num_decode_surfaces = dec_context_->delay + dec_context_->max_b_frames;
+    p_video_format->coded_width = p_frame->linesize[0];
+    p_video_format->coded_height = p_frame->height;
+    p_video_format->chroma_format = AVPixelFormat2rocDecVideoChromaFormat(dec_context_->pix_fmt);
+    p_video_format->display_area = { 0, 0, p_frame->width, p_frame->height };
+    p_video_format->bitrate = 0;
+    p_video_format->display_aspect_ratio.x = p_frame->sample_aspect_ratio.num;
+    p_video_format->display_aspect_ratio.y = p_frame->sample_aspect_ratio.den;
     if (pfn_sequece_cb_ && decoder_create_info_.user_data && 
-        pfn_sequece_cb_(decoder_create_info_.user_data, &video_format_) == 0) {
+        pfn_sequece_cb_(decoder_create_info_.user_data, &video_format_host_) == 0) {
         ERR("Sequence callback function failed.");
         return ROCDEC_RUNTIME_ERROR;
     } else {
@@ -367,7 +399,7 @@ rocDecStatus AvcodecVideoDecoder::NotifyNewSequence(AVFrame *p_frame) {
 }
 
 rocDecStatus AvcodecVideoDecoder::SendSeiMsgPayload(AVFrame *p_frame) {
-#if 0    
+#if 0 //todo
     sei_message_info_params_.sei_message_count = sei_message_count_;
     sei_message_info_params_.sei_message = sei_message_list_.data();
     sei_message_info_params_.sei_data = (void*)sei_payload_buf_;
@@ -382,11 +414,13 @@ rocDecStatus AvcodecVideoDecoder::SendSeiMsgPayload(AVFrame *p_frame) {
 rocDecStatus AvcodecVideoDecoder::NotifyPictureDisplay() {
     int num_frames_to_display = decoded_pic_cnt_;
     while (num_frames_to_display) {
-        auto p_disp_frame = PopDisplayFrame();
-        RocdecParserDispInfo dispInfo = {0}; // dispinfo is not used in ffmpeg decoder, so setting it to zero
-        dispInfo.picture_index = p_disp_frame->picture_index;
-        if (pfn_display_picture_cb_ && decoder_create_info_.user_data) {
-            pfn_display_picture_cb_(decoder_create_info_.user_data, &dispInfo);
+        p_disp_frame_ = GetDisplayFrame();
+        if (p_disp_frame_) {
+            RocdecParserDispInfo dispInfo = {0}; // dispinfo is not used in ffmpeg decoder, so setting it to zero
+            dispInfo.picture_index = p_disp_frame_->picture_index;
+            if (pfn_display_picture_cb_ && decoder_create_info_.user_data) {
+                pfn_display_picture_cb_(decoder_create_info_.user_data, &dispInfo);
+            }
         }
         num_frames_to_display--;
     };

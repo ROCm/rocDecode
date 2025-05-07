@@ -549,7 +549,7 @@ int FFMpegVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
     }
     void* src_ptr[3] = {0};
     int32_t src_pitch[3] = {0};
-    src_ptr[0] = p_av_frame->data[0];    
+    src_ptr[0] = p_av_frame->data[0];
     src_ptr[1] = p_av_frame->data[1];
     src_ptr[2] = p_av_frame->data[2];
     src_pitch[0] = p_av_frame->linesize[0];

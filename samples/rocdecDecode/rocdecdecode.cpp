@@ -1,3 +1,25 @@
+/*
+Copyright (c) 2023 - 2025 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <chrono>
 #include <iostream>
 #include <fstream>
@@ -9,12 +31,7 @@
 #include <rocdecode/rocdecode_host.h>
 
 namespace fs = std::filesystem;
-struct Rect {
-    int left;
-    int top;
-    int right;
-    int bottom;
-};
+
 
 static inline int align(int value, int alignment) {
     return (value + alignment - 1) & ~(alignment - 1);
@@ -30,6 +47,13 @@ __attribute__((visibility("hidden"))) inline const char* error_string(rocDecStat
     return rocDecGetErrorName(status);
 }
 
+struct Rect {
+    int left;
+    int top;
+    int right;
+    int bottom;
+};
+
 template <typename Status, typename... Args>
 __attribute__((visibility("hidden"))) inline void report_error(
     Status status, const char* function_name, const char* file_name, int line, Args&&... args)
@@ -41,7 +65,7 @@ __attribute__((visibility("hidden"))) inline void report_error(
     std::abort();
 }
 
-//hardcoding for testing
+//hardcoding for this sample
 #define MAX_WIDTH 2912
 #define MAX_HEIGHT 1888
 
@@ -100,7 +124,7 @@ static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, ui
     return;
 }
 
-inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
+static inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     float factor = 0.5;
     switch (surface_format) {
     case rocDecVideoSurfaceFormat_NV12:
@@ -119,6 +143,26 @@ inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
 
     return factor;
 };
+
+static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format) {
+    float factor = 0.5;
+    switch (surface_format) {
+    case rocDecVideoSurfaceFormat_NV12:
+    case rocDecVideoSurfaceFormat_P016:
+    case rocDecVideoSurfaceFormat_YUV444:
+    case rocDecVideoSurfaceFormat_YUV444_16Bit:
+        factor = 1.0;
+        break;
+    case rocDecVideoSurfaceFormat_YUV420:
+    case rocDecVideoSurfaceFormat_YUV420_16Bit:
+    case rocDecVideoSurfaceFormat_YUV422:
+    case rocDecVideoSurfaceFormat_YUV422_16Bit:
+        factor = 0.5;
+        break;
+    }
+    return factor;
+};
+
 
 // only 2 types of memory mode is supported in this sample for simplicity.
 typedef enum OutputSurfaceMemoryType_enum {
@@ -144,6 +188,10 @@ typedef enum DecoderBackend_enum {
         }                                                                                \
     } while (false)
 
+/**
+ * @brief Struct containing all the information for decoding and displaying output
+ * 
+ */
 struct DecoderInfo {
     int dec_device_id;
     DecoderBackend backend;                //0: device, 1: host
@@ -167,6 +215,15 @@ struct DecoderInfo {
                     is_decoder_reconfigured{false}, fp_out{nullptr} {}
 };
 
+/**
+ * @brief Funtion to save internal frame buffer to file for device buffer
+ * 
+ * @param p_dec_info 
+ * @param surf_mem 
+ * @param pitch 
+ * @param vpitch 
+ * @param num_chroma_planes 
+ */
 void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch, uint32_t vpitch, uint32_t num_chroma_planes) {
 
     uint8_t *hst_ptr = nullptr;
@@ -244,6 +301,13 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch
     }
 }
 
+/**
+ * @brief Funtion to save internal frame buffer to file for host buffer
+ * 
+ * @param p_dec_info 
+ * @param frame_mem 
+ * @param pitch 
+ */
 void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_t *pitch) {
 
     if (p_dec_info->is_decoder_reconfigured) {
@@ -265,7 +329,7 @@ void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_
             return;
         }
         int img_width = p_dec_info->disp_rect.right - p_dec_info->disp_rect.left;
-        int img_height = p_dec_info->disp_rect.top - p_dec_info->disp_rect.bottom;
+        int img_height = p_dec_info->disp_rect.bottom - p_dec_info->disp_rect.top;
         int output_stride =  pitch[0];
 
         uint32_t width = img_width * p_dec_info->bytes_per_pixel;
@@ -277,14 +341,15 @@ void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_
             // dump chroma
             uint8_t *p_src_ptr_uv = static_cast<uint8_t *>(frame_mem[1]) + ((p_dec_info->disp_rect.top >> 1) * pitch[1] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel);
             uint32_t chroma_height = static_cast<int>(GetChromaHeightFactor(p_dec_info->surf_format) * img_height);
+            uint32_t chroma_width = static_cast<int>(GetChromaWidthFactor(p_dec_info->surf_format) * img_width);
             for (int i = 0; i < chroma_height; i++) {
-                fwrite(p_src_ptr_uv, 1, (img_width>>1), p_dec_info->fp_out);
+                fwrite(p_src_ptr_uv, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
                 p_src_ptr_uv += pitch[1];
             }
             if (frame_mem[2] != nullptr) {
                 uint8_t *p_src_ptr_v = static_cast<uint8_t *>(frame_mem[2]) + p_dec_info->disp_rect.top * pitch[2] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel;
                 for (int i = 0; i < chroma_height; i++) {
-                    fwrite(p_src_ptr_v, 1, (img_width>>1), p_dec_info->fp_out);
+                    fwrite(p_src_ptr_v, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
                     p_src_ptr_v += pitch[2];
                 }
             }
@@ -313,7 +378,6 @@ std::vector<std::vector<uint8_t>> read_frames(std::vector<std::string>& names) {
             std::cerr << "Error reading " << name << "." << std::endl;
             std::abort();
         }
-
         // Close the file
         inputFile.close();
         frames.push_back(std::move(frame));
@@ -345,9 +409,10 @@ void create_decoder(DecoderInfo& dec_info) {
     CHECK(rocDecCreateDecoder(&dec_info.decoder, &create_info));
 }
 
-int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormat* format) {
+int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormatHost* format_host) {
     // std::cout << "handle_video_sequence is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
+    RocdecVideoFormat *format = &format_host->video_format;
     RocdecReconfigureDecoderInfo reconfig_params = {};
     reconfig_params.width = format->coded_width;
     reconfig_params.height = format->coded_height;
@@ -358,23 +423,33 @@ int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormat* for
     reconfig_params.display_rect.right = static_cast<short>(format->coded_width);
     reconfig_params.display_rect.top = 0;
     reconfig_params.display_rect.bottom = static_cast<short>(format->coded_height);
+    p_dec_info->surf_format = format_host->video_surface_format;
     p_dec_info->disp_rect.top = format->display_area.top;
     p_dec_info->disp_rect.bottom = format->display_area.bottom;
     p_dec_info->disp_rect.left = format->display_area.left;
     p_dec_info->disp_rect.right = format->display_area.right;
     CHECK(rocDecReconfigureDecoderHost(p_dec_info->decoder, &reconfig_params));
     p_dec_info->is_decoder_reconfigured = true;
-    rocDecVideoChromaFormat video_chroma_format = format->chroma_format;
     int bitdepth_minus_8 = format->bit_depth_luma_minus8;
-    if (video_chroma_format == rocDecVideoChromaFormat_420 || rocDecVideoChromaFormat_Monochrome)
-        p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_P016 : rocDecVideoSurfaceFormat_NV12;
-    else if (video_chroma_format == rocDecVideoChromaFormat_444)
-        p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
-    else if (video_chroma_format == rocDecVideoChromaFormat_422)
-        p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
     p_dec_info->coded_width = format->coded_width;
     p_dec_info->coded_height = format->coded_height;
     p_dec_info->bytes_per_pixel = bitdepth_minus_8 > 0 ? 2 : 1;
+    std::ostringstream input_video_info_str;
+    input_video_info_str.str("");
+    input_video_info_str.clear();
+    input_video_info_str << "Input Video Information" << std::endl
+        << "\tCodec        : " << format->codec << std::endl;
+        if (format->frame_rate.numerator && format->frame_rate.denominator) {
+            input_video_info_str << "\tFrame rate   : " << format->frame_rate.numerator << "/" << format->frame_rate.denominator << " = " << 1.0 * format->frame_rate.numerator / format->frame_rate.denominator << " fps" << std::endl;
+        }
+    input_video_info_str << "\tSequence     : " << (format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
+        << "\tCoded size   : [" << format->coded_width << ", " << format->coded_height << "]" << std::endl
+        << "\tDisplay area : [" << format->display_area.left << ", " << format->display_area.top << ", "
+            << format->display_area.right << ", " << format->display_area.bottom << "]" << std::endl
+        << "\tBit depth    : " << format->bit_depth_luma_minus8 + 8
+    ;
+    input_video_info_str << std::endl;
+    std::cout << input_video_info_str.str();
 
     return 1;
 }
@@ -453,6 +528,22 @@ int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) 
     p_dec_info->coded_width = format->coded_width;
     p_dec_info->coded_height = format->coded_height;
     p_dec_info->bytes_per_pixel = bitdepth_minus_8 > 0 ? 2 : 1;
+    std::ostringstream input_video_info_str;
+    input_video_info_str.str("");
+    input_video_info_str.clear();
+    input_video_info_str << "Input Video Information" << std::endl
+        << "\tCodec        : " << format->codec << std::endl;
+        if (format->frame_rate.numerator && format->frame_rate.denominator) {
+            input_video_info_str << "\tFrame rate   : " << format->frame_rate.numerator << "/" << format->frame_rate.denominator << " = " << 1.0 * format->frame_rate.numerator / format->frame_rate.denominator << " fps" << std::endl;
+        }
+    input_video_info_str << "\tSequence     : " << (format->progressive_sequence ? "Progressive" : "Interlaced") << std::endl
+        << "\tCoded size   : [" << format->coded_width << ", " << format->coded_height << "]" << std::endl
+        << "\tDisplay area : [" << format->display_area.left << ", " << format->display_area.top << ", "
+            << format->display_area.right << ", " << format->display_area.bottom << "]" << std::endl
+        << "\tBit depth    : " << format->bit_depth_luma_minus8 + 8
+    ;
+    input_video_info_str << std::endl;
+    std::cout << input_video_info_str.str();
     return 1;
 }
 
@@ -508,22 +599,24 @@ void decode_frames(DecoderInfo& dec_info, const std::vector<std::vector<uint8_t>
     // gpu backend using VCN
     if (dec_info.backend == DECODER_BACKEND_DEVICE) {
         for (int i=0; i < frames.size(); ++i) {
-            std::cout << "Parsing frame " << i << std::endl;
             RocdecSourceDataPacket packet = {};
             packet.payload_size = frames[i].size();
             packet.payload = frames[i].data();
-            packet.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end of frame since there is only one frame
+            if (i == (frames.size() - 1)) {
+                packet.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end_of_picture flag for last frame
+            }
             CHECK(rocDecParseVideoData(dec_info.parser, &packet));
         }
     } else if (dec_info.backend == DECODER_BACKEND_HOST) {
         for (int i=0; i < frames.size(); ++i) {
-            std::cout << "Decoding frame in host " << i << std::endl;
             RocdecPicParamsHost pic_params = {};
             pic_params.bitstream_data_len = frames[i].size();
             pic_params.bitstream_data = frames[i].data();
-            pic_params.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end of frame since there is only one frame
+            if (i == (frames.size() - 1)) {
+                pic_params.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end_of_picture flag for last frame
+            }
             CHECK(rocDecDecodeFrameHost(dec_info.decoder, &pic_params));
-        }    
+        }   
     }
 }
 
@@ -644,7 +737,7 @@ int main(int argc, char** argv) {
     }
 
     init();
-    if (backend = DECODER_BACKEND_DEVICE) {
+    if (backend == DECODER_BACKEND_DEVICE) {
         create_parser(dec_info);
         create_decoder(dec_info);
     } else {

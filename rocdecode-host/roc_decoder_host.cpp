@@ -73,11 +73,13 @@ rocDecStatus RocDecoderHost::ReconfigureDecoder(RocdecReconfigureDecoderInfo *re
 }
 
 rocDecStatus RocDecoderHost::GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params) {
-    if (vid_postproc_params == nullptr) {
+    if (vid_postproc_params == nullptr || frame_ptr == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    //todo
-    rocDecStatus rocdec_status = ROCDEC_NOT_IMPLEMENTED;
-
+    rocDecStatus rocdec_status = avcodec_video_decoder_.GetVideoFrame(pic_idx, frame_ptr, line_size, vid_postproc_params);
+    if (rocdec_status != ROCDEC_SUCCESS) {
+        ERR("GetVideoFrame failed.");
+        return rocdec_status;
+    }
     return rocdec_status;
 }

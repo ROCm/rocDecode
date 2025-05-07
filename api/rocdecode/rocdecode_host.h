@@ -45,6 +45,19 @@ THE SOFTWARE.
 extern "C" {
 #endif // __cplusplus
 
+/****************************************************************/
+//! \ingroup group_rocdec_struct
+//! \struct RocdecVideoFormat
+//! Video format including raw sequence header information
+//! Used in rocDecCreateVideoParser API
+/****************************************************************/
+typedef struct {
+    RocdecVideoFormat video_format; /**< OUT: RocdecVideoFormat structure */
+    rocDecVideoSurfaceFormat video_surface_format;  /**< OUT: output surface format */
+    uint32_t reserved[16];      // reserved for future
+} RocdecVideoFormatHost;
+
+typedef int(ROCDECAPI *PFNVIDSEQUENCECHOSTALLBACK)(void *, RocdecVideoFormatHost *);
 typedef int(ROCDECAPI *PFNVIDDISPLAYHOSTCALLBACK)(void *, void *);
 
 /******************************************************************************************/
@@ -97,7 +110,7 @@ typedef struct _RocDecoderHostCreateInfo {
                                     if a null rectangle is specified, {0,0,target_width,target_height} will be used*/
     void *user_data;                              /**< IN: User data for callbacks                                             */
     // callback functions to enable users to consume decoded data 
-    PFNVIDSEQUENCECALLBACK pfn_sequence_callback; /**< IN: Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDSEQUENCECHOSTALLBACK pfn_sequence_callback; /**< IN: Called before decoding frames and/or whenever there is a fmt change */
     PFNVIDDISPLAYCALLBACK pfn_display_picture;    /**< IN: Called whenever a picture is ready to be displayed (display order)  */
     PFNVIDSEIMSGCALLBACK pfn_get_sei_msg;         /**< IN: Called when all SEI messages are parsed for particular frame        */
     uint32_t reserved[4];                         /**< Reserved for future use - set to zero */

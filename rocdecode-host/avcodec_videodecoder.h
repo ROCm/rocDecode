@@ -75,14 +75,15 @@ public:
     rocDecStatus SubmitDecode(RocdecPicParamsHost *pPicParams);
     rocDecStatus GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode_status);
     rocDecStatus ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconfig_params);
+    rocDecStatus GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params);
 
 protected:
     RocDecoderHostCreateInfo decoder_create_info_;
-    RocdecVideoFormat video_format_;
+    RocdecVideoFormatHost video_format_host_;
     
     /*! \brief callback function pointers for the parser
      */
-    PFNVIDSEQUENCECALLBACK pfn_sequece_cb_ = nullptr;             /**< Called before decoding frames and/or whenever there is a fmt change */
+    PFNVIDSEQUENCECHOSTALLBACK pfn_sequece_cb_ = nullptr;             /**< Called before decoding frames and/or whenever there is a fmt change */
     PFNVIDDISPLAYCALLBACK pfn_display_picture_cb_ = nullptr;      /**< Called whenever a picture is ready to be displayed (display order)  */
     PFNVIDSEIMSGCALLBACK pfn_get_sei_message_cb_ = nullptr;       /**< Called when all SEI messages are parsed for particular frame        */
 
@@ -112,35 +113,17 @@ private:
         return pkt;
     }
 
-    void PushFrame(AVFrame *av_frame) {
-        {
-            std::lock_guard<std::mutex> lock(mtx_frame_q_);
-            av_frame_q_.push(av_frame);
-        }
-        cv_frame_.notify_one();
-    };
-
-    AVFrame *PopFrame() {
-        std::unique_lock<std::mutex> lock(mtx_frame_q_);
-        cv_frame_.wait(lock, [&] { return !av_frame_q_.empty() || end_of_stream_; });
-        if (end_of_stream_ && av_frame_q_.empty())
-            return nullptr;
-        AVFrame *p_frame = av_frame_q_.front();
-        av_frame_q_.pop();
-        return p_frame;
-    }
-
-    DecFrameBufferFFMpeg *PopDisplayFrame() {
+    DecFrameBufferFFMpeg *GetDisplayFrame() {
         std::unique_lock<std::mutex> lock(mtx_frame_q_);
         cv_frame_.wait(lock, [&] { return !disp_frames_q_.empty() || end_of_stream_; });
         if (end_of_stream_ && disp_frames_q_.empty())
             return nullptr;
-        DecFrameBufferFFMpeg *p_frame = disp_frames_q_.front();
+        DecFrameBufferFFMpeg *p_disp_frame = &disp_frames_q_.front();
         disp_frames_q_.pop();
-        return p_frame;
+        return p_disp_frame;
     }
 
-    void PushDisplayFrame(DecFrameBufferFFMpeg *frame) {
+    void PushDisplayFrame(DecFrameBufferFFMpeg& frame) {
         {
             std::lock_guard<std::mutex> lock(mtx_frame_q_);
             disp_frames_q_.push(frame);
@@ -161,13 +144,13 @@ private:
     RocdecSourceDataPacket last_packet_;
     std::thread *ffmpeg_decoder_thread_ = nullptr;
     std::queue<AVPacket *> av_packet_q_;        // queue for compressed packets
-    std::queue<AVFrame *> av_frame_q_;
-    std::queue<DecFrameBufferFFMpeg *> disp_frames_q_;      // vector of decoded frames
+    std::queue<DecFrameBufferFFMpeg> disp_frames_q_;      // vector of decoded frames
     std::vector<AVFrame *> dec_frames_;      // vector of AVFrame * for decoded frames
     std::vector<AVPacket *> av_packets_;    // store of AVPackets for decoding
     std::vector<std::pair<uint8_t *, int>> av_packet_data_;
-    std::mutex mtx_pkt_q_, mtx_frame_q_;               //for command and status
-    std::condition_variable cv_pkt_, cv_frame_;     //for command and status
+    std::mutex mtx_pkt_q_, mtx_frame_q_;               //for packet and frames
+    std::condition_variable cv_pkt_, cv_frame_;
+    DecFrameBufferFFMpeg *p_disp_frame_ = nullptr;      // frame to display
     std::atomic<bool> end_of_stream_ = false;
     // Variables for FFMpeg decoding
     AVCodecContext * dec_context_ = nullptr;
