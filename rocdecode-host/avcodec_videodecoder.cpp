@@ -226,6 +226,11 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
 
 rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) {
     decoded_pic_cnt_ = 0;
+    if (end_of_stream_) {
+        avcodec_flush_buffers(dec_context_);
+        av_pkt_cnt_ = 0;
+        end_of_stream_ = false;
+    }
     AVPacket *av_pkt = av_packets_[av_pkt_cnt_];
     std::pair<uint8_t *, int> *packet_data = &av_packet_data_[av_pkt_cnt_];
     if (pPicParams->bitstream_data_len > packet_data->second) {
@@ -244,6 +249,7 @@ rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) 
     av_pkt->pts = pPicParams->pts;
 
     if (!b_multithreading_) {
+        // flush and reconfigure the decoder when we reached eos
         DecodeAvFrame(av_pkt, dec_frames_[av_frame_cnt_]);
         NotifyPictureDisplay();
         if ((!pPicParams->bitstream_data_len || pPicParams->flags == ROCDEC_PKT_ENDOFPICTURE) && !end_of_stream_) {
@@ -335,12 +341,12 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     status = avcodec_send_packet(dec_context_, av_pkt);
     if (status < 0) {
         ERR("Error sending av packet for decoding: status: ");
-        //return status;
+        return status;
     }
     while (status >= 0) {
         status = avcodec_receive_frame(dec_context_, p_frame);
         if (status == AVERROR(EAGAIN) || status == AVERROR_EOF) {
-            if (status == AVERROR_EOF) std::cout << "got end of stream from avcodec_receive_frame" << std::endl;
+            //if (status == AVERROR_EOF) std::cout << "got end of stream from avcodec_receive_frame" << std::endl;
             end_of_stream_ = (status == AVERROR_EOF);
             return 0;
         }
