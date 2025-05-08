@@ -40,12 +40,13 @@ else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
 # Set AMD Clang as default compiler
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_EXTENSIONS ON)
 if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 project(rocdecode-test)
 
@@ -228,4 +229,16 @@ add_test(
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecoderaw"
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-VP9.ivf
+)
+
+# 13 - rocDecodeNegativeApiTests
+add_test(
+  NAME
+  rocDecode_Negative_API_Tests
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/test/rocDecodeNegativeApiTests"
+                              "${CMAKE_CURRENT_BINARY_DIR}/rocdecodenegativetest"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "rocdecodenegativetest"
 )

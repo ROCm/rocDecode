@@ -2,14 +2,15 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 0.12.0 for ROCm 6.5
+## rocDecode 0.13.0 for ROCm 6.5
 
 ### Added
 
 * VP9 IVF container file parsing support in bitstream reader.
 * CTest for VP9 decode on bitstream reader.
-* HEVC stream syntax error handling.
+* HEVC/AVC stream syntax error handling.
 * HEVC stream bit depth change handling and DPB buffer size change handling through decoder reconfiguration.
+* AVC stream DPB buffer size change handling through decoder reconfiguration.
 * rocDecode now uses the Cmake CMAKE_PREFIX_PATH directive.
 
 ### Optimized
@@ -20,10 +21,16 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 ### Resolved issues
 
 * Fixed a bug in picture files sample "videoDecodePicFiles" that can results in incorrect output frame count.
+* Fixed a decoded frame output issue in video size change cases.
+* Removed incorrect asserts of bitdepth_minus_8 in GetBitDepth() and num_chroma_planes in GetNumChromaPlanes() API calls in RocVideoDecoder utility class.
 
 ### Removed
 
 * GetStream() interface call from RocVideoDecoder utility class
+
+### Changed
+
+* Changed asserts in query API calls in RocVideoDecoder utility class to error reports, to avoid hard stop during query in case error occurs and to let the caller decide actions.
 
 ## rocDecode 0.10.0 for ROCm 6.4
 

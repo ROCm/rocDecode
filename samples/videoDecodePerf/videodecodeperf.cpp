@@ -79,7 +79,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-t Number of threads (>= 1) - optional; default: 1" << std::endl
     << "-d Device ID (>= 0) - optional; default: 0" << std::endl
     << "-z Force zero latency (decoded frames will be flushed out for display immediately) - optional" << std::endl
-    << "-disp_delay -specify the number of frames to be delayed for display; optional" << std::endl
+    << "-disp_delay -specify the number of frames to be delayed for display; optional; default: 1" << std::endl
     << "-m Memory type (integer values between 0 to 3: specifies where to store the decoded output:" << std::endl
     << "                                               0 = decoded output will be in internal interopped memory," << std::endl
     << "                                               1 = decoded output will be copied to a separate device memory," << std::endl
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     OutputSurfaceMemoryType mem_type = OUT_SURFACE_MEM_NOT_MAPPED;        // set to decode only for performance
     bool b_force_zero_latency = false;
     uint32_t max_num_frames = 0;  // max number of frames to be decoded. default value is 0, meaning decode the entire stream
-    int disp_delay = 0;
+    int disp_delay = 1;
 
     // Parse command-line arguments
     if(argc <= 1) {

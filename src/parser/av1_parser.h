@@ -226,9 +226,9 @@ protected:
     /*! \brief Function to parse a tile group OBU
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
-     * \return None
+     * \return <tt>ParserResult</tt>
      */
-    void ParseTileGroupObu(uint8_t *p_stream, size_t size);
+    ParserResult ParseTileGroupObu(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse color config in sequence header
      * \param [in] p_stream Pointer to the bit stream

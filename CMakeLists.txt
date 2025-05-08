@@ -31,15 +31,16 @@ else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
 # Set AMD Clang as default compiler
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_EXTENSIONS ON)
 if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 # rocDecode Version
-set(VERSION "0.12.0")
+set(VERSION "0.13.0")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
@@ -132,7 +133,15 @@ if(HIP_FOUND AND Libva_FOUND)
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -Wall")
+  # DRM
+  find_path(AMDGPU_DRM_INCLUDE_DIRS libdrm/amdgpu.h
+    PATHS /opt/amdgpu/include /usr/include /usr/ /usr/local/include
+    NO_DEFAULT_PATH
+  )
+  target_include_directories(${PROJECT_NAME} PRIVATE ${AMDGPU_DRM_INCLUDE_DIRS})
+
+  # --all-warnings/-Wall       -- Enable most warning messages
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -193,6 +202,7 @@ if(HIP_FOUND AND Libva_FOUND)
   # install test cmake
   install(FILES test/CMakeLists.txt DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
   install(DIRECTORY test/testScripts DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
+  install(FILES test/rocDecodeNegativeApiTests/CMakeLists.txt test/rocDecodeNegativeApiTests/README.md test/rocDecodeNegativeApiTests/rocdecode_api_negative_tests.cpp test/rocDecodeNegativeApiTests/rocdecode_api_negative_tests.h test/rocDecodeNegativeApiTests/rocdecodenegativetest.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test/rocDecodeNegativeApiTests COMPONENT dev)
 
   message("-- ${White}AMD ROCm rocDecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocDecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")

@@ -39,7 +39,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
 
-project(videodecoderaw)
+project(rocdecodenegativetest)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
@@ -62,19 +62,21 @@ else()
 endif()
 
 find_package(HIP QUIET)
-find_package(ROCDECODE QUIET)
+find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 
-if(HIP_FOUND AND ROCDECODE_FOUND AND rocprofiler-register_FOUND)
+if(HIP_FOUND AND rocdecode_FOUND AND rocprofiler-register_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # rocDecode and utils
-    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${rocdecode_LIBRARY})
     # rocprofiler-register
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
     # sample app exe
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecoderaw.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecodenegativetest.cpp rocdecode_api_negative_tests.cpp)
+    # --all-warnings/-Wall Enable most warning messages
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
     add_executable(${PROJECT_NAME} ${SOURCES})
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()

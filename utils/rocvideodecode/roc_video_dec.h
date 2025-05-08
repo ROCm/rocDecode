@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#include <assert.h>
 #include <stdint.h>
 #include <mutex>
 #include <vector>
@@ -114,7 +113,6 @@ inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     return factor;
 };
 
-
 class RocVideoDecodeException : public std::exception {
 public:
 
@@ -154,6 +152,10 @@ private:
     }                                                                                                         \
     while (0)
 
+#define CHECK_ZERO(str, value)              \
+    if (value == 0) {                      \
+        ROCDEC_ERR(STR(str) + " is 0.");    \
+    }
 
 struct Rect {
     int left;
@@ -224,32 +226,32 @@ class RocVideoDecoder {
         /**
          * @brief Get the output frame width
          */
-        uint32_t GetWidth() { assert(disp_width_); return disp_width_;}
+        uint32_t GetWidth() {CHECK_ZERO("Display width", disp_width_); return disp_width_;}
 
         /**
         *  @brief  This function is used to get the actual decode width
         */
-        int GetDecodeWidth() { assert(coded_width_); return coded_width_; }
+        int GetDecodeWidth() {CHECK_ZERO("Coded width", coded_width_); return coded_width_; }
 
         /**
          * @brief Get the output frame height
          */
-        uint32_t GetHeight() { assert(disp_height_); return disp_height_; }
+        uint32_t GetHeight() {CHECK_ZERO("Display height", disp_height_); return disp_height_; }
 
         /**
         *  @brief  This function is used to get the current chroma height.
         */
-        int GetChromaHeight() { assert(chroma_height_); return chroma_height_; }
+        int GetChromaHeight() {CHECK_ZERO("Chroma height", chroma_height_); return chroma_height_; }
 
         /**
         *  @brief  This function is used to get the number of chroma planes.
         */
-        int GetNumChromaPlanes() { assert(num_chroma_planes_); return num_chroma_planes_; }
+        int GetNumChromaPlanes() {return num_chroma_planes_; }
 
         /**
         *   @brief  This function is used to get the current frame size based on pixel format.
         */
-        virtual int GetFrameSize() { assert(disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
+        virtual int GetFrameSize() {CHECK_ZERO("Display width", disp_width_); return disp_width_ * (disp_height_ + (chroma_height_ * num_chroma_planes_)) * byte_per_pixel_; }
 
 
         /**
@@ -257,13 +259,13 @@ class RocVideoDecoder {
          * 
          * @return uint32_t 
          */
-        uint32_t GetBitDepth() { assert(bitdepth_minus_8_); return (bitdepth_minus_8_ + 8); }
-        uint32_t GetBytePerPixel() { assert(byte_per_pixel_); return byte_per_pixel_; }
+        uint32_t GetBitDepth() {return (bitdepth_minus_8_ + 8); }
+        uint32_t GetBytePerPixel() {CHECK_ZERO("Bytes per pixel", byte_per_pixel_); return byte_per_pixel_; }
         /**
          * @brief Functions to get the output surface attributes
          */
-        size_t GetSurfaceSize() { assert(surface_size_); return surface_size_; }
-        uint32_t GetSurfaceStride() { assert(surface_stride_); return surface_stride_; }
+        size_t GetSurfaceSize() {CHECK_ZERO("Surface size", surface_size_); return surface_size_; }
+        uint32_t GetSurfaceStride() {CHECK_ZERO("Surface stride", surface_stride_); return surface_stride_; }
         //RocDecImageFormat GetSubsampling() { return subsampling_; }
         /**
          * @brief Get the name of the output format
