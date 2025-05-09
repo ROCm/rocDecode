@@ -131,9 +131,6 @@ private:
         cv_frame_.notify_one();
     };
 
-
-    typedef enum { CMD_ABORT, CMD_DECODE } CommandType;
-    typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
     int decoded_pic_cnt_ = 0;
     int coded_width_ = 0, coded_height_ = 0;        // need to detect resolution changes for sps callback function
     Rect disp_rect_ = {}; // displayable area specified in the bitstream
@@ -162,6 +159,5 @@ private:
 #endif
     AVFormatContext * formatContext = nullptr;
     AVInputFormat * inputFormat = nullptr;
-    AVStream *video = nullptr;
 
 };
