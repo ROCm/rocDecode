@@ -455,7 +455,6 @@ int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormatHost*
 }
 
 int ROCDECAPI handle_picture_display_host(void* user_data, RocdecParserDispInfo* disp_info) {
-    // std::cout << "handle_picture_display is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecParserDispInfo *p_disp_info = static_cast<RocdecParserDispInfo *>(disp_info);
     RocdecProcParams params = {};

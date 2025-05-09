@@ -1,18 +1,13 @@
-Build and run for AMD:
-======================
-g++ -O3 local_reader.cpp -DUSE_ROCM -I$ROCM_HOME/include -lrocdecode -L$ROCM_HOME/lib -o local_reader_amd
-./local_reader_amd files/<testcase>/*.data
 
+# rocdecDecode sample
 
-# rocdec decode sample
-
-The rocdec decode sample illustrates decoding video elementary stream frames using the rocDecoder low level api to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample directly uses low-level Rocdecoder api. 
+The rocdec decode sample illustrates decoding of individual frames of video elementary stream data using the rocDecoder and rocDecodeHost low level api to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample directly uses low-level Rocdecoder/RocDecoderHost api. 
 
 ## Prerequisites:
 
 * Install [rocDecode](../../README.md#build-and-install-instructions)
 
-* [FFMPEG](https://ffmpeg.org/about.html)
+* [FFMPEG](https://ffmpeg.org/about.html) for rocDecodeHost
 
     * On `Ubuntu`
 
@@ -33,7 +28,7 @@ make -j
 ## Run
 
 ```shell
-./videodecode -i <input video frame file or folder containing multiple frames [required]> 
+./rocdecdecode -i <input video frame file or folder containing multiple frames [required]> -b <backend> -o <outfile>
               -o <output path to save decoded YUV frames [optional]> 
               -b <backend for the decoder - 0:device 1:host [optional - default:0]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
