@@ -203,9 +203,9 @@ protected:
     /*! \brief Function to parse a sequence header OBU. 5.5.
      * \param [in] p_stream Pointer to the bit stream
      * \param [in] size Byte size of the stream
-     * \return None
+     * \return <tt>ParserResult</tt>
      */
-    void ParseSequenceHeaderObu(uint8_t *p_stream, size_t size);
+    ParserResult ParseSequenceHeaderObu(uint8_t *p_stream, size_t size);
 
     /*! \brief Function to parse a frame header OBU. 5.9.
      * \param [in] p_stream Pointer to the bit stream
@@ -252,9 +252,9 @@ protected:
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
      * \param [out] p_frame_header Pointer to frame header struct
-     * \return None
+     * \return <tt>ParserResult</tt>
      */
-    void FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+    ParserResult FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to parse super res parameters
      * \param [in] p_stream Pointer to the bit stream
@@ -350,9 +350,9 @@ protected:
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
      * \param [out] p_frame_header Pointer to frame header struct
-     * \return None
+     * \return <tt>ParserResult</tt>
      */
-    void TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+    ParserResult TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to calculate the smallest value for k such that blk_size << k is greater than or equal to target.
      * \param [in] blk_size Block size
@@ -522,9 +522,9 @@ protected:
      * \param [out] offset Updated bit offset
      * \param [in] p_seq_header Pointer to sequence header struct
      * \param [out] p_frame_header Pointer to frame header struct
-     * \return None
+     * \return <tt>ParserResult</tt>
      */
-    void FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
+    ParserResult FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header);
 
     /*! \brief Function to round a number to 2^n
      *  \param [in] x The number to be rounded
