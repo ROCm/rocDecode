@@ -42,7 +42,7 @@ endif()
 
 # Set Project Version and Language
 project(rocdecodehost LANGUAGES CXX)
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
 set(DEFAULT_BUILD_TYPE "Release")
@@ -80,7 +80,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   endif()
 
   # local include files
-  include_directories(api rocdecode-host src/rocdecode src/parser)
+  include_directories(api rocdecode-host ../src/rocdecode ../src/parser)
   # source files
   file(GLOB_RECURSE SOURCES "./*.cpp")
   # rocdecode.so

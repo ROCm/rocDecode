@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include <sstream>
 #include <string.h>
 #include <map>
-#include "avcodec_videodecoder.h"
+#include "avcodec/avcodec_videodecoder.h"
 
 class RocDecoderHost {
 public:

@@ -80,8 +80,6 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     else()
       message(FATAL_ERROR "Library mylib not found!")
     endif()
-    #set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
-    #set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} rocdecodehost)
     # rocDecode
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecdecode.cpp)
