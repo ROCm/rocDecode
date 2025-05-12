@@ -12,7 +12,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * HEVC stream bit depth change handling and DPB buffer size change handling through decoder reconfiguration.
 * AVC stream DPB buffer size change handling through decoder reconfiguration.
 * rocDecode now uses the Cmake CMAKE_PREFIX_PATH directive.
-* rocDecode - Add new avcodec based decoder which is built as a seperate "rocdecode-host" library
+* rocDecode - A new avcodec-based decoder built as a seperate "rocdecode-host" library
 
 
 ### Optimized
