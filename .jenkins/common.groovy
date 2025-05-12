@@ -67,6 +67,7 @@ def runTestCommand (platform, project) {
                             echo "wrong file count"
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm AvcConformance.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
                             unzip -o AvcConformance.zip
                         fi
@@ -77,6 +78,7 @@ def runTestCommand (platform, project) {
                                 echo "wrong file count"
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm Av1Conformance_v1.0.zip
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
                                 unzip -o Av1Conformance_v1.0.zip
                             fi
@@ -96,6 +98,7 @@ def runTestCommand (platform, project) {
                             echo "wrong file count"
                             ls                            
                             cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm HevcConformance.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
                             unzip -o HevcConformance.zip
                         fi
@@ -105,6 +108,7 @@ def runTestCommand (platform, project) {
                             echo "wrong file count"
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm AvcStability.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/AvcStability.zip
                             unzip -o AvcStability.zip
                         fi
@@ -115,6 +119,7 @@ def runTestCommand (platform, project) {
                                 echo "wrong file count"
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm Av1Stability.zip
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Av1Stability.zip
                                 unzip -o Av1Stability.zip
                             fi
@@ -126,6 +131,7 @@ def runTestCommand (platform, project) {
                                 echo "wrong file count"
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm HevcStability.zip
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/HevcStability.zip
                                 unzip -o HevcStability.zip
                             fi
