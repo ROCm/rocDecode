@@ -110,8 +110,8 @@ def runTestCommand (platform, project) {
                         fi
                         if ${runAv1Test}; then
                             FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Stability -type f | wc -l)
-                            # Check if there are 24 files
-                            if [ "\$FILE_COUNT" -ne 24 ]; then
+                            # Check if there are 215 files
+                            if [ "\$FILE_COUNT" -ne 215 ]; then
                                 echo "wrong file count"
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
