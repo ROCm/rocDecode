@@ -68,7 +68,7 @@ def runTestCommand (platform, project) {
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
-                            unzip AvcConformance.zip
+                            unzip -o AvcConformance.zip
                         fi
                         if ${runAv1Test}; then
                             FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Conformance_v1.0 -type f | wc -l)
@@ -78,7 +78,7 @@ def runTestCommand (platform, project) {
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
-                                unzip Av1Conformance_v1.0.zip
+                                unzip -o Av1Conformance_v1.0.zip
                             fi
                         fi
                         FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Vp9Conformance -type f | wc -l)
@@ -88,7 +88,7 @@ def runTestCommand (platform, project) {
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip
-                            unzip Vp9Conformance.zip
+                            unzip -o Vp9Conformance.zip
                         fi
                         FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/HevcConformance -type f | wc -l)
                         # Check if there are 270 files
@@ -97,7 +97,7 @@ def runTestCommand (platform, project) {
                             ls                            
                             cd \${JENKINS_HOME_DIR}/rocDecode
                             wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
-                            unzip HevcConformance.zip
+                            unzip -o HevcConformance.zip
                         fi
                         FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/AvcStability -type f | wc -l)
                         # Check if there are 22 files
@@ -106,7 +106,7 @@ def runTestCommand (platform, project) {
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/AvcStability.zip
-                            unzip AvcStability.zip
+                            unzip -o AvcStability.zip
                         fi
                         if ${runAv1Test}; then
                             FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Stability -type f | wc -l)
@@ -116,7 +116,7 @@ def runTestCommand (platform, project) {
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Av1Stability.zip
-                                unzip Av1Stability.zip
+                                unzip -o Av1Stability.zip
                             fi
                         fi
                         if ${runHevcStability}; then
@@ -127,7 +127,7 @@ def runTestCommand (platform, project) {
                                 ls
                                 cd \${JENKINS_HOME_DIR}/rocDecode
                                 wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/HevcStability.zip
-                                unzip HevcStability.zip
+                                unzip -o HevcStability.zip
                             fi
                         fi
                         if [ ! -f \${JENKINS_HOME_DIR}/rocDecode/data1.img ]; then
@@ -144,19 +144,19 @@ def runTestCommand (platform, project) {
                         wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip
                         wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
                         wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/AvcStability.zip
-                        unzip HevcConformance.zip
-                        unzip Vp9Conformance.zip
-                        unzip AvcConformance.zip
-                        unzip AvcStability.zip
+                        unzip -o HevcConformance.zip
+                        unzip -o Vp9Conformance.zip
+                        unzip -o AvcConformance.zip
+                        unzip -o AvcStability.zip
                         if ${runAv1Test}; then
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
-                            unzip Av1Conformance_v1.0.zip
+                            unzip -o Av1Conformance_v1.0.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Av1Stability.zip
-                            unzip Av1Stability.zip
+                            unzip -o Av1Stability.zip
                         fi
                         if ${runHevcStability}; then
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/HevcStability.zip
-                            unzip HevcStability.zip
+                            unzip -o HevcStability.zip
                         fi
                     fi
         """
