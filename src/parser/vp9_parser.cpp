@@ -64,7 +64,7 @@ rocDecStatus Vp9VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         curr_pts_ = p_data->pts;
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
-            ERR(STR("Parser failed!"));
+            ERR("Error occurred in ParsePictureData().");
             return ROCDEC_RUNTIME_ERROR;
         }
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
@@ -87,69 +87,70 @@ ParserResult Vp9VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
     uint8_t *pic_data_ptr = const_cast<uint8_t*>(p_stream);
     for (int frame_index = 0; frame_index < num_frames_in_chunck_; frame_index++) {
         if ((ret = ParseUncompressedHeader(pic_data_ptr, frame_sizes_[frame_index])) != PARSER_OK) {
-            return ret;
-        }
-        // Init Roc decoder for the first time or reconfigure the existing decoder
-        if (new_seq_activated_) {
-            if ((ret = FlushDpb()) != PARSER_OK) {
-                return ret;
-            }
-            if ((ret = NotifyNewSequence(&uncompressed_header_)) != PARSER_OK) {
-                return ret;
-            }
-            new_seq_activated_ = false;
-        }
-
-        if (uncompressed_header_.show_existing_frame) {
-            int disp_idx = dpb_buffer_.virtual_buffer_index[uncompressed_header_.frame_to_show_map_idx];
-            if (disp_idx == INVALID_INDEX) {
-                ERR("Invalid existing frame index to show.");
-                return PARSER_INVALID_ARG;
-            }
-            if (pfn_display_picture_cb_) {
-                disp_idx = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
-                decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
-                decode_buffer_pool_[disp_idx].pts = curr_pts_;
-                // Insert into output/display picture list
-                if (num_output_pics_ < dec_buf_pool_size_) {
-                    output_pic_list_[num_output_pics_] = disp_idx;
-                    num_output_pics_++;
-                } else {
-                    ERR("Display list size larger than decode buffer pool size!");
-                    return PARSER_OUT_OF_RANGE;
-                }
-            }
-    #if DBGINFO
-            PrintDpb();
-    #endif // DBGINFO
+            ERR("Error occurred in ParseUncompressedHeader(). Skip this picture.");
         } else {
-            pic_stream_data_ptr_ = pic_data_ptr;
-            pic_stream_data_size_ = frame_sizes_[frame_index];
-            num_slices_ = 1;
-
-            if ((ret = FindFreeInDecBufPool()) != PARSER_OK) {
-                return ret;
-            }
-            if ((ret = FindFreeInDpbAndMark()) != PARSER_OK) {
-                return ret;
-            }
-            if ((ret = SendPicForDecode()) != PARSER_OK) {
-                ERR(STR("Failed to decode!"));
-                return ret;
-            }
-    #if DBGINFO
-            PrintDpb();
-    #endif // DBGINFO
-            // Output decoded pictures from DPB if any are ready
-            if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
-                if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
+            // Init Roc decoder for the first time or reconfigure the existing decoder
+            if (new_seq_activated_) {
+                new_seq_activated_ = false;
+                if ((ret = FlushDpb()) != PARSER_OK) {
+                    return ret;
+                }
+                if ((ret = NotifyNewSequence(&uncompressed_header_)) != PARSER_OK) {
                     return ret;
                 }
             }
-            UpdateRefFrames();
-            pic_count_++;
-            dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
-            CheckAndUpdateDecStatus();
+
+            if (uncompressed_header_.show_existing_frame) {
+                int disp_idx = dpb_buffer_.virtual_buffer_index[uncompressed_header_.frame_to_show_map_idx];
+                if (disp_idx == INVALID_INDEX) {
+                    ERR("Invalid existing frame index to show.");
+                    return PARSER_INVALID_ARG;
+                }
+                if (pfn_display_picture_cb_) {
+                    disp_idx = dpb_buffer_.frame_store[disp_idx].dec_buf_idx;
+                    decode_buffer_pool_[disp_idx].use_status |= kFrameUsedForDisplay;
+                    decode_buffer_pool_[disp_idx].pts = curr_pts_;
+                    // Insert into output/display picture list
+                    if (num_output_pics_ < dec_buf_pool_size_) {
+                        output_pic_list_[num_output_pics_] = disp_idx;
+                        num_output_pics_++;
+                    } else {
+                        ERR("Display list size larger than decode buffer pool size!");
+                        return PARSER_OUT_OF_RANGE;
+                    }
+                }
+        #if DBGINFO
+                PrintDpb();
+        #endif // DBGINFO
+            } else {
+                pic_stream_data_ptr_ = pic_data_ptr;
+                pic_stream_data_size_ = frame_sizes_[frame_index];
+                num_slices_ = 1;
+
+                if ((ret = FindFreeInDecBufPool()) != PARSER_OK) {
+                    return ret;
+                }
+                if ((ret = FindFreeInDpbAndMark()) != PARSER_OK) {
+                    return ret;
+                }
+                if ((ret = SendPicForDecode()) != PARSER_OK) {
+                    ERR(STR("Failed to decode!"));
+                    return ret;
+                }
+        #if DBGINFO
+                PrintDpb();
+        #endif // DBGINFO
+                // Output decoded pictures from DPB if any are ready
+                if (pfn_display_picture_cb_ && num_output_pics_ > 0) {
+                    if ((ret = OutputDecodedPictures(false)) != PARSER_OK) {
+                        return ret;
+                    }
+                }
+                UpdateRefFrames();
+                pic_count_++;
+                dpb_buffer_.dec_ref_count[curr_pic_.pic_idx]--;
+                CheckAndUpdateDecStatus();
+            }
         }
         pic_data_ptr += frame_sizes_[frame_index];
     }
@@ -527,6 +528,11 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
             }
         }
     }
+    if (p_uncomp_header->frame_size.frame_width == 0 && p_uncomp_header->frame_size.frame_height == 0) {
+        ERR("Invalid picture size: width = " + TOSTR(p_uncomp_header->frame_size.frame_width) + ", height = " + TOSTR(p_uncomp_header->frame_size.frame_height) + ".");
+        return PARSER_WRONG_STATE;
+    }
+
     if (p_uncomp_header->error_resilient_mode == 0) {
         p_uncomp_header->refresh_frame_context = Parser::GetBit(p_stream, offset);
         p_uncomp_header->frame_parallel_decoding_mode = Parser::GetBit(p_stream, offset);
@@ -548,10 +554,14 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     }
     LoopFilterParams(p_stream, offset, p_uncomp_header);
     QuantizationParams(p_stream, offset, p_uncomp_header);
-    SegmentationParams(p_stream, offset, p_uncomp_header);
+    if ((ret = SegmentationParams(p_stream, offset, p_uncomp_header)) != PARSER_OK) {
+        return ret;
+    }
     SetupSegDequant(p_uncomp_header);
     LoopFilterFrameInit(p_uncomp_header);
-    TileInfo(p_stream, offset, p_uncomp_header);
+    if ((ret = TileInfo(p_stream, offset, p_uncomp_header)) != PARSER_OK) {
+        return ret;
+    }
 
     p_uncomp_header->header_size_in_bytes = Parser::ReadBits(p_stream, offset, 16);
 
@@ -568,10 +578,8 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
             if (pic_width_ <= curr_surface_width_ && pic_height_ <= curr_surface_height_) {
                 reconfig_option_ = ROCDEC_RECONFIG_KEEP_SURFACES; // Keep the existing surfaces
             } else {
-                ERR("VP9 video size (up) change on non-key frames is not supported. Decode errors can occur.");
-                curr_surface_width_ = pic_width_;
-                curr_surface_height_ = pic_height_;
-                reconfig_option_ = ROCDEC_RECONFIG_NEW_SURFACES; // Normal mode: free existing surfaces and allocate new surfaces.
+                ERR("VP9 video size (up) change on non-key frames is not supported.");
+                return PARSER_WRONG_STATE;
             }
         }
         new_seq_activated_ = true;
@@ -607,6 +615,10 @@ ParserResult Vp9VideoParser::ColorConfig(const uint8_t *p_stream, size_t &offset
         p_uncomp_header->color_config.bit_depth = 8;
     }
     p_uncomp_header->color_config.color_space = Parser::ReadBits(p_stream, offset, 3);
+    if (p_uncomp_header->profile_low_bit == 0 && p_uncomp_header->color_config.color_space == CS_RGB) {
+        ERR("It is a requirement of bitstream conformance that color_space is not equal to CS_RGB when profile_low_bit is equal to 0.");
+        return PARSER_WRONG_STATE;
+    }
     if (p_uncomp_header->color_config.color_space != CS_RGB) {
         p_uncomp_header->color_config.color_range = Parser::GetBit(p_stream, offset);
         if (p_uncomp_header->profile == 1 || p_uncomp_header->profile == 3) {
@@ -632,6 +644,10 @@ ParserResult Vp9VideoParser::ColorConfig(const uint8_t *p_stream, size_t &offset
                 return PARSER_INVALID_ARG;
             }
         }
+    }
+    if (p_uncomp_header->profile_low_bit == 1 && p_uncomp_header->color_config.subsampling_x == 1 && p_uncomp_header->color_config.subsampling_y == 1) {
+        ERR("It is a requirement of bitstream conformance that either subsampling_x is equal to 0 or subsampling_y is equal to 0 when profile_low_bit is equal to 1.");
+        return PARSER_WRONG_STATE;
     }
     return PARSER_OK;
 }
@@ -749,7 +765,7 @@ int8_t Vp9VideoParser::ReadDeltaQ(const uint8_t *p_stream, size_t &offset) {
     return delta_q;
 }
 
-void Vp9VideoParser::SegmentationParams(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header) {
+ParserResult Vp9VideoParser::SegmentationParams(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header) {
     const uint8_t segmentation_feature_bits[VP9_SEG_LVL_MAX] = {8, 6, 2, 0};
     const uint8_t segmentation_feature_signed[VP9_SEG_LVL_MAX] = {1, 1, 0, 0};
     p_uncomp_header->segmentation_params.segmentation_enabled = Parser::GetBit(p_stream, offset);
@@ -779,6 +795,10 @@ void Vp9VideoParser::SegmentationParams(const uint8_t *p_stream, size_t &offset,
                         if (segmentation_feature_signed[j] == 1) {
                             uint8_t feature_sign = Parser::GetBit(p_stream, offset);
                             if (feature_sign) {
+                                if (p_uncomp_header->segmentation_params.segmentation_abs_or_delta_update == 1) {
+                                    ERR("It is a requirement of bitstream conformance that feature_sign is equal to 0 when segmentation_abs_or_delta_update is equal to 1.");
+                                    return PARSER_WRONG_STATE;
+                                }
                                 feature_value *= -1;
                             }
                         }
@@ -791,6 +811,7 @@ void Vp9VideoParser::SegmentationParams(const uint8_t *p_stream, size_t &offset,
         p_uncomp_header->segmentation_params.segmentation_update_map = 0;
         p_uncomp_header->segmentation_params.segmentation_temporal_update = 0;
     }
+    return PARSER_OK;
 }
 
 uint8_t Vp9VideoParser::ReadProb(const uint8_t *p_stream, size_t &offset) {
@@ -803,7 +824,7 @@ uint8_t Vp9VideoParser::ReadProb(const uint8_t *p_stream, size_t &offset) {
     return prob;
 }
 
-void Vp9VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header) {
+ParserResult Vp9VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header) {
     // calc_min_log2_tile_cols()
     int min_log2 = 0;
     while ((MAX_TILE_WIDTH_B64 << min_log2) < p_uncomp_header->frame_size.sb64_cols) {
@@ -824,11 +845,13 @@ void Vp9VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Vp9Uncomp
             break;
         }
     }
+    CHECK_ALLOWED_MAX("tile_cols_log2", p_uncomp_header->tile_info.tile_cols_log2, 6);
     p_uncomp_header->tile_info.tile_rows_log2 = Parser::GetBit(p_stream, offset);
     if (p_uncomp_header->tile_info.tile_rows_log2) {
         uint8_t increment_tile_rows_log2 = Parser::GetBit(p_stream, offset);
         p_uncomp_header->tile_info.tile_rows_log2 += increment_tile_rows_log2;
     }
+    return PARSER_OK;
 }
 
 static const int16_t dc_qlookup[3][256] = {
