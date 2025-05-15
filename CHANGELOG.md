@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 0.13.1 (unreleased)
+## rocDecode 0.13.2 (unreleased)
 
 ### Added
 
@@ -31,6 +31,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 ### Changed
 
 * Changed asserts in query API calls in RocVideoDecoder utility class to error reports, to avoid hard stop during query in case error occurs and to let the caller decide actions.
+* `libdrm_amdgpu` is now explicitly linked with rocdecode.
 
 ## rocDecode 0.10.0 for ROCm 6.4
 

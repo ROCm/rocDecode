@@ -40,7 +40,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # rocDecode Version
-set(VERSION "0.13.1")
+set(VERSION "0.13.2")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
@@ -105,6 +105,7 @@ option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register suppor
 
 find_package(HIP QUIET)
 find_package(Libva QUIET)
+find_package(Libdrm_amdgpu QUIET)
 
 if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
   find_package(rocprofiler-register QUIET
@@ -112,7 +113,7 @@ if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
     PATHS ${ROCM_PATH})
 endif()
 
-if(HIP_FOUND AND Libva_FOUND)
+if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
 
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
@@ -120,6 +121,10 @@ if(HIP_FOUND AND Libva_FOUND)
   include_directories(${LIBVA_INCLUDE_DIR})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_LIBRARY})
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBVA_DRM_LIBRARY})
+
+  # DRM_AMDGPU
+  include_directories(${LIBDRM_AMDGPU_INCLUDE_DIR})
+  set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${LIBDRM_AMDGPU_LIBRARY})
 
   # rocprofiler
   if (rocprofiler-register_FOUND)
@@ -132,13 +137,6 @@ if(HIP_FOUND AND Libva_FOUND)
   file(GLOB_RECURSE SOURCES "./src/*.cpp")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
-
-  # DRM
-  find_path(AMDGPU_DRM_INCLUDE_DIRS libdrm/amdgpu.h
-    PATHS /opt/amdgpu/include /usr/include /usr/ /usr/local/include
-    NO_DEFAULT_PATH
-  )
-  target_include_directories(${PROJECT_NAME} PRIVATE ${AMDGPU_DRM_INCLUDE_DIRS})
 
   # --all-warnings/-Wall       -- Enable most warning messages
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -422,4 +420,7 @@ else()
   if(NOT Libva_FOUND)
     message(FATAL_ERROR "-- ERROR!: libva Not Found - please install libva-amdgpu-dev/libva-amdgpu-devel!")
   endif()
-endif()
+  if(NOT Libdrm_amdgpu_FOUND)
+    message(FATAL_ERROR "-- ERROR!: libdrm_amdgpu Not Found - please install libdrm-amdgpu-dev(DEBIAN)/libdrm-amdgpu-devel(RPM) package!")
+  endif()
+  endif()
