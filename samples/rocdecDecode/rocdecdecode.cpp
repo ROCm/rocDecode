@@ -224,7 +224,7 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem[], uint32_t *pit
         }
         int img_width = p_dec_info->disp_rect.right - p_dec_info->disp_rect.left;
         int img_height = p_dec_info->disp_rect.bottom - p_dec_info->disp_rect.top;
-        int output_stride =  pitch[0];
+        uint32_t output_stride =  pitch[0];
         if ((img_width * p_dec_info->bytes_per_pixel) == output_stride) {
             fwrite(tmp_hst_ptr, 1, output_image_size_luma, p_dec_info->fp_out);
             tmp_hst_ptr += output_image_size_luma;
@@ -242,7 +242,7 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem[], uint32_t *pit
                 if (p_dec_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
                     uv_hst_ptr += ((p_dec_info->disp_rect.top >> 1) * output_stride) + (p_dec_info->disp_rect.left * p_dec_info->bytes_per_pixel);
                 }
-                for (int i = 0; i < chroma_height; i++) {
+                for (uint32_t i = 0; i < chroma_height; i++) {
                     fwrite(uv_hst_ptr, 1, width, p_dec_info->fp_out);
                     uv_hst_ptr += pitch[1];
                 }
@@ -294,15 +294,15 @@ void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_
             }
             // dump chroma
             uint8_t *p_src_ptr_uv = static_cast<uint8_t *>(frame_mem[1]) + ((p_dec_info->disp_rect.top >> 1) * pitch[1] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel);
-            uint32_t chroma_height = static_cast<int>(GetChromaHeightFactor(p_dec_info->surf_format) * img_height);
-            uint32_t chroma_width = static_cast<int>(GetChromaWidthFactor(p_dec_info->surf_format) * img_width);
-            for (int i = 0; i < chroma_height; i++) {
+            int32_t chroma_height = static_cast<int>(GetChromaHeightFactor(p_dec_info->surf_format) * img_height);
+            int32_t chroma_width = static_cast<int>(GetChromaWidthFactor(p_dec_info->surf_format) * img_width);
+            for (int32_t i = 0; i < chroma_height; i++) {
                 fwrite(p_src_ptr_uv, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
                 p_src_ptr_uv += pitch[1];
             }
             if (frame_mem[2] != nullptr) {
                 uint8_t *p_src_ptr_v = static_cast<uint8_t *>(frame_mem[2]) + p_dec_info->disp_rect.top * pitch[2] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel;
-                for (int i = 0; i < chroma_height; i++) {
+                for (int32_t i = 0; i < chroma_height; i++) {
                     fwrite(p_src_ptr_v, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
                     p_src_ptr_v += pitch[2];
                 }
@@ -548,21 +548,21 @@ void create_parser(DecoderInfo& dec_info) {
 void decode_frames(DecoderInfo& dec_info, const std::vector<std::vector<uint8_t>>& frames) {
     // gpu backend using VCN
     if (dec_info.backend == DECODER_BACKEND_DEVICE) {
-        for (int i=0; i < frames.size(); ++i) {
+        for (int i=0; i < static_cast<int>(frames.size()); ++i) {
             RocdecSourceDataPacket packet = {};
             packet.payload_size = frames[i].size();
             packet.payload = frames[i].data();
-            if (i == (frames.size() - 1)) {
+            if (i == static_cast<int>(frames.size() - 1)) {
                 packet.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end_of_picture flag for last frame
             }
             CHECK(rocDecParseVideoData(dec_info.parser, &packet));
         }
     } else if (dec_info.backend == DECODER_BACKEND_HOST) {
-        for (int i=0; i < frames.size(); ++i) {
+        for (int i=0; i < static_cast<int>(frames.size()); ++i) {
             RocdecPicParamsHost pic_params = {};
             pic_params.bitstream_data_len = frames[i].size();
             pic_params.bitstream_data = frames[i].data();
-            if (i == (frames.size() - 1)) {
+            if (i == static_cast<int>(frames.size() - 1)) {
                 pic_params.flags = ROCDEC_PKT_ENDOFPICTURE;     // mark end_of_picture flag for last frame
             }
             CHECK(rocDecDecodeFrameHost(dec_info.decoder, &pic_params));
@@ -604,8 +604,6 @@ int main(int argc, char** argv) {
     int device_id = 0;
     DecoderBackend backend = DECODER_BACKEND_DEVICE;
     int num_iterations = 1; 
-    bool b_extract_sei_messages = false;
-    bool b_flush_frames_during_reconfig = true;
     std::vector<std::string> input_file_names;
     int codec_type = 0; // default for HEVC
     DecoderInfo dec_info;
@@ -695,6 +693,8 @@ int main(int argc, char** argv) {
         ShowHelpAndExit(argv[i]);
     }
     dec_info.rocdec_codec_id = CodecTypeToRocDecVideoCodec(codec_type);
+    dec_info.dec_device_id = device_id;
+    dec_info.mem_type = (!backend) ? OUT_SURFACE_MEM_DEV_INTERNAL : OUT_SURFACE_MEM_HOST;
     init();
     if (backend == DECODER_BACKEND_DEVICE) {
         create_parser(dec_info);
