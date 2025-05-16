@@ -427,7 +427,7 @@ int ROCDECAPI handle_picture_display_host(void* user_data, RocdecParserDispInfo*
 
 void create_decoder_host(DecoderInfo& dec_info) {
     RocDecoderHostCreateInfo create_info = {};
-    create_info.codec_type = rocDecVideoCodec_HEVC;
+    create_info.codec_type = dec_info.rocdec_codec_id;
     create_info.num_decode_threads = 0;     // default
     create_info.max_width = MAX_WIDTH;
     create_info.max_height = MAX_HEIGHT;
@@ -451,12 +451,11 @@ void create_decoder_host(DecoderInfo& dec_info) {
 }
 
 int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) {
-    // std::cout << "handle_video_sequence is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecReconfigureDecoderInfo reconfig_params = {};
     reconfig_params.width = format->coded_width;
     reconfig_params.height = format->coded_height;
-    reconfig_params.num_decode_surfaces = 6;
+    reconfig_params.num_decode_surfaces = format->min_num_decode_surfaces;
     reconfig_params.target_width = format->coded_width;
     reconfig_params.target_height = format->coded_height;
     reconfig_params.display_rect.left = 0;
@@ -501,14 +500,12 @@ int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) 
 }
 
 int ROCDECAPI handle_picture_decode(void* user_data, RocdecPicParams* params) {
-    // std::cout << "handle_picture_decode is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     CHECK(rocDecDecodeFrame(p_dec_info->decoder, params));
     return 1;
 }
 
 int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp_info) {
-    // std::cout << "handle_picture_display is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecProcParams params = {};
     params.progressive_frame = disp_info->progressive_frame;
@@ -535,7 +532,7 @@ int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp
 
 void create_parser(DecoderInfo& dec_info) {
     RocdecParserParams params = {};
-    params.codec_type = rocDecVideoCodec_HEVC;
+    params.codec_type = dec_info.rocdec_codec_id;
     params.max_num_decode_surfaces = 6;
     params.max_display_delay = 0;
     params.user_data = &dec_info;
