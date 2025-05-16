@@ -235,9 +235,9 @@ protected:
      * \param [in] p_stream Pointer to the bit stream
      * \param [inout] offset Bit offset
      * \param [out] p_uncomp_header Pointer to uncompressed header struct
-     *  \return None
+     * \return <tt>ParserResult</tt>
      */
-    void SegmentationParams(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header);
+    ParserResult SegmentationParams(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header);
 
     /*! \brief Function to parse probability syntax (read_delta_q(), 6.2.12)
      * \param [in] p_stream Pointer to the bit stream
@@ -250,9 +250,9 @@ protected:
      * \param [in] p_stream Pointer to the bit stream
      * \param [inout] offset Bit offset
      * \param [out] p_uncomp_header Pointer to uncompressed header struct
-     *  \return None
+     * \return <tt>ParserResult</tt>
      */
-    void TileInfo(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header);
+    ParserResult TileInfo(const uint8_t *p_stream, size_t &offset, Vp9UncompressedHeader *p_uncomp_header);
 
     /*! \brief Function to set up Y and UV dequantization values based on segmentation parameters. 8.6.1.
      *  \param [in] p_uncomp_header Pointer to uncompressed header struct
