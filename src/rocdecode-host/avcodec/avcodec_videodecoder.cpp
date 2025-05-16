@@ -191,6 +191,8 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
         // get the output pixel format from dec_context_
         decoder_pixel_format_ = (dec_context_->pix_fmt == AV_PIX_FMT_NONE) ? AV_PIX_FMT_YUV420P : dec_context_->pix_fmt;
     }
+    // set log level to 
+    av_log_set_level(AV_LOG_QUIET);
     // allocate av_frame buffer pool for number of surfaces to be in the decoder pool
     // Note: with multi-threading, av_codec needs (dec_context_->delay + max_num_B_frames) number of av_frames. 
     // max_num_B_frames is assumed to be 4 here
@@ -289,8 +291,7 @@ rocDecStatus AvcodecVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatu
 }
 
 rocDecStatus AvcodecVideoDecoder::GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params){
-    //std::lock_guard<std::mutex> lock(mtx_disp_frame_);
-    AVFrame *p_av_frame = nullptr;
+
     if (p_disp_frame_ == nullptr) {
         ERR("GetVideoFrame: No frame available to display");
         return ROCDEC_RUNTIME_ERROR;
@@ -299,7 +300,7 @@ rocDecStatus AvcodecVideoDecoder::GetVideoFrame(int pic_idx, void **frame_ptr, u
         ERR("GetVideoFrame: pic_index is invalid" );
         return ROCDEC_INVALID_PARAMETER;
     }
-    p_av_frame = p_disp_frame_->av_frame_ptr;
+    auto p_av_frame = p_disp_frame_->av_frame_ptr;
     frame_ptr[0] = p_av_frame->data[0];
     frame_ptr[1] = p_av_frame->data[1];
     frame_ptr[2] = p_av_frame->data[2];
@@ -354,7 +355,6 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             ERR("Error during decoding");
             return 0;
         }
-        decoded_pic_cnt_++;
         // for the first frame, initialize OutputsurfaceInfo
         if (p_frame->width != coded_width_ || p_frame->height != coded_height_ || p_frame->format != av_sample_format) {
             coded_width_ = p_frame->width;
@@ -362,13 +362,13 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             av_sample_format = p_frame->format;
             NotifyNewSequence(p_frame);
         }
-        //std::cout << "Decoding frame: " << dec_context_->frame_number << std::endl;
         // push frame into q
         DecFrameBufferFFMpeg dec_frame = { 0 };
         dec_frame.av_frame_ptr = p_frame;
         dec_frame.pts = p_frame->pts;
         dec_frame.picture_index = av_frame_cnt_;     //picture_index is not used here since it is handled within FFMpeg decoder
         PushDisplayFrame(dec_frame);
+        decoded_pic_cnt_++;
 
         av_frame_cnt_ = (av_frame_cnt_ + 1) % dec_frames_.size();
         p_frame = dec_frames_[av_frame_cnt_]; //advance for next frame decode

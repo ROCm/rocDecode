@@ -53,12 +53,12 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   # -O0 -- Don't Optimize output file 
   # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4 -Wall")
 else()
   # -O3       -- Optimize output file 
   # -DNDEBUG  -- turn off asserts 
   # -fPIC     -- Generate position-independent code if possible
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC -Wall")
 endif()
 
 message("-- ${BoldBlue}rocdecode-host Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")

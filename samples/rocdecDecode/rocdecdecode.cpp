@@ -69,60 +69,7 @@ __attribute__((visibility("hidden"))) inline void report_error(
 #define MAX_WIDTH 2912
 #define MAX_HEIGHT 1888
 
-static void GetSurfaceStrideInternal(rocDecVideoSurfaceFormat surface_format, uint32_t width, uint32_t height, uint32_t *pitch, uint32_t *vstride, uint32_t &num_of_chroma_planes) {
-
-    switch (surface_format) {
-    case rocDecVideoSurfaceFormat_NV12:
-        pitch[0] = align(width, 256);
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 1;
-        break;
-    case rocDecVideoSurfaceFormat_P016:
-        pitch[0] = align(width, 128) * 2;
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 1;
-        break;
-    case rocDecVideoSurfaceFormat_YUV444:
-        pitch[0] = align(width, 256);
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    case rocDecVideoSurfaceFormat_YUV444_16Bit:
-        pitch[0] = align(width, 128) * 2;
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    case rocDecVideoSurfaceFormat_YUV420:
-        pitch[0] = align(width, 256);
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    case rocDecVideoSurfaceFormat_YUV420_16Bit:
-        pitch[0] = align(width, 128) * 2;
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    case rocDecVideoSurfaceFormat_YUV422:
-        pitch[0] = align(width, 256);
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    case rocDecVideoSurfaceFormat_YUV422_16Bit:
-        pitch[0] = align(width, 128) * 2;
-        pitch[1] = pitch[0];
-        *vstride = align(height, 16);
-        num_of_chroma_planes = 2;
-        break;
-    }
-    return;
-}
+// helper functions for saving output to file
 
 static inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_format) {
     float factor = 0.5;
@@ -144,6 +91,17 @@ static inline float GetChromaHeightFactor(rocDecVideoSurfaceFormat surface_forma
     return factor;
 };
 
+static inline rocDecVideoCodec CodecTypeToRocDecVideoCodec(int codec_type) {
+    switch (codec_type) {
+        case 0:     return rocDecVideoCodec_HEVC;
+        case 1:     return rocDecVideoCodec_AVC;
+        case 2:     return rocDecVideoCodec_AV1;
+        case 3:     return rocDecVideoCodec_VP9;
+        case 4:     return rocDecVideoCodec_VP8;
+        case 5:     return rocDecVideoCodec_JPEG;
+        default:    return rocDecVideoCodec_NumCodecs;
+    }
+}
 static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format) {
     float factor = 0.5;
     switch (surface_format) {
@@ -206,7 +164,6 @@ struct DecoderInfo {
     rocDecVideoSurfaceFormat video_chroma_format;
     uint32_t coded_width, coded_height;
     uint32_t bytes_per_pixel;
-    uint64_t output_surface_size_in_bytes;
     bool is_decoder_reconfigured;
     Rect disp_rect;
     FILE *fp_out;
@@ -216,31 +173,37 @@ struct DecoderInfo {
 };
 
 /**
- * @brief Funtion to save internal frame buffer to file for device buffer
+ * @brief Funtion to save internal frame buffer to file for device buffer : chroma format is assumed to be NV12 for internal device memory
  * 
  * @param p_dec_info 
- * @param surf_mem 
- * @param pitch 
- * @param vpitch 
- * @param num_chroma_planes 
+ * @param surf_mem  device mem pointers of luma and chroma planes
+ * @param pitch  stride in bytes of luma and chroma planes
  */
-void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch, uint32_t vpitch, uint32_t num_chroma_planes) {
+void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem[], uint32_t *pitch) {
 
     uint8_t *hst_ptr = nullptr;
+    uint64_t output_image_size_luma = pitch[0] * p_dec_info->coded_height;
+    uint64_t output_image_size_chroma = pitch[1] * ((p_dec_info->coded_height * GetChromaHeightFactor(p_dec_info->surf_format)));
     if (p_dec_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-        uint64_t output_image_size = p_dec_info->output_surface_size_in_bytes;
         if (hst_ptr == nullptr) {
-            hst_ptr = new uint8_t [output_image_size];
+            hst_ptr = new uint8_t [output_image_size_luma + output_image_size_chroma];
         }
         hipError_t hip_status = hipSuccess;
-        hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem, output_image_size);
+        // copy luma
+        hip_status = hipMemcpyDtoH((void *)hst_ptr, surf_mem[0], output_image_size_luma);
         if (hip_status != hipSuccess) {
-            std::cerr << "ERROR: hipMemcpyDtoH failed! (" << hipGetErrorName(hip_status) << ")" << std::endl;
+            std::cerr << "ERROR: hipMemcpyDtoH failed for luma! (" << hipGetErrorName(hip_status) << ")" << std::endl;
+            delete [] hst_ptr;
+            return;
+        }
+        hip_status = hipMemcpyDtoH((void *)(hst_ptr + output_image_size_luma), surf_mem[1], output_image_size_chroma);
+        if (hip_status != hipSuccess) {
+            std::cerr << "ERROR: hipMemcpyDtoH failed for chroma! (" << hipGetErrorName(hip_status) << ")" << std::endl;
             delete [] hst_ptr;
             return;
         }
     } else
-        hst_ptr = static_cast<uint8_t *> (surf_mem);
+        hst_ptr = static_cast<uint8_t *> (surf_mem[0]);
 
     if (p_dec_info->is_decoder_reconfigured) {
         if (p_dec_info->fp_out) {
@@ -262,8 +225,10 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch
         int img_width = p_dec_info->disp_rect.right - p_dec_info->disp_rect.left;
         int img_height = p_dec_info->disp_rect.bottom - p_dec_info->disp_rect.top;
         int output_stride =  pitch[0];
-        if (img_width * p_dec_info->bytes_per_pixel == output_stride && img_height == vpitch) {
-            fwrite(tmp_hst_ptr, 1, p_dec_info->output_surface_size_in_bytes, p_dec_info->fp_out);
+        if ((img_width * p_dec_info->bytes_per_pixel) == output_stride) {
+            fwrite(tmp_hst_ptr, 1, output_image_size_luma, p_dec_info->fp_out);
+            tmp_hst_ptr += output_image_size_luma;
+            fwrite(tmp_hst_ptr, 1, output_image_size_chroma, p_dec_info->fp_out);
         } else {
             uint32_t width = img_width * p_dec_info->bytes_per_pixel;
             if (p_dec_info->bit_depth <= 16) {
@@ -272,25 +237,14 @@ void save_frame_to_file(DecoderInfo *p_dec_info, void *surf_mem, uint32_t *pitch
                     tmp_hst_ptr += output_stride;
                 }
                 // dump chroma
-                uint8_t *uv_hst_ptr = hst_ptr + output_stride * vpitch;
+                uint8_t *uv_hst_ptr = hst_ptr + output_image_size_luma;
                 uint32_t chroma_height = static_cast<int>(GetChromaHeightFactor(p_dec_info->surf_format) * img_height);
                 if (p_dec_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-                    uv_hst_ptr += (num_chroma_planes == 1) ? ((p_dec_info->disp_rect.top >> 1) * output_stride) + (p_dec_info->disp_rect.left * p_dec_info->bytes_per_pixel):
-                            ((p_dec_info->disp_rect.top  * output_stride) + (p_dec_info->disp_rect.left  * p_dec_info->bytes_per_pixel));
+                    uv_hst_ptr += ((p_dec_info->disp_rect.top >> 1) * output_stride) + (p_dec_info->disp_rect.left * p_dec_info->bytes_per_pixel);
                 }
                 for (int i = 0; i < chroma_height; i++) {
                     fwrite(uv_hst_ptr, 1, width, p_dec_info->fp_out);
-                    uv_hst_ptr += output_stride;
-                }
-                if (num_chroma_planes == 2) {
-                    uv_hst_ptr = hst_ptr + output_stride * static_cast<int>(vpitch + GetChromaHeightFactor(p_dec_info->surf_format) * vpitch);
-                    if (p_dec_info->mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) {
-                        uv_hst_ptr += (p_dec_info->disp_rect.top  * output_stride) + (p_dec_info->disp_rect.left  * p_dec_info->bytes_per_pixel);
-                    }
-                    for (int i = 0; i < chroma_height; i++) {
-                        fwrite(uv_hst_ptr, 1, width, p_dec_info->fp_out);
-                        uv_hst_ptr += output_stride;
-                    }
+                    uv_hst_ptr += pitch[1];
                 }
             }
         }
@@ -390,7 +344,7 @@ void init() {}
 
 void create_decoder(DecoderInfo& dec_info) {
     RocDecoderCreateInfo create_info = {};
-    create_info.codec_type = rocDecVideoCodec_HEVC;
+    create_info.codec_type = dec_info.rocdec_codec_id;     // user specified codec_type for raw files
     create_info.max_width = MAX_WIDTH;
     create_info.max_height = MAX_HEIGHT;
     create_info.width = MAX_WIDTH;
@@ -402,7 +356,7 @@ void create_decoder(DecoderInfo& dec_info) {
     create_info.display_rect.right = static_cast<short>(MAX_WIDTH);
     create_info.display_rect.top = 0;
     create_info.display_rect.bottom = static_cast<short>(MAX_HEIGHT);
-    create_info.chroma_format = rocDecVideoChromaFormat_420;
+    create_info.chroma_format = rocDecVideoChromaFormat_420;            // it is assumed that the hardware output format is 4:2:0
     create_info.output_format = rocDecVideoSurfaceFormat_P016;
     create_info.bit_depth_minus_8 = 2;
     create_info.num_output_surfaces = 1;
@@ -573,10 +527,7 @@ int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp
     }
 
     if (p_dec_info->dump_decoded_frames) {
-        uint32_t vpitch, num_chroma_planes;
-        GetSurfaceStrideInternal(p_dec_info->surf_format, p_dec_info->coded_width, p_dec_info->coded_height, &pitch[0], &vpitch, num_chroma_planes);
-        p_dec_info->output_surface_size_in_bytes = pitch[0] * (vpitch + ((vpitch * GetChromaHeightFactor(p_dec_info->surf_format)) * num_chroma_planes));
-        save_frame_to_file(p_dec_info, dev_mem_ptr[0], pitch, vpitch, num_chroma_planes);
+        save_frame_to_file(p_dec_info, dev_mem_ptr, pitch);
     }
     return 1;
 }
@@ -638,19 +589,13 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-b backend (0 for GPU, 1 CPU-FFMpeg); optional; default: 0" << std::endl
+    << "-c codec (0 : HEVC, 1 : H264, 2: AV1, 4: VP9, 5: VP8, 6: MJPEG ); optional; default: 0" << std::endl
     << "-n Number of iteration - specify the number of iterations for performance evaluation; optional; default: 1" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
     << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
     exit(0);
 }
 
-std::string getLastPart(const std::string& str, char delimiter) {
-    size_t pos = str.find_last_of(delimiter);
-    if (pos == std::string::npos) {
-        return str; // Delimiter not found, return the whole string
-    }
-    return str.substr(pos + 1);
-}
 
 int main(int argc, char** argv) {
 
@@ -662,6 +607,7 @@ int main(int argc, char** argv) {
     bool b_extract_sei_messages = false;
     bool b_flush_frames_during_reconfig = true;
     std::vector<std::string> input_file_names;
+    int codec_type = 0; // default for HEVC
     DecoderInfo dec_info;
 
     // Parse command-line arguments
@@ -677,27 +623,33 @@ int main(int argc, char** argv) {
                 ShowHelpAndExit("-i");
             }
             input_file_path = argv[i];
+            bool b_sort_filenames = false;
             if (std::filesystem::is_directory(input_file_path)) {
                 for (const auto& entry : std::filesystem::directory_iterator(input_file_path)) {
-                    input_file_names.push_back(entry.path());
-                 }                    
+                    if (entry.is_directory()) {
+                        std::vector<std::string> file_names_sub_folder;
+                        for (const auto& sub_entry : std::filesystem::directory_iterator(entry)) {
+                            file_names_sub_folder.push_back(sub_entry.path());
+                        }
+                        std::sort(file_names_sub_folder.begin(), file_names_sub_folder.end());
+                        input_file_names.insert(input_file_names.end(), file_names_sub_folder.begin(), file_names_sub_folder.end());
+                        file_names_sub_folder.clear();
+                    } else if(entry.is_regular_file()) {
+                        b_sort_filenames = true;
+                        input_file_names.push_back(entry.path());
+                    }
+                    else {
+                        std::cout << "unknown file type in input folder: " << entry.path().string() << '\n';
+                        continue;
+                    }
+                 }
+                 if (b_sort_filenames) {
+                    std::sort(input_file_names.begin(), input_file_names.end());
+                 }
             } else {
                 input_file_names.push_back(input_file_path);
             }
         
-            // Sort entries based on the numerical part of their filenames
-            std::sort(input_file_names.begin(), input_file_names.end(), [](const std::string& a_name, const std::string& b_name) {
-                // remove file extension
-                size_t pos = a_name.find_last_of(".");
-                std::string a_raw = a_name.substr(0, pos); 
-                pos = b_name.find_last_of(".");
-                std::string b_raw = b_name.substr(0, pos);
-                //sort
-                std::string num_a = getLastPart(a_raw, '_');
-                std::string num_b = getLastPart(b_raw, '_');
-                return stoi(num_a) < stoi(num_b);
-            });
-
             std::cout << "Read " << input_file_names.size() << " frames from disk." << std::endl;
             continue;
         }
@@ -725,6 +677,14 @@ int main(int argc, char** argv) {
             device_id = atoi(argv[i]);
             continue;
         }
+        if (!strcmp(argv[i], "-c")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-c");
+            }
+            codec_type = atoi(argv[i]);
+            continue;
+        }
+
         if (!strcmp(argv[i], "-n")) {
             if (++i == argc) {
                 ShowHelpAndExit("-n");
@@ -734,7 +694,7 @@ int main(int argc, char** argv) {
         }
         ShowHelpAndExit(argv[i]);
     }
-
+    dec_info.rocdec_codec_id = CodecTypeToRocDecVideoCodec(codec_type);
     init();
     if (backend == DECODER_BACKEND_DEVICE) {
         create_parser(dec_info);

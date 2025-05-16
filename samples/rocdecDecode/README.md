@@ -1,7 +1,7 @@
 
 # rocdecDecode sample
 
-The rocdec decode sample illustrates decoding of individual frames of video elementary stream data using the rocDecoder and rocDecodeHost low level api to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample directly uses low-level Rocdecoder/RocDecoderHost api. 
+The rocdec decode sample illustrates decoding of individual frames of video elementary stream data using the rocDecoder and rocDecodeHost low level api to get the individual decoded frames in YUV format. This sample can be configured with a device ID and optionally able to dump the output to a file. This sample directly uses low-level Rocdecoder/RocDecoderHost api. This sample only works with raw elementary video frame files, not with packetized data
 
 ## Prerequisites:
 
