@@ -30,6 +30,12 @@ This sample illustrates the FFMPEG demuxer to get the individual frames which ar
 
 This sample uses multiple threads to decode the same input video parallelly.
 
+## [Video decode validation](videoDecodeValidation)
+
+This sample combines performance testing capabilities from `videoDecodePerf` with output validation features from `videoDecode`. It allows you to measure the performance of the video decoder while also validating the decoded output against reference data or saving the output for further analysis.
+
+The sample supports multi-threaded decoding for performance testing while providing options to save decoded frames to file or generate MD5 hash for validation. It offers a comprehensive way to benchmark decoder performance while ensuring output quality.
+
 ## [Video decode RGB](videoDecodeRGB)
 
 This sample illustrates the FFMPEG demuxer to get the individual frames which are then decoded using rocDecode API and optionally color-converted using custom HIP kernels on AMD hardware. This sample converts decoded YUV output to one of the RGB or BGR formats(24bit, 32bit, 464bit) in a separate thread allowing it to run both VCN hardware and compute engine in parallel.
