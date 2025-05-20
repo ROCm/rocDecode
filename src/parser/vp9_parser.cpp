@@ -444,6 +444,7 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     ParserResult ret = PARSER_OK;
     size_t offset = 0;  // current bit offset
     Vp9UncompressedHeader *p_uncomp_header = &uncompressed_header_;
+
     // memset(p_uncomp_header, 0, sizeof(Vp9UncompressedHeader));
     p_uncomp_header->frame_marker = Parser::ReadBits(p_stream, offset, 2);
     p_uncomp_header->profile_low_bit = Parser::GetBit(p_stream, offset);
