@@ -444,7 +444,6 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     ParserResult ret = PARSER_OK;
     size_t offset = 0;  // current bit offset
     Vp9UncompressedHeader *p_uncomp_header = &uncompressed_header_;
-
     // memset(p_uncomp_header, 0, sizeof(Vp9UncompressedHeader));
     p_uncomp_header->frame_marker = Parser::ReadBits(p_stream, offset, 2);
     p_uncomp_header->profile_low_bit = Parser::GetBit(p_stream, offset);
@@ -585,6 +584,14 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         new_seq_activated_ = true;
     }
     uncomp_header_size_ = (offset + 7) >> 3;
+    if (uncomp_header_size_ > size) {
+        ERR("Uncompressed header size (" + TOSTR(uncomp_header_size_) + ") exceeds frame data size (" + TOSTR(size) + ")");
+        return PARSER_WRONG_STATE;
+    }
+    if (p_uncomp_header->header_size_in_bytes > (size - uncomp_header_size_)) {
+        ERR("header_size_in_bytes (" + TOSTR(p_uncomp_header->header_size_in_bytes) + ") exceeds allowed size (" + TOSTR(size - uncomp_header_size_) + ")");
+        return PARSER_WRONG_STATE;
+    }
     return PARSER_OK;
 }
 
