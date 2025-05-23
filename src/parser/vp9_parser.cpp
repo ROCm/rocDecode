@@ -585,6 +585,14 @@ ParserResult Vp9VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         new_seq_activated_ = true;
     }
     uncomp_header_size_ = (offset + 7) >> 3;
+    if (uncomp_header_size_ > size) {
+        ERR("Uncompressed header size (" + TOSTR(uncomp_header_size_) + ") exceeds frame data size (" + TOSTR(size) + ")");
+        return PARSER_WRONG_STATE;
+    }
+    if (p_uncomp_header->header_size_in_bytes > (size - uncomp_header_size_)) {
+        ERR("header_size_in_bytes (" + TOSTR(p_uncomp_header->header_size_in_bytes) + ") exceeds allowed size (" + TOSTR(size - uncomp_header_size_) + ")");
+        return PARSER_WRONG_STATE;
+    }
     return PARSER_OK;
 }
 
