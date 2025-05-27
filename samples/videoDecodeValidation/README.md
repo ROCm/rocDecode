@@ -58,7 +58,7 @@ To decode and validate the first 100 frames of a video with performance metrics:
 To decode with multiple threads for performance testing and save the output:
 
 ```shell
-./videodecodevalidation -i /path/to/video.mp4 -t 4 -o /path/to/output_frames -m 2
+./videodecodevalidation -i /path/to/video.mp4 -t 4 -o /path/to/output_frames
 ```
 
 To decode and compare output against a reference MD5 hash:
@@ -69,7 +69,7 @@ To decode and compare output against a reference MD5 hash:
 
 ## Notes
 
-- For best performance results, use `-m 3` (decode only) when measurements are the primary goal.
+- For best performance results, use `-t 5` (decode only) when measurements are the primary goal.
 - For output validation, use `-t 5` along with the `-o` option.
 - When using multiple threads, only thread 0 will handle file output to maximize decoder throughput.
 - The default asynchronous frame output is designed to improve VCN utilization. Use `-sync_output` if you need synchronous operation.
