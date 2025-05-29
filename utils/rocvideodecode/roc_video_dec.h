@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <cstring>
 #include <unordered_map>
 #include <chrono>
+#include <thread>
 #include <hip/hip_runtime.h>
 #include "rocdecode/rocdecode.h"
 #include "rocdecode/rocparser.h"
