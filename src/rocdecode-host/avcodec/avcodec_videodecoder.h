@@ -67,6 +67,9 @@ typedef struct Rect_{
     int16_t bottom;
 } Rect;     
 
+/**
+ * Class definition for AVcodec based video decoder class. This uses FFMpeg avcodec decoder to decode video frames
+ */
 class AvcodecVideoDecoder {
 public:
     AvcodecVideoDecoder(RocDecoderHostCreateInfo &decoder_create_info);

@@ -356,7 +356,9 @@ void create_decoder(DecoderInfo& dec_info) {
     create_info.display_rect.right = static_cast<short>(MAX_WIDTH);
     create_info.display_rect.top = 0;
     create_info.display_rect.bottom = static_cast<short>(MAX_HEIGHT);
-    create_info.chroma_format = rocDecVideoChromaFormat_420;            // it is assumed that the hardware output format is 4:2:0
+    // for decode creation: assuming chroma_format is 4:2:0 and output_format is P016.
+    // this will get changed in reconfigure when the sequence header is parsed from the stream to detect the actual stream formats
+    create_info.chroma_format = rocDecVideoChromaFormat_420;
     create_info.output_format = rocDecVideoSurfaceFormat_P016;
     create_info.bit_depth_minus_8 = 2;
     create_info.num_output_surfaces = 1;
@@ -364,7 +366,6 @@ void create_decoder(DecoderInfo& dec_info) {
 }
 
 int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormatHost* format_host) {
-    // std::cout << "handle_video_sequence is called" << std::endl;
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecVideoFormat *format = &format_host->video_format;
     RocdecReconfigureDecoderInfo reconfig_params = {};
@@ -429,6 +430,8 @@ void create_decoder_host(DecoderInfo& dec_info) {
     RocDecoderHostCreateInfo create_info = {};
     create_info.codec_type = dec_info.rocdec_codec_id;
     create_info.num_decode_threads = 0;     // default
+    // many of the decoder parameters are hardcoded below for just creating the decoder.
+    // In the handlevideosequence callback, the decoder will get reconfigured to the actual parameters in the sequence header
     create_info.max_width = MAX_WIDTH;
     create_info.max_height = MAX_HEIGHT;
     create_info.width = MAX_WIDTH;
@@ -593,6 +596,38 @@ void ShowHelpAndExit(const char *option = NULL) {
     exit(0);
 }
 
+// helper function for sort
+std::string getLastPart(const std::string& str, char delimiter) {
+    size_t pos = str.find_last_of(delimiter);
+    if (pos == std::string::npos) {
+        return str; // Delimiter not found, return the whole string
+    }
+    return str.substr(pos + 1);
+}
+
+// helper function for sort
+int extractNumber(const std::string& filename) {
+    std::string numStr;
+    for (char c : filename) {
+        if (std::isdigit(c)) {
+            numStr += c;
+        } else if (!numStr.empty()) {
+            break; // Stop at first non-digit after a digit sequence
+        }
+    }
+    return numStr.empty() ? 0 : std::stoi(numStr);
+}
+
+// helper function for sort
+// Sort entries based on the numerical part of their filenames
+bool compareFilenames(const std::string& a, const std::string& b) {
+    int num_a = extractNumber(a);
+    int num_b = extractNumber(b);
+    if (num_a != num_b) {
+        return num_a < num_b;
+    }
+    return a < b; // Fallback to lexicographical comparison
+};
 
 int main(int argc, char** argv) {
 
@@ -626,7 +661,7 @@ int main(int argc, char** argv) {
                         for (const auto& sub_entry : std::filesystem::directory_iterator(entry)) {
                             file_names_sub_folder.push_back(sub_entry.path());
                         }
-                        std::sort(file_names_sub_folder.begin(), file_names_sub_folder.end());
+                        std::sort(file_names_sub_folder.begin(), file_names_sub_folder.end(), compareFilenames);
                         input_file_names.insert(input_file_names.end(), file_names_sub_folder.begin(), file_names_sub_folder.end());
                         file_names_sub_folder.clear();
                     } else if(entry.is_regular_file()) {
@@ -639,7 +674,7 @@ int main(int argc, char** argv) {
                     }
                  }
                  if (b_sort_filenames) {
-                    std::sort(input_file_names.begin(), input_file_names.end());
+                    std::sort(input_file_names.begin(), input_file_names.end(), compareFilenames);
                  }
             } else {
                 input_file_names.push_back(input_file_path);

@@ -78,7 +78,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     if(ROCDECODE_HOST_LIBRARY)
       set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
     else()
-      message(FATAL_ERROR "Library mylib not found!")
+      message(FATAL_ERROR "Library ROCDECODE_HOST_LIBRARY not found!")
     endif()
     # rocDecode
     # sample app exe

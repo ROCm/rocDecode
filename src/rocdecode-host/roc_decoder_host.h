@@ -32,6 +32,9 @@ THE SOFTWARE.
 #include <map>
 #include "avcodec/avcodec_videodecoder.h"
 
+/**
+ * RocDecoderHost class: Wrapper class for rocDecoderHost API implementation
+ */
 class RocDecoderHost {
 public:
     RocDecoderHost(RocDecoderHostCreateInfo &decoder_create_info);

@@ -35,7 +35,7 @@ rocDecStatus RocDecoderHost::InitializeDecoder() {
     }
     rocdec_status = avcodec_video_decoder_.InitializeDecoder();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to initilize the FFMpeg Video decoder.");
+        ERR("Failed to initialize the FFMpeg Video decoder.");
         return rocdec_status;
     }
      return rocdec_status;
