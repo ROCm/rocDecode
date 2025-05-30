@@ -154,7 +154,7 @@ rocDecStatus ROCDECAPI
 rocDecGetVideoFrameHost(rocDecDecoderHandle decoder_handle, int pic_idx,
                                                     void **frame_data, uint32_t *line_size,
                                                     RocdecProcParams *vid_postproc_params) {
-    if (decoder_handle == nullptr || /*frame_data == nullptr || */ line_size == nullptr || vid_postproc_params == nullptr) {
+    if (decoder_handle == nullptr || frame_data == nullptr || line_size == nullptr || vid_postproc_params == nullptr) {
         return ROCDEC_INVALID_PARAMETER;
     }
     auto handle = static_cast<DecHandleHost *>(decoder_handle);
