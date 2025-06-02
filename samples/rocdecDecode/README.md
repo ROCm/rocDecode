@@ -30,10 +30,8 @@ make -j
 ```shell
 ./rocdecdecode -i <input video frame file or folder containing multiple frames [required]> -b <backend> -o <outfile>
               -o <output path to save decoded YUV frames [optional]> 
-              -b <backend for the decoder - 0:device 1:host [optional - default:0]>
               -d <GPU device ID - 0:device 0 / 1:device 1/ ... [optional - default:0]>
-              -f <Number of decoded frames - specify the number of pictures to be decoded [optional]>
-              -crop <crop rectangle for output (not used when using interopped decoded frame) [optional - default: 0,0,0,0]>
+              -b <backend for the decoder - 0:device 1:host [optional - default:0]>
               -c <codec - 0 : HEVC, 1 : H264, 2: AV1, 4: VP9, 5: VP8, 6: MJPEG [optional; default: 0]>
               -n <Number of iteration - specify the number of iterations for performance evaluation [optional; default: 1]>
               -m <output_surface_memory_type - decoded surface memory [optional - default: 0][0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/3 : OUT_SURFACE_MEM_NOT_MAPPED]>
