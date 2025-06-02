@@ -45,7 +45,7 @@ rocDecCreateDecoderHost(rocDecDecoderHandle *decoder_handle, RocDecoderHostCreat
 }
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle)
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoderHost(rocDecDecoderHandle decoder_handle)
 //! Destroy the decoder object
 /*****************************************************************************************************/
 rocDecStatus ROCDECAPI 
@@ -59,11 +59,12 @@ rocDecDestroyDecoderHost(rocDecDecoderHandle decoder_handle) {
 }
 
 /**********************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocdecGetDecoderCaps(rocDecDecoderHandle decoder_handle, RocdecDecodeCaps *pdc)
-//! Queries decode capabilities of AMD's VCN decoder based on codec type, chroma_format and BitDepthMinus8 parameters.
+//! \fn rocDecStatus ROCDECAPI rocDecGetDecoderCapsHost(rocDecDecoderHandle decoder_handle, RocdecDecodeCaps *pdc)
+//! Queries decode capabilities of host based decoder based on codec type, chroma_format and BitDepthMinus8 parameters.
 //! 1. Application fills IN parameters codec_type, chroma_format and BitDepthMinus8 of RocdecDecodeCaps structure
 //! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters if the IN parameters are supported
 //!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
+//!    Currently this is not supported in avcodec based decoder
 /**********************************************************************************************************************/
 rocDecStatus ROCDECAPI
 rocDecGetDecoderCapsHost(RocdecDecodeCaps *pdc) {
@@ -75,7 +76,7 @@ rocDecGetDecoderCapsHost(RocdecDecodeCaps *pdc) {
 }
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_params)
+//! \fn rocDecStatus ROCDECAPI rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_params)
 //! Decodes a single picture
 //! Submits the frame for HW decoding 
 /*****************************************************************************************************/
@@ -98,7 +99,7 @@ rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, _RocdecPicParamsHost *
 }
 
 /************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI RocdecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
+//! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatusHost(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
 //! Get the decode status for frame corresponding to pic_idx
 //! API is currently supported for HEVC codec.
 //! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
@@ -122,7 +123,7 @@ rocDecGetDecodeStatusHost(rocDecDecoderHandle decoder_handle, int pic_idx, Rocde
 }
 
 /*********************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params)
+//! \fn rocDecStatus ROCDECAPI rocDecReconfigureDecoderHost(rocDecDecoderHandle decoder_handle, RocdecReconfigureDecoderInfo *reconfig_params)
 //! Used to reuse single decoder for multiple clips. Currently supports resolution change, resize params
 //! params, target area params change for same codec. Must be called during RocdecParserParams::pfn_sequence_callback
 /*********************************************************************************************************/

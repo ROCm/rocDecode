@@ -38,7 +38,7 @@ THE SOFTWARE.
  * \brief The AMD rocDecode Library.
  *
  * \defgroup group_amd_rocdecode rocDecode: AMD ROCm Software Decode API
- * \brief AMD The rocDecode is a toolkit to decode videos and images using a hardware-accelerated video decoder on AMD’s GPUs.
+ * \brief  The rocDecodeHost is a toolkit to decode videos and images using a avcodec based video decoder on ROCm.
  */
 
 #if defined(__cplusplus)
@@ -64,8 +64,8 @@ typedef int(ROCDECAPI *PFNVIDDISPLAYHOSTCALLBACK)(void *, void *);
 //! \struct _RocdecPicParams
 //! \ingroup group_amd_rocdecode
 //! Picture parameters for decoding
-//! This structure is used in rocDecDecodePicture API
-//! IN  for rocDecDecodePicture
+//! This structure is used in rocDecDecodePictureHost API
+//! IN  for rocDecDecodePictureHost
 /******************************************************************************************/
 typedef struct _RocdecPicParamsHost {
     // Bitstream data
@@ -125,7 +125,7 @@ typedef struct _RocDecoderHostCreateInfo {
 extern rocDecStatus ROCDECAPI rocDecCreateDecoderHost(rocDecDecoderHandle *decoder_handle, RocDecoderHostCreateInfo *decoder_create_info);
 
 /*****************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoder(rocDecDecoderHandle decoder_handle)
+//! \fn rocDecStatus ROCDECAPI rocDecDestroyDecoderHost(rocDecDecoderHandle decoder_handle)
 //! \ingroup group_amd_rocdecode
 //! Destroy the decoder object
 /*****************************************************************************************************/
@@ -134,10 +134,9 @@ extern rocDecStatus ROCDECAPI rocDecDestroyDecoderHost(rocDecDecoderHandle decod
 /**********************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecoderCapsHost(RocdecDecodeCaps *decode_caps)
 //! \ingroup group_amd_rocdecode
-//! Queries decode capabilities of AMD's VCN decoder based on codec type, chroma_format and BitDepthMinus8 parameters.
+//! Queries decode capabilities of host based decoder based on codec type, chroma_format and BitDepthMinus8 parameters.
 //! 1. Application fills IN parameters codec_type, chroma_format and BitDepthMinus8 of RocdecDecodeCaps structure
-//! 2. On calling rocdecGetDecoderCaps, driver fills OUT parameters (for GPU device) if the IN parameters are supported
-//!    If IN parameters passed to the driver are not supported by AMD-VCN-HW, then all OUT params are set to 0.
+//! 2. For FFMpeg avcodec based decoder, this call returns success
 /**********************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetDecoderCapsHost(RocdecDecodeCaps *decode_caps);
 
@@ -145,7 +144,7 @@ extern rocDecStatus ROCDECAPI rocDecGetDecoderCapsHost(RocdecDecodeCaps *decode_
 //! \fn rocDecStatus ROCDECAPI rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, RocdecPicParamsHost *pic_params)
 //! \ingroup group_amd_rocdecode
 //! Decodes a single picture
-//! Submits the frame for HW decoding
+//! Submits the frame for host based decoding
 /*****************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, RocdecPicParamsHost *pic_params);
 
