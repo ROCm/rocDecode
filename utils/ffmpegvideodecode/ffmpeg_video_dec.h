@@ -36,6 +36,7 @@ extern "C" {
 #include <condition_variable>
 #include <queue>
 #include <atomic>
+#include <cassert>
 
 
 #define MAX_AV_PACKET_DATA_SIZE     4096
