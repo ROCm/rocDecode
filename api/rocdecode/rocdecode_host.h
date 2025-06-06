@@ -38,7 +38,7 @@ THE SOFTWARE.
  * \brief The AMD rocDecode Library.
  *
  * \defgroup group_amd_rocdecode rocDecode: AMD ROCm Software Decode API
- * \brief  The rocDecodeHost is a toolkit to decode videos and images using a avcodec based video decoder on ROCm.
+ * \brief  The rocDecodeHost is a part of rocDecode toolkit to decode videos and images using a avcodec based video decoder on ROCm.
  */
 
 #if defined(__cplusplus)

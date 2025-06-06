@@ -121,7 +121,6 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
     return factor;
 };
 
-
 // only 2 types of memory mode is supported in this sample for simplicity.
 typedef enum OutputSurfaceMemoryType_enum {
     OUT_SURFACE_MEM_DEV_INTERNAL = 0,      /**<  Internal interopped decoded surface memory(original mapped decoded surface) */
@@ -139,7 +138,6 @@ typedef enum DecoderBackend_enum {
     do                                                                                   \
     {                                                                                    \
         auto status__ = callable; /* invoke the callable and assign the return status */ \
-        /*std::cout << #callable << " returned " << (int)status__ << std::endl;*/            \
         if (is_error(status__))                                                          \
         {                                                                                \
             report_error(status__, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);     \
@@ -427,11 +425,11 @@ int ROCDECAPI handle_picture_display_host(void* user_data, RocdecParserDispInfo*
 }
 
 void create_decoder_host(DecoderInfo& dec_info) {
+    // many of the decoder parameters are hardcoded below for just creating the decoder.
+    // In the handlevideosequence callback, the decoder will get reconfigured to the actual parameters in the sequence header
     RocDecoderHostCreateInfo create_info = {};
     create_info.codec_type = dec_info.rocdec_codec_id;
     create_info.num_decode_threads = 0;     // default
-    // many of the decoder parameters are hardcoded below for just creating the decoder.
-    // In the handlevideosequence callback, the decoder will get reconfigured to the actual parameters in the sequence header
     create_info.max_width = MAX_WIDTH;
     create_info.max_height = MAX_HEIGHT;
     create_info.width = MAX_WIDTH;
@@ -456,15 +454,19 @@ void create_decoder_host(DecoderInfo& dec_info) {
 int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) {
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecReconfigureDecoderInfo reconfig_params = {};
+    int bitdepth_minus_8 = format->bit_depth_luma_minus8;
+    uint32_t target_width = (format->display_area.right - format->display_area.left + 1) & ~1;
+    uint32_t target_height = (format->display_area.bottom - format->display_area.top + 1) & ~1;
     reconfig_params.width = format->coded_width;
     reconfig_params.height = format->coded_height;
+    reconfig_params.bit_depth_minus_8 = bitdepth_minus_8;
     reconfig_params.num_decode_surfaces = format->min_num_decode_surfaces;
-    reconfig_params.target_width = format->coded_width;
-    reconfig_params.target_height = format->coded_height;
-    reconfig_params.display_rect.left = 0;
-    reconfig_params.display_rect.right = static_cast<short>(format->coded_width);
-    reconfig_params.display_rect.top = 0;
-    reconfig_params.display_rect.bottom = static_cast<short>(format->coded_height);
+    reconfig_params.target_width = target_width;
+    reconfig_params.target_height = target_height;
+    reconfig_params.display_rect.left = format->display_area.left;
+    reconfig_params.display_rect.right = format->display_area.right;
+    reconfig_params.display_rect.top = format->display_area.top;
+    reconfig_params.display_rect.bottom = format->display_area.bottom;
     CHECK(rocDecReconfigureDecoder(p_dec_info->decoder, &reconfig_params));
     p_dec_info->is_decoder_reconfigured = true;
     p_dec_info->disp_rect.top = format->display_area.top;
@@ -472,14 +474,12 @@ int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) 
     p_dec_info->disp_rect.left = format->display_area.left;
     p_dec_info->disp_rect.right = format->display_area.right;
     rocDecVideoChromaFormat video_chroma_format = format->chroma_format;
-    int bitdepth_minus_8 = format->bit_depth_luma_minus8;
     if (video_chroma_format == rocDecVideoChromaFormat_420 || rocDecVideoChromaFormat_Monochrome)
         p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_P016 : rocDecVideoSurfaceFormat_NV12;
     else if (video_chroma_format == rocDecVideoChromaFormat_444)
         p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV444_16Bit : rocDecVideoSurfaceFormat_YUV444;
     else if (video_chroma_format == rocDecVideoChromaFormat_422)
-
-    p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
+        p_dec_info->surf_format = bitdepth_minus_8 ? rocDecVideoSurfaceFormat_YUV422_16Bit : rocDecVideoSurfaceFormat_YUV422;
     p_dec_info->coded_width = format->coded_width;
     p_dec_info->coded_height = format->coded_height;
     p_dec_info->bytes_per_pixel = bitdepth_minus_8 > 0 ? 2 : 1;
@@ -508,15 +508,12 @@ int ROCDECAPI handle_picture_decode(void* user_data, RocdecPicParams* params) {
     return 1;
 }
 
+
 int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp_info) {
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecProcParams params = {};
     params.progressive_frame = disp_info->progressive_frame;
     params.top_field_first = disp_info->top_field_first;
-    void* dev_mem_ptr[3] = { 0 };
-    uint32_t pitch[3] = { 0 };
-    CHECK(rocDecGetVideoFrame(p_dec_info->decoder, disp_info->picture_index, dev_mem_ptr, pitch, &params));
-    p_dec_info->mem_type = OUT_SURFACE_MEM_DEV_INTERNAL;
     // check if decoding is complete
     RocdecDecodeStatus dec_status;
     memset(&dec_status, 0, sizeof(dec_status));
@@ -525,6 +522,10 @@ int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp
         std::cerr << "Decode Error occurred for picture: " << disp_info->picture_index << std::endl;
         return 0;
     }
+    // get device memory pointer for decoded output surface
+    void* dev_mem_ptr[3] = { 0 };
+    uint32_t pitch[3] = { 0 };
+    CHECK(rocDecGetVideoFrame(p_dec_info->decoder, disp_info->picture_index, dev_mem_ptr, pitch, &params));
 
     if (p_dec_info->dump_decoded_frames) {
         save_frame_to_file(p_dec_info, dev_mem_ptr, pitch);
@@ -537,7 +538,7 @@ void create_parser(DecoderInfo& dec_info) {
     RocdecParserParams params = {};
     params.codec_type = dec_info.rocdec_codec_id;
     params.max_num_decode_surfaces = 6;
-    params.max_display_delay = 0;
+    params.max_display_delay = 1;       // min display delay of 1 is recommented to get optimal performance from hardware decoder
     params.user_data = &dec_info;
     params.pfn_sequence_callback = handle_video_sequence;
     params.pfn_decode_picture = handle_picture_decode;

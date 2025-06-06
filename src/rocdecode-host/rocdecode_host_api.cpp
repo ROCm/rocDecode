@@ -146,7 +146,7 @@ rocDecReconfigureDecoderHost(rocDecDecoderHandle decoder_handle, RocdecReconfigu
 }
 
 /************************************************************************************************************************/
-//! \fn rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, unsigned int *dev_mem_ptr,
+//! \fn rocDecStatus ROCDECAPI rocDecGetVideoFrameHost(rocDecDecoderHandle decoder_handle, int pic_idx, unsigned int *dev_mem_ptr,
 //!         unsigned int *horizontal_pitch, RocdecProcParams *vid_postproc_params);
 //! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) separately

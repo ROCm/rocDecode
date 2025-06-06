@@ -49,7 +49,7 @@ extern "C" {
 
 typedef struct DecFrameBufferFFMpeg_ {
     AVFrame *av_frame_ptr;      /**< av_frame pointer for the decoded frame */
-    uint8_t *frame_ptr;       /**< host/device memory pointer for the decoded frame depending on mem_type*/
+    uint8_t *frame_ptr;       /**< host memory pointer for the decoded frame depending on mem_type*/
     int64_t  pts;             /**<  timestamp for the decoded frame */
     int picture_index;         /**<  surface index for the decoded frame */
 } DecFrameBufferFFMpeg;
