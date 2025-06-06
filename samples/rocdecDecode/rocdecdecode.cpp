@@ -66,8 +66,8 @@ __attribute__((visibility("hidden"))) inline void report_error(
 }
 
 //hardcoding for this sample
-#define MAX_WIDTH 2912
-#define MAX_HEIGHT 1888
+#define DEFAULT_WIDTH 2912
+#define DEFAULT_HEIGHT 1888
 
 // helper functions for saving output to file
 
@@ -293,15 +293,15 @@ void save_frame_to_file_host(DecoderInfo *p_dec_info, void *frame_mem[], uint32_
             // dump chroma
             uint8_t *p_src_ptr_uv = static_cast<uint8_t *>(frame_mem[1]) + ((p_dec_info->disp_rect.top >> 1) * pitch[1] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel);
             int32_t chroma_height = static_cast<int>(GetChromaHeightFactor(p_dec_info->surf_format) * img_height);
-            int32_t chroma_width = static_cast<int>(GetChromaWidthFactor(p_dec_info->surf_format) * img_width);
+            int32_t chroma_width = static_cast<int>(GetChromaWidthFactor(p_dec_info->surf_format) * img_width) * p_dec_info->bytes_per_pixel;
             for (int32_t i = 0; i < chroma_height; i++) {
-                fwrite(p_src_ptr_uv, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
+                fwrite(p_src_ptr_uv, 1, chroma_width, p_dec_info->fp_out);
                 p_src_ptr_uv += pitch[1];
             }
             if (frame_mem[2] != nullptr) {
                 uint8_t *p_src_ptr_v = static_cast<uint8_t *>(frame_mem[2]) + p_dec_info->disp_rect.top * pitch[2] + (p_dec_info->disp_rect.left >> 1) * p_dec_info->bytes_per_pixel;
                 for (int32_t i = 0; i < chroma_height; i++) {
-                    fwrite(p_src_ptr_v, p_dec_info->bytes_per_pixel, chroma_width, p_dec_info->fp_out);
+                    fwrite(p_src_ptr_v, 1, chroma_width, p_dec_info->fp_out);
                     p_src_ptr_v += pitch[2];
                 }
             }
@@ -343,21 +343,22 @@ void init() {}
 void create_decoder(DecoderInfo& dec_info) {
     RocDecoderCreateInfo create_info = {};
     create_info.codec_type = dec_info.rocdec_codec_id;     // user specified codec_type for raw files
-    create_info.max_width = MAX_WIDTH;
-    create_info.max_height = MAX_HEIGHT;
-    create_info.width = MAX_WIDTH;
-    create_info.height = MAX_HEIGHT;
+    create_info.max_width = DEFAULT_WIDTH;
+    create_info.max_height = DEFAULT_HEIGHT;
+    create_info.width = DEFAULT_WIDTH;
+    create_info.height = DEFAULT_HEIGHT;
     create_info.num_decode_surfaces = 6;
-    create_info.target_width = MAX_WIDTH;
-    create_info.target_height = MAX_HEIGHT;
+    create_info.target_width = DEFAULT_WIDTH;
+    create_info.target_height = DEFAULT_HEIGHT;
     create_info.display_rect.left = 0;
-    create_info.display_rect.right = static_cast<short>(MAX_WIDTH);
+    create_info.display_rect.right = static_cast<short>(DEFAULT_WIDTH);
     create_info.display_rect.top = 0;
-    create_info.display_rect.bottom = static_cast<short>(MAX_HEIGHT);
-    // for decode creation: assuming chroma_format is 4:2:0 and output_format is P016.
-    // this will get changed in reconfigure when the sequence header is parsed from the stream to detect the actual stream formats
+    create_info.display_rect.bottom = static_cast<short>(DEFAULT_HEIGHT);
+    // for decode creation: assuming chroma_format is 4:2:0 and output_format is NV12.
+    // video dimensions ( width, height, max_width, max_height), num_decode_surfaces, and bit_depth_minus_8 are hardcoded here
+    // this will get changed in reconfigure when the sequence header is parsed from the stream to detect the actual video parameters
     create_info.chroma_format = rocDecVideoChromaFormat_420;
-    create_info.output_format = rocDecVideoSurfaceFormat_P016;
+    create_info.output_format = rocDecVideoSurfaceFormat_NV12;
     create_info.bit_depth_minus_8 = 2;
     create_info.num_output_surfaces = 1;
     CHECK(rocDecCreateDecoder(&dec_info.decoder, &create_info));
@@ -430,16 +431,16 @@ void create_decoder_host(DecoderInfo& dec_info) {
     RocDecoderHostCreateInfo create_info = {};
     create_info.codec_type = dec_info.rocdec_codec_id;
     create_info.num_decode_threads = 0;     // default
-    create_info.max_width = MAX_WIDTH;
-    create_info.max_height = MAX_HEIGHT;
-    create_info.width = MAX_WIDTH;
-    create_info.height = MAX_HEIGHT;
-    create_info.target_width = MAX_WIDTH;
-    create_info.target_height = MAX_HEIGHT;
+    create_info.max_width = DEFAULT_WIDTH;
+    create_info.max_height = DEFAULT_HEIGHT;
+    create_info.width = DEFAULT_WIDTH;
+    create_info.height = DEFAULT_HEIGHT;
+    create_info.target_width = DEFAULT_WIDTH;
+    create_info.target_height = DEFAULT_HEIGHT;
     create_info.display_rect.left = 0;
-    create_info.display_rect.right = static_cast<short>(MAX_WIDTH);
+    create_info.display_rect.right = static_cast<short>(DEFAULT_WIDTH);
     create_info.display_rect.top = 0;
-    create_info.display_rect.bottom = static_cast<short>(MAX_HEIGHT);
+    create_info.display_rect.bottom = static_cast<short>(DEFAULT_HEIGHT);
     create_info.chroma_format = rocDecVideoChromaFormat_420;
     create_info.output_format = rocDecVideoSurfaceFormat_P016;
     create_info.bit_depth_minus_8 = 2;
@@ -590,7 +591,7 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
     << "-b backend (0 for GPU, 1 CPU-FFMpeg); optional; default: 0" << std::endl
-    << "-c codec (0 : HEVC, 1 : H264, 2: AV1, 4: VP9, 5: VP8, 6: MJPEG ); optional; default: 0" << std::endl
+    << "-c codec (0 : HEVC, 1 : H264, 2: AV1, 4: VP9, 5: VP8 ); optional; default: 0" << std::endl
     << "-n Number of iteration - specify the number of iterations for performance evaluation; optional; default: 1" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
     << " [0 : OUT_SURFACE_MEM_DEV_INTERNAL/ 1 : OUT_SURFACE_MEM_DEV_COPIED/ 2 : OUT_SURFACE_MEM_HOST_COPIED/ 3 : OUT_SURFACE_MEM_NOT_MAPPED]" << std::endl;
@@ -737,9 +738,8 @@ int main(int argc, char** argv) {
     }
     dec_info.dump_decoded_frames = dump_output_frames;
     auto input_frames = read_frames(input_file_names);
-    decode_frames(dec_info, input_frames);  // warmup
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i=0; i<num_iterations; i++) {
+    for (int i = 0; i < num_iterations; i++) {
         decode_frames(dec_info, input_frames);
     }
     auto end = std::chrono::high_resolution_clock::now();
