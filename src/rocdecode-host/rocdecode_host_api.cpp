@@ -102,7 +102,7 @@ rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, _RocdecPicParamsHost *
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatusHost(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
 //! Get the decode status for frame corresponding to pic_idx
 //! API is currently supported for HEVC codec.
-//! API returns CUDA_ERROR_NOT_SUPPORTED error code for unsupported GPU or codec.
+//! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetDecodeStatusHost(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status) {

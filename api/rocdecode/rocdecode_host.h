@@ -47,7 +47,7 @@ extern "C" {
 
 /****************************************************************/
 //! \ingroup group_rocdec_struct
-//! \struct RocdecVideoFormat
+//! \struct RocdecVideoFormatHost
 //! Video format including raw sequence header information
 //! Used in rocDecCreateVideoParser API
 /****************************************************************/
@@ -61,7 +61,7 @@ typedef int(ROCDECAPI *PFNVIDSEQUENCECHOSTALLBACK)(void *, RocdecVideoFormatHost
 typedef int(ROCDECAPI *PFNVIDDISPLAYHOSTCALLBACK)(void *, void *);
 
 /******************************************************************************************/
-//! \struct _RocdecPicParams
+//! \struct _RocdecPicParamsHost
 //! \ingroup group_amd_rocdecode
 //! Picture parameters for decoding
 //! This structure is used in rocDecDecodePictureHost API
