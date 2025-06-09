@@ -312,11 +312,7 @@ rocDecStatus VaapiVideoDecoder::SyncSurface(int pic_idx) {
     if (pic_idx >= va_surface_ids_.size()) {
         return ROCDEC_INVALID_PARAMETER;
     }
-    VASurfaceStatus surface_status;
-    CHECK_VAAPI(vaQuerySurfaceStatus(va_display_, va_surface_ids_[pic_idx], &surface_status));
-    if (surface_status != VASurfaceReady) {
-        CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
-    }
+    CHECK_VAAPI(vaSyncSurface(va_display_, va_surface_ids_[pic_idx]));
     return ROCDEC_SUCCESS;
 }
 
