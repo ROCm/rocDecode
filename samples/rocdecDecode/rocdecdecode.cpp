@@ -515,14 +515,6 @@ int ROCDECAPI handle_picture_display(void* user_data, RocdecParserDispInfo* disp
     RocdecProcParams params = {};
     params.progressive_frame = disp_info->progressive_frame;
     params.top_field_first = disp_info->top_field_first;
-    // check if decoding is complete
-    RocdecDecodeStatus dec_status;
-    memset(&dec_status, 0, sizeof(dec_status));
-    CHECK(rocDecGetDecodeStatus(p_dec_info->decoder, disp_info->picture_index, &dec_status));
-    if ((dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-        std::cerr << "Decode Error occurred for picture: " << disp_info->picture_index << std::endl;
-        return 0;
-    }
     // get device memory pointer for decoded output surface
     void* dev_mem_ptr[3] = { 0 };
     uint32_t pitch[3] = { 0 };

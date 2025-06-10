@@ -797,12 +797,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
         }
     } else {
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
         output_frame_cnt_++;
     }
 
