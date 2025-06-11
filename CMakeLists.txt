@@ -103,6 +103,9 @@ message("-- ${BoldBlue}rocDecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}
 # Add an option for enabling the rocprofiler-register
 option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
 
+#add an option for enabling FFMPEG avcodec host-based decoder
+option(ROCDECODE_ENABLE_HOST_DECODER "Enable rocdecode host-based decoder support" ON)
+
 find_package(HIP QUIET)
 find_package(Libva QUIET)
 find_package(Libdrm_amdgpu QUIET)
@@ -111,6 +114,10 @@ if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
   find_package(rocprofiler-register QUIET
     HINTS $ENV{rocprofiler_register_ROOT} $ENV{ROCPROFILER_REGISTER_ROOT} ${CMAKE_INSTALL_PREFIX}
     PATHS ${ROCM_PATH})
+endif()
+
+if(ROCDECODE_ENABLE_HOST_DECODER)
+  find_package(FFmpeg QUIET)
 endif()
 
 if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
@@ -254,8 +261,10 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   include(CTest)
   add_subdirectory(test)
 
-  #make rocdecode-host for decoding on HOST
-  add_subdirectory(src/rocdecode-host)
+  # make rocdecode-host for decoding on HOST only if FFMPEG is available
+  if (ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
+    add_subdirectory(src/rocdecode-host)
+  endif()
 
   # set package information
   set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
