@@ -108,8 +108,9 @@ rocDecDecodeFrame(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_param
 /************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI RocdecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
 //! Get the decode status for frame corresponding to pic_idx
-//! API is currently supported for HEVC codec.
-//! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
+//! Please note that this API makes a non-blocking call and returns the status of the frame associated with nPicIdx at the time of the call,
+//! without waiting for the decoding to complete. The decode_status->decode_status can be either rocDecodeStatus_Success, indicating that
+//! the decoding has been completed, or rocDecodeStatus_InProgress, which means that the decoding is still in progress.
 /************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status) {
@@ -156,7 +157,9 @@ rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDe
 //! \fn rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx, unsigned int *dev_mem_ptr,
 //!         unsigned int *horizontal_pitch, RocdecProcParams *vid_postproc_params);
 //! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
-//! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately
+//! pitch(horizontal stride) of the video frame. Returns device memory pointers for each plane (Y, U and V) seperately.
+//! Please note that this API is a blocking call. If the video frame associated with the pic_idx is not ready, the call
+//! will wait for the decoding to complete before mapping the video frame for use in HIP.
 /************************************************************************************************************************/
 rocDecStatus ROCDECAPI 
 rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,

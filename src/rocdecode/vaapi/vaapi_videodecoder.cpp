@@ -286,9 +286,6 @@ rocDecStatus VaapiVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus 
         case VASurfaceReady:
             decode_status->decode_status = rocDecodeStatus_Success;
             break;
-        case VASurfaceDisplaying:
-            decode_status->decode_status = rocDecodeStatus_Displaying;
-            break;
         default:
            decode_status->decode_status = rocDecodeStatus_Invalid;
     }
