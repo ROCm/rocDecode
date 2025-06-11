@@ -40,6 +40,7 @@ extern "C" {
 #include <condition_variable>
 #include <queue>
 #include <atomic>
+#include <thread>
 #include "../src/commons.h"
 #include "../api/rocdecode/rocdecode.h"
 #include "../api/rocdecode/rocdecode_host.h"
