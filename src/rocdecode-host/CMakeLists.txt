@@ -64,8 +64,7 @@ endif()
 message("-- ${BoldBlue}rocdecode-host Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
 find_package(rocprofiler-register QUIET)
-#find_package(FFmpeg QUIET)
-find_package(FFmpeg)
+find_package(FFmpeg QUIET)
 
 if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   # HIP

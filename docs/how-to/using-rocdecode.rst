@@ -144,14 +144,9 @@ The API inputs are:
 * ``pic_idx``: An `int` value for the ``picIdx`` for which you want a status in order to index of the picture.
 * ``decode_status``: A pointer to ``RocdecDecodeStatus`` as a return value.
 
-The API returns one of the following statuses:
-
-* Invalid (0): Decode status is not valid.
-* In Progress (1): Decoding is in progress.
-* Success (2): Decoding was successful and no errors were returned.
-* Error (8): The frame was corrupted, but the error was not concealed.
-* Error Concealed (9): The frame was corrupted and the error was concealed.
-* Displaying (10): Decode is complete, display in progress.
+Please note that this API makes a non-blocking call and returns the status of the frame associated with nPicIdx at the time of the call,
+without waiting for the decoding to complete. The ``decode_status->decode_status`` can be either ``rocDecodeStatus_Success``, indicating that
+the decoding has been completed, or ``rocDecodeStatus_InProgress``, which means that the decoding is still in progress.
 
 Prepare the decoded frame for further processing
 ====================================================
@@ -159,7 +154,9 @@ Prepare the decoded frame for further processing
 The decoded frames can be used for further postprocessing using ``rocDecGetVideoFrame()``. The
 successful completion of ``rocDecGetVideoFrame()`` indicates that the decoding process is complete and
 the device memory pointer is inter-opped into the ROCm HIP address space in order to further process
-the decoded frame in device memory. The caller gets the necessary information on the output surface,
+the decoded frame in device memory. Please note that the ``rocDecGetVideoFrame()`` API is a blocking call.
+If the video frame associated with the pic_idx is not ready, the call will wait for the decoding to complete before mapping the video frame for use in HIP.
+The caller gets the necessary information on the output surface,
 such as YUV format, dimensions, and pitch from this call. In the high-level ``RocVideoDecoder`` class, we
 provide four different surface type modes for the mapped surface, as specified in
 ``OutputSurfaceMemoryType``.

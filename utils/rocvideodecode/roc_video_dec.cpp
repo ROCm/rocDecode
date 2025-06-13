@@ -720,12 +720,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         void * src_dev_ptr[3] = { 0 };
         uint32_t src_pitch[3] = { 0 };
         ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
         if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
             DecFrameBuffer dec_frame = { 0 };
             dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
@@ -803,12 +797,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
         }
     } else {
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
         output_frame_cnt_++;
     }
 
