@@ -62,13 +62,17 @@ def print_bitrate(current_file):
     if (mbps_pos != -1):
         fps_pos = file_name.find("fps_")
         if (fps_pos != -1):
+            frame_rate = file_name[fps_pos - 2 : fps_pos]
             bit_rate = file_name[fps_pos + 4 : mbps_pos]
         else:
+            frame_rate = "n/a"
             bit_rate = "n/a"
     else:
+        frame_rate = "n/a"
         bit_rate = "n/a"
     orig_stdout = sys.stdout
     sys.stdout = open(resultsPath+'/rocDecode_output.log', 'a')
+    print("Framerate: ", frame_rate)
     print("Bitrate: ", bit_rate)
     sys.stdout = orig_stdout
 
@@ -170,11 +174,12 @@ if sampleMode == 0:
     if checkDecStatus == 0:
         orig_stdout = sys.stdout
         sys.stdout = open(resultsPath+'/rocDecode_test_results.csv', 'a')
-        echo_1 = 'File Name, Codec, Video Size, Bit Depth, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
+        echo_1 = 'File Name, Codec, Video Size, Bit Depth, Frame rate, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
         print(echo_1)
         sys.stdout = orig_stdout
 
-        runAwk_csv = r'''awk '/Bitrate: / {bitRate=$2; next}
+        runAwk_csv = r'''awk '/Framerate: / {frameRate=$2; next}
+                            /Bitrate: / {bitRate=$2; next}
                             /info: Input file: / {filename=$4; next}
                             /info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0/{next}
                             /info: decoding started, please wait!/{next}
@@ -192,7 +197,7 @@ if sampleMode == 0:
                             /^$/{next}
                             /info: Total pictures decoded: / {totalFrames=$5; next}
                             /info: avg decoding time per picture: /{timePerFrame=$7; next}
-                            /info: avg decode FPS: / { printf("%s, %s, %s, %d, %s, %d, %f, %f\n", filename, codec, videoSize, bitDepth, bitRate, totalFrames, timePerFrame, $5) }' rocDecode_videoDecode_results/rocDecode_output.log >> rocDecode_videoDecode_results/rocDecode_test_results.csv'''
+                            /info: avg decode FPS: / { printf("%s, %s, %s, %d, %s, %s, %d, %f, %f\n", filename, codec, videoSize, bitDepth, frameRate, bitRate, totalFrames, timePerFrame, $5) }' rocDecode_videoDecode_results/rocDecode_output.log >> rocDecode_videoDecode_results/rocDecode_test_results.csv'''
         os.system(runAwk_csv)
 elif sampleMode == 1:
     for current_file in iter_files(filesDirPath):
@@ -204,11 +209,12 @@ elif sampleMode == 1:
     if checkDecStatus == 0:
         orig_stdout = sys.stdout
         sys.stdout = open(resultsPath+'/rocDecode_test_results.csv', 'a')
-        echo_1 = 'File Name, Num Threads, Codec, Video Size, Bit Depth, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
+        echo_1 = 'File Name, Num Threads, Codec, Video Size, Bit Depth, Frame rate, Bit rate (Mb/s), Total Frames, Average decoding time per frame (ms), Avg FPS'
         print(echo_1)
         sys.stdout = orig_stdout
 
-        runAwk_csv = r'''awk '/Bitrate: / {bitRate=$2; next}
+        runAwk_csv = r'''awk '/Framerate: / {frameRate=$2; next}
+                            /Bitrate: / {bitRate=$2; next}
                             /info: Input file: / {filename=$4; next}
                             /info: Number of threads: / {numThreads=$5; next}
                             /info: Using GPU device 0 - AMD Radeon Graphics[gfx1030] on PCI bus 0d:00.0/{next}
@@ -227,7 +233,7 @@ elif sampleMode == 1:
                             /^$/{next}
                             /info: Total pictures decoded: / {totalFrames=$5; next}
                             /info: avg decoding time per picture: /{timePerFrame=$7; next}
-                            /info: avg decode FPS: / { printf("%s, %d, %s, %s, %d, %s, %d, %f, %f\n", filename, numThreads, codec, videoSize, bitDepth, bitRate, totalFrames, timePerFrame, $5) }' rocDecode_videoDecodePerf_results/rocDecode_output.log >> rocDecode_videoDecodePerf_results/rocDecode_test_results.csv'''
+                            /info: avg decode FPS: / { printf("%s, %d, %s, %s, %d, %s, %s, %d, %f, %f\n", filename, numThreads, codec, videoSize, bitDepth, frameRate, bitRate, totalFrames, timePerFrame, $5) }' rocDecode_videoDecodePerf_results/rocDecode_output.log >> rocDecode_videoDecodePerf_results/rocDecode_test_results.csv'''
         sys.stdout = orig_stdout
         os.system(runAwk_csv)
 
