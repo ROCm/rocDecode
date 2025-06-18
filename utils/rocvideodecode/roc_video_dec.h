@@ -522,7 +522,7 @@ class RocVideoDecoder {
         Rect crop_rect_ = {}; // user specified region of interest within diplayable area disp_rect_
         FILE *fp_sei_ = NULL;
         FILE *fp_out_ = NULL;
-        bool is_decoder_reconfigured_ = false;
+        bool is_output_surface_changed_ = false;
         std::string current_output_filename = "";
         uint32_t extra_output_file_count_ = 0;
         std::thread::id decoder_session_id_; // Decoder session identifier. Used to gather session level stats.

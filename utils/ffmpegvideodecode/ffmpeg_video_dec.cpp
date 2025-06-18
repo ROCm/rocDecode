@@ -394,6 +394,7 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
             target_width_ = (crop_rect_.right - crop_rect_.left + 1) & ~1;
             target_height_ = (crop_rect_.bottom - crop_rect_.top + 1) & ~1;
         }
+        is_output_surface_changed_ = true;
     }
 
     surface_stride_ = target_width_ * byte_per_pixel_;
@@ -432,7 +433,6 @@ int FFMpegVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         << "\tDisplay area : [" << p_video_format->display_area.left << ", " << p_video_format->display_area.top << ", "
             << p_video_format->display_area.right << ", " << p_video_format->display_area.bottom << "]" << std::endl;
     input_video_info_str_ << std::endl;
-    is_decoder_reconfigured_ = true;
     return 1;
 }
 
@@ -838,7 +838,7 @@ void FFMpegVideoDecoder::SaveFrameToFile(std::string output_file_name, void *sur
     }
 
     // don't overwrite to the same file if reconfigure is detected for a resolution changes.
-    if (is_decoder_reconfigured_) {
+    if (is_output_surface_changed_) {
         if (fp_out_) {
             fclose(fp_out_);
             fp_out_ = nullptr;
@@ -856,7 +856,7 @@ void FFMpegVideoDecoder::SaveFrameToFile(std::string output_file_name, void *sur
                 output_file_name += to_append;
             }
         }
-        is_decoder_reconfigured_ = false;
+        is_output_surface_changed_ = false;
     } 
 
     if (fp_out_ == nullptr) {

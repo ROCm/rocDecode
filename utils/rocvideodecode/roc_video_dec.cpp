@@ -587,6 +587,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     // If the coded_width or coded_height hasn't changed but display resolution has changed, then need to update width and height for
     // correct output with cropping. There is no need to reconfigure the decoder.
     if (!is_decode_res_changed && is_display_rect_changed && !is_bit_depth_changed && !is_dec_surface_num_changed) {
+        is_output_surface_changed_ = true;
         return 1;
     }
 
@@ -642,8 +643,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     input_video_info_str_ << std::endl;
     std::cout << input_video_info_str_.str();
 
-    if (is_decode_res_changed || is_bit_depth_changed) {
-        is_decoder_reconfigured_ = true;
+    if (is_display_rect_changed || is_bit_depth_changed) {
+        is_output_surface_changed_ = true;
     }
     return 1;
 }
@@ -957,15 +958,15 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         current_output_filename = output_file_name;
     }
 
-    // don't overwrite to the same file if reconfigure is detected for a resolution changes.
-    if (is_decoder_reconfigured_) {
+    // don't overwrite to the same file if reconfigure is detected for a resolution/bit depth changes.
+    if (is_output_surface_changed_) {
         if (fp_out_) {
             fclose(fp_out_);
             fp_out_ = nullptr;
         }
-        // Append the width and height of the new stream to the old file name to create a file name to save the new frames
-        // do this only if resolution changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
-        // don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
+        // Append the width and height of the new sequence to the old file name to create a file name to save the new frames
+        // Do this only if resolution/bit depth changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
+        // Don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
         if (!current_output_filename.compare(output_file_name)) {
             std::string::size_type const pos(output_file_name.find_last_of('.'));
             extra_output_file_count_++;
@@ -976,7 +977,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
                 output_file_name += to_append;
             }
         }
-        is_decoder_reconfigured_ = false;
+        is_output_surface_changed_ = false;
     } 
 
     if (fp_out_ == nullptr) {
