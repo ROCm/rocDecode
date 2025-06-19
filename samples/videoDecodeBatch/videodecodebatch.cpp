@@ -317,10 +317,10 @@ int main(int argc, char **argv) {
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         if (!b_dump_output_frames) {
             reconfig_user_struct.b_dump_frames_to_file = false;
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
         } else {
             reconfig_user_struct.b_dump_frames_to_file = true;
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
+            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
         }
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 

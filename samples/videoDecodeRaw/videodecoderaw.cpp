@@ -41,9 +41,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 
 typedef enum ReconfigFlushMode_enum {
-    RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
-    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 1,       /**<  The remaining frames will be dumped to file in this mode */
-    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = 2,      /**<  Calculate the MD5 of the flushed frames */
+    RECONFIG_FLUSH_MODE_NONE = 0x0,               /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0x1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = (0x1 << 1),      /**<  Calculate the MD5 of the flushed frames */
 } ReconfigFlushMode;
 
 // this struct is used by videodecode and videodecodeMultiFiles to dump last frames to file
@@ -71,7 +71,7 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
     while ((pframe = viddec->GetFrame(&pts))) {
         if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
             ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
-            if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
+            if (flush_mode & ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
                 if (p_dump_file_struct->b_dump_frames_to_file) {
                     viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
                 }
@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
         reconfig_user_struct.output_file_name = output_file_path;
         if (dump_output_frames) {
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+            reconfig_params.reconfig_flush_mode |= RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
         } else {
             reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
         }

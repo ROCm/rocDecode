@@ -26,12 +26,12 @@ THE SOFTWARE.
 #include "md5.h"
 
 typedef enum ReconfigFlushMode_enum {
-    RECONFIG_FLUSH_MODE_NONE = 0,               /**<  Just flush to get the frame count */
-    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 1,       /**<  The remaining frames will be dumped to file in this mode */
-    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = 2,      /**<  Calculate the MD5 of the flushed frames */
+    RECONFIG_FLUSH_MODE_NONE = 0x0,               /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0x1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_CALCULATE_MD5 = (0x1 << 1),      /**<  Calculate the MD5 of the flushed frames */
 } ReconfigFlushMode;
 
-// this struct is used by videodecode and videodecodeMultiFiles to dump last frames to file
+// This struct is used by sample apps to dump last frames to file
 typedef struct ReconfigDumpFileStruct_t {
     bool b_dump_frames_to_file;
     std::string output_file_name;
@@ -56,11 +56,12 @@ int ReconfigureFlushCallback(void *p_viddec_obj, uint32_t flush_mode, void *p_us
     while ((pframe = viddec->GetFrame(&pts))) {
         if (flush_mode != RECONFIG_FLUSH_MODE_NONE) {
             ReconfigDumpFileStruct *p_dump_file_struct = static_cast<ReconfigDumpFileStruct *>(p_user_struct);
-            if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
+            if (flush_mode & ReconfigFlushMode::RECONFIG_FLUSH_MODE_DUMP_TO_FILE) {
                 if (p_dump_file_struct->b_dump_frames_to_file) {
                     viddec->SaveFrameToFile(p_dump_file_struct->output_file_name, pframe, surf_info);
                 }
-            } else if (flush_mode == ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
+            }
+            if (flush_mode & ReconfigFlushMode::RECONFIG_FLUSH_MODE_CALCULATE_MD5) {
                 MD5Generator *md5_generator = static_cast<MD5Generator*>(p_dump_file_struct->md5_generator_handle);
                 md5_generator->UpdateMd5ForFrame(pframe, surf_info);
             }

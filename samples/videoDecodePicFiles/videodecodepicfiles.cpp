@@ -265,12 +265,12 @@ int main(int argc, char **argv) {
         reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
         reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
         reconfig_user_struct.output_file_name = output_file_path;
+        reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
         if (dump_output_frames) {
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
-        } else if (b_generate_md5) {
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_CALCULATE_MD5;
-        } else {
-            reconfig_params.reconfig_flush_mode = RECONFIG_FLUSH_MODE_NONE;
+            reconfig_params.reconfig_flush_mode |= RECONFIG_FLUSH_MODE_DUMP_TO_FILE;
+        }
+        if (b_generate_md5) {
+            reconfig_params.reconfig_flush_mode |= RECONFIG_FLUSH_MODE_CALCULATE_MD5;
         }
         reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
 
