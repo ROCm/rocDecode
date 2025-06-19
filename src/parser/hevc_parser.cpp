@@ -194,6 +194,7 @@ int HevcVideoParser::FillSeqCallbackFn(HevcSeqParamSet* sps_data) {
     }
 
     video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
+    video_format_params_.video_signal_description = {0};
     if (sps_data->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = sps_data->vui_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = sps_data->vui_parameters.video_full_range_flag;

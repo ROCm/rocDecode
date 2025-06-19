@@ -398,6 +398,7 @@ ParserResult AvcVideoParser::NotifyNewSps(AvcSeqParameterSet *p_sps) {
     }
 
     video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
+    video_format_params_.video_signal_description = {0};
     if (p_sps->vui_parameters_present_flag) {
         video_format_params_.video_signal_description.video_format = p_sps->vui_seq_parameters.video_format;
         video_format_params_.video_signal_description.video_full_range_flag = p_sps->vui_seq_parameters.video_full_range_flag;
