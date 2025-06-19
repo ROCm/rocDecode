@@ -133,8 +133,8 @@ The reconfiguration structs are defined in |common|_ in the rocDecode samples. T
 .. code:: C++
 
   typedef enum ReconfigFlushMode_enum {
-    RECONFIG_FLUSH_MODE_NONE = 0x0,               /**<  Just flush to get the frame count */
-    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0x1,       /**<  The remaining frames will be dumped to file in this mode */
+    RECONFIG_FLUSH_MODE_NONE = 0x0,                      /**<  Just flush to get the frame count */
+    RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0x1,              /**<  The remaining frames will be dumped to file in this mode */
     RECONFIG_FLUSH_MODE_CALCULATE_MD5 = (0x1 << 1),      /**<  Calculate the MD5 of the flushed frames */
   } ReconfigFlushMode;
 
