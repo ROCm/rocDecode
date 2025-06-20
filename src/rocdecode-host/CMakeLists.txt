@@ -109,5 +109,5 @@ else()
   endif()
 endif()
 
-  # install rocDecode libs -- {ROCM_PATH}/lib
+  # install rocdecode libs -- {ROCM_PATH}/lib
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev)

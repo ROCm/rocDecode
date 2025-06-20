@@ -44,10 +44,10 @@ project(videodecode)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
-# rocDecode sample build type
+# rocdecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocDecode Default Build Type" FORCE)
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocdecode Default Build Type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -74,7 +74,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofi
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                         ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
-    # rocDecode and utils
+    # rocdecode and utils
     include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
     # threads
@@ -101,7 +101,7 @@ else()
         message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
     if (NOT rocdecode_FOUND)
-        message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+        message(FATAL_ERROR "-- ERROR!: rocdecode Not Found! - please install rocdecode!")
     endif()
     if (NOT Threads_FOUND)
         message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please insatll Threads!")

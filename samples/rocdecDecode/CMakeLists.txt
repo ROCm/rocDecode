@@ -44,10 +44,10 @@ set(CMAKE_CXX_STANDARD 17)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
-# rocDecode sample build type
+# rocdecode sample build type
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocDecode Default Build Type" FORCE)
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocdecode Default Build Type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -73,14 +73,14 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND)
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                         ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
-    # rocDecode and utils
+    # rocdecode and utils
     include_directories (${ROCDECODE_INCLUDE_DIR} ${ROCM_PATH}/lib)
     if(ROCDECODE_HOST_LIBRARY)
       set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY} ${ROCDECODE_HOST_LIBRARY})
     else()
       message(FATAL_ERROR "Library ROCDECODE_HOST_LIBRARY not found!")
     endif()
-    # rocDecode
+    # rocdecode
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecdecode.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
@@ -95,7 +95,7 @@ else()
         message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
     if (NOT ROCDECODE_FOUND)
-        message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
+        message(FATAL_ERROR "-- ERROR!: rocdecode Not Found! - please install rocdecode!")
     endif()
 endif()
   

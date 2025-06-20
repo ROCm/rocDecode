@@ -57,11 +57,11 @@ include(CTest)
 # add ROCm find Config location
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
-# find rocDecode
+# find rocdecode
 find_package(rocdecode QUIET)
 
 if(rocdecode_FOUND)
-  message("-- ${White}${PROJECT_NAME}: rocDecode found with find_package(rocdecode QUIET)${ColourReset}")
+  message("-- ${White}${PROJECT_NAME}: rocdecode found with find_package(rocdecode QUIET)${ColourReset}")
   message("-- \t${White}rocdecode_INCLUDE_DIR -- ${rocdecode_INCLUDE_DIR}${ColourReset}")
   message("-- \t${White}rocdecode_LIB_DIR -- ${rocdecode_LIB_DIR}${ColourReset}")
   message("-- \t${White}rocdecode_LIBRARY -- rocdecode::rocdecode${ColourReset}")
@@ -71,7 +71,7 @@ if(rocdecode_FOUND)
   message("-- \t${White}rocdecode_VERSION_MINOR -- ${rocdecode_VERSION_MINOR}${ColourReset}")
   message("-- \t${White}rocdecode_VERSION_PATCH -- ${rocdecode_VERSION_PATCH}${ColourReset}")
 else()
-  message("-- ${Yellow}${PROJECT_NAME} requires rocDecode. Install rocDecode before running CTests")
+  message("-- ${Yellow}${PROJECT_NAME} requires rocdecode. Install rocdecode before running CTests")
 endif(rocdecode_FOUND)
 
 # 1 - videoDecode HEVC
