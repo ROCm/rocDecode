@@ -253,5 +253,5 @@ add_test(
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecodeRGB"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecodergb"
-            -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4 -resize 640x360 -of rgb
+            -i "${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4" -resize 640x360 -of rgb
 )
