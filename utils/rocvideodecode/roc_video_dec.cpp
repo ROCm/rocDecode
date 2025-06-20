@@ -587,6 +587,7 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     // If the coded_width or coded_height hasn't changed but display resolution has changed, then need to update width and height for
     // correct output with cropping. There is no need to reconfigure the decoder.
     if (!is_decode_res_changed && is_display_rect_changed && !is_bit_depth_changed && !is_dec_surface_num_changed) {
+        is_output_surface_changed_ = true;
         return 1;
     }
 
@@ -614,7 +615,9 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
         return 0;
     }
     if (p_video_format->reconfig_options == ROCDEC_RECONFIG_NEW_SURFACES) {
-        ROCDEC_API_CALL(rocDecReconfigureDecoder(roc_decoder_, &reconfig_params));
+         if (rocDecReconfigureDecoder(roc_decoder_, &reconfig_params) != ROCDEC_SUCCESS) {
+            return 0;
+         }
     }
 
     input_video_info_str_.str("");
@@ -640,8 +643,8 @@ int RocVideoDecoder::ReconfigureDecoder(RocdecVideoFormat *p_video_format) {
     input_video_info_str_ << std::endl;
     std::cout << input_video_info_str_.str();
 
-    if (is_decode_res_changed || is_bit_depth_changed) {
-        is_decoder_reconfigured_ = true;
+    if (is_display_rect_changed || is_bit_depth_changed) {
+        is_output_surface_changed_ = true;
     }
     return 1;
 }
@@ -718,12 +721,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
         void * src_dev_ptr[3] = { 0 };
         uint32_t src_pitch[3] = { 0 };
         ROCDEC_API_CALL(rocDecGetVideoFrame(roc_decoder_, pDispInfo->picture_index, src_dev_ptr, src_pitch, &video_proc_params));
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
         if (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) {
             DecFrameBuffer dec_frame = { 0 };
             dec_frame.frame_ptr = (uint8_t *)(src_dev_ptr[0]);
@@ -801,12 +798,6 @@ int RocVideoDecoder::HandlePictureDisplay(RocdecParserDispInfo *pDispInfo) {
             HIP_API_CALL(hipStreamSynchronize(hip_stream_));
         }
     } else {
-        RocdecDecodeStatus dec_status;
-        memset(&dec_status, 0, sizeof(dec_status));
-        rocDecStatus result = rocDecGetDecodeStatus(roc_decoder_, pDispInfo->picture_index, &dec_status);
-        if (result == ROCDEC_SUCCESS && (dec_status.decode_status == rocDecodeStatus_Error || dec_status.decode_status == rocDecodeStatus_Error_Concealed)) {
-            std::cerr << "Decode Error occurred for picture: " << pic_num_in_dec_order_[pDispInfo->picture_index] << std::endl;
-        }
         output_frame_cnt_++;
     }
 
@@ -860,7 +851,9 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
     if (!data || size == 0) {
         packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
     }
-    ROCDEC_API_CALL(rocDecParseVideoData(rocdec_parser_, &packet));
+    if (rocDecParseVideoData(rocdec_parser_, &packet) != ROCDEC_SUCCESS) {
+        ROCDEC_ERR("Error occurred in rocDecParseVideoData().");
+    }
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
     }
@@ -965,15 +958,15 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
         current_output_filename = output_file_name;
     }
 
-    // don't overwrite to the same file if reconfigure is detected for a resolution changes.
-    if (is_decoder_reconfigured_) {
+    // don't overwrite to the same file if reconfigure is detected for a resolution/bit depth changes.
+    if (is_output_surface_changed_) {
         if (fp_out_) {
             fclose(fp_out_);
             fp_out_ = nullptr;
         }
-        // Append the width and height of the new stream to the old file name to create a file name to save the new frames
-        // do this only if resolution changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
-        // don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
+        // Append the width and height of the new sequence to the old file name to create a file name to save the new frames
+        // Do this only if resolution/bit depth changes within a stream (e.g., decoding a multi-resolution stream using the videoDecode app)
+        // Don't append to the output_file_name if multiple output file name is provided (e.g., decoding multi-files using the videDecodeMultiFiles)
         if (!current_output_filename.compare(output_file_name)) {
             std::string::size_type const pos(output_file_name.find_last_of('.'));
             extra_output_file_count_++;
@@ -984,7 +977,7 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
                 output_file_name += to_append;
             }
         }
-        is_decoder_reconfigured_ = false;
+        is_output_surface_changed_ = false;
     } 
 
     if (fp_out_ == nullptr) {

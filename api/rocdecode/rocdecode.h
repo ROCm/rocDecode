@@ -1717,9 +1717,10 @@ extern rocDecStatus ROCDECAPI rocDecDecodeFrame(rocDecDecoderHandle decoder_hand
 /************************************************************************************************************/
 //! \fn rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus* decode_status);
 //! \ingroup group_amd_rocdecode
-//! Get the decode status for frame corresponding to nPicIdx
-//! API is currently supported for HEVC, AVC/H264 and JPEG codecs.
-//! API returns ROCDEC_NOT_SUPPORTED error code for unsupported GPU or codec.
+//! Get the decode status for frame corresponding to nPicIdx.
+//! Please note that this API makes a non-blocking call and returns the status of the frame associated with nPicIdx at the time of the call,
+//! without waiting for the decoding to complete. The decode_status->decode_status can be either rocDecodeStatus_Success, indicating that
+//! the decoding has been completed, or rocDecodeStatus_InProgress, which means that the decoding is still in progress.
 /************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDecodeStatus *decode_status);
 
@@ -1739,6 +1740,8 @@ extern rocDecStatus ROCDECAPI rocDecReconfigureDecoder(rocDecDecoderHandle decod
 //! Post-process and map video frame corresponding to pic_idx for use in HIP. Returns HIP device pointer and associated
 //! pitch(horizontal stride) of the video frame. Returns device memory pointers and pitch for each plane (Y, U and V) seperately
 //! horizontal_pitch is a pointer to an unsigned 32-bit integer array of size 3.
+//! Please note that this API is a blocking call. If the video frame associated with the pic_idx is not ready, the call
+//! will wait for the decoding to complete before mapping the video frame for use in HIP.
 /************************************************************************************************************************/
 extern rocDecStatus ROCDECAPI rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
                                                     void *dev_mem_ptr[3], uint32_t *horizontal_pitch,

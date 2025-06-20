@@ -58,7 +58,7 @@ rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         curr_pts_ = p_data->pts;
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
-            ERR(STR("Parser failed!"));
+            ERR("Error occurred in picture data parsing.");
             return ROCDEC_RUNTIME_ERROR;
         }
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
@@ -119,7 +119,10 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 obu_byte_offset_ += bytes_parsed;
                 if (obu_size_ > bytes_parsed) {
                     obu_size_ -= bytes_parsed;
-                    ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
+                    if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
+                        ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                        break;
+                    }
                 } else {
                     ERR("Frame OBU size error.");
                     return PARSER_OUT_OF_RANGE;
@@ -127,7 +130,9 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 break;
             }
             case kObuTileGroup: {
-                ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_);
+                if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
+                    ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                }
                 break;
             }
             default:
@@ -227,8 +232,10 @@ ParserResult Av1VideoParser::NotifyNewSequence(Av1SequenceHeader *p_seq_header, 
     int disp_width = (video_format_params_.display_area.right - video_format_params_.display_area.left);
     int disp_height = (video_format_params_.display_area.bottom - video_format_params_.display_area.top);
     int gcd = std::__gcd(disp_width, disp_height); // greatest common divisor
-    video_format_params_.display_aspect_ratio.x = disp_width / gcd;
-    video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    if (gcd) {
+        video_format_params_.display_aspect_ratio.x = disp_width / gcd;
+        video_format_params_.display_aspect_ratio.y = disp_height / gcd;
+    }
 
     video_format_params_.reconfig_options = ROCDEC_RECONFIG_NEW_SURFACES;
     video_format_params_.video_signal_description = {0};
@@ -711,21 +718,20 @@ ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
         obu_header_.temporal_id = Parser::ReadBits(p_stream, offset, 3);
         obu_header_.spatial_id = Parser::ReadBits(p_stream, offset, 2);
         if (Parser::ReadBits(p_stream, offset, 3) != 0) {
-            ERR("Syntax error: extension_header_reserved_3bits must be set to 0.\n");
-        return PARSER_INVALID_ARG;
+            ERR("Syntax error: extension_header_reserved_3bits must be set to 0.");
+            return PARSER_INVALID_ARG;
         }
     }
     return PARSER_OK;
 }
 
 ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
-    ParserResult ret = PARSER_OK;
     if (curr_byte_offset_ >= pic_data_size_) {
         return PARSER_EOF;
     }
     uint8_t *p_stream = pic_data_buffer_ptr_ + curr_byte_offset_;
-    if ((ret = ParseObuHeader(p_stream)) != PARSER_OK) {
-        return ret;
+    if (ParseObuHeader(p_stream) != PARSER_OK) {
+        ERR("Syntax error(s) found in OBU header.")
     }
     curr_byte_offset_ += obu_header_.size;
     p_stream += obu_header_.size;
@@ -734,17 +740,27 @@ ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     obu_size_ = ReadLeb128(p_stream, &bytes_read);
     obu_byte_offset_ = curr_byte_offset_ + bytes_read;
     curr_byte_offset_ = obu_byte_offset_ + obu_size_;
-    return PARSER_OK;
+    if (curr_byte_offset_ > pic_data_size_) {
+        ERR("Invalid obu_size value.");
+        return PARSER_EOF;
+    } else {
+        return PARSER_OK;
+    }
 }
 
-void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
+ParserResult Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
     Av1SequenceHeader *p_seq_header = &seq_header_;
     size_t offset = 0;  // current bit offset
 
     memset(p_seq_header, 0, sizeof(Av1SequenceHeader));
     p_seq_header->seq_profile = Parser::ReadBits(p_stream, offset, 3);
+    CHECK_ALLOWED_MAX("seq_profile", p_seq_header->seq_profile, 2);
     p_seq_header->still_picture = Parser::GetBit(p_stream, offset);
     p_seq_header->reduced_still_picture_header = Parser::GetBit(p_stream, offset);
+    if (p_seq_header->reduced_still_picture_header == 1 && p_seq_header->still_picture != 1) {
+        ERR("If reduced_still_picture_header is 1, still_picture is required to be 1.");
+        return PARSER_WRONG_STATE;
+    }
 
     if (p_seq_header->reduced_still_picture_header) {
         p_seq_header->timing_info_present_flag = 0;
@@ -761,7 +777,15 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
         if (p_seq_header->timing_info_present_flag) {
             // timing_info()
             p_seq_header->timing_info.num_units_in_display_tick = Parser::ReadBits(p_stream, offset, 32);
+            if (p_seq_header->timing_info.num_units_in_display_tick == 0) {
+                ERR("num_units_in_display_tick is 0.");
+                return PARSER_WRONG_STATE;
+            }
             p_seq_header->timing_info.time_scale = Parser::ReadBits(p_stream, offset, 32);
+            if (p_seq_header->timing_info.time_scale == 0) {
+                ERR("time_scale is 0.");
+                return PARSER_WRONG_STATE;
+            }
             p_seq_header->timing_info.equal_picture_interval = Parser::GetBit(p_stream, offset);
             if (p_seq_header->timing_info.equal_picture_interval) {
                 p_seq_header->timing_info.num_ticks_per_picture_minus_1 = ReadUVLC(p_stream, offset);
@@ -782,6 +806,18 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
         p_seq_header->operating_points_cnt_minus_1 = Parser::ReadBits(p_stream, offset, 5);
         for (int i = 0; i < p_seq_header->operating_points_cnt_minus_1 + 1; i++) {
             p_seq_header->operating_point_idc[i] = Parser::ReadBits(p_stream, offset, 12);
+            if (i > 0) {
+                for (int j = 0; j < i - 1; j++) {
+                    if (p_seq_header->operating_point_idc[i] == p_seq_header->operating_point_idc[j]) {
+                        ERR("operating_point_idc[" + TOSTR(i) + "] is equal to operating_point_idc[" + TOSTR(j) + "]");
+                        return PARSER_WRONG_STATE;
+                    }
+                }
+            }
+            if (p_seq_header->operating_point_idc[i] && obu_header_.obu_extension_flag != 1) {
+                ERR("When operating_point_idc is not 0, obu_extension_flag is required to be 1.");
+                return PARSER_WRONG_STATE;
+            }
             p_seq_header->seq_level_idx[i] = Parser::ReadBits(p_stream, offset, 5);
             if (p_seq_header->seq_level_idx[i] > 7) {
                 p_seq_header->seq_tier[i] = Parser::GetBit(p_stream, offset);
@@ -889,6 +925,8 @@ void Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t size) {
     if (p_seq_header->film_grain_params_present) {
         CheckAndAdjustDecBufPoolSize(BUFFER_POOL_MAX_SIZE * 2);
     }
+    p_seq_header->is_received = 1;
+    return PARSER_OK;
 }
 
 ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size, int *p_bytes_parsed) {
@@ -914,12 +952,19 @@ ParserResult Av1VideoParser::ParseFrameHeaderObu(uint8_t *p_stream, size_t size,
 }
 
 ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t size, int *p_bytes_parsed) {
+    ParserResult ret = PARSER_OK;
     size_t offset = 0;  // current bit offset
     Av1SequenceHeader *p_seq_header = &seq_header_;
     Av1FrameHeader *p_frame_header = &frame_header_;
     uint32_t frame_id_len = 0;
     uint32_t all_frames = (1 << NUM_REF_FRAMES) - 1;
     int i;
+
+    p_frame_header->is_received = 0;
+    if (p_seq_header->is_received == 0) {
+        ERR("No valid sequence header received before frame header.");
+        return PARSER_WRONG_STATE;
+    }
 
     if (p_seq_header->frame_id_numbers_present_flag) {
         frame_id_len = p_seq_header->additional_frame_id_length_minus_1 + p_seq_header-> delta_frame_id_length_minus_2 + 3;
@@ -934,6 +979,10 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     } else {
         p_frame_header->show_existing_frame = Parser::GetBit(p_stream, offset);
         if (p_frame_header->show_existing_frame == 1) {
+            if (obu_header_.obu_type == kObuFrame) {
+                ERR("show_existing_frame is 1 when obu_type is equal to OBU_FRAME.");
+                return PARSER_WRONG_STATE;
+            }
             p_frame_header->frame_to_show_map_idx = Parser::ReadBits(p_stream, offset, 3);
             if (p_seq_header->decoder_model_info_present_flag && !p_seq_header->timing_info.equal_picture_interval) {
                 // temporal_point_info()
@@ -941,6 +990,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
             }
             p_frame_header->refresh_frame_flags = 0;
             if (p_seq_header->frame_id_numbers_present_flag) {
+                CHECK_ALLOWED_MAX("display_frame_id length", frame_id_len, 16);
                 p_frame_header->display_frame_id = Parser::ReadBits(p_stream, offset, frame_id_len);
             }
             p_frame_header->frame_type = dpb_buffer_.ref_frame_type[p_frame_header->frame_to_show_map_idx];
@@ -1049,6 +1099,10 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         p_frame_header->refresh_frame_flags = all_frames;
     } else {
         p_frame_header->refresh_frame_flags = Parser::ReadBits(p_stream, offset, 8);
+        if (p_frame_header->frame_type == kIntraOnlyFrame && p_frame_header->refresh_frame_flags == 0xFF) {
+            ERR("When frame_type is equal to INTRA_ONLY_FRAME, it is a requirement of bitstream conformance that refresh_frame_flags is not equal to 0xff.");
+            return PARSER_WRONG_STATE;
+        }
     }
     if (!p_frame_header->frame_is_intra || p_frame_header->refresh_frame_flags != all_frames) {
         if (p_frame_header->error_resilient_mode && p_seq_header->enable_order_hint) {
@@ -1062,7 +1116,9 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     }
 
     if (p_frame_header->frame_is_intra) {
-        FrameSize(p_stream, offset, p_seq_header, p_frame_header);
+        if ((ret = FrameSize(p_stream, offset, p_seq_header, p_frame_header)) != PARSER_OK) {
+            return ret;
+        }
         RenderSize(p_stream, offset, p_frame_header);
         if (p_frame_header->allow_screen_content_tools && p_frame_header->frame_size.upscaled_width == p_frame_header->frame_size.frame_width) {
             p_frame_header->allow_intrabc = Parser::GetBit(p_stream, offset);
@@ -1098,7 +1154,9 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         if (p_frame_header->frame_size_override_flag && !p_frame_header->error_resilient_mode) {
             FrameSizeWithRefs(p_stream, offset, p_seq_header, p_frame_header);
         } else {
-            FrameSize(p_stream, offset, p_seq_header, p_frame_header);
+            if ((ret = FrameSize(p_stream, offset, p_seq_header, p_frame_header)) != PARSER_OK) {
+                return ret;
+            }
             RenderSize(p_stream, offset, p_frame_header);
         }
 
@@ -1161,7 +1219,9 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         //motion_field_estimation());
     }
 
-    TileInfo(p_stream, offset, p_seq_header, p_frame_header);
+    if ((ret = TileInfo(p_stream, offset, p_seq_header, p_frame_header)) != PARSER_OK) {
+        return ret;
+    }
     QuantizationParams(p_stream, offset, p_seq_header, p_frame_header);
     SegmentationParams(p_stream, offset, p_frame_header);
     DeltaQParams(p_stream, offset, p_frame_header);
@@ -1194,6 +1254,10 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
             }
         }
     }
+    if (p_frame_header->coded_lossless == 1 && p_frame_header->delta_q_params.delta_q_present == 1) {
+        ERR("It is a requirement of bitstream conformance that delta_q_present is equal to 0 when CodedLossless is equal to 1.");
+        return PARSER_WRONG_STATE;
+    }
 
     p_frame_header->all_lossless = p_frame_header->coded_lossless && (p_frame_header->frame_size.frame_width == p_frame_header->frame_size.upscaled_width);
 
@@ -1220,13 +1284,16 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     p_frame_header->reduced_tx_set = Parser::GetBit(p_stream, offset);
 
     GlobalMotionParams(p_stream, offset, p_frame_header);
-    FilmGrainParams(p_stream, offset, p_seq_header, p_frame_header);
+    if ((ret = FilmGrainParams(p_stream, offset, p_seq_header, p_frame_header)) != PARSER_OK) {
+        return ret;
+    }
 
     *p_bytes_parsed = (offset + 7) >> 3;
+    p_frame_header->is_received = 1;
     return PARSER_OK;
 }
 
-void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
+ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     size_t offset = 0;  // current bit offset
     Av1FrameHeader *p_frame_header = &frame_header_;
     Av1TileGroupDataInfo *p_tile_group = &tile_group_data_;
@@ -1237,6 +1304,11 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     uint8_t *p_tg_buf = p_stream;
     uint32_t tg_size = size;
 
+    if (p_frame_header->is_received == 0) {
+        ERR("No valid frame header received before tile group.");
+        return PARSER_WRONG_STATE;
+    }
+
     if (p_tile_group->tile_group_num == 0) {
         p_tile_group->buffer_ptr = p_stream;
     }
@@ -1245,6 +1317,10 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     p_tile_group->num_tiles = tile_cols * tile_rows;
     if (p_tile_group->num_tiles > 1) {
         tile_start_and_end_present_flag = Parser::GetBit(p_stream, offset);
+        if (obu_header_.obu_type == kObuFrame && tile_start_and_end_present_flag != 0) {
+            ERR("If obu_type is equal to OBU_FRAME, it is a requirement of bitstream conformance that the value of tile_start_and_end_present_flag is equal to 0.");
+            return PARSER_WRONG_STATE;
+        }
     }
     if (p_tile_group->num_tiles == 1 || !tile_start_and_end_present_flag) {
         p_tile_group->tg_start = 0;
@@ -1252,13 +1328,25 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     } else {
         uint32_t tile_bits = p_frame_header->tile_info.tile_cols_log2 + p_frame_header->tile_info.tile_rows_log2;
         p_tile_group->tg_start = Parser::ReadBits(p_stream, offset, tile_bits);
+        if (p_tile_group->tg_start != p_tile_group->num_tiles_parsed) {
+            ERR("It is a requirement of bitstream conformance that the value of tg_start (" + TOSTR(p_tile_group->tg_start) + ") is equal to the value of TileNum (" + TOSTR(p_tile_group->num_tiles_parsed) + ") at the point that tile_group_obu is invoked.");
+            return PARSER_WRONG_STATE;
+        }
         p_tile_group->tg_end = Parser::ReadBits(p_stream, offset, tile_bits);
+        if (p_tile_group->tg_end < p_tile_group->tg_start) {
+            ERR("It is a requirement of bitstream conformance that the value of tg_end (" + TOSTR(p_tile_group->tg_end) + ") is greater than or equal to tg_start (" + TOSTR(p_tile_group->tg_start) + ").");
+            return PARSER_WRONG_STATE;
+        }
     }
 
     header_bytes = ((offset + 7) >> 3);
     p_tg_buf += header_bytes;
     tg_size -= header_bytes;
     for (int tile_num = p_tile_group->tg_start; tile_num <= p_tile_group->tg_end; tile_num++) {
+        if (tile_cols == 0) {
+            ERR("Tile columns is 0.");
+            return PARSER_WRONG_STATE;
+        }
         p_tile_group->tile_data_info[tile_num].tile_row = tile_num / tile_cols;
         p_tile_group->tile_data_info[tile_num].tile_col = tile_num % tile_cols;
         int last_tile = (tile_num == p_tile_group->tg_end);
@@ -1268,6 +1356,7 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         } else {
             uint32_t tile_size_bytes = p_frame_header->tile_info.tile_size_bytes_minus_1 + 1;
             uint32_t tile_size = ReadLeBytes(p_tg_buf, tile_size_bytes) + 1;
+            CHECK_ALLOWED_MAX("Tile size", tile_size, tg_size);
             p_tile_group->tile_data_info[tile_num].tile_size = tile_size;
             p_tile_group->tile_data_info[tile_num].tile_offset = p_tg_buf + tile_size_bytes - p_tile_group->buffer_ptr;
             tg_size -= tile_size + tile_size_bytes;
@@ -1286,6 +1375,7 @@ void Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         }
         seen_frame_header_ = 0;
     }
+    return PARSER_OK;
 }
 
 void Av1VideoParser::ParseColorConfig(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header) {
@@ -1349,12 +1439,10 @@ void Av1VideoParser::ParseColorConfig(const uint8_t *p_stream, size_t &offset, A
                 p_seq_header->color_config.subsampling_y = 0;
             }
         }
-
         if (p_seq_header->color_config.subsampling_x && p_seq_header->color_config.subsampling_y) {
             p_seq_header->color_config.chroma_sample_position = Parser::ReadBits(p_stream, offset, 2);
         }
     }
-
     p_seq_header->color_config.separate_uv_delta_q = Parser::GetBit(p_stream, offset);
 }
 
@@ -1375,11 +1463,13 @@ void Av1VideoParser::MarkRefFrames(Av1SequenceHeader *p_seq_header, Av1FrameHead
     }
 }
 
-void Av1VideoParser::FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
+ParserResult Av1VideoParser::FrameSize(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
     if (p_frame_header->frame_size_override_flag) {
         p_frame_header->frame_size.frame_width_minus_1 = Parser::ReadBits(p_stream, offset, p_seq_header->frame_width_bits_minus_1 + 1);
+        CHECK_ALLOWED_MAX("frame_width_minus_1", p_frame_header->frame_size.frame_width_minus_1, p_seq_header->max_frame_width_minus_1);
         p_frame_header->frame_size.frame_width = p_frame_header->frame_size.frame_width_minus_1 + 1;
         p_frame_header->frame_size.frame_height_minus_1 = Parser::ReadBits(p_stream, offset, p_seq_header->frame_height_bits_minus_1 + 1);
+        CHECK_ALLOWED_MAX("frame_height_minus_1", p_frame_header->frame_size.frame_height_minus_1, p_seq_header->max_frame_height_minus_1);
         p_frame_header->frame_size.frame_height = p_frame_header->frame_size.frame_height_minus_1 + 1;
     } else {
         p_frame_header->frame_size.frame_width_minus_1 = p_seq_header->max_frame_width_minus_1;
@@ -1389,6 +1479,7 @@ void Av1VideoParser::FrameSize(const uint8_t *p_stream, size_t &offset, Av1Seque
     }
     SuperResParams(p_stream, offset, p_seq_header, p_frame_header);
     ComputeImageSize(p_frame_header);
+    return PARSER_OK;
 }
 
 void Av1VideoParser::SuperResParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
@@ -1625,7 +1716,7 @@ void Av1VideoParser::LoadPrevious(Av1FrameHeader *p_frame_header) {
     }
 }
 
-void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
+ParserResult Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
     int32_t sb_cols;
     int32_t sb_rows;
     int32_t sb_shift;
@@ -1669,6 +1760,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
             }
         }
         tile_width_sb = (sb_cols + (1 << p_frame_header->tile_info.tile_cols_log2) - 1) >> p_frame_header->tile_info.tile_cols_log2;
+        CHECK_ALLOWED_MAX("tileWidthSb", tile_width_sb, max_tile_width_sb);
         i = 0;
         for (start_sb = 0; start_sb < sb_cols; start_sb += tile_width_sb) {
             p_frame_header->tile_info.mi_col_starts[i] = start_sb << sb_shift;
@@ -1676,6 +1768,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
         }
         p_frame_header->tile_info.mi_col_starts[i] = p_frame_header->frame_size.mi_cols;
         p_frame_header->tile_info.tile_cols = i;
+        CHECK_ALLOWED_MAX("TileCols", p_frame_header->tile_info.tile_cols, MAX_TILE_COLS);
 
         min_log2_tile_rows = std::max(min_log2_tiles - p_frame_header->tile_info.tile_cols_log2, 0);
         p_frame_header->tile_info.tile_rows_log2 = min_log2_tile_rows;
@@ -1688,6 +1781,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
             }
         }
         tile_height_sb = (sb_rows + (1 << p_frame_header->tile_info.tile_rows_log2) - 1) >> p_frame_header->tile_info.tile_rows_log2;
+        CHECK_ALLOWED_MAX("tileWidthSb * tileHeightSb", tile_width_sb * tile_height_sb, max_tile_area_sb);
         i = 0;
         for (start_sb = 0; start_sb < sb_rows; start_sb += tile_height_sb ) {
             p_frame_header->tile_info.mi_row_starts[i] = start_sb << sb_shift;
@@ -1695,6 +1789,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
         }
         p_frame_header->tile_info.mi_row_starts[i] = p_frame_header->frame_size.mi_rows;
         p_frame_header->tile_info.tile_rows = i;
+        CHECK_ALLOWED_MAX("TileRows", p_frame_header->tile_info.tile_rows, MAX_TILE_ROWS);
 
         for (i = 0; i < p_frame_header->tile_info.tile_cols - 1; i++) {
             p_frame_header->tile_info.width_in_sbs_minus_1[i] = tile_width_sb - 1;
@@ -1717,6 +1812,7 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
         }
         p_frame_header->tile_info.mi_col_starts[i] = p_frame_header->frame_size.mi_cols;
         p_frame_header->tile_info.tile_cols = i;
+        CHECK_ALLOWED_MAX("TileCols", p_frame_header->tile_info.tile_cols, MAX_TILE_COLS);
         p_frame_header->tile_info.tile_cols_log2 = TileLog2(1, p_frame_header->tile_info.tile_cols);
 
         if (min_log2_tiles > 0) {
@@ -1736,15 +1832,18 @@ void Av1VideoParser::TileInfo(const uint8_t *p_stream, size_t &offset, Av1Sequen
         }
         p_frame_header->tile_info.mi_row_starts[ i ] = p_frame_header->frame_size.mi_rows;
         p_frame_header->tile_info.tile_rows = i;
+        CHECK_ALLOWED_MAX("TileRows", p_frame_header->tile_info.tile_rows, MAX_TILE_ROWS);
         p_frame_header->tile_info.tile_rows_log2 = TileLog2(1, p_frame_header->tile_info.tile_rows);
     }
 
     if (p_frame_header->tile_info.tile_cols_log2 > 0 || p_frame_header->tile_info.tile_rows_log2 > 0) {
         p_frame_header->tile_info.context_update_tile_id = Parser::ReadBits(p_stream, offset, p_frame_header->tile_info.tile_rows_log2 + p_frame_header->tile_info.tile_cols_log2);
+        CHECK_ALLOWED_MAX("context_update_tile_id", p_frame_header->tile_info.context_update_tile_id, p_frame_header->tile_info.tile_cols * p_frame_header->tile_info.tile_rows);
         p_frame_header->tile_info.tile_size_bytes_minus_1 = Parser::ReadBits(p_stream, offset, 2);
     } else {
         p_frame_header->tile_info.context_update_tile_id = 0;
     }
+    return PARSER_OK;
 }
 
 uint32_t Av1VideoParser::TileLog2(uint32_t blk_size, uint32_t target) {
@@ -2308,20 +2407,19 @@ void Av1VideoParser::ResolveDivisor(int d, int *div_shift, int *div_factor) {
     }
 }
 
-void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
+ParserResult Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av1SequenceHeader *p_seq_header, Av1FrameHeader *p_frame_header) {
     int i;
 
     if (!p_seq_header->film_grain_params_present || (!p_frame_header->show_frame && !p_frame_header->showable_frame)) {
         // reset_grain_params()
         memset(&p_frame_header->film_grain_params, 0, sizeof(Av1FilmGrainParams));
-        return;
+        return PARSER_OK;
     }
     p_frame_header->film_grain_params.apply_grain = Parser::GetBit(p_stream, offset);
-    if ( !p_frame_header->film_grain_params.apply_grain )
-    {
+    if (!p_frame_header->film_grain_params.apply_grain) {
         // reset_grain_params()
         memset(&p_frame_header->film_grain_params, 0, sizeof(Av1FilmGrainParams));
-        return;
+        return PARSER_OK;
     }
 
     p_frame_header->film_grain_params.grain_seed = Parser::ReadBits(p_stream, offset, 16);
@@ -2336,12 +2434,17 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
         int temp_grain_seed = p_frame_header->film_grain_params.grain_seed;
         p_frame_header->film_grain_params = dpb_buffer_.saved_film_grain_params[p_frame_header->film_grain_params.film_grain_params_ref_idx]; // load_grain_params()
         p_frame_header->film_grain_params.grain_seed = temp_grain_seed;
-        return;
+        return PARSER_OK;
     }
 
     p_frame_header->film_grain_params.num_y_points = Parser::ReadBits(p_stream, offset, 4);
+    CHECK_ALLOWED_MAX("num_y_points", p_frame_header->film_grain_params.num_y_points, 14);
     for (i = 0; i < p_frame_header->film_grain_params.num_y_points; i++) {
         p_frame_header->film_grain_params.point_y_value[i] = Parser::ReadBits(p_stream, offset, 8);
+        if (i > 0 && p_frame_header->film_grain_params.point_y_value[i] <= p_frame_header->film_grain_params.point_y_value[i - 1]) {
+            ERR("point_y_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i]) + ") should be greater than point_y_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i - 1]) + ")");
+            return PARSER_INVALID_ARG;
+        }
         p_frame_header->film_grain_params.point_y_scaling[i] = Parser::ReadBits(p_stream, offset, 8);
     }
 
@@ -2356,14 +2459,34 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
         p_frame_header->film_grain_params.num_cr_points = 0;
     } else {
         p_frame_header->film_grain_params.num_cb_points = Parser::ReadBits(p_stream, offset, 4);
+        CHECK_ALLOWED_MAX("num_cb_points", p_frame_header->film_grain_params.num_cb_points, 10);
         for (i = 0; i < p_frame_header->film_grain_params.num_cb_points; i++) {
             p_frame_header->film_grain_params.point_cb_value[i] = Parser::ReadBits(p_stream, offset, 8);
+            if (i > 0 && p_frame_header->film_grain_params.point_cb_value[i] <= p_frame_header->film_grain_params.point_cb_value[i - 1]) {
+                ERR("point_cb_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i]) + ") should be greater than point_cb_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i - 1]) + ")");
+                return PARSER_INVALID_ARG;
+            }
             p_frame_header->film_grain_params.point_cb_scaling[i] = Parser::ReadBits(p_stream, offset, 8);
         }
         p_frame_header->film_grain_params.num_cr_points = Parser::ReadBits(p_stream, offset, 4);
+        CHECK_ALLOWED_MAX("num_cr_points", p_frame_header->film_grain_params.num_cr_points, 10);
+        if (p_seq_header->color_config.subsampling_x == 1 && p_seq_header->color_config.subsampling_y == 1) {
+            if (p_frame_header->film_grain_params.num_cb_points == 0 && p_frame_header->film_grain_params.num_cr_points != 0) {
+                ERR("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is equal to 0, it is a requirement of bitstream conformance that num_cr_points is equal to 0.");
+                return PARSER_WRONG_STATE;
+            }
+            if (p_frame_header->film_grain_params.num_cb_points != 0 && p_frame_header->film_grain_params.num_cr_points == 0) {
+                ERR("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is not equal to 0, it is a requirement of bitstream conformance that num_cr_points is not equal to 0.");
+                return PARSER_WRONG_STATE;
+            }
+        }
         for ( i = 0; i < p_frame_header->film_grain_params.num_cr_points; i++ )
         {
             p_frame_header->film_grain_params.point_cr_value[i] = Parser::ReadBits(p_stream, offset, 8);
+            if (i > 0 && p_frame_header->film_grain_params.point_cr_value[i] <= p_frame_header->film_grain_params.point_cr_value[i - 1]) {
+                ERR("point_cr_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i]) + ") should be greater than point_cr_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i - 1]) + ")");
+                return PARSER_INVALID_ARG;
+            }
             p_frame_header->film_grain_params.point_cr_scaling[i] = Parser::ReadBits(p_stream, offset, 8);
         }
     }
@@ -2410,6 +2533,7 @@ void Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &offset, Av
 
     p_frame_header->film_grain_params.overlap_flag = Parser::GetBit(p_stream, offset);
     p_frame_header->film_grain_params.clip_to_restricted_range = Parser::GetBit(p_stream, offset);
+    return PARSER_OK;
 }
 
 #if DBGINFO

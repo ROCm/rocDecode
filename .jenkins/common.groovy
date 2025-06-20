@@ -30,6 +30,8 @@ def runTestCommand (platform, project) {
     String packageManager = 'apt -y'
     String toolsPackage = 'llvm-amdgpu-dev'
     String llvmLocation = '/opt/amdgpu/lib/x86_64-linux-gnu/llvm-20.1/bin'
+    boolean runHevcStability = true;
+    boolean runAv1Test = true;
 
     if (platform.jenkinsLabel.contains('rhel')) {
         libLocation = ':/usr/local/lib'
@@ -43,6 +45,11 @@ def runTestCommand (platform, project) {
         packageManager = 'zypper -n'
         toolsPackage = 'llvm-amdgpu-devel'
         llvmLocation = '/opt/amdgpu/lib64/llvm-20.1/bin'
+    }
+
+    if (platform.jenkinsLabel.contains('gfx90a') || platform.jenkinsLabel.contains('gfx908')) {
+        runHevcStability = false;
+        runAv1Test = false;
     }
     
     String commitSha
@@ -60,17 +67,21 @@ def runTestCommand (platform, project) {
                             echo "wrong file count"
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm AvcConformance.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
-                            unzip AvcConformance.zip
+                            unzip -o AvcConformance.zip
                         fi
-                        FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Conformance_v1.0 -type f | wc -l)
-                        # Check if there are 326 files
-                        if [ "\$FILE_COUNT" -ne 326 ]; then
-                            echo "wrong file count"
-                            ls
-                            cd \${JENKINS_HOME_DIR}/rocDecode
-                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
-                            unzip Av1Conformance_v1.0.zip
+                        if ${runAv1Test}; then
+                            FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Conformance_v1.0 -type f | wc -l)
+                            # Check if there are 326 files
+                            if [ "\$FILE_COUNT" -ne 326 ]; then
+                                echo "wrong file count"
+                                ls
+                                cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm Av1Conformance_v1.0.zip
+                                wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
+                                unzip -o Av1Conformance_v1.0.zip
+                            fi
                         fi
                         FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Vp9Conformance -type f | wc -l)
                         # Check if there are 216 files
@@ -79,7 +90,7 @@ def runTestCommand (platform, project) {
                             ls
                             cd \${JENKINS_HOME_DIR}/rocDecode
                             wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip
-                            unzip Vp9Conformance.zip
+                            unzip -o Vp9Conformance.zip
                         fi
                         FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/HevcConformance -type f | wc -l)
                         # Check if there are 270 files
@@ -87,8 +98,53 @@ def runTestCommand (platform, project) {
                             echo "wrong file count"
                             ls                            
                             cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm HevcConformance.zip
                             wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
-                            unzip HevcConformance.zip
+                            unzip -o HevcConformance.zip
+                        fi
+                        FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/AvcStability -type f | wc -l)
+                        # Check if there are 22 files
+                        if [ "\$FILE_COUNT" -ne 22 ]; then
+                            echo "wrong file count"
+                            ls
+                            cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm AvcStability.zip
+                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/AvcStability.zip
+                            unzip -o AvcStability.zip
+                        fi
+                        if ${runAv1Test}; then
+                            FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Av1Stability -type f | wc -l)
+                            # Check if there are 215 files
+                            if [ "\$FILE_COUNT" -ne 215 ]; then
+                                echo "wrong file count"
+                                ls
+                                cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm Av1Stability.zip
+                                wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Av1Stability.zip
+                                unzip -o Av1Stability.zip
+                            fi
+                        fi
+                        if ${runHevcStability}; then
+                            FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/HevcStability -type f | wc -l)
+                            # Check if there are 44 files
+                            if [ "\$FILE_COUNT" -ne 44 ]; then
+                                echo "wrong file count"
+                                ls
+                                cd \${JENKINS_HOME_DIR}/rocDecode
+                                rm HevcStability.zip
+                                wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/HevcStability.zip
+                                unzip -o HevcStability.zip
+                            fi
+                        fi
+                        FILE_COUNT=\$(find \${JENKINS_HOME_DIR}/rocDecode/Vp9Stability -type f | wc -l)
+                        # Check if there are 18 files
+                        if [ "\$FILE_COUNT" -ne 18 ]; then
+                            echo "wrong file count"
+                            ls
+                            cd \${JENKINS_HOME_DIR}/rocDecode
+                            rm Vp9Stability.zip
+                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Vp9Stability.zip
+                            unzip -o Vp9Stability.zip
                         fi
                         if [ ! -f \${JENKINS_HOME_DIR}/rocDecode/data1.img ]; then
                             echo "File does not exist."
@@ -102,57 +158,106 @@ def runTestCommand (platform, project) {
                         wget http://math-ci.amd.com/userContent/computer-vision/data1.img
                         wget http://math-ci.amd.com/userContent/computer-vision/HevcConformance/*zip*/HevcConformance.zip
                         wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Vp9Conformance.zip
-                        wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
                         wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/AvcConformance.zip
-                        unzip HevcConformance.zip
-                        unzip Vp9Conformance.zip
-                        unzip Av1Conformance_v1.0.zip
-                        unzip AvcConformance.zip
+                        wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/AvcStability.zip
+                        wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Vp9Stability.zip
+                        unzip -o HevcConformance.zip
+                        unzip -o Vp9Conformance.zip
+                        unzip -o AvcConformance.zip
+                        unzip -o AvcStability.zip
+                        unzip -o Vp9Stability.zip
+                        if ${runAv1Test}; then
+                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeConformance/Av1Conformance_v1.0.zip
+                            unzip -o Av1Conformance_v1.0.zip
+                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/Av1Stability.zip
+                            unzip -o Av1Stability.zip
+                        fi
+                        if ${runHevcStability}; then
+                            wget http://math-ci.amd.com/userContent/computer-vision/rocDecodeStability/HevcStability.zip
+                            unzip -o HevcStability.zip
+                        fi
                     fi
         """
         def command = """#!/usr/bin/env bash
                     set -ex
                     export HOME=/home/jenkins
                     ${libvaDriverPath}
-                    echo make test
+                    echo make test starts
                     cd ${project.paths.project_build_prefix}/build
                     export LLVM_PROFILE_FILE=\"\$(pwd)/rawdata/rocdecode-%p.profraw\"
                     echo \$LLVM_PROFILE_FILE
                     cd release
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} make test ARGS="-VV --rerun-failed --output-on-failure"
-                    echo rocdecode-sample - videoDecode
+                    echo make test ends
+                    echo rocdecode-sample - videoDecode starts
                     mkdir -p rocdecode-sample && cd rocdecode-sample
                     cmake /opt/rocm/share/rocdecode/samples/videoDecode/
                     make -j8
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i /opt/rocm/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
-                    echo rocdecode-test package verification
+                    echo rocdecode-sample - videoDecode ends
+                    echo rocdecode-test package verification starts
                     cd ../ && mkdir -p rocdecode-test && cd rocdecode-test
                     cmake /opt/rocm/share/rocdecode/test/
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ctest -VV --rerun-failed --output-on-failure
-                    echo rocdecode conformance tests
+                    echo rocdecode-test package verification ends
+                    echo rocdecode conformance tests start
                     cd ../ && mkdir -p conformance && cd conformance
                     pip3 install pandas
+                    echo HEVC conformance test starts
                     mkdir hevc-conformance && cd hevc-conformance
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/HevcConformance --results_directory .
+                    echo HEVC conformance test ends
                     cd ../
+                    echo AVC conformance test starts
                     mkdir avc-conformance && cd avc-conformance
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/AvcConformance --results_directory .
+                    echo AVC conformance test ends
                     cd ../
+                    echo VP9 conformance test starts
                     mkdir vp9-conformance && cd vp9-conformance
                     python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/Vp9Conformance --results_directory .
-                    cd ../
-                    mkdir av1-conformance && cd av1-conformance
-                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/Av1Conformance_v1.0 --results_directory .
+                    echo VP9 conformance test ends
+                    if ${runAv1Test}; then
+                        cd ../
+                        echo AV1 conformance test starts
+                        mkdir av1-conformance && cd av1-conformance
+                        python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecode_Conformance.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/Av1Conformance_v1.0 --results_directory .
+                        echo AV1 conformance test ends
+                    fi
+                    echo rocdecode stability tests start
+                    cd ../../ && mkdir -p stability && cd stability
+                    echo AVC stability test starts
+                    mkdir avc-stability && cd avc-stability
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecodeSamples.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/AvcStability --results_directory . --check_decode_status 1
+                    echo AVC stability test ends
+                    if ${runHevcStability}; then
+                        echo HEVC stability test starts
+                        cd ../ && mkdir hevc-stability && cd hevc-stability
+                        python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecodeSamples.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/HevcStability --results_directory . --check_decode_status 1
+                        echo HEVC stability test ends
+                    fi
+                    if ${runAv1Test}; then
+                        echo AV1 stability test starts
+                        cd ../ && mkdir av1-stability && cd av1-stability
+                        python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecodeSamples.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/Av1Stability --results_directory . --check_decode_status 1 --use_ffmpeg_demuxer 0
+                        echo AV1 stability test ends
+                    fi
+                    echo VP9 stability test starts
+                    cd ../ && mkdir vp9-stability && cd vp9-stability
+                    python3 /opt/rocm/share/rocdecode/test/testScripts/run_rocDecodeSamples.py --videodecode_exe ./../../rocdecode-sample/videodecode --files_directory \${JENKINS_HOME_DIR}/rocDecode/Vp9Stability --results_directory . --check_decode_status 1
+                    echo VP9 stability test ends
                     cd ../../
-                    echo rocdecode-sample - videoDecode with data1 video test
+                    echo rocdecode-sample - videoDecode with data1 video test starts
                     cd rocdecode-sample
                     cp \${JENKINS_HOME_DIR}/rocDecode/data1.img \$PWD
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecode -i ./data1.img
-                    echo rocdecode-sample - videoDecodePerf with data1 video test
+                    echo rocdecode-sample - videoDecode with data1 video test ends
+                    echo rocdecode-sample - videoDecodePerf with data1 video test starts
                     mkdir -p rocdecode-perf && cd rocdecode-perf
                     cmake /opt/rocm/share/rocdecode/samples/videoDecodePerf/
                     make -j8
                     LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/rocm/lib${libLocation} ./videodecodeperf -i ./../data1.img
+                    echo rocdecode-sample - videoDecodePerf with data1 video test ends
                     echo \$(pwd)
                     cd  ../../../
                     echo \$(pwd)

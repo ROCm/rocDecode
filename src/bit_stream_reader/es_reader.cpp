@@ -859,7 +859,7 @@ uint32_t RocVideoESParser::ReadUVLC(const uint8_t *p_stream, size_t &bit_offset)
 int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
     int score = 0;
     uint8_t *obu_stream = p_stream;
-    int curr_offset = 0;
+    uint32_t curr_offset = 0;
     int temporal_delimiter_obu_present = 0;
     int seq_header_obu_present = 0;
     int frame_header_obu_present = 0;
@@ -1080,6 +1080,10 @@ int RocVideoESParser::CheckAv1EStream(uint8_t *p_stream, int stream_size) {
                 break;
         }
 
+        // Check before update
+        if (obu_size > (stream_size - curr_offset)) {
+            break;
+        }
         curr_offset += obu_size;
     }
     if (syntax_error) {
