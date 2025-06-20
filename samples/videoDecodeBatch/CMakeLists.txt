@@ -66,7 +66,7 @@ find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND AND rocprofiler-register_FOUND)
+if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND rocprofiler-register_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # FFMPEG
@@ -76,8 +76,8 @@ if(HIP_FOUND AND FFMPEG_FOUND AND ROCDECODE_FOUND AND rocprofiler-register_FOUND
     # STD Filesystem
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
     # rocDecode and utils
-    include_directories (${ROCDECODE_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCDECODE_LIBRARY})
+    include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
     #threads
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
@@ -102,7 +102,7 @@ else()
     if (NOT FFMPEG_FOUND)
         message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
-    if (NOT ROCDECODE_FOUND)
+    if (NOT rocdecode_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocDecode Not Found! - please install rocDecode!")
     endif()
     if (NOT Threads_FOUND)
