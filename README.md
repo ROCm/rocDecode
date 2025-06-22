@@ -230,7 +230,7 @@ You can find rocDecode Docker containers in our
   * Ubuntu - `22.04` / `24.04`
   * RHEL - `8` / `9`
   * SLES - `15 SP5`
-* ROCm: `6.3.0`
+* ROCm: `7.0.0`
 * libva-amdgpu-dev - `2.16.0`
 * mesa-amdgpu-va-drivers - `1:24.3.0`
 * FFmpeg - `4.4.2` / `6.1.1`

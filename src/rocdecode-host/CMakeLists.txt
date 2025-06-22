@@ -102,12 +102,12 @@ else()
       message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
   endif()
   if (NOT Threads_FOUND)
-      message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please insatll Threads!")
+      message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please install Threads!")
   endif()
   if (NOT rocprofiler-register_FOUND)
       message(FATAL_ERROR "-- ERROR!: rocprofiler-register Not Found! - please install rocprofiler-register!")
   endif()
 endif()
 
-  # install rocDecode libs -- {ROCM_PATH}/lib
+  # install rocdecode libs -- {ROCM_PATH}/lib
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev)
