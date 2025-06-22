@@ -145,6 +145,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX "./src/rocdecode-host/*.*")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
+  add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
   # --all-warnings/-Wall       -- Enable most warning messages
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -213,22 +214,29 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   message("-- ${White}AMD ROCm rocdecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm rocdecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
-  ## Cmake module config file configurations
+  # Cmake module config file configurations
   set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")
 
-  ## Export the package for use from the build-tree
+  # Export the package for use from the build-tree
   ## (this registers the build-tree with a global CMake-registry)
   export(PACKAGE ${PROJECT_NAME})
   set(CONF_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 
-  ## Create the rocdecode-config.cmake and rocdecode-config-version files
+  # Create the rocdecode-config.cmake and rocdecode-config-version files
   include(CMakePackageConfigHelpers)
   set(CONFIG_PACKAGE_INSTALL_DIR ${CONF_LIB_DIR}/cmake/${PROJECT_NAME})
-  set(LIB_INSTALL_DIR  "${CMAKE_INSTALL_LIBDIR}")
-  set(INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_INCLUDEDIR}")
-  set(BIN_INSTALL_DIR  "${CMAKE_INSTALL_BINDIR}")
+  set(LIB_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set(INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}")
+  set(BIN_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}")
 
-  ## Generate Config File for rocdecode
+  # Generate config Version File for rocdecode
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
+    VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+    COMPATIBILITY SameMajorVersion
+  )
+
+  # Generate Config File for rocdecode
   configure_package_config_file(
     ${CMAKE_MODULE_PATH}/${PROJECT_NAME}-config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
@@ -236,14 +244,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
   )
 
-  ## Generate config Version File for rocdecode
-  write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-    VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
-    COMPATIBILITY SameMajorVersion
-  )
-
-  ## Install the rocdecode-config.cmake and rocdecode-config-version.cmake
+  # Install the rocdecode-config.cmake and rocdecode-config-version.cmake
   install(FILES
     "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
@@ -251,9 +252,12 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     COMPONENT dev
   )
 
-  ## Install the export set for use with the install-tree
-  install(EXPORT ${PROJECT_NAME}-targets DESTINATION
-    "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" COMPONENT dev
+  # Install the export set for use with the install-tree
+  install(EXPORT ${PROJECT_NAME}-targets 
+    FILE ${PROJECT_NAME}-targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" 
+    COMPONENT dev
   )
 
   # make test with CTest
