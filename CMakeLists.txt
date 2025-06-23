@@ -145,7 +145,6 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX "./src/rocdecode-host/*.*")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
-  add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
   # --all-warnings/-Wall       -- Enable most warning messages
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -261,9 +260,11 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   )
 
   # make test with CTest
+  set(BUILD_FROM_SOURCE ON)
   enable_testing()
   include(CTest)
   add_subdirectory(test)
+
 
   # make rocdecode-host for decoding on HOST only if FFMPEG is available
   if (ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
