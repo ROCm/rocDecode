@@ -76,7 +76,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND)
     # rocdecode and utils
     include_directories (${rocdecode_INCLUDE_DIR} ${ROCM_PATH}/lib)
     if(rocdecode_HOST_LIBRARY)
-      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${rocdecode_LIBRARY} ${rocdecode_HOST_LIBRARY})
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode ${rocdecode_HOST_LIBRARY})
     else()
       message(FATAL_ERROR "Library rocdecode_HOST_LIBRARY not found!")
     endif()
