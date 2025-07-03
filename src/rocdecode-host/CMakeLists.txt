@@ -41,7 +41,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # Set Project Version and Language
-project(rocdecodehost LANGUAGES CXX)
+project(rocdecodehost VERSION ${VERSION} LANGUAGES CXX)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
@@ -109,5 +109,6 @@ else()
   endif()
 endif()
 
-  # install rocdecode libs -- {ROCM_PATH}/lib
+  # install rocdecode-host libs -- {ROCM_PATH}/lib
+  set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev)
