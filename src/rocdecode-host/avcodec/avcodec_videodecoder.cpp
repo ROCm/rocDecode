@@ -341,7 +341,8 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     //send packet to av_codec
     status = avcodec_send_packet(dec_context_, av_pkt);
     if (status < 0) {
-        ERR("Error sending av packet for decoding: status: ");
+        if (av_pkt->data && av_pkt->size)
+            ERR("Error sending av packet for decoding: status: ");
         return status;
     }
     while (status >= 0) {

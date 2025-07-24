@@ -67,13 +67,9 @@ find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 find_package(Threads REQUIRED)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
+if(HIP_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
-    # FFMPEG
-    include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
-                        ${AVFORMAT_INCLUDE_DIR})
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocdecode and utils
     include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
@@ -82,23 +78,37 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofi
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
     # rocprofiler-register
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
+    # rocdecodehost
+    find_library(ROCDECODE_HOST_LIBRARY NAMES rocdecodehost HINTS ${ROCM_PATH}/lib)
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecode.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
-    target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
+    # FFMPEG
+    if(FFMPEG_FOUND)
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_FFMPEG_DEMUX=1)
+      include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
+                          ${AVFORMAT_INCLUDE_DIR})
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+    else()
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_FFMPEG_DEMUX=0)
+    endif()
     # FFMPEG multi-version support
     if(_FFMPEG_AVCODEC_VERSION VERSION_LESS_EQUAL 58.134.100)
       target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=0)
     else()
       target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=1)
     endif()
+    if(FFMPEG_FOUND AND ROCDECODE_HOST_LIBRARY)
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode ${ROCDECODE_HOST_LIBRARY})
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=1)
+    else()
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=0)
+    endif()
+    target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
     if (NOT HIP_FOUND)
         message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
-    endif()
-    if (NOT FFMPEG_FOUND)
-        message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
     endif()
     if (NOT rocdecode_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocdecode Not Found! - please install rocdecode!")

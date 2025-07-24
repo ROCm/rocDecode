@@ -31,28 +31,11 @@ extern "C" {
     #endif
 }
 #include "rocvideodecode/roc_video_dec.h"       // for derived class
+#include "rocdecode/rocdecode_host.h"
 
-#include <mutex>
-#include <condition_variable>
-#include <queue>
-#include <atomic>
-
-
-#define MAX_AV_PACKET_DATA_SIZE     4096
-
-typedef struct DecFrameBufferFFMpeg_ {
-    AVFrame *av_frame_ptr;      /**< av_frame pointer for the decoded frame */
-    uint8_t *frame_ptr;       /**< host/device memory pointer for the decoded frame depending on mem_type*/
-    int64_t  pts;             /**<  timestamp for the decoded frame */
-    int picture_index;         /**<  surface index for the decoded frame */
-} DecFrameBufferFFMpeg;
-
-typedef struct DecPacketBuffer_
-{
-    AVPacket *av_pckt;
-    int av_frame_index;
-} DecPacketBuffer;
-
+/**
+ * FFMpegVideoDecoder: Derived class for FFMpeg based host decoder
+ */
 class FFMpegVideoDecoder: public RocVideoDecoder {
     public:
         /**
@@ -71,7 +54,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * @param no_multithreading : run FFMpeg decoder in the main thread (no multithreading) 
          */
         FFMpegVideoDecoder(int num_threads,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
-                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, bool no_multithreading = false, int max_width = 0, int max_height = 0,
+                          const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
                           uint32_t clk_rate = 1000);
         /**
          * @brief destructor
@@ -126,12 +109,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
          */
-        static int ROCDECAPI FFMpegHandleVideoSequenceProc(void *p_user_data, RocdecVideoFormat *p_video_format) { return ((FFMpegVideoDecoder *)p_user_data)->HandleVideoSequence(p_video_format); }
-
-        /**
-         *   @brief  Callback function to be registered for getting a callback when a decoded frame is ready to be decoded
-         */
-        static int ROCDECAPI FFMpegHandlePictureDecodeProc(void *p_user_data, RocdecPicParams *p_pic_params) { return ((FFMpegVideoDecoder *)p_user_data)->HandlePictureDecode(p_pic_params); }
+        static int ROCDECAPI FFMpegHandleVideoSequenceProc(void *p_user_data, RocdecVideoFormatHost *p_video_format) { return ((FFMpegVideoDecoder *)p_user_data)->HandleVideoSequence(p_video_format); }
 
         /**
          *   @brief  Callback function to be registered for getting a callback when a decoded frame is available for display
@@ -147,13 +125,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          *   @brief  This function gets called when a sequence is ready to be decoded. The function also gets called
              when there is format change
         */
-        int HandleVideoSequence(RocdecVideoFormat *p_video_format);
-
-        /**
-         *   @brief  This function gets called when a picture is ready to be decoded. rocDecDecodeFrame is called from this function
-         *   to decode the picture
-         */
-        int HandlePictureDecode(RocdecPicParams *p_pic_params);
+        int HandleVideoSequence(RocdecVideoFormatHost *p_video_format);
 
         /**
          *   @brief  This function gets called after a picture is decoded and available for display. Frames are fetched and stored in 
@@ -171,72 +143,4 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          */
         int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
 
-        void DecodeThread();
-        int DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame);
-        void InitOutputFrameInfo(AVFrame *p_frame);
-        int FlushDecoder();
-        void PushPacket(AVPacket *pkt) {
-            {
-                std::lock_guard<std::mutex> lock(mtx_pkt_q_);
-                av_packet_q_.push(pkt);
-            }
-            cv_pkt_.notify_one();
-        }
-        
-        AVPacket *PopPacket() {
-            AVPacket *pkt;
-            std::unique_lock<std::mutex> lock(mtx_pkt_q_);
-            cv_pkt_.wait(lock, [&] { return !av_packet_q_.empty(); });
-            pkt = av_packet_q_.front();
-            av_packet_q_.pop();
-            return pkt;
-        }
-
-        void PushFrame(AVFrame *av_frame) {
-            {
-                std::lock_guard<std::mutex> lock(mtx_frame_q_);
-                av_frame_q_.push(av_frame);
-            }
-            cv_frame_.notify_one();
-        };
-
-        AVFrame *PopFrame() {
-            std::unique_lock<std::mutex> lock(mtx_frame_q_);
-            cv_frame_.wait(lock, [&] { return !av_frame_q_.empty() || end_of_stream_; });
-            if (end_of_stream_ && av_frame_q_.empty())
-                return nullptr;
-            AVFrame *p_frame = av_frame_q_.front();
-            av_frame_q_.pop();
-            return p_frame;
-        }
-
-        typedef enum { CMD_ABORT, CMD_DECODE } CommandType;
-        typedef enum { STATUS_SUCCESS = 0, STATUS_FAILURE = -1 } StatusType;
-
-        bool no_multithreading_ = false;
-        bool b_decoder_initialized = false;
-        uint32_t av_frame_cnt_ = 0;
-        uint32_t av_pkt_cnt_ = 0;
-        RocdecSourceDataPacket last_packet_;
-        std::thread *ffmpeg_decoder_thread_ = nullptr;
-        std::queue<AVPacket *> av_packet_q_;        // queue for compressed packets
-        std::queue<AVFrame *> av_frame_q_;
-        std::vector<DecFrameBufferFFMpeg> vp_frames_ffmpeg_;      // vector of decoded frames
-        std::vector<AVFrame *> dec_frames_;      // vector of AVFrame * for decoded frames
-        std::vector<AVPacket *> av_packets_;    // store of AVPackets for decoding
-        std::vector<std::pair<uint8_t *, int>> av_packet_data_;
-        std::mutex mtx_pkt_q_, mtx_frame_q_;               //for command and status
-        std::condition_variable cv_pkt_, cv_frame_;     //for command and status
-        std::atomic<bool> end_of_stream_ = false;
-        // Variables for FFMpeg decoding
-        AVCodecContext * dec_context_ = nullptr;
-        AVPixelFormat decoder_pixel_format_;
-#if USE_AVCODEC_GREATER_THAN_58_134
-        const AVCodec *decoder_ = nullptr;
-#else
-        AVCodec *decoder_ = nullptr;
-#endif
-        AVFormatContext * formatContext = nullptr;
-        AVInputFormat * inputFormat = nullptr;
-        AVStream *video = nullptr;
 };
