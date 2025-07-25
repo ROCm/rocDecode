@@ -225,9 +225,6 @@ int main(int argc, char **argv) {
 
         ShowHelpAndExit(argv[i]);
     }
-#if !ENABLE_FFMPEG_DEMUX
-    b_use_ffmpeg_demuxer = false;   // set to  false if ffmpeg is not available in the system
-#endif
 
     try {
         std::size_t found_file = input_file_path.find_last_of('/');
