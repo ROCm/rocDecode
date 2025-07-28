@@ -8,7 +8,7 @@ rocDecode prerequisites
 
 rocDecode requires ROCm 6.1 or later running on `accelerators based on the CDNA architecture <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_.
 
-ROCm must be installed using the [AMDGPU installer](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with the ``rocm`` usecase:
+ROCm must be installed using the AMDGPU installer with the ``rocm`` usecase:
 
 .. code:: shell
 
