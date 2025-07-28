@@ -17,6 +17,7 @@ The rocDecode public repository is located at `https://github.com/ROCm/rocDecode
 
   .. grid-item-card:: Install
 
+    * :doc:`rocDecode prerequisites <./install/rocDecode-prerequisites>`
     * :doc:`Installing rocDecode with the package installer <./install/rocDecode-package-install>`
     * :doc:`Building and installing rocDecode from source code <./install/rocDecode-build-and-install>`
     * `rocDecode Docker containers <https://github.com/ROCm/rocDecode/tree/develop/docker>`_
