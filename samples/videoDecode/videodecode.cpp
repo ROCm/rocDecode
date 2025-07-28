@@ -42,6 +42,11 @@ THE SOFTWARE.
 #include "ffmpeg_video_dec.h"
 #include "common.h"
 
+//hardcoding for host based decoder creation if demux is not available
+#define DEFAULT_WIDTH 2912
+#define DEFAULT_HEIGHT 1888
+
+
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
     << "-i Input File Path - required" << std::endl
@@ -89,7 +94,7 @@ int main(int argc, char **argv) {
     int seek_criteria = 0, seek_mode = 0;
     bool b_use_ffmpeg_demuxer = true; // true by default to use FFMPEG demuxer. set to false to use the built-in bitstream reader.
 
-    // Parse command-line arguments
+// Parse command-line arguments
     if(argc <= 1) {
         ShowHelpAndExit();
     }
@@ -259,10 +264,16 @@ int main(int argc, char **argv) {
         if (!backend)   // gpu backend
             viddec = new RocVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay);
         else {
+        #if ENABLE_HOST_DECODE          
             std::cout << "info: RocDecode is using CPU backend!" << std::endl;
-            bool use_threading = false;
+            uint32_t max_width = b_use_ffmpeg_demuxer ? demuxer->GetWidth() : DEFAULT_WIDTH;
+            uint32_t max_height = b_use_ffmpeg_demuxer ? demuxer->GetHeight() : DEFAULT_HEIGHT;
             if (mem_type == OUT_SURFACE_MEM_DEV_INTERNAL) mem_type = OUT_SURFACE_MEM_DEV_COPIED;    // mem_type internal is not supported in this mode
-            viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay, true);
+            viddec = new FFMpegVideoDecoder(device_id, mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, b_extract_sei_messages, disp_delay, max_width, max_height);
+        #else
+            std::cout << "Error: RocDecode HOST library is not found and backend is not supported!" << std::endl;
+            return 0;
+        #endif            
         }
 
         if(!viddec->CodecSupported(device_id, rocdec_codec_id, bit_depth)) {
@@ -346,7 +357,8 @@ int main(int argc, char **argv) {
             }
             n_frame_returned = viddec->DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
-            if (!n_frame && !viddec->GetOutputSurfaceInfo(&surf_info)) {
+            // get output surface info after the first decoded frame
+            if (!n_frame && (n_frame_returned > 0) && !viddec->GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }

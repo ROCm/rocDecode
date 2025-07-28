@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocdecode 1.0.0 for ROCm 7.0.0
+## rocdecode 1.1.0 for ROCm 7.0.0
 
 ### Added
 
@@ -13,7 +13,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * AVC stream DPB buffer size change handling through decoder reconfiguration.
 * rocdecode now uses the Cmake CMAKE_PREFIX_PATH directive.
 * rocdecode - A new avcodec-based decoder built as a separate "rocdecode-host" library
-
+* The host backend in the `videoDeode`  sample now uses the rocdecode-host library
 
 ### Optimized
 
