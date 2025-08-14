@@ -131,11 +131,11 @@ public:
         }
 
         int img_size = img_width * surf_info->bytes_per_pixel * (img_height + surf_info->chroma_height);
-        // For 10 bit, convert from P010 to LSB to match reference decoder output
+        // For 10/12 bit, convert from P010/P012 to LSB to match reference decoder output
         if (surf_info->bytes_per_pixel == 2) {
             uint16_t *ptr = reinterpret_cast<uint16_t *> (stacked_ptr);
             for (i = 0; i < img_size / 2; i++) {
-                ptr[i] = ptr[i] >> 6;
+                ptr[i] = ptr[i] >> (16 - surf_info->bit_depth);
             }
         }
 
