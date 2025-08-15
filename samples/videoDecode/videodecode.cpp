@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
             n_frame_returned = viddec->DecodeFrame(pvideo, n_video_bytes, pkg_flags, pts, &decoded_pics);
 
             // get output surface info after the first decoded frame
-            if (!n_frame && (n_frame_returned > 0) && !viddec->GetOutputSurfaceInfo(&surf_info)) {
+            if (!n_frame && !viddec->GetOutputSurfaceInfo(&surf_info)) {
                 std::cerr << "Error: Failed to get Output Surface Info!" << std::endl;
                 break;
             }
