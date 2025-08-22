@@ -45,10 +45,15 @@ static inline float GetChromaWidthFactor(rocDecVideoSurfaceFormat surface_format
 
 FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
               const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay,  int max_width, int max_height, uint32_t clk_rate) :
-              RocVideoDecoder(device_id, out_mem_type, codec, force_zero_latency, p_crop_rect, extract_user_sei_Message, disp_delay, max_width, max_height, clk_rate) {
+               RocVideoDecoder(device_id, out_mem_type, codec, force_zero_latency, p_crop_rect, extract_user_sei_Message, disp_delay, max_width, max_height, clk_rate, true) {
 
     if ((out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) || (out_mem_type_ == OUT_SURFACE_MEM_NOT_MAPPED)) {
         ROCDEC_THROW("Unsupported output memory type", ROCDEC_INVALID_PARAMETER);
+    }
+    if (out_mem_type_ == OUT_SURFACE_MEM_DEV_COPIED) {
+        if (!InitHIP(device_id_)) {
+            ROCDEC_THROW("Failed to initilize the HIP", ROCDEC_DEVICE_INVALID);
+        }
     }
     // many of the decoder parameters are hardcoded below for just creating the decoder.
     // In the handlevideosequence callback, the decoder will get reconfigured to the actual parameters in the sequence header
@@ -74,7 +79,6 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
     create_info.pfn_display_picture = FFMpegHandlePictureDisplayProc;
     create_info.pfn_get_sei_msg = nullptr;        // tobe supported in future
     ROCDEC_API_CALL(rocDecCreateDecoderHost(&roc_decoder_, &create_info));
-
 }
 
 
