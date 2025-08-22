@@ -23,30 +23,34 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 
 RocVideoDecoder::RocVideoDecoder(int device_id, OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency,
-              const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate) :
+              const Rect *p_crop_rect, bool extract_user_sei_Message, uint32_t disp_delay, int max_width, int max_height, uint32_t clk_rate, bool skip_init) :
               device_id_{device_id}, out_mem_type_(out_mem_type), codec_id_(codec), b_force_zero_latency_(force_zero_latency), 
               b_extract_sei_message_(extract_user_sei_Message), disp_delay_(disp_delay), max_width_ (max_width), max_height_(max_height) {
-    if (!InitHIP(device_id_)) {
-        ROCDEC_THROW("Failed to initilize the HIP", ROCDEC_DEVICE_INVALID);
-    }
+
     if (p_crop_rect) crop_rect_ = *p_crop_rect;
     if (b_extract_sei_message_) {
         fp_sei_ = fopen("rocdec_sei_message.txt", "wb");
         curr_sei_message_ptr_ = new RocdecSeiMessageInfo;
         memset(&sei_message_display_q_, 0, sizeof(sei_message_display_q_));
     }
-    // create rocdec videoparser
-    RocdecParserParams parser_params = {};
-    parser_params.codec_type = codec_id_;
-    parser_params.max_num_decode_surfaces = 1; // let the parser to determine the decode buffer pool size
-    parser_params.clock_rate = clk_rate;
-    parser_params.max_display_delay = disp_delay_;
-    parser_params.user_data = this;
-    parser_params.pfn_sequence_callback = HandleVideoSequenceProc;
-    parser_params.pfn_decode_picture = HandlePictureDecodeProc;
-    parser_params.pfn_display_picture = b_force_zero_latency_ ? NULL : HandlePictureDisplayProc;
-    parser_params.pfn_get_sei_msg = b_extract_sei_message_ ? HandleSEIMessagesProc : NULL;
-    ROCDEC_API_CALL(rocDecCreateVideoParser(&rocdec_parser_, &parser_params));
+    // derived class can skip the following initialization by setting skip_init flag
+    if (!skip_init) {
+        if (!InitHIP(device_id_)) {
+            ROCDEC_THROW("Failed to initilize the HIP", ROCDEC_DEVICE_INVALID);
+        }
+        // create rocdec videoparser
+        RocdecParserParams parser_params = {};
+        parser_params.codec_type = codec_id_;
+        parser_params.max_num_decode_surfaces = 1; // let the parser to determine the decode buffer pool size
+        parser_params.clock_rate = clk_rate;
+        parser_params.max_display_delay = disp_delay_;
+        parser_params.user_data = this;
+        parser_params.pfn_sequence_callback = HandleVideoSequenceProc;
+        parser_params.pfn_decode_picture = HandlePictureDecodeProc;
+        parser_params.pfn_display_picture = b_force_zero_latency_ ? NULL : HandlePictureDisplayProc;
+        parser_params.pfn_get_sei_msg = b_extract_sei_message_ ? HandleSEIMessagesProc : NULL;
+        ROCDEC_API_CALL(rocDecCreateVideoParser(&rocdec_parser_, &parser_params));
+    }
 }
 
 
@@ -76,7 +80,6 @@ RocVideoDecoder::~RocVideoDecoder() {
         delete curr_video_format_ptr_;
         curr_video_format_ptr_ = nullptr;
     }
-
     std::lock_guard<std::mutex> lock(mtx_vp_frame_);
     if (out_mem_type_ != OUT_SURFACE_MEM_DEV_INTERNAL) {
         for (auto &p_frame : vp_frames_) {
@@ -100,11 +103,11 @@ RocVideoDecoder::~RocVideoDecoder() {
             std::cerr << "ERROR: hipStream_Destroy failed! (" << hip_status << ")" << std::endl;
         }
     }
+
     if (fp_out_) {
         fclose(fp_out_);
         fp_out_ = nullptr;
     }
-
     double elapsed_time = StopTimer(start_time);
     AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
 }
