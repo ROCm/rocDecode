@@ -2,6 +2,12 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
+## rocDecode 1.2.0 (unreleased)
+
+### Added
+
+* AV1 12-bit decode support on VA-API version 1.23.0 and later.
+
 ## rocdecode 1.1.0 for ROCm 7.0.0
 
 ### Added
