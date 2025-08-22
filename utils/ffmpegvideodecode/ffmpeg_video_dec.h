@@ -73,6 +73,15 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * @return int - num of frames to display
          */
         int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr) override;
+        
+        /**
+         * @brief Get the pointer to the Output Image Info
+         * 
+         * @param surface_info ptr to output surface info
+         * @return true
+         * @return false
+         */
+        bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) override;
 
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames

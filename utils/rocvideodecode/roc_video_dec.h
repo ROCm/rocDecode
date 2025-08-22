@@ -292,7 +292,7 @@ class RocVideoDecoder {
          * @return true 
          * @return false 
          */
-        bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info);
+        virtual bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info);
 
         /**
          * @brief Function to set the Reconfig Params object
