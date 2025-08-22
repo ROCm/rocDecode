@@ -79,6 +79,19 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
     create_info.pfn_display_picture = FFMpegHandlePictureDisplayProc;
     create_info.pfn_get_sei_msg = nullptr;        // tobe supported in future
     ROCDEC_API_CALL(rocDecCreateDecoderHost(&roc_decoder_, &create_info));
+    // set disp_width and height to non_zero values for it doesn't trigger decoding error before actual start of decoding
+    disp_width_ = max_width;
+    disp_height_ = max_height;
+    // fill output_surface_info_
+    output_surface_info_.output_width = max_width;
+    output_surface_info_.output_height = max_height;
+    output_surface_info_.output_pitch  = max_width * 2;     // bytes_per_pixel 2
+    output_surface_info_.output_vstride = max_height;
+    output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
+    output_surface_info_.bytes_per_pixel = 2;
+    output_surface_info_.surface_format = rocDecVideoSurfaceFormat_P016;
+    output_surface_info_.num_chroma_planes = 2;
+    output_surface_info_.mem_type = OUT_SURFACE_MEM_HOST_COPIED;
 }
 
 
@@ -203,6 +216,15 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormatHost *format_host) 
     double elapsed_time = StopTimer(start_time);
     AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
     return num_decode_surfaces;
+}
+
+bool FFMpegVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
+    if (!disp_width_ || !disp_height_) {
+        std::cerr << "ERROR: FFMpegVideo is not intialized" << std::endl;
+        return false;
+    }
+    *surface_info = &output_surface_info_;
+    return true;
 }
 
 /**
