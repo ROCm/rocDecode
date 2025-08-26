@@ -40,7 +40,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # rocdecode Version
-set(VERSION "1.1.0")
+set(VERSION "1.2.0")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
