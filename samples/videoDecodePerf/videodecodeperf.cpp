@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
 
         for (int i = 0; i < n_thread; i++) {
             v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-            std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+            if (!backend) std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
             std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
