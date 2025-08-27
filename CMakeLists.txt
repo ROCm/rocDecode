@@ -412,13 +412,11 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
 
   cpack_add_component(runtime
                     DISPLAY_NAME "rocdecode Runtime Package"
-                    DESCRIPTION "AMD rocdecode is a high performance video decode SDK for AMD GPUs. \
-rocdecode runtime package provides rocdecode library and license.txt")
+		    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode library and license.txt")
 
   cpack_add_component(dev
                     DISPLAY_NAME "rocdecode Develop Package"
-                    DESCRIPTION "AMD rocdecode is a high performance video decode SDK for AMD GPUs. \
-rocdecode develop package provides rocdecode header files, and samples")
+		    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode header files, and samples")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocdecode ASAN Package"
