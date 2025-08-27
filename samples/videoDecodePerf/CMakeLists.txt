@@ -65,7 +65,7 @@ find_package(HIP QUIET)
 find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
-find_package(Threads REQUIRED)
+find_package(Threads QUIET)
 
 if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
     # HIP
