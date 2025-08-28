@@ -171,6 +171,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   else()
     if(NOT FFMPEG_FOUND)
       message("-- ${Yellow}${PROJECT_NAME} -- FFMPEG NOT Found; rocdecode-host exculded${ColourReset}")
+    endif()
   endif()
 
   # Generate BUILD_INFO
