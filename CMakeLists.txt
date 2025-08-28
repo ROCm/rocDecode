@@ -40,7 +40,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # rocdecode Version
-set(VERSION "1.3.0")
+set(VERSION "1.4.0")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
@@ -59,7 +59,7 @@ find_program(DPKG_EXE dpkg)
 
 # avoid setting the default installation path to /usr/local
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${ROCM_PATH} CACHE PATH "rocdecode default installation path" FORCE)
+  set(CMAKE_INSTALL_PREFIX ${ROCM_PATH} CACHE PATH "${PROJECT_NAME} default installation path" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 set(DEFAULT_BUILD_TYPE "Release")
@@ -77,8 +77,8 @@ if(ENHANCED_MESSAGE)
   set(Cyan "${Esc}[36m")
   set(White "${Esc}[37m")
 endif()
-message("-- ${BoldBlue}rocdecode Version -- ${VERSION}${ColourReset}")
-message("-- ${BoldBlue}rocdecode Install Path -- ${CMAKE_INSTALL_PREFIX}${ColourReset}")
+message("-- ${BoldBlue}${PROJECT_NAME} Version -- ${VERSION}${ColourReset}")
+message("-- ${BoldBlue}${PROJECT_NAME} Install Path -- ${CMAKE_INSTALL_PREFIX}${ColourReset}")
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
@@ -98,13 +98,13 @@ else()
   # -fPIC     -- Generate position-independent code if possible
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC")
 endif()
-message("-- ${BoldBlue}rocdecode Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
+message("-- ${BoldBlue}${PROJECT_NAME} Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
+# Developer options
 # Add an option for enabling the rocprofiler-register
 option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
-
-#add an option for enabling FFMPEG avcodec host-based decoder
-option(ROCDECODE_ENABLE_HOST_DECODER "Enable rocdecode host-based decoder support" ON)
+# Add an option for enabling FFMPEG avcodec host-based decoder
+option(ROCDECODE_ENABLE_HOST_DECODER "Enable rocdecode-host-based decoder support" ON)
 
 find_package(HIP QUIET)
 find_package(Libva QUIET)
@@ -115,7 +115,6 @@ if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
     HINTS $ENV{rocprofiler_register_ROOT} $ENV{ROCPROFILER_REGISTER_ROOT} ${CMAKE_INSTALL_PREFIX}
     PATHS ${ROCM_PATH})
 endif()
-
 if(ROCDECODE_ENABLE_HOST_DECODER)
   find_package(FFmpeg QUIET)
 endif()
@@ -166,7 +165,15 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
       ROCDECODE_ROCP_REG_VERSION_PATCH=${VERSION_PATCH})
   endif()
 
-  #Generate BUILD_INFO
+  # make rocdecode-host for decoding on HOST only if FFMPEG is available
+  if(ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
+    add_subdirectory(src/rocdecode-host)
+  else()
+    if(NOT FFMPEG_FOUND)
+      message("-- ${Yellow}${PROJECT_NAME} -- FFMPEG NOT Found; rocdecode-host exculded${ColourReset}")
+  endif()
+
+  # Generate BUILD_INFO
   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/api/rocdecode_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode_version.h @ONLY )
 
   # install rocdecode libs -- {ROCM_PATH}/lib
@@ -210,8 +217,8 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   install(DIRECTORY test/testScripts DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
   install(FILES test/rocDecodeNegativeApiTests/CMakeLists.txt test/rocDecodeNegativeApiTests/README.md test/rocDecodeNegativeApiTests/rocdecode_api_negative_tests.cpp test/rocDecodeNegativeApiTests/rocdecode_api_negative_tests.h test/rocDecodeNegativeApiTests/rocdecodenegativetest.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test/rocDecodeNegativeApiTests COMPONENT dev)
 
-  message("-- ${White}AMD ROCm rocdecode -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
-  message("-- ${White}AMD ROCm rocdecode -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
+  message("-- ${White}AMD ROCm ${PROJECT_NAME} -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
+  message("-- ${White}AMD ROCm ${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
   # Cmake module config file configurations
   set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")
@@ -264,12 +271,6 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   enable_testing()
   include(CTest)
   add_subdirectory(test)
-
-
-  # make rocdecode-host for decoding on HOST only if FFMPEG is available
-  if (ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
-    add_subdirectory(src/rocdecode-host)
-  endif()
 
   # set package information
   set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -399,37 +400,35 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   endif()
   if(EXISTS ${RPMBUILD_EXE})
     list(APPEND CPACK_GENERATOR "RPM")
-    message("-- ${White}rocdecode .rpm RunTime Package Requirements -- ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
-    message("-- ${White}rocdecode .rpm Devel Package Requirements -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}${PROJECT_NAME}: .rpm RunTime Package Requirements -- ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES}${ColourReset}")
+    message("-- ${White}${PROJECT_NAME}: .rpm Devel Package Requirements -- ${CPACK_RPM_DEV_PACKAGE_REQUIRES}${ColourReset}")
   endif()
   if(EXISTS ${DPKG_EXE})
     list(APPEND CPACK_GENERATOR "DEB")
-    message("-- ${White}rocdecode .deb RunTime Package Requirements -- ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
-    message("-- ${White}rocdecode .deb Dev Package Requirements -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}${PROJECT_NAME}: .deb RunTime Package Requirements -- ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS}${ColourReset}")
+    message("-- ${White}${PROJECT_NAME}: .deb Dev Package Requirements -- ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}${ColourReset}")
   endif()
 
   include(CPack)
 
   cpack_add_component(runtime
                     DISPLAY_NAME "rocdecode Runtime Package"
-		    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode library and license.txt")
+                    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode library and license.txt")
 
   cpack_add_component(dev
                     DISPLAY_NAME "rocdecode Develop Package"
-		    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode header files, and samples")
+                    DESCRIPTION "High perf video decode SDK for AMD GPUs. Rocdecode header files, and samples")
 
   cpack_add_component(asan
                     DISPLAY_NAME "rocdecode ASAN Package"
-                    DESCRIPTION "AMD rocdecode is a high performance video decode SDK for AMD GPUs. \
-rocdecode ASAN package provides rocdecode ASAN libraries")
+                    DESCRIPTION "High perf video decode SDK for AMD GPUs. rocdecode ASAN libraries")
 
   cpack_add_component(test
-                  DISPLAY_NAME "rocdecode Test Package"
-                  DESCRIPTION "AMD rocdecode is a high performance video decode SDK for AMD GPUs. \
-rocdecode Test package provides rocdecode Test Components")
+                    DISPLAY_NAME "rocdecode Test Package"
+                    DESCRIPTION "High perf video decode SDK for AMD GPUs. rocdecode test")
 
 else()
-  message("-- ${Red}AMD ROCm rocdecode -- unmet dependencies${ColourReset}")
+  message("-- ${Red}AMD ROCm ${PROJECT_NAME} -- unmet dependencies${ColourReset}")
   if(NOT HIP_FOUND)
     message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install rocm-hip-runtime-dev!")
   endif()
@@ -439,4 +438,4 @@ else()
   if(NOT Libdrm_amdgpu_FOUND)
     message(FATAL_ERROR "-- ERROR!: libdrm_amdgpu Not Found - please install libdrm-amdgpu-dev(DEBIAN)/libdrm-amdgpu-devel(RPM) package!")
   endif()
-  endif()
+endif()

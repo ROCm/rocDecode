@@ -30,43 +30,31 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
-
+# Set AMD Clang as default compiler
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
-
-# Set AMD Clang as default compiler
+set(CMAKE_CXX_EXTENSIONS ON)
 if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
 endif()
 
+# rocdecode-host Version
+set(VERSION "1.0.0")
+
 # Set Project Version and Language
-project(rocdecodehost VERSION ${VERSION} LANGUAGES CXX)
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
+project(rocdecode-host VERSION ${VERSION} LANGUAGES CXX)
+
+# add cmake find Config locations
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 
-set(DEFAULT_BUILD_TYPE "Release")
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocdecode-host Default Build Type" FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
-endif()
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  # -O0 -- Don't Optimize output file 
-  # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -gdwarf-4 -Wall")
-else()
-  # -O3       -- Optimize output file 
-  # -DNDEBUG  -- turn off asserts 
-  # -fPIC     -- Generate position-independent code if possible
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -fPIC -Wall")
-endif()
-
-message("-- ${BoldBlue}rocdecode-host Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
-
+find_package(HIP QUIET)
+find_package(Threads QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
+if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   # HIP
   set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
   # FFMPEG
@@ -82,7 +70,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
   include_directories(api rocdecode-host ../src/rocdecode ../src/parser)
   # source files
   file(GLOB_RECURSE SOURCES "./*.cpp")
-  # rocdecode.so
+  # rocdecode-host.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
@@ -93,22 +81,25 @@ if(HIP_FOUND AND FFMPEG_FOUND AND Threads_FOUND AND rocprofiler-register_FOUND)
     target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_58_134=1)
   endif()
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  # install rocdecode-host libs -- {ROCM_PATH}/lib
+  set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
+  install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}-targets LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
+  # install rocdecode include files -- {ROCM_PATH}/include/rocdecode
+  install(FILES ${PROJECT_SOURCE_DIR}/../../api/rocdecode/rocdecode_host.h 
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
+
 else()
   message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
   if (NOT HIP_FOUND)
       message(FATAL_ERROR "-- ERROR!: HIP Not Found! - please install ROCm and HIP!")
   endif()
-  if (NOT FFMPEG_FOUND)
-      message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
-  endif()
   if (NOT Threads_FOUND)
       message(FATAL_ERROR "-- ERROR!: Threads Not Found! - please install Threads!")
   endif()
-  if (NOT rocprofiler-register_FOUND)
-      message(FATAL_ERROR "-- ERROR!: rocprofiler-register Not Found! - please install rocprofiler-register!")
+  if (NOT FFMPEG_FOUND)
+      message(FATAL_ERROR "-- ERROR!: FFMPEG Not Found! - please install FFMPEG!")
   endif()
 endif()
-
-  # install rocdecode-host libs -- {ROCM_PATH}/lib
-  set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev)
