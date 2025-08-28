@@ -72,13 +72,22 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * @param num_decoded_pics - nummber of pictures decoded in this call
          * @return int - num of frames to display
          */
-        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr);
+        int DecodeFrame(const uint8_t *data, size_t size, int pkt_flags, int64_t pts = 0, int *num_decoded_pics = nullptr) override;
+        
+        /**
+         * @brief Get the pointer to the Output Image Info
+         * 
+         * @param surface_info ptr to output surface info
+         * @return true
+         * @return false
+         */
+        bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) override;
 
         /**
          * @brief This function returns a decoded frame and timestamp. This should be called in a loop fetching all the available frames
          * 
          */
-        uint8_t* GetFrame(int64_t *pts);
+        uint8_t* GetFrame(int64_t *pts) override;
 
         /**
          * @brief function to release frame after use by the application: Only used with "OUT_SURFACE_MEM_DEV_INTERNAL"
@@ -88,7 +97,7 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * @return true      - success
          * @return false     - falied
          */
-        bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false);
+        bool ReleaseFrame(int64_t pTimestamp, bool b_flushing = false) override;
 
         /**
          * @brief Helper function to dump decoded output surface to file
@@ -98,12 +107,17 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          * @param surf_info         - surface info
          * @param rgb_image_size    - image size for rgb (optional). A non_zero value indicates the surf_mem holds an rgb interleaved image and the entire size will be dumped to file
          */
-        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0);
+        void SaveFrameToFile(std::string output_file_name, void *surf_mem, OutputSurfaceInfo *surf_info, size_t rgb_image_size = 0) override;
 
         /**
         *   @brief  This function is used to get the current frame size based on pixel format.
         */
-        virtual int GetFrameSize() {CHECK_ZERO("Display width", disp_width_); return ((disp_width_ * disp_height_) + ((chroma_height_ * chroma_width_) * num_chroma_planes_)) * byte_per_pixel_; }
+        virtual int GetFrameSize() override {CHECK_ZERO("Display width", disp_width_); return ((disp_width_ * disp_height_) + ((chroma_height_ * chroma_width_) * num_chroma_planes_)) * byte_per_pixel_; }
+
+        /**
+         *   @brief  This function reconfigure decoder if there is a change in sequence params.
+         */
+        int ReconfigureDecoder(RocdecVideoFormat *p_video_format) override;
 
     private:
         /**
@@ -137,10 +151,5 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          *   @brief  This function gets called when all unregistered user SEI messages are parsed for a frame
          */
         int GetSEIMessage(RocdecSeiMessageInfo *p_sei_message_info) { return RocVideoDecoder::GetSEIMessage(p_sei_message_info);};
-
-        /**
-         *   @brief  This function reconfigure decoder if there is a change in sequence params.
-         */
-        int ReconfigureDecoder(RocdecVideoFormat *p_video_format);
 
 };

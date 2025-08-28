@@ -2,7 +2,7 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 1.2.0 (unreleased)
+## rocDecode 1.3.0 (unreleased)
 
 ### Added
 
@@ -20,6 +20,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * rocdecode now uses the Cmake CMAKE_PREFIX_PATH directive.
 * rocdecode - A new avcodec-based decoder built as a separate "rocdecode-host" library
 * The host backend in the `videoDeode`  sample now uses the rocdecode-host library
+* The host backend using rocdecode-host library is added in `videoDecodePerf` sample
 
 ### Optimized
 

@@ -219,7 +219,8 @@ class RocVideoDecoder {
         */
         RocVideoDecoder(int device_id,  OutputSurfaceMemoryType out_mem_type, rocDecVideoCodec codec, bool force_zero_latency = false,
                           const Rect *p_crop_rect = nullptr, bool extract_user_SEI_Message = false, uint32_t disp_delay = 0, int max_width = 0, int max_height = 0,
-                          uint32_t clk_rate = 1000);
+                          uint32_t clk_rate = 1000, bool skip_init = false);
+
         virtual ~RocVideoDecoder();
 
         rocDecVideoCodec GetCodecId() { return codec_id_; }
@@ -291,7 +292,7 @@ class RocVideoDecoder {
          * @return true 
          * @return false 
          */
-        bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info);
+        virtual bool GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info);
 
         /**
          * @brief Function to set the Reconfig Params object
@@ -486,7 +487,7 @@ class RocVideoDecoder {
         bool b_force_recofig_flush_ = false;
         int32_t num_frames_flushed_during_reconfig_ = 0;
         hipDeviceProp_t hip_dev_prop_;
-        hipStream_t hip_stream_;
+        hipStream_t hip_stream_ = nullptr;
         rocDecVideoChromaFormat video_chroma_format_ = rocDecVideoChromaFormat_420;
         rocDecVideoSurfaceFormat video_surface_format_ = rocDecVideoSurfaceFormat_NV12;
         RocdecSeiMessageInfo *curr_sei_message_ptr_ = nullptr;

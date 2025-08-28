@@ -35,6 +35,7 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
+#include "ffmpeg_video_dec.h"
 #include "common.h"
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {
@@ -98,6 +99,7 @@ int main(int argc, char **argv) {
     bool b_force_zero_latency = false;
     uint32_t max_num_frames = 0;  // max number of frames to be decoded. default value is 0, meaning decode the entire stream
     int disp_delay = 1;
+    int backend = 0;
 
     // Parse command-line arguments
     if(argc <= 1) {
@@ -162,6 +164,13 @@ int main(int argc, char **argv) {
             mem_type = static_cast<OutputSurfaceMemoryType>(atoi(argv[i]));
             continue;
         }
+        if (!strcmp(argv[i], "-backend")) {
+            if (++i == argc) {
+                ShowHelpAndExit("-backend");
+            }
+            backend = atoi(argv[i]);
+            continue;
+        }
         ShowHelpAndExit(argv[i]);
     }
     
@@ -219,7 +228,22 @@ int main(int argc, char **argv) {
             } else {
                 v_device_id[i] = i % hip_vis_dev_count;
             }
-            std::unique_ptr<RocVideoDecoder> dec(new RocVideoDecoder(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, false, disp_delay));
+            std::unique_ptr<RocVideoDecoder> dec;
+            if (!backend) { // gpu backend
+                dec = std::make_unique<RocVideoDecoder>(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, false, disp_delay);
+            } else {
+            #if ENABLE_HOST_DECODE
+                std::cout << "info: RocDecode is using CPU backend!" << std::endl;
+                uint32_t max_width = demuxer->GetWidth();
+                uint32_t max_height =demuxer->GetHeight();
+                mem_type = OUT_SURFACE_MEM_HOST_COPIED;
+                dec = std::make_unique<FFMpegVideoDecoder>(v_device_id[i], mem_type, rocdec_codec_id, b_force_zero_latency, p_crop_rect, false, disp_delay, max_width, max_height);
+            #else
+                std::cout << "Error: RocDecode HOST library is not found and backend is not supported!" << std::endl;
+                return 0;
+            #endif
+            }
+
             if (!dec->CodecSupported(v_device_id[i], rocdec_codec_id, demuxer->GetBitDepth())) {
                 std::cerr << "Codec not supported on GPU, skipping this file!" << std::endl;
                 continue;
@@ -246,7 +270,7 @@ int main(int argc, char **argv) {
 
         for (int i = 0; i < n_thread; i++) {
             v_viddec[i]->GetDeviceinfo(device_name, gcn_arch_name, pci_bus_id, pci_domain_id, pci_device_id);
-            std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
+            if (!backend) std::cout << "info: stream " << i << " using GPU device " << v_device_id[i] << " - " << device_name << "[" << gcn_arch_name << "] on PCI bus " <<
             std::setfill('0') << std::setw(2) << std::right << std::hex << pci_bus_id << ":" << std::setfill('0') << std::setw(2) <<
             std::right << std::hex << pci_domain_id << "." << pci_device_id << std::dec << std::endl;
             std::cout << "info: decoding started for thread " << i << " ,please wait!" << std::endl;
