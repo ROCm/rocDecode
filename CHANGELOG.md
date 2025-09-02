@@ -11,7 +11,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 ### Resolved issues
 
-* Bugfix for rocdecode-host build and install
+* rocdecode-host - failure to build debuginfo packages without FFmpeg resolved.
 
 ## rocdecode 1.1.0 for ROCm 7.0.0
 
