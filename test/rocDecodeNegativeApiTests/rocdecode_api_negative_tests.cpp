@@ -45,6 +45,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
         std::cerr << "Expected ROCDEC_INVALID_PARAMETER but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // Scenario 3: Pass invalid device_id in decoder_create_info
     decoder_create_info_.device_id = 255; // Assuming 255 is an invalid device ID
@@ -52,6 +57,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
     rocdecode_status = rocDecCreateDecoder(&decoder_handle_, &decoder_create_info_);
     if (rocdecode_status != ROCDEC_NOT_SUPPORTED) {
         std::cerr << "Expected ROCDEC_NOT_SUPPORTED but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -64,6 +74,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
         std::cerr << "Expected ROCDEC_NOT_SUPPORTED but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // Scenario 5: Pass unsupported codec type
     decoder_create_info_.width = 1920;
@@ -72,6 +87,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
     rocdecode_status = rocDecCreateDecoder(&decoder_handle_, &decoder_create_info_);
     if (rocdecode_status != ROCDEC_NOT_SUPPORTED) {
         std::cerr << "Expected ROCDEC_NOT_SUPPORTED but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -83,6 +103,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
         std::cerr << "Expected ROCDEC_NOT_SUPPORTED but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // Scenario 7: Pass unsupported bit_depth
     decoder_create_info_.chroma_format = rocDecVideoChromaFormat_420;
@@ -90,6 +115,11 @@ int RocDecodeApiNegativeTests::TestInvalidCreateDecoder() {
     rocdecode_status = rocDecCreateDecoder(&decoder_handle_, &decoder_create_info_);
     if (rocdecode_status != ROCDEC_NOT_SUPPORTED) {
         std::cerr << "Expected ROCDEC_NOT_SUPPORTED but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
+        return EXIT_FAILURE;
+    }
+    rocdecode_status = rocDecDestroyDecoder(decoder_handle_);
+    if (rocdecode_status != ROCDEC_SUCCESS) {
+        std::cerr << "Expected ROCDEC_SUCCESS but got " << rocDecGetErrorName(rocdecode_status) << std::endl;
         return EXIT_FAILURE;
     }
 
