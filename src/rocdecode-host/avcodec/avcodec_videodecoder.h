@@ -156,9 +156,9 @@ private:
     // Variables for FFMpeg decoding
     AVCodecContext * dec_context_ = nullptr;
     AVPixelFormat decoder_pixel_format_;
-#if USE_AVCODEC_GREATER_THAN_58_134
+#if USE_AVCODEC_GREATER_THAN_61_19
     const AVCodec *decoder_ = nullptr;
-#else
+#elif USE_AVCODEC_GREATER_THAN_58_134 && !USE_AVCODEC_GREATER_THAN_61_19
     AVCodec *decoder_ = nullptr;
 #endif
     AVFormatContext * formatContext = nullptr;
