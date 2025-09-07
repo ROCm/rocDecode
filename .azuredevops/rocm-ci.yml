@@ -6,6 +6,9 @@ parameters:
 - name: pipelinesRepoRef
   type: string
   default: refs/heads/develop
+- name: rocPyDecodeRepoRef
+  type: string
+  default: refs/heads/develop
 - name: triggerDownstreamJobs
   type: boolean
   default: true
@@ -17,6 +20,11 @@ resources:
     endpoint: ROCm
     name: ROCm/ROCm
     ref: ${{ parameters.pipelinesRepoRef }}
+  - repository: rocpydecode_repo
+    type: github
+    endpoint: ROCm
+    name: ROCm/rocPyDecode
+    ref: ${{ parameters.rocPyDecodeRepoRef }}
 
 trigger:
   batch: true
@@ -55,4 +63,5 @@ stages:
   - template: ${{ variables.CI_COMPONENT_PATH }}/rocDecode.yml@pipelines_repo
     parameters:
       sparseCheckoutDir: ''
+      rocPyDecodeRepo: rocpydecode_repo
       triggerDownstreamJobs: ${{ parameters.triggerDownstreamJobs }}
