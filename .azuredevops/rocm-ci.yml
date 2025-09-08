@@ -1,13 +1,22 @@
+variables:
+- group: common
+- template: /.azuredevops/variables-global.yml@pipelines_repo
+
+parameters:
+- name: pipelinesRepoRef
+  type: string
+  default: refs/heads/develop
+- name: triggerDownstreamJobs
+  type: boolean
+  default: true
+
 resources:
   repositories:
   - repository: pipelines_repo
     type: github
     endpoint: ROCm
     name: ROCm/ROCm
-
-variables:
-- group: common
-- template: /.azuredevops/variables-global.yml@pipelines_repo
+    ref: ${{ parameters.pipelinesRepoRef }}
 
 trigger:
   batch: true
@@ -40,5 +49,10 @@ pr:
     - LICENSE
   drafts: false
 
-jobs:
+stages:
+- stage: rocDecode
+  jobs:
   - template: ${{ variables.CI_COMPONENT_PATH }}/rocDecode.yml@pipelines_repo
+    parameters:
+      sparseCheckoutDir: ''
+      triggerDownstreamJobs: ${{ parameters.triggerDownstreamJobs }}
