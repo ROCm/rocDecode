@@ -90,6 +90,9 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
+  # Generate BUILD_INFO
+  configure_file( ${CMAKE_SOURCE_DIR}/api/rocdecode-host_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode-host_version.h @ONLY )
+
   # install rocdecode-host libs -- {ROCM_PATH}/lib
   set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
@@ -97,7 +100,55 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
   # install rocdecode include files -- {ROCM_PATH}/include/rocdecode
   install(FILES ${PROJECT_SOURCE_DIR}/../../api/rocdecode/rocdecode_host.h 
-      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT dev)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_version.h
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT dev)
+  
+  # Cmake module config file configurations
+  set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")
+
+  # Export the package for use from the build-tree
+  ## (this registers the build-tree with a global CMake-registry)
+  export(PACKAGE ${PROJECT_NAME})
+  set(CONF_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+
+  # Create the rocdecode-config.cmake and rocdecode-config-version files
+  include(CMakePackageConfigHelpers)
+  set(CONFIG_PACKAGE_INSTALL_DIR ${CONF_LIB_DIR}/cmake/${PROJECT_NAME})
+  set(LIB_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set(INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}")
+  set(BIN_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}")
+
+  # Generate config Version File for rocdecode
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
+    VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+    COMPATIBILITY SameMajorVersion
+  )
+
+  # Generate Config File for rocdecode
+  configure_package_config_file(
+    ${CMAKE_MODULE_PATH}/${PROJECT_NAME}-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
+    INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+  )
+
+  # Install the rocdecode-config.cmake and rocdecode-config-version.cmake
+  install(FILES
+    "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
+    "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+    COMPONENT dev
+  )
+
+  # Install the export set for use with the install-tree
+  install(EXPORT ${PROJECT_NAME}-targets 
+    FILE ${PROJECT_NAME}-targets.cmake
+    NAMESPACE rocdecode::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" 
+    COMPONENT dev
+  )
 
 else()
   message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")
