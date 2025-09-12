@@ -87,7 +87,7 @@ else()
     message("-- \t${White}rocdecode-host_VERSION_MINOR -- ${rocdecode-host_VERSION_MINOR}${ColourReset}")
     message("-- \t${White}rocdecode-host_VERSION_PATCH -- ${rocdecode-host_VERSION_PATCH}${ColourReset}")
   else()
-    message("-- ${Yellow}${PROJECT_NAME} requires rocdecode-host. Install rocdecode before running CTests")
+    message("-- ${Yellow}${PROJECT_NAME} requires rocdecode-host. Install rocdecode-host before running CTests")
   endif(rocdecode-host_FOUND)
 endif(BUILD_FROM_SOURCE)
 
