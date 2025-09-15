@@ -64,22 +64,22 @@ endif()
 find_package(HIP QUIET)
 find_package(FFmpeg QUIET)
 find_package(rocdecode QUIET)
+find_package(rocdecode-host 1.0.0 QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND)
+if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND rocdecode-host_FOUND)
     # HIP
-    find_library(rocdecode_HOST_LIBRARY rocdecode-host PATHS ${ROCM_PATH}/lib)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
     # FFMPEG
     include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
                         ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocdecode and utils
-    include_directories (${rocdecode_INCLUDE_DIR} ${ROCM_PATH}/lib)
-    if(rocdecode_HOST_LIBRARY)
-      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode ${rocdecode_HOST_LIBRARY})
-    else()
-      message(FATAL_ERROR "Library rocdecode_HOST_LIBRARY not found!")
-    endif()
+    include_directories(${rocdecode_INCLUDE_DIR} ${ROCM_PATH}/lib)
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
+    # rocdecode-host
+    include_directories(${rocdecode-host_INCLUDE_DIR})
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode-host)
+
     # rocdecode
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecdecode.cpp)
@@ -96,6 +96,9 @@ else()
     endif()
     if (NOT rocdecode_FOUND)
         message(FATAL_ERROR "-- ERROR!: rocdecode Not Found! - please install rocdecode!")
+    endif()
+    if (NOT rocdecode-host_FOUND)
+        message(FATAL_ERROR "-- ERROR!: rocdecode-host Not Found! - please install rocdecode-host!")
     endif()
 endif()
   

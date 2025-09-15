@@ -63,6 +63,7 @@ endif()
 
 find_package(HIP QUIET)
 find_package(rocdecode QUIET)
+find_package(rocdecode-host 1.0.0 QUIET)
 find_package(rocprofiler-register QUIET)
 find_package(FFmpeg QUIET)
 find_package(Threads QUIET)
@@ -83,13 +84,13 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofi
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} Threads::Threads)
     # rocprofiler-register
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
-    # rocdecode-host
-    find_library(rocdecode_HOST_LIBRARY NAMES rocdecode-host HINTS ${ROCM_PATH}/lib)
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodeperf.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
-    if(rocdecode_HOST_LIBRARY)
-      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${rocdecode_HOST_LIBRARY})
+    if(rocdecode-host_FOUND)
+      # rocdecode-host
+      include_directories(${rocdecode-host_INCLUDE_DIR})
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode-host)
       target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=1)
     else()
       target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=0)

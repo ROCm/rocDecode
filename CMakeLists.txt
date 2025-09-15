@@ -184,7 +184,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   # install rocdecode include files -- {ROCM_PATH}/include/rocdecode
   install(FILES api/rocdecode/rocdecode.h api/rocdecode/rocparser.h api/rocdecode/roc_bitstream_reader.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rocdecode_version.h api/rocdecode/rocdecode_host.h 
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rocdecode_version.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} COMPONENT dev)
   # install rocdecode api trace include file -- {ROCM_PATH}/include/rocdecode/amd_detail
   install(FILES api/amd_detail/rocdecode_api_trace.h
