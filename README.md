@@ -20,7 +20,7 @@ access the video decoding features available on your GPU.
 * Linux
   * Ubuntu - `22.04` / `24.04`
   * RedHat - `8` / `9`
-  * SLES - `15-SP5`
+  * SLES - `15-SP7`
 
 ### Hardware
 * **GPU**: [AMD Radeon&trade; Graphics](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) / [AMD Instinct&trade; Accelerators](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html)
@@ -28,7 +28,7 @@ access the video decoding features available on your GPU.
 > [!IMPORTANT] 
 > * `gfx908` or higher GPU required
 
-* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html): **Required** usecase:`rocm`
+* Install ROCm `6.3.0` or later with `amdgpu-install` and usecase:`rocm`
 > [!IMPORTANT]
 > `sudo amdgpu-install --usecase=rocm`
 
@@ -101,7 +101,11 @@ The installation process uses the following steps:
 
 * [ROCm-supported hardware](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html) install verification
 
-* Install ROCm `6.3.0` or later with [amdgpu-install](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/amdgpu-install.html) with `--usecase=rocm`
+* Install ROCm `6.3.0` or later with `amdgpu-install` and `--usecase=rocm`:
+
+  ```
+  sudo amdgpu-install --usecase=rocm
+  ```
 
 >[!IMPORTANT]
 > Use **either** [package install](#package-install) **or** [source install](#source-install) as described below.
@@ -229,7 +233,7 @@ You can find rocDecode Docker containers in our
 * Linux
   * Ubuntu - `22.04` / `24.04`
   * RHEL - `8` / `9`
-  * SLES - `15 SP5`
+  * SLES - `15 SP7`
 * ROCm: `7.0.0`
 * libva-amdgpu-dev - `2.16.0`
 * mesa-amdgpu-va-drivers - `1:24.3.0`
