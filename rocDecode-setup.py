@@ -260,7 +260,7 @@ if runtimeInstall == 'ON':
             for i in range(len(runtimeDebianU22Packages)):
                 ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ runtimeDebianU22Packages[i]))
-        else
+        else:
             for i in range(len(runtimeDebianPackages)):
                 ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ runtimeDebianPackages[i]))
