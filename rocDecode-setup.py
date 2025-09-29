@@ -172,7 +172,7 @@ coreDebianPackages = [
 ]
 coreDebianU22Packages = [
     'libva-amdgpu-dev',
-    'rocm-hip-runtime-dev'
+    'rocm-hip-runtime-dev',
     'libstdc++-12-dev'
 ]
 runtimeDebianPackages = [
