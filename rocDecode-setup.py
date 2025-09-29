@@ -243,7 +243,7 @@ if "Ubuntu" in platfromInfo:
         for i in range(len(coreDebianU22Packages)):
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ coreDebianU22Packages[i]))
-    else
+    else:
         for i in range(len(coreDebianPackages)):
             ERROR_CHECK(os.system('sudo '+linuxFlag+' '+linuxSystemInstall +
                     ' '+linuxSystemInstall_check+' install '+ coreDebianPackages[i]))
