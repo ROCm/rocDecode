@@ -162,17 +162,17 @@ if userName == 'root':
 commonPackages = [
     'cmake',
     'pkg-config',
-    'rocm-hip-runtime'
+    'hip-runtime-amd'
 ]
 
 # Debian packages
 coreDebianPackages = [
     'libva-dev',
-    'rocm-hip-runtime-dev'
+    'hip-dev'
 ]
 coreDebianU22Packages = [
     'libva-amdgpu-dev',
-    'rocm-hip-runtime-dev',
+    'hip-dev',
     'libstdc++-12-dev'
 ]
 runtimeDebianPackages = [
@@ -199,7 +199,7 @@ if "centos" in os_info_data or "redhat" in os_info_data:
     if "VERSION_ID=7" in os_info_data or "VERSION_ID=8" in os_info_data:
         coreRPMPackages = [
             'libva-amdgpu-devel',
-            'rocm-hip-runtime-devel'
+            'hip-devel'
         ]
         runtimeRPMPackages = [
             'libva-amdgpu',
@@ -209,7 +209,7 @@ if "centos" in os_info_data or "redhat" in os_info_data:
     else:
         coreRPMPackages = [
             'libva-devel',
-            'rocm-hip-runtime-devel'
+            'hip-devel'
         ]
         runtimeRPMPackages = [
             'libva',
@@ -219,7 +219,7 @@ if "centos" in os_info_data or "redhat" in os_info_data:
 else:
     coreRPMPackages = [
         'libva-devel',
-        'rocm-hip-runtime-devel'
+        'hip-devel'
     ]
     runtimeRPMPackages = [
         'libva-drm2',
