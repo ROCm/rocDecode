@@ -56,6 +56,11 @@ access the video decoding features available on your GPU.
 > [!NOTE]
 > RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
+* HIP
+  ```shell
+  sudo apt install hip-dev
+  ```
+
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
   ```shell
   sudo apt install pkg-config
