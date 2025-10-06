@@ -2,21 +2,23 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## rocDecode 1.4.0 (unreleased)
+## rocDecode 1.4.0 for ROCm 7.1.0
 
 ### Added
-
 * AV1 12-bit decode support on VA-API version 1.23.0 and later.
 * rocdecode-host V1.0.0 library for software decode
+* FFmpeg version support for 5.1 and 6.1
+* Find package - rocdecode-host
 
 ### Resolved issues
-
 * rocdecode-host - failure to build debuginfo packages without FFmpeg resolved.
+* Fix a memory leak for rocDecodeNegativeTests
 
 ### Changed
 * HIP meta package changed - Use hip-dev/devel to bring required hip dev deps
+* rocdecode host - linking updates to rocdecode-host library
 
-## rocdecode 1.1.0 for ROCm 7.0.0
+## rocdecode 1.0.0 for ROCm 7.0.0
 
 ### Added
 
