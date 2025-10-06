@@ -306,7 +306,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   # (AMD build of libva 2.16) should be used if distro's libva is too old
   set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, libva-drm2 (>= 2.16.0) | libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
   # Unfortunately RPM has a mix of naming schemes; RHEL has "libva", SLE has "libva2-drm2"
-  set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, (libva >= 2.16.0 or libva-drm2 >= 2.16.0 or libva-amdgpu), mesa-amdgpu-va-drivers")
+  set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, (libva or libva-drm2), mesa-amdgpu-va-drivers")
   # Add rocprofiler-register dependencies
   if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
     set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST "${ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST}, rocprofiler-register")
@@ -319,7 +319,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     set(ROCDECODE_DEBIAN_DEV_PACKAGE_LIST "${ROCDECODE_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(ROCDECODE_RPM_DEV_PACKAGE_LIST  "hip-devel, (libva-devel >= 2.16.0 or libva-amdgpu-devel), pkg-config")
+  set(ROCDECODE_RPM_DEV_PACKAGE_LIST  "hip-devel, libva-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(
