@@ -13,6 +13,9 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 
 * rocdecode-host - failure to build debuginfo packages without FFmpeg resolved.
 
+### Changed
+* HIP meta package changed - Use hip-dev/devel to bring required hip dev deps
+
 ## rocdecode 1.1.0 for ROCm 7.0.0
 
 ### Added
