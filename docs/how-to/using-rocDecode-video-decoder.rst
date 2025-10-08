@@ -141,7 +141,7 @@ In the decode loop, the demultiplexed coded picture is passed to ``DecodeFrame``
 .. _utilsfolder: https://github.com/ROCm/rocDecode/tree/develop/utils
 
 .. |roc_video_dec| replace:: ``roc_video_dec.h``
-.. _utilsfolder: https://github.com/ROCm/rocDecode/tree/develop/utils/rocvideodecode/roc_video_dec.h
+.. _roc_video_dec: https://github.com/ROCm/rocDecode/tree/develop/utils/rocvideodecode/roc_video_dec.h
 
 .. |reconfig_struct| replace:: ``ReconfigParams_t``
 .. _reconfig_struct: https://rocm.docs.amd.com/projects/rocDecode/en/latest/doxygen/html/structReconfigParams__t.html
