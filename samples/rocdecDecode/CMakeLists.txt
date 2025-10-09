@@ -35,8 +35,8 @@ endif()
 
 # Set AMD Clang as default compiler
 if (NOT DEFINED CMAKE_CXX_COMPILER)
-  set(CMAKE_C_COMPILER ${ROCM_PATH}/bin/amdclang)
-  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/bin/amdclang++)
+  set(CMAKE_C_COMPILER ${ROCM_PATH}/lib/llvm/bin/amdclang)
+  set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/amdclang++)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
