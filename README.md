@@ -56,6 +56,11 @@ access the video decoding features available on your GPU.
 > [!NOTE]
 > RPM Packages for `RHEL`/`SLES` - `libva-amdgpu mesa-amdgpu-va-drivers`
 
+* HIP
+  ```shell
+  sudo apt install hip-dev
+  ```
+
 * [pkg-config](https://en.wikipedia.org/wiki/Pkg-config)
   ```shell
   sudo apt install pkg-config
@@ -233,7 +238,7 @@ You can find rocDecode Docker containers in our
 * Linux
   * Ubuntu - `22.04` / `24.04`
   * RHEL - `8` / `9`
-  * SLES - `15 SP6` / `15 SP7`
+  * SLES - `15 SP7`
 * ROCm: `7.0.0`
 * libva-amdgpu-dev - `2.16.0`
 * mesa-amdgpu-va-drivers - `1:24.3.0`
