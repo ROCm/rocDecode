@@ -2,6 +2,11 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
+## (Unreleased) rocDecode 1.5.0
+
+### Changed
+* Updated libdrm path configuration and libva version requirements for ROCm and TheRock platforms
+
 ## rocDecode 1.4.0 for ROCm 7.1.0
 
 ### Added
