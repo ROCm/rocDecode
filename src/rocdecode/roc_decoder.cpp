@@ -31,13 +31,13 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
         if (hip_interop_[i].hip_mapped_device_mem != nullptr) {
             hipError_t hip_status = hipFree(hip_interop_[i].hip_mapped_device_mem);
             if (hip_status != hipSuccess) {
-                ERR("hipFree failed for picture idx = " + TOSTR(i));
+                logger_.CriticalLog(MakeMsg("hipFree failed for picture idx = " + TOSTR(i)));
             }
         }
         if (hip_interop_[i].hip_ext_mem != nullptr) {
             hipError_t hip_status = hipDestroyExternalMemory(hip_interop_[i].hip_ext_mem);
             if (hip_status != hipSuccess) {
-                ERR("hipDestroyExternalMemory failed for picture idx = " + TOSTR(i));
+                logger_.CriticalLog(MakeMsg("hipDestroyExternalMemory failed for picture idx = " + TOSTR(i)));
             }
         }
     }
@@ -46,7 +46,7 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
  rocDecStatus RocDecoder::InitializeDecoder() {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     if (decoder_create_info_.num_decode_surfaces < 1) {
-        ERR("Invalid number of decode surfaces.");
+        logger_.CriticalLog(MakeMsg("Invalid number of decode surfaces."));
         return ROCDEC_INVALID_PARAMETER;
     }
     hip_interop_.resize(decoder_create_info_.num_decode_surfaces);
@@ -55,7 +55,7 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
     }
     rocdec_status = va_video_decoder_.InitializeDecoder();
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to initilize the VAAPI Video decoder.");
+        logger_.CriticalLog(MakeMsg("Failed to initilize the VAAPI Video decoder."));
         return rocdec_status;
     }
 
@@ -66,7 +66,7 @@ rocDecStatus RocDecoder::DecodeFrame(RocdecPicParams *pic_params) {
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     rocdec_status = va_video_decoder_.SubmitDecode(pic_params);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Decode submission is not successful.");
+        logger_.ErrorLog(MakeMsg("Decode submission is not successful."));
     }
 
      return rocdec_status;
@@ -76,7 +76,7 @@ rocDecStatus RocDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatus* decode
     rocDecStatus rocdec_status = ROCDEC_SUCCESS;
     rocdec_status = va_video_decoder_.GetDecodeStatus(pic_idx, decode_status);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to query the decode status.");
+        logger_.ErrorLog(MakeMsg("Failed to query the decode status."));
     }
     return rocdec_status;
 }
@@ -90,7 +90,7 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     for (int pic_idx = 0; pic_idx < hip_interop_.size(); pic_idx++) {
         rocdec_status = FreeVideoFrame(pic_idx);
         if (rocdec_status != ROCDEC_SUCCESS) {
-            ERR("Releasing the video frame for picture idx = " + TOSTR(pic_idx) + " failed during reconfiguration.");
+            logger_.ErrorLog(MakeMsg("Releasing the video frame for picture idx = " + TOSTR(pic_idx) + " failed during reconfiguration."));
             return rocdec_status;
         }
     }
@@ -99,7 +99,7 @@ rocDecStatus RocDecoder::ReconfigureDecoder(RocdecReconfigureDecoderInfo *reconf
     }
     rocdec_status = va_video_decoder_.ReconfigureDecoder(reconfig_params);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Reconfiguration of the decoder failed.");
+        logger_.CriticalLog(MakeMsg("Reconfiguration of the decoder failed."));
         return rocdec_status;
     }
     return rocdec_status;
@@ -114,7 +114,7 @@ rocDecStatus RocDecoder::GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
     // wait on current surface to make sure that it is ready for the HIP interop
     rocdec_status = va_video_decoder_.SyncSurface(pic_idx);
     if (rocdec_status != ROCDEC_SUCCESS) {
-        ERR("Failed to export surface for picture idx = " + TOSTR(pic_idx));
+        logger_.ErrorLog(MakeMsg("Failed to export surface for picture idx = " + TOSTR(pic_idx)));
         return rocdec_status;
     }
 
@@ -126,7 +126,7 @@ rocDecStatus RocDecoder::GetVideoFrame(int pic_idx, void *dev_mem_ptr[3], uint32
 
         rocdec_status = va_video_decoder_.ExportSurface(pic_idx, va_drm_prime_surface_desc);
         if (rocdec_status != ROCDEC_SUCCESS) {
-            ERR("Failed to export surface for picture idx = " + TOSTR(pic_idx));
+            logger_.ErrorLog(MakeMsg("Failed to export surface for picture idx = " + TOSTR(pic_idx)));
             return rocdec_status;
         }
 

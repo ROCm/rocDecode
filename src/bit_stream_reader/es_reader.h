@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <fstream>
 #include <vector>
 #include "rocdecode/rocdecode.h"
+#include "roc_video_parser.h"
 
 #define BS_RING_SIZE (16 * 1024 * 1024)
 #define INIT_PIC_DATA_SIZE (2 * 1024 * 1024)
@@ -99,6 +100,8 @@ class RocVideoESParser {
         int num_temp_units_; // number of temporal units
 
         bool ivf_file_header_read_; // indicator if IVF file header has been checked
+
+        RocDecLogger logger_;
 
         /*! \brief Function to retrieve the bitstream of a picture for AVC/HEVC
          * \param [out] p_pic_data Pointer to the picture data

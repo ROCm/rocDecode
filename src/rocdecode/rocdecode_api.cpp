@@ -39,7 +39,7 @@ rocDecCreateDecoder(rocDecDecoderHandle *decoder_handle, RocDecoderCreateInfo *d
         handle = new DecHandle(*decoder_create_info);
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        RocDecLogger::AlwaysLog(STR("Error: Failed to init the rocDecode handle, ") + STR(e.what()));
         return ROCDEC_NOT_INITIALIZED;
     }
     *decoder_handle = handle;
@@ -75,7 +75,7 @@ rocDecGetDecoderCaps(RocdecDecodeCaps *pdc) {
     VaContext& va_ctx = VaContext::GetInstance();
     rocDecStatus ret = ROCDEC_SUCCESS;
     if ((ret = va_ctx.CheckDecCapForCodecType(pdc)) != ROCDEC_SUCCESS) {
-        ERR("Failed to obtain decoder capabilities from driver.");
+        RocDecLogger::AlwaysLog("Error: Failed to obtain decoder capabilities from driver.");
         return ret;
     } else {
         return ROCDEC_SUCCESS;
@@ -99,7 +99,7 @@ rocDecDecodeFrame(rocDecDecoderHandle decoder_handle, RocdecPicParams *pic_param
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -124,7 +124,7 @@ rocDecGetDecodeStatus(rocDecDecoderHandle decoder_handle, int pic_idx, RocdecDec
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -147,7 +147,7 @@ rocDecReconfigureDecoder(rocDecDecoderHandle decoder_handle, RocdecReconfigureDe
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -174,7 +174,7 @@ rocDecGetVideoFrame(rocDecDecoderHandle decoder_handle, int pic_idx,
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;

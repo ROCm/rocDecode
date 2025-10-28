@@ -39,6 +39,7 @@ THE SOFTWARE.
 #include <hip/hip_runtime.h>
 #include "rocdecode/rocdecode.h"
 #include "rocdecode/rocparser.h"
+#include "../../src/commons.h"
 
 /*!
  * \file
@@ -63,9 +64,6 @@ typedef enum OutputSurfaceMemoryType_enum {
     OUT_SURFACE_MEM_HOST_COPIED = 2,        /**<  decoded output will be copied to a separate host memory (the user doesn't need to call release) **/
     OUT_SURFACE_MEM_NOT_MAPPED  = 3         /**< <  decoded output is not available (interop won't be used): useful for decode only performance app*/
 } OutputSurfaceMemoryType;
-
-#define TOSTR(X) std::to_string(static_cast<int>(X))
-#define STR(X) std::string(X)
 
 #if DBGINFO
 #define ROCDEC_INFO(X) std::clog << "[INF] " << " {" << __func__ <<"} " << " " << X << std::endl;
@@ -155,7 +153,7 @@ private:
 
 #define CHECK_ZERO(str, value)              \
     if (value == 0) {                      \
-        ROCDEC_ERR(STR(str) + " is 0.");    \
+        logger_.ErrorLog(MakeMsg(STR(str) + " is 0."));         \
     }
 
 struct Rect {
@@ -528,4 +526,6 @@ class RocVideoDecoder {
         uint32_t extra_output_file_count_ = 0;
         std::thread::id decoder_session_id_; // Decoder session identifier. Used to gather session level stats.
         std::unordered_map<std::thread::id, double> session_overhead_; // Records session overhead of initialization+deinitialization time. Format is (thread id, duration)
+
+        RocDecLogger logger_;
 };
