@@ -813,19 +813,19 @@ int RocVideoDecoder::GetSEIMessage(RocdecSeiMessageInfo *pSEIMessageInfo) {
       RocdecSeiMessage *p_sei_msg_info = pSEIMessageInfo->sei_message;
       size_t total_SEI_buff_size = 0;
       if ((pSEIMessageInfo->picIdx < 0) || (pSEIMessageInfo->picIdx >= MAX_FRAME_NUM)) {
-          logger_.ErrorLog(MakeMsg("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx)));
+          ROCDEC_ERR("Invalid picture index for SEI message: " + TOSTR(pSEIMessageInfo->picIdx));
           return 0;
       }
       for (uint32_t i = 0; i < sei_num_mesages; i++) {
           total_SEI_buff_size += p_sei_msg_info[i].sei_message_size;
       }
       if (!curr_sei_message_ptr_) {
-          logger_.ErrorLog(MakeMsg("Out of Memory, Allocation failed for m_pCurrSEIMessage"));
+          ROCDEC_ERR("Out of Memory, Allocation failed for m_pCurrSEIMessage");
           return 0;
       }
       curr_sei_message_ptr_->sei_data = malloc(total_SEI_buff_size);
       if (!curr_sei_message_ptr_->sei_data) {
-          logger_.ErrorLog(MakeMsg("Out of Memory, Allocation failed for SEI Buffer"));
+          ROCDEC_ERR("Out of Memory, Allocation failed for SEI Buffer");
           return 0;
       }
       memcpy(curr_sei_message_ptr_->sei_data, pSEIMessageInfo->sei_data, total_SEI_buff_size);
@@ -855,7 +855,7 @@ int RocVideoDecoder::DecodeFrame(const uint8_t *data, size_t size, int pkt_flags
         packet.flags |= ROCDEC_PKT_ENDOFSTREAM;
     }
     if (rocDecParseVideoData(rocdec_parser_, &packet) != ROCDEC_SUCCESS) {
-        logger_.ErrorLog(MakeMsg("Error occurred in rocDecParseVideoData()."));
+        ROCDEC_ERR("Error occurred in rocDecParseVideoData().");
     }
     if (num_decoded_pics) {
         *num_decoded_pics = decoded_pic_cnt_;
