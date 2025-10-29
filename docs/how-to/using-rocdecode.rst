@@ -220,7 +220,7 @@ resources at the end of video decoding.
 
 Logging control
 ====================================================
-rocDecode core components can generate various logs during the decode session. The logs can be critical status reports, error reports, warnings, etc. Each log has a significance level associated to it. The level can be from critical (0) to debug info related (4). Lower value has greater importance. An internal logging level can be set to control the verbosity of logging output from each rocDecode component. If a log's level value is less than or equal to the logging levle, the log is output. Otherwise, the log is not output.
+rocDecode core components can generate various logs during the decode session. The logs can be critical status reports, error reports, warnings, etc. Each log has a significance level associated to it. The level can be from critical (0) to debug info related (4). Lower value has greater importance. An internal logging level can be set to control the verbosity of logging output from each rocDecode component. If a log's level value is less than or equal to the logging level, the log is output. Otherwise, the log is not output.
 
 The logging level can be set by the environment variable ROCDEC_LOG_LEVEL, or by calling the SetLogLevel method of the logger class. The default logging level is 0 (critical log only).
 
