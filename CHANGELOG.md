@@ -8,7 +8,7 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 * Updated libdrm path configuration and libva version requirements for ROCm and TheRock platforms
 
 ### Added
-* Logging control. Message output from the core components is now controlled by the log level, which can be set by an environment variable or other methods.
+* Logging control. Message output from the core components is now controlled by the logging level threshold, which can be set by an environment variable or other methods.
 
 ## rocDecode 1.4.0 for ROCm 7.1.0
 
