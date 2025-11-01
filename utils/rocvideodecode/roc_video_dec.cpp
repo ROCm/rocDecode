@@ -956,7 +956,11 @@ void RocVideoDecoder::SaveFrameToFile(std::string output_file_name, void *surf_m
     } else
         hst_ptr = static_cast<uint8_t *> (surf_mem);
 
-    
+    if (hst_ptr == nullptr) {
+        ROCDEC_ERR("Null surface pointer.");
+        return;
+    }
+
     if (current_output_filename.empty()) {
         current_output_filename = output_file_name;
     }
