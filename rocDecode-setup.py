@@ -196,26 +196,15 @@ ffmpegDebianPackages = [
 
 # RPM Packages
 if "centos" in os_info_data or "redhat" in os_info_data:
-    if "VERSION_ID=7" in os_info_data or "VERSION_ID=8" in os_info_data:
-        coreRPMPackages = [
-            'libva-amdgpu-devel',
-            'hip-devel'
-        ]
-        runtimeRPMPackages = [
-            'libva-amdgpu',
-            'mesa-amdgpu-va-drivers',
-            'libva-utils'
-        ]
-    else:
-        coreRPMPackages = [
-            'libva-devel',
-            'hip-devel'
-        ]
-        runtimeRPMPackages = [
-            'libva',
-            'mesa-amdgpu-va-drivers',
-            'libva-utils'
-        ]
+    coreRPMPackages = [
+        'libva-devel',
+        'hip-devel'
+    ]
+    runtimeRPMPackages = [
+        'libva',
+        'mesa-amdgpu-va-drivers',
+        'libva-utils'
+    ]
 else:
     coreRPMPackages = [
         'libva-devel',

@@ -38,7 +38,7 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
         parser_params->codec_type != rocDecVideoCodec_AVC &&
         parser_params->codec_type != rocDecVideoCodec_VP9 &&
         parser_params->codec_type != rocDecVideoCodec_AV1) {
-        ERR("The current version of rocDecode officially supports only the H.265 (HEVC), H.264 (AVC) and AV1 codecs.");
+        RocDecLogger::AlwaysLog("Error: The current version of rocDecode officially supports only the H.265 (HEVC), H.264 (AVC), AV1 and VP9 codecs.");
         return ROCDEC_NOT_IMPLEMENTED;
     }
 
@@ -47,7 +47,7 @@ rocDecCreateVideoParser(RocdecVideoParser *parser_handle, RocdecParserParams *pa
         handle = new RocParserHandle(parser_params);
     } 
     catch(const std::exception& e) {
-        ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        RocDecLogger::AlwaysLog(STR("Error: Failed to init the rocDecode handle, ") + STR(e.what()));
         return ROCDEC_RUNTIME_ERROR;
     }
     *parser_handle = handle;
@@ -76,7 +76,7 @@ rocDecParseVideoData(RocdecVideoParser parser_handle, RocdecSourceDataPacket *pa
     }
     catch(const std::exception& e) {
         roc_parser_handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;  
@@ -100,7 +100,7 @@ rocDecDestroyVideoParser(RocdecVideoParser parser_handle) {
     catch(const std::exception& e) {
         roc_parser_handle->CaptureError(e.what());
         delete roc_parser_handle;
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     delete roc_parser_handle;

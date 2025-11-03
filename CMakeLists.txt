@@ -40,7 +40,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # rocdecode Version
-set(VERSION "1.4.0")
+set(VERSION "1.5.1")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
@@ -109,6 +109,40 @@ option(ROCDECODE_ENABLE_HOST_DECODER "Enable rocdecode-host-based decoder suppor
 find_package(HIP QUIET)
 find_package(Libva QUIET)
 find_package(Libdrm_amdgpu QUIET)
+
+# Check if lib/rocm_sysdeps/lib exists in the libdrm_amdgpu library path which indicates ROCm installation via TheRock
+set(USING_THE_ROCK OFF)
+if(LIBDRM_AMDGPU_LIBRARY)
+  string(FIND "${LIBDRM_AMDGPU_LIBRARY}" "lib/rocm_sysdeps/lib" ROCM_SYSDEPS_FOUND)
+  if(NOT ROCM_SYSDEPS_FOUND EQUAL -1)
+    set(USING_THE_ROCK ON)
+  endif()
+endif()
+
+# Find Ubuntu 22.04
+file(READ "/etc/os-release" OS_RELEASE)
+string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
+
+# Check Libva version compatibility based on installation method and OS:
+# - Ubuntu 22.04 with standard ROCm installation: requires libva >= 1.16
+# - TheRock installation (any OS): libva >= 1.8 is sufficient
+# - Other OS versions with standard ROCm: libva >= 1.8 is sufficient
+if(UBUNTU_22_FOUND AND NOT USING_THE_ROCK)
+  if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 16))
+    message("-- ${White}\tLibva Version Supported${ColourReset}")
+  else()
+    set(Libva_FOUND FALSE)
+    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+  endif()
+else()
+  if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 8))
+    message("-- ${White}\tLibva Version Supported${ColourReset}")
+  else()
+    set(Libva_FOUND FALSE)
+    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+  endif()
+endif()
+
 
 if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
   find_package(rocprofiler-register QUIET
@@ -297,16 +331,12 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}.$ENV{ROCM_LIBPATCH_VERSION}")
   endif()
 
-  # Find Ubuntu 22.04 - Add libstdc++-12-dev package deps for Dev Package
-  file(READ "/etc/os-release" OS_RELEASE)
-  string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
-
   # Set the dependent packages
   # libva 2.16 (API 1.16) is needed to use mesa-amdgpu-va-drivers, libva-amdgpu
   # (AMD build of libva 2.16) should be used if distro's libva is too old
   set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, libva-drm2 (>= 2.16.0) | libva-amdgpu-drm2, mesa-amdgpu-va-drivers")
   # Unfortunately RPM has a mix of naming schemes; RHEL has "libva", SLE has "libva2-drm2"
-  set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, (libva >= 2.16.0 or libva-drm2 >= 2.16.0 or libva-amdgpu), mesa-amdgpu-va-drivers")
+  set(ROCDECODE_RPM_RUNTIME_PACKAGE_LIST  "hip-runtime-amd, (libva or libva-drm2), mesa-amdgpu-va-drivers")
   # Add rocprofiler-register dependencies
   if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
     set(ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST "${ROCDECODE_DEBIAN_RUNTIME_PACKAGE_LIST}, rocprofiler-register")
@@ -319,7 +349,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     set(ROCDECODE_DEBIAN_DEV_PACKAGE_LIST "${ROCDECODE_DEBIAN_DEV_PACKAGE_LIST}, libstdc++-12-dev")
   endif()
   # TBD - RPM packages need Fusion Packages - "libavcodec-devel, libavformat-devel, libavutil-devel"
-  set(ROCDECODE_RPM_DEV_PACKAGE_LIST  "hip-devel, (libva-devel >= 2.16.0 or libva-amdgpu-devel), pkg-config")
+  set(ROCDECODE_RPM_DEV_PACKAGE_LIST  "hip-devel, libva-devel, pkg-config")
   
   # '%{?dist}' breaks manual builds on debian systems due to empty Provides
   execute_process(

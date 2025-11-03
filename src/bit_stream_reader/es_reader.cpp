@@ -26,12 +26,13 @@ THE SOFTWARE.
 #include "avc_defines.h"
 #include "av1_defines.h"
 #include "vp9_defines.h"
-#include "roc_video_parser.h"
 
 RocVideoESParser::RocVideoESParser(const char *input_file_path) {
+    logger_.SetLogLevel(kRocDecLogError);
+
     p_stream_file_.open(input_file_path, std::ifstream::in | std::ifstream::binary);
     if (!p_stream_file_) {
-        ERR("Failed to open the bitstream file.");
+        logger_.CriticalLog(MakeMsg("Failed to open the bitstream file."));
     }
     end_of_file_ = false;
     end_of_stream_ = false;
@@ -138,7 +139,7 @@ bool RocVideoESParser::ReadBytes(int offset, int size, uint8_t *data) {
             return false;
         }
         if (size > GetDataSizeInRB()) {
-            ERR("Could not read the requested bytes from ring buffer. Either ring buffer size is too small or not enough bytes left.");
+            logger_.CriticalLog(MakeMsg("Could not read the requested bytes from ring buffer. Either ring buffer size is too small or not enough bytes left."));
             return false;
         }
     }
@@ -297,7 +298,7 @@ int RocVideoESParser::GetPicDataAvcHevc(uint8_t **p_pic_data, int *pic_size) {
 
     while (!end_of_stream_) {
         if (!FindStartCode()) {
-            ERR("No start code in the bitstream.");
+            logger_.ErrorLog(MakeMsg("No start code in the bitstream."));
             break;
         }
         CopyNalUnitFromRing();

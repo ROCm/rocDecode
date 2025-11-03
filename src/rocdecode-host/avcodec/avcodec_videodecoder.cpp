@@ -164,13 +164,13 @@ AvcodecVideoDecoder::~AvcodecVideoDecoder() {
 rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
     if (!decoder_) decoder_ = avcodec_find_decoder(RocDecVideoCodec2AVCodec(decoder_create_info_.codec_type));
     if(!decoder_) {
-        ERR("rocDecode<FFMpeg>:: Codec not supported by FFMpeg ");
+        logger_.CriticalLog(MakeMsg("rocDecode<FFMpeg>:: Codec not supported by FFMpeg "));
         return ROCDEC_NOT_SUPPORTED;
     }
     if (!dec_context_) {
         dec_context_ = avcodec_alloc_context3(decoder_);        //alloc dec_context_
         if (!dec_context_) {
-            ERR("Could not allocate video codec context");
+            logger_.CriticalLog(MakeMsg("Could not allocate video codec context"));
             return ROCDEC_RUNTIME_ERROR;
         }
         // set codec to automatically determine how many threads suits best for the decoding job
@@ -185,7 +185,7 @@ rocDecStatus AvcodecVideoDecoder::InitializeDecoder() {
 
         // open the codec
         if (avcodec_open2(dec_context_, decoder_, NULL) < 0) {
-            ERR("Could not open codec");
+            logger_.CriticalLog(MakeMsg("Could not open codec"));
             return ROCDEC_RUNTIME_ERROR;
         }
         // get the output pixel format from dec_context_
@@ -238,7 +238,7 @@ rocDecStatus AvcodecVideoDecoder::SubmitDecode(RocdecPicParamsHost *pPicParams) 
     if (pPicParams->bitstream_data_len > packet_data->second) {
         void *new_pkt_data = av_realloc(av_pkt->data, (pPicParams->bitstream_data_len + MAX_AV_PACKET_DATA_SIZE));  // add more to avoid frequence reallocation
         if (!new_pkt_data) {
-            ERR("ERROR: couldn't allocate packet data");
+            logger_.ErrorLog(MakeMsg("ERROR: couldn't allocate packet data"));
             return ROCDEC_OUTOF_MEMORY;
         }
         packet_data->first   = static_cast<uint8_t *>(new_pkt_data);
@@ -293,11 +293,11 @@ rocDecStatus AvcodecVideoDecoder::GetDecodeStatus(int pic_idx, RocdecDecodeStatu
 rocDecStatus AvcodecVideoDecoder::GetVideoFrame(int pic_idx, void **frame_ptr, uint32_t *line_size, RocdecProcParams *vid_postproc_params){
 
     if (p_disp_frame_ == nullptr) {
-        ERR("GetVideoFrame: No frame available to display");
+        logger_.ErrorLog(MakeMsg("GetVideoFrame: No frame available to display"));
         return ROCDEC_RUNTIME_ERROR;
     }
     if (p_disp_frame_->picture_index != pic_idx) {
-        ERR("GetVideoFrame: pic_index is invalid" );
+        logger_.ErrorLog(MakeMsg("GetVideoFrame: pic_index is invalid"));
         return ROCDEC_INVALID_PARAMETER;
     }
     auto p_av_frame = p_disp_frame_->av_frame_ptr;
@@ -342,7 +342,7 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
     status = avcodec_send_packet(dec_context_, av_pkt);
     if (status < 0) {
         if (av_pkt->data && av_pkt->size)
-            ERR("Error sending av packet for decoding: status: ");
+            logger_.ErrorLog(MakeMsg("Error sending av packet for decoding: status:"));
         return status;
     }
     while (status >= 0) {
@@ -353,7 +353,7 @@ int AvcodecVideoDecoder::DecodeAvFrame(AVPacket *av_pkt, AVFrame *p_frame) {
             return 0;
         }
         else if (status < 0) {
-            ERR("Error during decoding");
+            logger_.ErrorLog(MakeMsg("Error during decoding"));
             return 0;
         }
         // for the first frame, initialize OutputsurfaceInfo
@@ -403,7 +403,7 @@ rocDecStatus AvcodecVideoDecoder::NotifyNewSequence(AVFrame *p_frame) {
     p_video_format->display_aspect_ratio.y = p_frame->sample_aspect_ratio.den;
     if (pfn_sequece_cb_ && decoder_create_info_.user_data && 
         pfn_sequece_cb_(decoder_create_info_.user_data, &video_format_host_) == 0) {
-        ERR("Sequence callback function failed.");
+        logger_.CriticalLog(MakeMsg("Sequence callback function failed."));
         return ROCDEC_RUNTIME_ERROR;
     } else {
         return ROCDEC_SUCCESS;

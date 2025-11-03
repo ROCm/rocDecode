@@ -33,7 +33,7 @@ rocDecStatus ROCDECAPI rocDecCreateBitstreamReader(RocdecBitstreamReader *bs_rea
         handle = new RocBitstreamReaderHandle(input_file_path);
     } 
     catch (const std::exception& e) {
-        ERR( STR("Failed to create RocBitstreamReader handle, ") + STR(e.what()))
+        RocDecLogger::AlwaysLog(STR("Failed to create RocBitstreamReader handle, ") + STR(e.what()));
         return ROCDEC_RUNTIME_ERROR;
     }
     *bs_reader_handle = handle;
@@ -51,7 +51,7 @@ rocDecStatus ROCDECAPI rocDecGetBitstreamCodecType(RocdecBitstreamReader bs_read
     }
     catch (const std::exception& e) {
         roc_bs_reader_handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -68,7 +68,7 @@ rocDecStatus ROCDECAPI rocDecGetBitstreamBitDepth(RocdecBitstreamReader bs_reade
     }
     catch (const std::exception& e) {
         roc_bs_reader_handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -85,7 +85,7 @@ rocDecStatus ROCDECAPI rocDecGetBitstreamPicData(RocdecBitstreamReader bs_reader
     }
     catch (const std::exception& e) {
         roc_bs_reader_handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;

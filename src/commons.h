@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <exception>
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 #define TOSTR(X) std::to_string(static_cast<int>(X))
 #define STR(X) std::string(X)
@@ -40,11 +41,75 @@ THE SOFTWARE.
 #endif
 #define ERR(X) std::cerr << "[ERR] "  << " {" << __func__ <<"} " << " " << X << std::endl;
 
+// Logging control
+enum RocDecLogLevel {
+    kRocDecLogCritical       = 0,  // Only ouput critical messages
+    kRocDecLogError          = 1,
+    kRocDecLogWarning        = 2,
+    kRocDecLogInfo           = 3,
+    kRocDecLogDebug          = 4,
+    kRocDecLogLevelMax       = 4
+};
+
+#define MakeMsg(msg) STR(__func__) + "(), Line " + TOSTR(__LINE__) + ": " + msg
+#define OutputMsg(msg) std::cout << msg << std::endl
+
+class RocDecLogger {
+public:
+    RocDecLogger() : log_level_(kRocDecLogCritical) {
+        char *env_log_level = std::getenv("ROCDEC_LOG_LEVEL");
+        if (env_log_level != nullptr) {
+            log_level_ = std::clamp(std::atoi(env_log_level), 0, static_cast<int>(kRocDecLogLevelMax));
+        }
+    }
+    RocDecLogger(int log_level) : log_level_(log_level) {};
+    ~RocDecLogger() {};
+
+    void SetLogLevel(int log_level) {log_level_ = std::clamp(log_level, 0, static_cast<int>(kRocDecLogLevelMax));};
+    int GetLogLevel() {return log_level_;};
+
+    static void AlwaysLog(std::string msg) {
+        OutputMsg(msg);
+    };
+
+    void CriticalLog(std::string msg) {
+        if (log_level_ >= kRocDecLogCritical) {
+            OutputMsg("[Critical] " + msg);
+        }
+    };
+
+    void ErrorLog(std::string msg) {
+        if (log_level_ >= kRocDecLogError) {
+            OutputMsg("[Error] " + msg);
+        }
+    };
+
+    void WarningLog(std::string msg) {
+        if (log_level_ >= kRocDecLogWarning) {
+            OutputMsg("[Warning] " + msg);
+        }
+    };
+
+    void InfoLog(std::string msg) {
+        if (log_level_ >= kRocDecLogInfo) {
+            OutputMsg("[Info] " + msg);
+        }
+    };
+
+    void DebugLog(std::string msg) {
+        if (log_level_ >= kRocDecLogDebug) {
+            OutputMsg("[Debug] " + msg);
+        }
+    };
+
+private:
+    int log_level_ = kRocDecLogCritical;
+};
 
 class rocDecodeException : public std::exception {
 public:
 
-    explicit rocDecodeException(const std::string& message):_message(message){}
+    explicit rocDecodeException(const std::string& OutputMsg):_message(OutputMsg){}
     virtual const char* what() const throw() override {
         return _message.c_str();
     }
