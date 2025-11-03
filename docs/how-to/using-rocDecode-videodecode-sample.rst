@@ -76,7 +76,6 @@ The ``videodecode.cpp`` sample lets the user choose which method to use through 
       - Seek criteria and seek starting point
       - Optional. Set to 1 and the frame number to start demultiplexing from that specific frame. Set to 2 and the timestamp to start demultiplexing from that specific timestamp. The seek criteria and starting point must be comma-separated (``,``). Demultiplexing begins at the first frame by default. 
 
-      
     * - ``-seek_mode``
       - Seek mode 
       - Optional. Set to 0 to seek to the previous keyframe. Set to 1 to seek to the exact frame. Seeks to previous keyframe by default.
