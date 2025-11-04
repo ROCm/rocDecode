@@ -6,7 +6,7 @@
 The rocDecode software decoder API
 ********************************************************************
 
-The rocDecode software decoder API exposed in |rocdecoderhost|_ is used to decode frames that have been demultiplexed (demuxed) by :doc:`the FFmpeg demuxer <./how-to/using-rocDecode-ffmpeg>`.
+The rocDecode software decoder API exposed in |rocdecodehost|_ is used to decode frames that have been demultiplexed (demuxed) by :doc:`the FFmpeg demuxer <../how-to/using-rocDecode-ffmpeg>`.
 
 Decoding parameters are stored in the ``RocDecoderHostCreateInfo`` struct and passed to ``rocDecCreateDecoderHost()`` to create a new software decoder. ``rocDecCreateDecoderHost()`` returns a handle to the decoder. For example:
 

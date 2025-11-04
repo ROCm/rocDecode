@@ -1,18 +1,35 @@
 .. meta::
-  :description: Using rocDecode
-  :keywords: parse video, parse, decode, video decoder, video decoding, rocDecode, core APIs, AMD, ROCm
+  :description: rocDecode logging controls
+  :keywords: rocDecode, core APIs, logging, AMD, ROCm
 
 ********************************************************************
 rocDecode logging control
 ********************************************************************
 
-rocDecode core components can generate various logs during the decode session. The logs can be critical status reports, error reports, warnings, etc. 
-Each log has a significance level associated to it. The level can be from critical (0) to debug info related (4). Lower value has greater importance. 
-An internal logging level threshold can be set to control the verbosity of logging output from each rocDecode component. If a log's level value is less 
-than or equal to the logging level threshold, the log is output. Otherwise, the log is not output.
+rocDecode core components can be configured to output different levels of log messages during decoding.
 
-The logging level threshold can be set by the environment variable ROCDEC_LOG_LEVEL, or by calling the SetLogLevel method of the logger class. The default 
-logging level is 0 (critical log only).
+The log level be changed by either setting the log level through the ``ROCDEC_LOG_LEVEL`` environment variable, or by calling the ``RocDecLogger::SetLogLevel()`` function in |commons|_.
+
+The logging levels are:
+
+| 0: Critical (Default level)
+| 1: Error
+| 2: Warning
+| 3: Info
+| 4: Debug
+
+The log level defines the maximum severity of log messages to output. For example, to output warning and error messages as well as critical messages, ``ROCDEC_LOG_LEVEL`` would need to be set to 2:
+
+.. code:: shell
+
+    ROCDEC_LOG_LEVEL = 2
+
+or
+
+.. code:: cpp
+
+    SetLogLevel(2);
+
 
 .. |apifolder| replace:: ``api/rocdecode``
 .. _apifolder: https://github.com/ROCm/rocDecode/tree/develop/api/rocdecode
@@ -31,3 +48,6 @@ logging level is 0 (critical log only).
 
 .. |utilsfolder| replace:: ``utils`` folder
 .. _utilsfolder: https://github.com/ROCm/rocDecode/tree/develop/utils
+
+.. |commons| replace:: ``commons.h``
+.. _commons: https://github.com/ROCm/rocDecode/tree/develop/src/commons.h

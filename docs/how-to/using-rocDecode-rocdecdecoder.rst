@@ -3,19 +3,17 @@
   :keywords: rocDecode, AMD, ROCm, core API
 
 ********************************************************************
-Using the rocDecode core API
+Using the rocdecdecode example
 ********************************************************************
 
-rocDecode provides four core APIs:
+rocDecode provides four core APIs exposed in the header files in the |apifolder|_ directory:
 
 | The rocDecode parser API, exposed in ``rocparser.h``. 
 | The hardware decoder API, exposed in ``rocdecode.h``.
 | The software decoder API, exposed in ``rocdecode_host.h``.
 | The bitstream reader API, exposed in ``roc_bitstream_reader.h``.
 
-These core APIs are exposed in the header files in the |apifolder|_ directory.
-
-The |rocdecdecode|_ sample demonstrates how to use the rocDecode core APIs in an application. It shows how to use the parser and both the hardware and software decoders. For information on how to use the bitstream reader API, see :doc:`<./using-rocDecode-bitstream>`.
+The |rocdecdecode|_ sample demonstrates how to use the rocDecode core APIs in an application. It shows how to use the parser and both the hardware and software decoders. For information on how to use the bitstream reader API, see :doc:`Using the rocDecode bitstream reader API <./using-rocDecode-bitstream>`.
 
 The sample decodes raw elementary video frame files as input and produces individually decoded frames in YUV format as output. The input can be one individual frame file or multiple frames from one or more video files. The individual frame files must be numbered in ascending order of frames.
 
@@ -46,7 +44,7 @@ The sample decodes raw elementary video frame files as input and produces indivi
       - Optional. Set to 0 by default.
 
 
-    * - ``-c` 
+    * - ``-c``
       - Codec. Set to 0 for HEVC, 1 for H264, 2 for AV1, 4 for VP9, 5 for VP8, or 6 for MJPEG.
       - Optional. Set to 0 by default.
       
@@ -81,7 +79,7 @@ The memory type and the type of decoder is set by the specified backend. If the 
   [...]
   }
 
-All applications need to register the ``pfn_sequence_callback``, ``pfn_decode_picture``, and ``pfn_display_picture`` callbacks.
+All applications need to register the ``pfn_sequence_callback`` and ``pfn_display_picture`` callbacks. Applications that use the parser must also register the ``pfn_decode_picture`` callback.
 
 When the GPU backend is selected, these callbacks are registered in the ``create_parser()`` function. ``create_parser`` also creates the parser using ``rocDecCreateVideoParser()``:
 
@@ -125,6 +123,8 @@ The ``create_decoder_host()`` function performs the same actions as ``create_dec
   }
 
 After the decoder and parser have been created, ``decode_frames`` is called. 
+
+.. code:: cpp
 
   int main(int argc, char** argv) {
     [...]
@@ -236,7 +236,7 @@ From the ``rocdecdecode.cpp`` sample:
 Once decoding is complete, ``rocDecDestroyVideoParser()`` needs to be called to destroy the parser, and either ``rocDecDestroyDecoderHost()`` or ``rocDecDestroyDecoder()`` needs to be called to destroy the decoder.
 
 .. |rocdecdecode| replace:: ``rocdecdecode``
-.. _apifolder: https://github.com/ROCm/rocDecode/tree/develop/samples/rocdecDecode/README.md
+.. _rocdecdecode: https://github.com/ROCm/rocDecode/tree/develop/samples/rocdecDecode/README.md
 
 .. |apifolder| replace:: ``api/rocdecode/``
 .. _apifolder: https://github.com/ROCm/rocDecode/tree/develop/api/rocdecode

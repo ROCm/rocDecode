@@ -51,6 +51,7 @@ The rocDecode public repository is located at `https://github.com/ROCm/rocDecode
       * :doc:`The rocDecode hardware decoder API <./reference/rocDecode-hw-decoder>`
       * :doc:`The rocDecode software decoder API <./reference/rocDecode-sw-decoder>`
       
+    * :doc:`rocDecode logging levels <./reference/rocDecode-logging-control>`
     * :doc:`rocDecode codec support and hardware capabilities <./reference/rocDecode-formats-and-architectures>`
     * :doc:`API library <../doxygen/html/files>`
     * :doc:`Functions <../doxygen/html/globals>`

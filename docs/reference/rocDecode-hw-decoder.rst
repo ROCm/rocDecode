@@ -6,7 +6,7 @@
 The rocDecode hardware decoder API
 ********************************************************************
 
-The rocDecode hardware decoder API exposed in |rocdecoder|_ is used to decode frames that have previously been parsed by :doc:`the rocDecode parser <./rocDecode-parser>`.
+The rocDecode hardware decoder API exposed in |rocdecode|_ is used to decode frames that have previously been parsed by :doc:`the rocDecode parser <./rocDecode-parser>`.
 
 Parsing parameters are stored in the ``RocDecoderCreateInfo`` struct and passed to ``rocDecCreateDecoder()`` to create a new decoder. ``rocDecCreateDecoder()`` returns a handle to the decoder. For example:
 
@@ -21,7 +21,7 @@ Parsing parameters are stored in the ``RocDecoderCreateInfo`` struct and passed 
   create_info.num_decode_surfaces = 6;
   create_info.num_output_surfaces = 1;
   rocDecCreateDecoder(&decoder_handle, &create_info);
-}
+
 
 ``rocDecGetDecoderCaps()`` queries the capabilities of the underlying hardware video decoder. Decoder capabilities usually include supported codecs, maximum resolution, and
 bit depth.
