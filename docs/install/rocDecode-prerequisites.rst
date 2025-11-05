@@ -37,4 +37,5 @@ The following prerequisites are installed by the package installer. If you are b
 * pkg-config
 * FFmpeg runtime and headers
 * libstdc++-12-dev for installations on Ubuntu 22.04 
+* HIP, specifically the ``hip-dev`` package
 
