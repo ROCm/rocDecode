@@ -10,6 +10,11 @@ Full documentation for rocDecode is available at [https://rocm.docs.amd.com/proj
 ### Added
 * Logging control. Message output from the core components is now controlled by the logging level threshold, which can be set by an environment variable or other methods.
 
+### Resolved issues
+
+* Fixed the build error with videodecodepicfiles sample.
+* Added error handling of sample app command option combination of memory type OUT_SURFACE_MEM_NOT_MAPPED and MD5 generation.
+
 ## rocDecode 1.4.0 for ROCm 7.1.0
 
 ### Added

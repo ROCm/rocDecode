@@ -316,7 +316,7 @@ int main(int argc, char **argv) {
                 }
                 for (int i = 0; i < n_frame_returned; i++) {
                     pframe = viddec->GetFrame(&pts);
-                    if (b_generate_md5) {
+                    if (b_generate_md5 && pframe) {
                         md5_generator->UpdateMd5ForFrame(pframe, surf_info);
                     }
                     if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {
