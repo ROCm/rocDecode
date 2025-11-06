@@ -418,7 +418,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
     # ASAN Package requires asan component with only libraries and license file
     set(CPACK_COMPONENTS_ALL asan)
   else()
-    set(CPACK_COMPONENTS_ALL runtime dev test)
+    set(CPACK_COMPONENTS_ALL runtime dev test host)
   endif()
 
   set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
@@ -468,9 +468,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   
     # make rocdecode-host for decoding on HOST only if FFMPEG is available
   if(ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
-                    cpack_add_component(host
-                                    DISPLAY_NAME "rocdecode host package"
-                                    DESCRIPTION "High perf video decode host SDK for AMD GPUs")
+    cpack_add_component(host
+                      DISPLAY_NAME "rocdecode host package"
+                      DESCRIPTION "High perf video decode host SDK for AMD GPUs")
   endif()
 
 else()
