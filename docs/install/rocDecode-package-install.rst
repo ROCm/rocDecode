@@ -44,7 +44,7 @@ Use the following commands to install only the rocDecode runtime package:
 Complete installation
 ========================================
 
-Use the following commands to install ``rocdecode``, ``rocdecode-dev``, and ``rocdecode-test``:
+Use the following commands to install ``rocdecode``, ``rocdecode-dev``, ``rocdecode-host``, and ``rocdecode-test``:
 
 .. tab-set::
 
@@ -52,16 +52,16 @@ Use the following commands to install ``rocdecode``, ``rocdecode-dev``, and ``ro
 
     .. code:: shell
 
-      sudo apt install rocdecode rocdecode-dev rocdecode-test
+      sudo apt install rocdecode rocdecode-dev rocdecode-test rocdecode-host
 
   .. tab-item:: RHEL
 
     .. code:: shell
 
-      sudo yum install rocdecode rocdecode-devel rocdecode-test
+      sudo yum install rocdecode rocdecode-devel rocdecode-test rocdecode-host
 
   .. tab-item:: SLES
 
     .. code:: shell
 
-      sudo zypper install rocdecode rocdecode-devel rocdecode-test
+      sudo zypper install rocdecode rocdecode-devel rocdecode-test rocdecode-host

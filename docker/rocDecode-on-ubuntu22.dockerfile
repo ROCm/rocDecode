@@ -14,4 +14,4 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install initramfs-tools libnuma-de
 WORKDIR /workspace
 
 # install rocDecode package
-RUN DEBIAN_FRONTEND=noninteractive sudo apt install -y rocdecode rocdecode-dev rocdecode-test
+RUN DEBIAN_FRONTEND=noninteractive sudo apt install -y rocdecode rocdecode-dev rocdecode-test rocdecode-host

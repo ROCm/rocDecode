@@ -26,7 +26,7 @@ The following prerequisites are installed by the package installer. If you are b
 
 .. note:: 
 
-  To use the rocDecode samples, the ``rocdecode``, ``rocdecode-dev``, and ``rocdecode-test`` packages need to be installed.
+  To use the rocDecode samples, the ``rocdecode``, ``rocdecode-dev``, ``rocdecode-host``, and ``rocdecode-test`` packages need to be installed.
   
   If you're installing using the rocDecode source code, the ``rocDecode-setup.py`` script must be run with ``--developer`` set to ``ON``.
 
