@@ -36,7 +36,7 @@ The ``pfn_sequence_callback`` callback is triggered when a format change occurs 
 
 The ``pfn_display_picture`` callback is triggered when a frame has been decoded. The decoded frame can then be further processed in device memory. The implementation for this callback needs to call ``rocDecGetVideoFrame()`` to obtain the decoded frame's HIP device pointer.
 
-``rocDecGetVideoFrame()`` maps the video ID of the decoded frame to HIP. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the HIP device pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
+``rocDecGetVideoFrame()`` provides a way to access the decoded frame in HIP. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the HIP device pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
 
 If the output surface type is ``OUT_SURFACE_MEM_DEV_INTERNAL``, meaning intermediate GPU memory, the direct pointer to the decoded surface is provided. If the requested surface
 type is ``OUT_SURFACE_MEM_DEV_COPIED`` or ``OUT_SURFACE_MEM_HOST_COPIED``, the internal decoded frame is copied to another buffer, either in device memory or host memory. 

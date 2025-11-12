@@ -35,7 +35,7 @@ The ``pfn_sequence_callback`` callback is triggered when a format change occurs 
 
 The ``pfn_display_picture`` callback is triggered when a frame has been decoded. This callback needs to be registered by any application that uses the software decoder and its implementation needs to call ``rocDecGetVideoFrameHost()``. ``rocDecGetVideoFrameHost()`` returns the decoded frame's host memory pointer. The decoded frame can then be further processed using this pointer.
 
-``rocDecGetVideoFrameHost()`` maps the video ID of the decoded frame to host memory. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the host memory pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
+``rocDecGetVideoFrameHost()`` provides a way to access the decoded frame in host memory. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the host memory pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
 
 If the output surface type is ``OUT_SURFACE_MEM_DEV_INTERNAL``, meaning intermediate GPU memory, the direct pointer to the decoded surface is provided. If the requested surface
 type is ``OUT_SURFACE_MEM_DEV_COPIED`` or ``OUT_SURFACE_MEM_HOST_COPIED``, the internal decoded frame is copied to another buffer, either in device memory or host memory. 
