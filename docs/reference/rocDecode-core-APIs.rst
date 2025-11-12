@@ -6,7 +6,7 @@
 The rocDecode core APIs
 ********************************************************************
 
-The rocDecode core APIs are intended for users who find that the utility classes aren't sufficient for their implementations. The :doc:`Using the rocDecode videodecode sample <../how-to/using-rocDecode-videodecode-sample>` provides an introduction to using the utility classes.
+The rocDecode core APIs are intended for users who want to have full control of the decoding pipeline and interact with the core components instead of the utility classes. The :doc:`Using the rocDecode videodecode sample <../how-to/using-rocDecode-videodecode-sample>` provides an introduction to using the utility classes.
 
 The rocDecode core APIs are exposed in header files in the |apifolder|_ folder of the `rocDecode GitHub repository <https://github.com/ROCm/rocDecode>`_. 
 
@@ -16,7 +16,7 @@ The rocDecode core APIs are exposed in header files in the |apifolder|_ folder o
 
 :doc:`The software decoder API <./rocDecode-sw-decoder>` is exposed in |rocdecodehost|_. It contains the same functionality as ``rocdecode.h``, but the all the operations are run on the host rather than the GPU.
 
-:doc:`The bitstream reader API <../how-to/using-rocDecode-bitstream>` is exposed in |bitstreamreader|_. It contains a simplified set of APIs that provide a way to use and test the decoder without relying on FFMpeg.
+:doc:`The bitstream reader API <../how-to/using-rocDecode-bitstream>` is exposed in |bitstreamreader|_. It provides an alternative to the FFMpeg demuxer and contains a simple stream file parser that can read elementary files and IVF container files.
 
 .. |apifolder| replace:: ``api/rocdecode``
 .. _apifolder: https://github.com/ROCm/rocDecode/tree/develop/api/rocdecode

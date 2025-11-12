@@ -8,7 +8,7 @@ The rocDecode parser API
 
 The rocDecode parser API, exposed in |rocparser|_, is used to decode bitstreams and organize them in a structured format that can be consumed by the hardware decoder.
 
-Parsing parameters are stored in the ``RocdecParserParams`` struct and passed to ``rocDecCreateVideoParser()`` to create a new parser. ``rocDecCreateVideoParser()`` returns a handle to the parser. For example:
+The parser parameters are stored in the ``RocdecParserParams`` struct and passed to ``rocDecCreateVideoParser()`` to create a new parser. ``rocDecCreateVideoParser()`` returns a handle to the parser. For example:
 
 .. code:: cpp
 
