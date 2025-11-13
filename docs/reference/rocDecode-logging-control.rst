@@ -8,7 +8,7 @@ rocDecode logging control
 
 rocDecode core components can be configured to output different levels of log messages during decoding.
 
-The log level be changed by either setting the log level through the ``ROCDEC_LOG_LEVEL`` environment variable, or by calling the ``RocDecLogger::SetLogLevel()`` function in |commons|_.
+The log level can be changed by either setting the log level through the ``ROCDEC_LOG_LEVEL`` environment variable, or by calling the ``RocDecLogger::SetLogLevel()`` function in |commons|_.
 
 The logging levels are:
 

@@ -29,13 +29,13 @@ bit depth.
 
 ``rocDecDecodeFrameHost()`` is used to submit frames for software decoding. ``rocDecDecodeFrameHost()`` takes the decoder handle and the pointer to the ``RocdecPicParamsHost`` struct and initiates the video decoding. ``RocdecPicParamsHost`` is populated with the decoded frame information.
 
-The ``pfn_sequence_callback`` callback is triggered when a format change occurs or when a new sequence header is encountered. This callback needs to be registered in any application that uses the software decoder and its implementation needs to call ``rocDecReconfigureDecoderHost()`` to reconfigure the decoder to handle the new sequence or format. 
+The ``pfn_sequence_callback`` callback is triggered when a format change occurs or when a new sequence header is encountered. This callback must be registered in any application that uses the software decoder and its implementation must call ``rocDecReconfigureDecoderHost()`` to reconfigure the decoder to handle the new sequence or format. 
 
 ``rocDecGetDecodeStatusHost()`` can be called to query the decoding status of a frame. The result of the query is either ``rocDecodeStatus_Success``, if decoding is complete, or ``rocDecodeStatus_InProgress``, if decoding is still in progress.
 
-The ``pfn_display_picture`` callback is triggered when a frame has been decoded. This callback needs to be registered by any application that uses the software decoder and its implementation needs to call ``rocDecGetVideoFrameHost()``. ``rocDecGetVideoFrameHost()`` returns the decoded frame's host memory pointer. The decoded frame can then be further processed using this pointer.
+The ``pfn_display_picture`` callback is triggered when a frame has been decoded. This callback must be registered by any application that uses the software decoder and its implementation must call ``rocDecGetVideoFrameHost()``. ``rocDecGetVideoFrameHost()`` returns the decoded frame's host memory pointer. The decoded frame can then be further processed using this pointer.
 
-``rocDecGetVideoFrameHost()`` provides a way to access the decoded frame in host memory. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the host memory pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
+``rocDecGetVideoFrameHost()`` provides a way to access the decoded frame in host memory. This is a blocking call that only returns once both frame decoding and memory mapping are done. It returns the host memory pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
 
 If the output surface type is ``OUT_SURFACE_MEM_DEV_INTERNAL``, meaning intermediate GPU memory, the direct pointer to the decoded surface is provided. If the requested surface
 type is ``OUT_SURFACE_MEM_DEV_COPIED`` or ``OUT_SURFACE_MEM_HOST_COPIED``, the internal decoded frame is copied to another buffer, either in device memory or host memory. 

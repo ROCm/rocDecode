@@ -6,7 +6,7 @@
 The rocDecode hardware decoder API
 ********************************************************************
 
-The rocDecode hardware decoder API exposed in |rocdecode|_ is used to decode frames that have previously been parsed by :doc:`the rocDecode parser <./rocDecode-parser>`.
+The rocDecode hardware decoder API exposed in |rocdecode|_ is used to decode frames that were parsed by :doc:`the rocDecode parser <./rocDecode-parser>`.
 
 Parsing parameters are stored in the ``RocDecoderCreateInfo`` struct and passed to ``rocDecCreateDecoder()`` to create a new decoder. ``rocDecCreateDecoder()`` returns a handle to the decoder. For example:
 
@@ -30,11 +30,11 @@ bit depth.
 
 ``rocDecDecodeFrame()`` takes the decoder handle and the pointer to the ``RocdecPicParams()`` struct and initiates the video decoding using VA-API. ``RocdecPicParams`` is populated with the decoded frame information.
 
-The ``pfn_sequence_callback`` callback is triggered when a format change occurs or when a new sequence header is encountered. The implementation of ``pfn_sequence_callback`` needs to call ``rocDecReconfigureDecoder()`` to reconfigure the decoder to handle the new sequence or format. See :doc:`The rocDecode parser API <./rocDecode-parser>` for details about this callback.
+The ``pfn_sequence_callback`` callback is triggered when a format change occurs or when a new sequence header is encountered. The implementation of ``pfn_sequence_callback`` must call ``rocDecReconfigureDecoder()`` to reconfigure the decoder to handle the new sequence or format. See :doc:`The rocDecode parser API <./rocDecode-parser>` for details about this callback.
 
 ``rocDecGetDecodeStatus()`` can be called to query the decoding status of a frame. The result of the query is either ``rocDecodeStatus_Success``, if decoding is complete, or ``rocDecodeStatus_InProgress``, if decoding is still in progress.
 
-The ``pfn_display_picture`` callback is triggered when a frame has been decoded. The decoded frame can then be further processed in device memory. The implementation for this callback needs to call ``rocDecGetVideoFrame()`` to obtain the decoded frame's HIP device pointer.
+The ``pfn_display_picture`` callback is triggered when a frame has been decoded. The decoded frame can then be further processed in device memory. The implementation for this callback must call ``rocDecGetVideoFrame()`` to obtain the decoded frame's HIP device pointer.
 
 ``rocDecGetVideoFrame()`` provides a way to access the decoded frame in HIP. This is a blocking call that only returns once frame decoding and memory mapping is complete. It returns the HIP device pointer as well as information about the :doc:`output surface type <../conceptual/rocDecode-memory-types>`. 
 

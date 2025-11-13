@@ -58,7 +58,7 @@ The sample decodes raw elementary video frame files as input and produces indivi
 
 The ``DecoderInfo`` struct defined in the sample is used to store user-supplied parameters as well as the decoder and parser handles. 
 
-The memory type and the type of decoder is set by the specified backend. If the GPU (device) backend is selected, a parser is created along with a decoder. If the CPU (host) backend is selected, then only a software decoder is created:
+The memory type and the type of decoder is set by the specified backend. If the GPU (device) backend is selected, both a parser and a hardware decoder are created. If the CPU (host) backend is selected, only a software decoder is created:
 
 .. code:: cpp
   
