@@ -40,7 +40,8 @@ A fourth callback, ``pfn_get_sei_msg``, is optional. ``pfn_get_sei_msg`` is trig
 
 If any of the callbacks return an error, the error is propagated back to the application.
 
-Once the stream is fully decoded, ``rocDecDestroyVideoParser()`` must be called oto destroy the parser object and free all allocated resources.
+Once the stream is fully decoded, ``rocDecDestroyVideoParser()`` must be called to destroy the parser object and free all allocated resources.
+
 
 
 .. |rocparser| replace:: ``rocparser.h``
