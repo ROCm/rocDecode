@@ -6,9 +6,10 @@
 Using the rocDecode RocVideoDecoder
 ********************************************************************
 
-rocDecode provides two ways of decoding a video stream: using the rocDecode RocVideoDecoder on GPU or using the FFmpeg decoder on CPU. 
+rocDecode provides two methods fpr decoding a video stream: using the rocDecode RocVideoDecoder on the GPU or using the FFmpeg decoder on the CPU. 
 
-This topic covers how to decode a video stream using the RocVideoDecoder class in |roc_video_dec|_. The RocVideoDecode class provides high-level calls to the core APIs in the |apifolder|_ of the rocDecode GitHub repository. For information about the core APIs, see :doc:`Using the rocDecode core APIs <./using-rocdecode>`.
+
+This topic covers how to decode a video stream using the RocVideoDecoder class in |roc_video_dec|_. The RocVideoDecode class provides high-level calls to the core APIs in the |apifolder|_ of the rocDecode GitHub repository. For information about the core APIs, see :doc:`Using the rocDecode core APIs <../reference/rocDecode-core-APIs>`.
 
 The RocVideoDecoder takes a demultiplexed coded picture as input. The picture can be demultiplexed from a video stream using the :doc:`FFmpeg demultiplexer <./using-rocDecode-ffmpeg>`.
 
@@ -86,12 +87,10 @@ To prevent the remaining frames in the buffers from being deleted along with the
 
 The |reconfig_struct|_ struct stores information on how to handle the reconfiguration. A callback, a user-defined flush mode, and a user-defined struct are passed to ``ReconfigParams_t``. The reconfiguration parameters are then passed to the decoder using ``SetReconfigParams``.
 
-The reconfiguration parameters need to be defined prior to entering the decoding loop. 
+The reconfiguration parameters need to be defined prior to entering the decoding loop. For example, the reconfiguration structs are defined in |common|_ in the rocDecode samples and then used in ``videodecode.cpp``
 
-For example, the reconfiguration structs are defined in |common|_ in the rocDecode samples and then used in ``videodecode.cpp``:
-
-.. code:: C++
-
+.. code:: cpp
+    
     typedef enum ReconfigFlushMode_enum {
         RECONFIG_FLUSH_MODE_NONE = 0x0,                      /**<  Just flush to get the frame count */
         RECONFIG_FLUSH_MODE_DUMP_TO_FILE = 0x1,              /**<  The remaining frames will be dumped to file in this mode */
@@ -103,7 +102,6 @@ For example, the reconfiguration structs are defined in |common|_ in the rocDeco
         std::string output_file_name;
         void *md5_generator_handle;
     } ReconfigDumpFileStruct;
-
 
     reconfig_params.p_fn_reconfigure_flush = ReconfigureFlushCallback;
     reconfig_user_struct.b_dump_frames_to_file = dump_output_frames;
@@ -118,12 +116,7 @@ For example, the reconfiguration structs are defined in |common|_ in the rocDeco
     reconfig_params.p_reconfig_user_struct = &reconfig_user_struct;
     viddec.SetReconfigParams(&reconfig_params);
 
-
 In the decode loop, the demultiplexed coded picture is passed to ``DecodeFrame``. Once the frame is decoded and processed, it is released with ``ReleaseFrame``. 
-
-
-
-
 
 .. |videodecode| replace:: ``videodecode.cpp``
 .. _videodecode: https://github.com/ROCm/rocDecode/tree/develop/samples/videoDecode/videodecode.cpp

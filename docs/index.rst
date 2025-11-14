@@ -33,11 +33,11 @@ The rocDecode public repository is located at `https://github.com/ROCm/rocDecode
   .. grid-item-card:: How to
 
     * :doc:`Understand the rocDecode videodecode.cpp sample <./how-to/using-rocDecode-videodecode-sample>`
+    * :doc:`Understand the rocDecode rocdecdecode.cpp sample <./how-to/using-rocDecode-rocdecdecoder>`    
     * :doc:`Use the rocDecode RocVideoDecoder <./how-to/using-rocDecode-video-decoder>`
     * :doc:`Use the rocDecode FFmpeg demultiplexer <./how-to/using-rocDecode-ffmpeg>`
-    * :doc:`Use the rocDecode bitstream reader APIs <./how-to/using-rocDecode-bitstream>`    
-    * :doc:`Use the rocDecode core APIs <./how-to/using-rocdecode>`
-
+    * :doc:`Use the rocDecode bitstream reader APIs <./how-to/using-rocDecode-bitstream>` 
+   
 
   .. grid-item-card:: Samples
 
@@ -45,8 +45,14 @@ The rocDecode public repository is located at `https://github.com/ROCm/rocDecode
 
   .. grid-item-card:: Reference
 
+    * :doc:`The rocDecode core APIs <./reference/rocDecode-core-APIs>`
+
+      * :doc:`The rocDecode parser API <./reference/rocDecode-parser>`
+      * :doc:`The rocDecode hardware decoder API <./reference/rocDecode-hw-decoder>`
+      * :doc:`The rocDecode software decoder API <./reference/rocDecode-sw-decoder>`
+      
+    * :doc:`rocDecode logging levels <./reference/rocDecode-logging-control>`
     * :doc:`rocDecode codec support and hardware capabilities <./reference/rocDecode-formats-and-architectures>`
-    * :doc:`rocDecode tested configurations <./reference/rocDecode-tested-configurations>`
     * :doc:`API library <../doxygen/html/files>`
     * :doc:`Functions <../doxygen/html/globals>`
     * :doc:`Data structures <../doxygen/html/annotated>`
