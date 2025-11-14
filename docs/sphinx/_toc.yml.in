@@ -33,7 +33,7 @@ subtrees:
   entries:
   - file: how-to/using-rocDecode-videodecode-sample.rst
     title: Understand the videodecode sample
-  - file: how-to/using-rocDecode-core.rst
+  - file: how-to/using-rocDecode-rocdecdecoder.rst
     title: Understand the rocdecdecode.cpp sample    
   - file: how-to/using-rocDecode-video-decoder.rst
     title: Use RocVideoDecoder
