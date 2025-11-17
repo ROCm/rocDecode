@@ -56,7 +56,7 @@ include(CTest)
 
 # add ROCm find Config location
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
-list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/share/rocdecode/cmake)
+list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/share/rocdecode/cmake)
 
 # find rocdecode
 if(BUILD_FROM_SOURCE)
