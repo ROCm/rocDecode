@@ -36,6 +36,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "ffmpeg_video_dec.h"
 #include "common.h"
+#if ENABLE_HOST_DECODE
+    #include "rocdecode/rocdecode_host.h"
+#endif
 
 void ShowHelpAndExit(const char *option = NULL) {
     std::cout << "Options:" << std::endl
@@ -387,8 +390,8 @@ int main(int argc, char **argv) {
             delete md5_generator;
         }
     } catch (const std::exception &ex) {
-      std::cout << ex.what() << std::endl;
-      exit(1);
+        std::cout << ex.what() << std::endl;
+        exit(1);
     }
 
     return 0;

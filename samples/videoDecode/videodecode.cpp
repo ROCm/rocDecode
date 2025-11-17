@@ -41,6 +41,9 @@ THE SOFTWARE.
 #include "roc_video_dec.h"
 #include "ffmpeg_video_dec.h"
 #include "common.h"
+#if ENABLE_HOST_DECODE
+    #include "rocdecode/rocdecode_host.h"
+#endif
 
 //hardcoding for host based decoder creation if demux is not available
 #define DEFAULT_WIDTH 2912

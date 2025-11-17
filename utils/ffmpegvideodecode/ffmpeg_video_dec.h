@@ -31,7 +31,6 @@ extern "C" {
     #endif
 }
 #include "rocvideodecode/roc_video_dec.h"       // for derived class
-#include "rocdecode/rocdecode_host.h"
 
 /**
  * FFMpegVideoDecoder: Derived class for FFMpeg based host decoder
