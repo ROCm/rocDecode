@@ -75,9 +75,7 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(int device_id, OutputSurfaceMemoryType ou
     create_info.bit_depth_minus_8 = 2;
     create_info.num_output_surfaces = 1;
     create_info.user_data = this;
-#if ENABLE_HOST_DECODE
     create_info.pfn_sequence_callback = FFMpegHandleVideoSequenceProc;
-#endif
     create_info.pfn_display_picture = FFMpegHandlePictureDisplayProc;
     create_info.pfn_get_sei_msg = nullptr;        // tobe supported in future
     ROCDEC_API_CALL(rocDecCreateDecoderHost(&roc_decoder_, &create_info));
@@ -111,7 +109,6 @@ FFMpegVideoDecoder::~FFMpegVideoDecoder() {
     }
 }
 
-#if ENABLE_HOST_DECODE
 /* Return value from HandleVideoSequence() are interpreted as   :
 *  0: fail, 1: succeeded, > 1: override dpb size of parser (set by RocdecParserParams::max_num_decode_surfaces while creating parser)
 */
@@ -220,7 +217,6 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormatHost *format_host) 
     AddDecoderSessionOverHead(std::this_thread::get_id(), elapsed_time);
     return num_decode_surfaces;
 }
-#endif
 
 bool FFMpegVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     if (!disp_width_ || !disp_height_) {

@@ -31,9 +31,7 @@ extern "C" {
     #endif
 }
 #include "rocvideodecode/roc_video_dec.h"       // for derived class
-#if ENABLE_HOST_DECODE
-    #include "rocdecode/rocdecode_host.h"
-#endif
+#include "rocdecode/rocdecode_host.h"
 
 /**
  * FFMpegVideoDecoder: Derived class for FFMpeg based host decoder
@@ -122,18 +120,11 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
         int ReconfigureDecoder(RocdecVideoFormat *p_video_format) override;
 
     private:
-#if ENABLE_HOST_DECODE
         /**
          *   @brief  Callback function to be registered for getting a callback when decoding of sequence starts
          */
         static int ROCDECAPI FFMpegHandleVideoSequenceProc(void *p_user_data, RocdecVideoFormatHost *p_video_format) { return ((FFMpegVideoDecoder *)p_user_data)->HandleVideoSequence(p_video_format); }
 
-        /**
-         *   @brief  This function gets called when a sequence is ready to be decoded. The function also gets called
-             when there is format change
-        */
-        int HandleVideoSequence(RocdecVideoFormatHost *p_video_format);
-#endif
         /**
          *   @brief  Callback function to be registered for getting a callback when a decoded frame is available for display
          */
@@ -143,6 +134,12 @@ class FFMpegVideoDecoder: public RocVideoDecoder {
          *   @brief  Callback function to be registered for getting a callback when all the unregistered user SEI Messages are parsed for a frame.
          */
         static int ROCDECAPI FFMpegHandleSEIMessagesProc(void *p_user_data, RocdecSeiMessageInfo *p_sei_message_info) { return ((FFMpegVideoDecoder *)p_user_data)->GetSEIMessage(p_sei_message_info); } 
+
+        /**
+         *   @brief  This function gets called when a sequence is ready to be decoded. The function also gets called
+             when there is format change
+        */
+        int HandleVideoSequence(RocdecVideoFormatHost *p_video_format);
 
         /**
          *   @brief  This function gets called after a picture is decoded and available for display. Frames are fetched and stored in 
