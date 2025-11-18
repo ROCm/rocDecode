@@ -157,7 +157,7 @@ add_test(
             --test-command "rocdecodenegativetest"
 )
 
-if(FFMPEG_FOUND)
+if(FFMPEG_FOUND AND rocdecode-host_FOUND)
   message("-- ${Green}${PROJECT_NAME} FFmpeg found - rocdecode tests requiring FFmpeg added")
   # 6 - videoDecode HEVC
   add_test(
@@ -276,22 +276,19 @@ if(FFMPEG_FOUND)
             -i "${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4" -resize 640x360 -of rgb
   )
 
-  if(rocdecode-host_FOUND)
-    message("-- ${Green}${PROJECT_NAME} rocdecode-host found - rocdecode tests requiring rocdecode-host added")
-    # 15 - videoDecode Host backend
-    add_test(
-      NAME
-        video_decode-Host-Backend
-      COMMAND
-        "${CMAKE_CTEST_COMMAND}"
+  # 15 - videoDecode Host backend
+  add_test(
+    NAME
+      video_decode-Host-Backend
+    COMMAND
+      "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecode"
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecode-Host"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
             -backend 1
-    )
-  endif(rocdecode-host_FOUND)
+  )
 else()
-  message("-- ${Yellow}${PROJECT_NAME} FFmpeg NOT found. rocdecode tests requiring FFmpeg excluded")
-endif(FFMPEG_FOUND)
+  message("-- ${Yellow}${PROJECT_NAME} FFmpeg and rocdecode-host NOT found. rocdecode tests requiring FFmpeg and rocdecode-host excluded")
+endif(FFMPEG_FOUND AND rocdecode-host_FOUND)
