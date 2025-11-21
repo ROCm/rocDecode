@@ -94,9 +94,6 @@ The FFMpeg demuxer is used to demultiplex the input stream unless the ``-no_ffmp
   VideoDemuxer *demuxer;
   demuxer = new VideoDemuxer(input_file_path.c_str());
 
-
-.. code:: C++
-
 The ``GetCodecId`` and ``GetBitDepth`` functions are used to obtain the video stream's codec and bit depth. The ``AVCodec2RocDecVideoCodec`` utility function converts the codec returned from the demuxer to its corresponding ``rocDecVideoCodec_enum`` value.
 
 .. code:: C++
