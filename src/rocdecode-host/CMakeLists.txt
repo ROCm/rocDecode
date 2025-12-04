@@ -103,6 +103,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
       DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT host)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_version.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT host)
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/../../utils/ffmpegvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT host)
   
   # Cmake module config file configurations
   set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")

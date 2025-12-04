@@ -76,7 +76,7 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofi
                       ${SWSCALE_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
     # rocdecode and utils
-    include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    include_directories (${rocdecode_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode ${CMAKE_CURRENT_SOURCE_DIR}/..)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
     # threads
     set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -85,7 +85,11 @@ if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND Threads_FOUND AND rocprofi
     # rocprofiler-register
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
     # sample app exe
-    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodeperf.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR} videodecodeperf.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/rocvideodecode/roc_video_dec.cpp)
+    if(rocdecode-host_FOUND)
+      include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode)
+      list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/ffmpegvideodecode/ffmpeg_video_dec.cpp)
+    endif()
     add_executable(${PROJECT_NAME} ${SOURCES})
     if(rocdecode-host_FOUND)
       # rocdecode-host

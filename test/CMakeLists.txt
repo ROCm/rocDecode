@@ -88,7 +88,7 @@ else()
     message("-- \t${White}rocdecode-host_VERSION_MINOR -- ${rocdecode-host_VERSION_MINOR}${ColourReset}")
     message("-- \t${White}rocdecode-host_VERSION_PATCH -- ${rocdecode-host_VERSION_PATCH}${ColourReset}")
   else()
-    message("-- ${Yellow}${PROJECT_NAME} requires rocdecode-host. Install rocdecode-host before running CTests")
+    message("-- ${Yellow}${PROJECT_NAME} rocdecode-host is optional. Install rocdecode-host to run additional tests before running CTests")
   endif(rocdecode-host_FOUND)
 endif(BUILD_FROM_SOURCE)
 find_package(FFmpeg QUIET)
@@ -157,7 +157,7 @@ add_test(
             --test-command "rocdecodenegativetest"
 )
 
-if(FFMPEG_FOUND AND rocdecode-host_FOUND)
+if(FFMPEG_FOUND)
   message("-- ${Green}${PROJECT_NAME} FFmpeg found - rocdecode tests requiring FFmpeg added")
   # 6 - videoDecode HEVC
   add_test(
@@ -276,19 +276,23 @@ if(FFMPEG_FOUND AND rocdecode-host_FOUND)
             -i "${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4" -resize 640x360 -of rgb
   )
 
-  # 15 - videoDecode Host backend
-  add_test(
-    NAME
-      video_decode-Host-Backend
-    COMMAND
-      "${CMAKE_CTEST_COMMAND}"
+  if(rocdecode-host_FOUND)
+    # 15 - videoDecode Host backend
+    add_test(
+      NAME
+        video_decode-Host-Backend
+      COMMAND
+        "${CMAKE_CTEST_COMMAND}"
             --build-and-test "${ROCM_PATH}/share/rocdecode/samples/videoDecode"
                               "${CMAKE_CURRENT_BINARY_DIR}/videoDecode-Host"
             --build-generator "${CMAKE_GENERATOR}"
             --test-command "videodecode"
             -i ${ROCM_PATH}/share/rocdecode/video/AMD_driving_virtual_20-H265.mp4
             -backend 1
-  )
+    )
+  else()
+    message("-- ${Yellow}${PROJECT_NAME} rocdecode-host NOT found. rocdecode tests requiring rocdecode-host excluded")
+  endif(rocdecode-host_FOUND)
 else()
-  message("-- ${Yellow}${PROJECT_NAME} FFmpeg and rocdecode-host NOT found. rocdecode tests requiring FFmpeg and rocdecode-host excluded")
-endif(FFMPEG_FOUND AND rocdecode-host_FOUND)
+  message("-- ${Yellow}${PROJECT_NAME} FFmpeg NOT found. rocdecode tests requiring FFmpeg excluded")
+endif(FFMPEG_FOUND)

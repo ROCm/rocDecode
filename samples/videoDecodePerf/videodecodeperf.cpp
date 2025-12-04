@@ -35,10 +35,9 @@ THE SOFTWARE.
 #endif
 #include "video_demuxer.h"
 #include "roc_video_dec.h"
-#include "ffmpeg_video_dec.h"
 #include "common.h"
 #if ENABLE_HOST_DECODE
-    #include "rocdecode/rocdecode_host.h"
+    #include "ffmpeg_video_dec.h"
 #endif
 
 void DecProc(RocVideoDecoder *p_dec, VideoDemuxer *demuxer, int *pn_frame, int *pn_pic_dec, double *pn_fps, double *pn_fps_dec, int max_num_frames, OutputSurfaceMemoryType mem_type) {

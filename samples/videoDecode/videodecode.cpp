@@ -39,10 +39,9 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "rocdecode/roc_bitstream_reader.h"
 #include "roc_video_dec.h"
-#include "ffmpeg_video_dec.h"
 #include "common.h"
 #if ENABLE_HOST_DECODE
-    #include "rocdecode/rocdecode_host.h"
+    #include "ffmpeg_video_dec.h"
 #endif
 
 //hardcoding for host based decoder creation if demux is not available
