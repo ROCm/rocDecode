@@ -50,6 +50,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocdecode Default Build Type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --rocm-path=${ROCM_PATH} --rocm-device-lib-path=${ROCM_PATH}/lib/llvm/amdgcn/bitcode")
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   # -O0 -- Don't Optimize output file 
   # -gdwarf-4  -- generate debugging information, dwarf-4 for making valgrind work
@@ -97,6 +98,7 @@ else()
 endif()
 message("-- ${White}${PROJECT_NAME} -- AMD GPU_TARGETS: ${GPU_TARGETS}${ColourReset}")
 
+set(HIP_PLATFORM amd CACHE STRING "HIP platform")
 find_package(HIP QUIET)
 find_package(rocdecode QUIET)
 find_package(rocprofiler-register QUIET)

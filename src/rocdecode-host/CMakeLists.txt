@@ -49,6 +49,7 @@ project(rocdecode-host VERSION ${VERSION} LANGUAGES CXX)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 
+set (HIP_PLATFORM amd CACHE STRING "HIP platform")
 find_package(HIP QUIET)
 find_package(Threads QUIET)
 find_package(rocprofiler-register QUIET)
