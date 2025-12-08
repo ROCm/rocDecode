@@ -2,11 +2,6 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased)rocDecode 1.7.0
-
-### Added
-* Added TheRock compatibility
-
 ## rocDecode 1.6.0 for ROCm 7.2.0
 
 ### Changed
