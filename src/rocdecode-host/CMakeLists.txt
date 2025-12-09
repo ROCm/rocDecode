@@ -68,9 +68,9 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   endif()
 
   # local include files
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../api ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode-host ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode ${CMAKE_CURRENT_SOURCE_DIR}/../parser)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../api ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode ${CMAKE_CURRENT_SOURCE_DIR}/../parser)
   # source files
-  file(GLOB_RECURSE SOURCES "./*.cpp")
+  file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
   # rocdecode-host.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
