@@ -68,7 +68,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   endif()
 
   # local include files
-  include_directories(api rocdecode-host ../src/rocdecode ../src/parser)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../api ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode-host ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode ${CMAKE_CURRENT_SOURCE_DIR}/../parser)
   # source files
   file(GLOB_RECURSE SOURCES "./*.cpp")
   # rocdecode-host.so
@@ -92,7 +92,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
   # Generate BUILD_INFO
-  configure_file( ${CMAKE_SOURCE_DIR}/api/rocdecode-host_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode-host_version.h @ONLY )
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/../../api/rocdecode-host_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode-host_version.h @ONLY )
 
   # install rocdecode-host libs -- {ROCM_PATH}/lib
   set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
@@ -108,7 +108,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   install(DIRECTORY ${PROJECT_SOURCE_DIR}/../../utils/ffmpegvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils COMPONENT dev)
   
   # Cmake module config file configurations
-  set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")
+  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake_modules/" CACHE INTERNAL "Default module path.")
 
   # Export the package for use from the build-tree
   ## (this registers the build-tree with a global CMake-registry)
