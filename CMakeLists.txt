@@ -30,6 +30,13 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+
+# Check if lib/rocm_sysdeps/lib exists in the ROCm path which indicates ROCm installation via TheRock
+set(USING_THE_ROCK OFF)
+if(EXISTS "${ROCM_PATH}/lib/rocm_sysdeps/lib")
+  set(USING_THE_ROCK ON)
+endif()
+
 # Set AMD Clang as default compiler
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
@@ -110,15 +117,6 @@ set (HIP_PLATFORM amd CACHE STRING "HIP platform")
 find_package(HIP QUIET)
 find_package(Libva QUIET)
 find_package(Libdrm_amdgpu QUIET)
-
-# Check if lib/rocm_sysdeps/lib exists in the libdrm_amdgpu library path which indicates ROCm installation via TheRock
-set(USING_THE_ROCK OFF)
-if(LIBDRM_AMDGPU_LIBRARY)
-  string(FIND "${LIBDRM_AMDGPU_LIBRARY}" "lib/rocm_sysdeps/lib" ROCM_SYSDEPS_FOUND)
-  if(NOT ROCM_SYSDEPS_FOUND EQUAL -1)
-    set(USING_THE_ROCK ON)
-  endif()
-endif()
 
 # Find Ubuntu 22.04
 file(READ "/etc/os-release" OS_RELEASE)
