@@ -30,6 +30,11 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+# Check if lib/rocm_sysdeps/lib exists in the ROCm path which indicates ROCm installation via TheRock
+set(USING_THE_ROCK OFF)
+if(EXISTS "${ROCM_PATH}/lib/rocm_sysdeps/lib")
+  set(USING_THE_ROCK ON)
+endif()
 # Set AMD Clang as default compiler
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
@@ -87,6 +92,10 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
     target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AVCODEC_GREATER_THAN_60_31=1)
   endif() #FFMpeg version >= 7.1
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  if(USING_THE_ROCK)
+    set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN;$ORIGIN/rocm_sysdeps/lib" BUILD_WITH_INSTALL_RPATH TRUE)
+  endif()
 
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
