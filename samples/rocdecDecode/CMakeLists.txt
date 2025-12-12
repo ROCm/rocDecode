@@ -67,25 +67,36 @@ find_package(FFmpeg QUIET)
 find_package(rocdecode QUIET)
 find_package(rocdecode-host 1.0.0 QUIET)
 
-if(HIP_FOUND AND FFMPEG_FOUND AND rocdecode_FOUND AND rocdecode-host_FOUND)
+if(HIP_FOUND AND rocdecode_FOUND)
     # HIP
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
-    # FFMPEG
-    include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
-                        ${AVFORMAT_INCLUDE_DIR})
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+
+    if(FFMPEG_FOUND)
+      # FFMPEG
+      include_directories(${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR}
+                          ${AVFORMAT_INCLUDE_DIR})
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${FFMPEG_LIBRARIES})
+    endif()
+    if(rocdecode-host_FOUND)
+      # rocdecode-host
+      include_directories(${rocdecode-host_INCLUDE_DIR})
+      set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode-host)
+    endif()
+
     # rocdecode and utils
     include_directories(${rocdecode_INCLUDE_DIR} ${ROCM_PATH}/lib)
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode)
-    # rocdecode-host
-    include_directories(${rocdecode-host_INCLUDE_DIR})
-    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode-host)
 
     # rocdecode
     # sample app exe
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} rocdecdecode.cpp)
     add_executable(${PROJECT_NAME} ${SOURCES})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
+    if(FFMPEG_FOUND AND rocdecode-host_FOUND)
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=1)
+    else()
+      target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_HOST_DECODE=0)
+    endif()
     target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 else()
     message("-- ERROR!: ${PROJECT_NAME} excluded! please install all the dependencies and try again!")

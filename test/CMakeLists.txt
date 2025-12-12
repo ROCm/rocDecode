@@ -163,7 +163,23 @@ if(USING_THE_ROCK)
   set_property(TEST video_decodeRaw-VP9 PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
 endif()
 
-# 5 - rocDecodeNegativeApiTests
+# 5 - rocdecDecode
+add_test(
+  NAME
+    rocdec_Decode-HEVC
+  COMMAND
+    "${CMAKE_CTEST_COMMAND}"
+            --build-and-test "${ROCM_PATH}/share/rocdecode/samples/rocdecDecode"
+                              "${CMAKE_CURRENT_BINARY_DIR}/rocdecDecode"
+            --build-generator "${CMAKE_GENERATOR}"
+            --test-command "rocdecdecode"
+            -i ${ROCM_PATH}/share/rocdecode/frames
+)
+if(USING_THE_ROCK)
+  set_property(TEST rocdec_Decode-HEVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
+endif()
+
+# 6 - rocDecodeNegativeApiTests
 add_test(
   NAME
   rocDecode_Negative_API_Tests
@@ -180,7 +196,7 @@ endif()
 
 if(FFMPEG_FOUND)
   message("-- ${Green}${PROJECT_NAME} FFmpeg found - rocdecode tests requiring FFmpeg added")
-  # 6 - videoDecode HEVC
+  # 7 - videoDecode HEVC
   add_test(
     NAME
       video_decode-HEVC
@@ -196,7 +212,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decode-HEVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 7 - videoDecode AVC
+  # 8 - videoDecode AVC
   add_test(
     NAME
       video_decode-AVC
@@ -212,7 +228,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decode-AVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 8 - videoDecode AV1
+  # 9 - videoDecode AV1
   add_test(
     NAME
       video_decode-AV1
@@ -228,7 +244,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decode-AV1 PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 9 - videoDecode VP9
+  # 10 - videoDecode VP9
   add_test(
     NAME
       video_decode-VP9
@@ -244,7 +260,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decode-VP9 PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 10 - videoDecodePerf
+  # 11 - videoDecodePerf
   add_test(
     NAME
       video_decodePerf-HEVC
@@ -260,7 +276,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decodePerf-HEVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 11 - videoDecodeBatch
+  # 12 - videoDecodeBatch
   add_test(
     NAME
       video_decodeBatch
@@ -276,7 +292,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decodeBatch PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 12 - videoDecodeRGB
+  # 13 - videoDecodeRGB
   add_test(
     NAME
       video_decodeRGB-HEVC
@@ -292,7 +308,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decodeRGB-HEVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 13 - videoDecodeMem
+  # 14 - videoDecodeMem
   add_test(
     NAME
       video_decodeMem-HEVC
@@ -308,7 +324,7 @@ if(FFMPEG_FOUND)
     set_property(TEST video_decodeMem-HEVC PROPERTY ENVIRONMENT "LIBVA_DRIVERS_PATH=${ROCM_PATH}/lib/rocm_sysdeps/lib")
   endif()
 
-  # 14 - videoDecodeRGBResize
+  # 15 - videoDecodeRGBResize
   add_test(
     NAME
       video_decodeRGB-Resize
@@ -325,7 +341,7 @@ if(FFMPEG_FOUND)
   endif()
 
   if(rocdecode-host_FOUND)
-    # 15 - videoDecode Host backend
+    # 16 - videoDecode Host backend
     add_test(
       NAME
         video_decode-Host-Backend

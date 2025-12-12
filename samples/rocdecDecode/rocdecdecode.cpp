@@ -28,7 +28,10 @@ THE SOFTWARE.
 #include <filesystem>
 #include <hip/hip_runtime.h>
 #include <rocdecode/rocdecode.h>
-#include <rocdecode/rocdecode_host.h>
+#include <rocdecode/rocparser.h>
+#if ENABLE_HOST_DECODE
+    #include <rocdecode/rocdecode_host.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -364,6 +367,7 @@ void create_decoder(DecoderInfo& dec_info) {
     CHECK(rocDecCreateDecoder(&dec_info.decoder, &create_info));
 }
 
+#if ENABLE_HOST_DECODE
 int ROCDECAPI handle_video_sequence_host(void* user_data, RocdecVideoFormatHost* format_host) {
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
     RocdecVideoFormat *format = &format_host->video_format;
@@ -451,6 +455,7 @@ void create_decoder_host(DecoderInfo& dec_info) {
     CHECK(rocDecCreateDecoderHost(&dec_info.decoder, &create_info));
     dec_info.backend = DECODER_BACKEND_HOST;
 }
+#endif
 
 int ROCDECAPI handle_video_sequence(void* user_data, RocdecVideoFormat* format) {
     DecoderInfo *p_dec_info = static_cast<DecoderInfo *>(user_data);
@@ -551,7 +556,9 @@ void decode_frames(DecoderInfo& dec_info, const std::vector<std::vector<uint8_t>
             }
             CHECK(rocDecParseVideoData(dec_info.parser, &packet));
         }
-    } else if (dec_info.backend == DECODER_BACKEND_HOST) {
+    }
+#if ENABLE_HOST_DECODE
+    else if (dec_info.backend == DECODER_BACKEND_HOST) {
         for (int i=0; i < static_cast<int>(frames.size()); ++i) {
             RocdecPicParamsHost pic_params = {};
             pic_params.bitstream_data_len = frames[i].size();
@@ -562,14 +569,18 @@ void decode_frames(DecoderInfo& dec_info, const std::vector<std::vector<uint8_t>
             CHECK(rocDecDecodeFrameHost(dec_info.decoder, &pic_params));
         }   
     }
+#endif
 }
 
 void destroy_decoder(DecoderInfo& dec_info) {
-    if (dec_info.backend == DECODER_BACKEND_DEVICE)
+    if (dec_info.backend == DECODER_BACKEND_DEVICE) {
         CHECK(rocDecDestroyDecoder(dec_info.decoder));
+    }
+#if ENABLE_HOST_DECODE
     else if (dec_info.backend == DECODER_BACKEND_HOST) {
         CHECK(rocDecDestroyDecoderHost(dec_info.decoder));
     }
+#endif
 }
 
 void destroy_parser(DecoderInfo& dec_info) {
@@ -582,7 +593,11 @@ void ShowHelpAndExit(const char *option = NULL) {
     << "-i Input File Path - required" << std::endl
     << "-o Output File Path - dumps output if requested; optional" << std::endl
     << "-d GPU device ID (0 for the first device, 1 for the second, etc.); optional; default: 0" << std::endl
+#if ENABLE_HOST_DECODE
     << "-b backend (0 for GPU, 1 CPU-FFMpeg); optional; default: 0" << std::endl
+#else
+    << "-b backend (0 for GPU); optional; default: 0" << std::endl
+#endif
     << "-c codec (0 : HEVC, 1 : H264, 2: AV1, 4: VP9, 5: VP8 ); optional; default: 0" << std::endl
     << "-n Number of iteration - specify the number of iterations for performance evaluation; optional; default: 1" << std::endl
     << "-m output_surface_memory_type - decoded surface memory; optional; default - 0"
@@ -725,9 +740,12 @@ int main(int argc, char** argv) {
     if (backend == DECODER_BACKEND_DEVICE) {
         create_parser(dec_info);
         create_decoder(dec_info);
-    } else {
+    }
+#if ENABLE_HOST_DECODE
+    else {
         create_decoder_host(dec_info);
     }
+#endif
     dec_info.dump_decoded_frames = dump_output_frames;
     auto input_frames = read_frames(input_file_names);
     auto start = std::chrono::high_resolution_clock::now();
