@@ -388,11 +388,10 @@ int RocVideoDecoder::HandleVideoSequence(RocdecVideoFormat *p_video_format) {
     output_surface_info_.output_height = target_height_;
     output_surface_info_.output_pitch  = surface_stride_;
     output_surface_info_.output_vstride = (out_mem_type_ == OUT_SURFACE_MEM_DEV_INTERNAL) ? surface_vstride_ : videoDecodeCreateInfo.target_height;
-    if (!(crop_rect_.right && crop_rect_.bottom)) {
-        output_surface_info_.disp_rect = disp_rect_;
-    } else {
-        output_surface_info_.disp_rect = crop_rect_;
-    }
+    output_surface_info_.disp_rect.top = videoDecodeCreateInfo.display_rect.top;
+    output_surface_info_.disp_rect.bottom = videoDecodeCreateInfo.display_rect.bottom;
+    output_surface_info_.disp_rect.left = videoDecodeCreateInfo.display_rect.left;
+    output_surface_info_.disp_rect.right = videoDecodeCreateInfo.display_rect.right;
     output_surface_info_.chroma_height = chroma_height_;
     output_surface_info_.bit_depth = bitdepth_minus_8_ + 8;
     output_surface_info_.bytes_per_pixel = byte_per_pixel_;
