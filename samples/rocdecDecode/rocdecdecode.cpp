@@ -65,7 +65,7 @@ __attribute__((visibility("hidden"))) inline void report_error(
                 << file_name << ":" << line)
      << ... << std::forward<Args>(args))
         << std::endl;
-    std::abort();
+    std::exit(-1);
 }
 
 //hardcoding for this sample
