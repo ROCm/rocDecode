@@ -362,7 +362,7 @@ void create_decoder(DecoderInfo& dec_info) {
     // this will get changed in reconfigure when the sequence header is parsed from the stream to detect the actual video parameters
     create_info.chroma_format = rocDecVideoChromaFormat_420;
     create_info.output_format = rocDecVideoSurfaceFormat_NV12;
-    create_info.bit_depth_minus_8 = 2;
+    create_info.bit_depth_minus_8 = 0;
     create_info.num_output_surfaces = 1;
     CHECK(rocDecCreateDecoder(&dec_info.decoder, &create_info));
 }
