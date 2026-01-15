@@ -220,7 +220,7 @@ int FFMpegVideoDecoder::HandleVideoSequence(RocdecVideoFormatHost *format_host) 
 
 bool FFMpegVideoDecoder::GetOutputSurfaceInfo(OutputSurfaceInfo **surface_info) {
     if (!disp_width_ || !disp_height_) {
-        std::cerr << "ERROR: FFMpegVideo is not intialized" << std::endl;
+        std::cerr << "ERROR: FFMpegVideo is not initialized" << std::endl;
         return false;
     }
     *surface_info = &output_surface_info_;
