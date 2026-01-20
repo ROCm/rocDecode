@@ -32,22 +32,32 @@ subtrees:
 - caption: How to
   entries:
   - file: how-to/using-rocDecode-videodecode-sample.rst
-    title: Understand the rocDecode videodecode sample
+    title: Understand the videodecode sample
+  - file: how-to/using-rocDecode-rocdecdecoder.rst
+    title: Understand the rocdecdecode.cpp sample    
   - file: how-to/using-rocDecode-video-decoder.rst
-    title: Use the rocDecode RocVideoDecoder
+    title: Use RocVideoDecoder
   - file: how-to/using-rocDecode-ffmpeg.rst
-    title: Use the rocDecode FFmpeg demultiplexer
+    title: Use the FFmpeg demultiplexer
   - file: how-to/using-rocDecode-bitstream.rst
-    title: Use the rocDecode bitstream reader APIs  
-  - file: how-to/using-rocdecode.rst
-    title: Use the rocDecode core APIs
+    title: Use the bitstream reader APIs 
 
 - caption: Reference
   entries:
+  - file: reference/rocDecode-core-APIs.rst
+    title: Core APIs 
+    subtrees:
+    - entries:
+      - file: reference/rocDecode-parser.rst
+        title: Parser API
+      - file: reference/rocDecode-hw-decoder.rst
+        title: Hardware decoder API
+      - file: reference/rocDecode-sw-decoder.rst
+        title: Software decoder API
+  - file: reference/rocDecode-logging-control.rst
+    title: Logging levels 
   - file: reference/rocDecode-formats-and-architectures.rst
     title: rocDecode supported codecs and architectures
-  - file: reference/rocDecode-tested-configurations.rst
-    title: rocDecode tested configurations
   - file: doxygen/html/files
     title: rocDecode API library
   - file: doxygen/html/globals

@@ -6,7 +6,7 @@
 rocDecode prerequisites
 ********************************************************************
 
-rocDecode requires ROCm 6.1 or later running on `accelerators based on the CDNA architecture <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_.
+rocDecode requires ROCm running on `GPUs based on the CDNA architecture <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_.
 
 ROCm must be installed using the AMDGPU installer with the ``rocm`` usecase:
 
@@ -37,4 +37,5 @@ The following prerequisites are installed by the package installer. If you are b
 * pkg-config
 * FFmpeg runtime and headers
 * libstdc++-12-dev for installations on Ubuntu 22.04 
+* HIP, specifically the ``hip-dev`` package
 
