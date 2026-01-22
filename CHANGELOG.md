@@ -2,10 +2,19 @@
 
 Full documentation for rocDecode is available at [https://rocm.docs.amd.com/projects/rocDecode/en/latest/](https://rocm.docs.amd.com/projects/rocDecode/en/latest/)
 
-## (Unreleased) rocDecode 1.5.0
+## rocDecode 1.6.0 for ROCm 7.2.1
 
 ### Changed
 * Updated libdrm path configuration and libva version requirements for ROCm and TheRock platforms
+
+### Added
+* Logging control. Message output from the core components is now controlled by the logging level threshold, which can be set by an environment variable or other methods.
+* rocdecode-host package - rocdecode-host library and samples
+
+### Resolved issues
+
+* Fixed the build error with videodecodepicfiles sample.
+* Added error handling of sample app command option combination of memory type OUT_SURFACE_MEM_NOT_MAPPED and MD5 generation.
 
 ## rocDecode 1.4.0 for ROCm 7.1.0
 

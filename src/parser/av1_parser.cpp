@@ -58,7 +58,7 @@ rocDecStatus Av1VideoParser::ParseVideoData(RocdecSourceDataPacket *p_data) {
     if (p_data->payload && p_data->payload_size) {
         curr_pts_ = p_data->pts;
         if (ParsePictureData(p_data->payload, p_data->payload_size) != PARSER_OK) {
-            ERR("Error occurred in picture data parsing.");
+            logger_.ErrorLog(MakeMsg("Error occurred in picture data parsing."));
             return ROCDEC_RUNTIME_ERROR;
         }
     } else if (!(p_data->flags & ROCDEC_PKT_ENDOFSTREAM)) {
@@ -91,7 +91,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             }
             case kObuFrameHeader: {
                 if (seen_frame_header_ != 0) {
-                    ERR("If obu_type is equal to OBU_FRAME_HEADER, it is a requirement of bitstream conformance that SeenFrameHeader is equal to 0.");
+                    logger_.ErrorLog(MakeMsg("If obu_type is equal to OBU_FRAME_HEADER, it is a requirement of bitstream conformance that SeenFrameHeader is equal to 0."));
                     return PARSER_INVALID_ARG;
                 }
                 int bytes_parsed;
@@ -102,7 +102,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
             }
             case kObuRedundantFrameHeader: {
                 if (seen_frame_header_ != 1) {
-                    ERR("If obu_type is equal to OBU_REDUNDANT_FRAME_HEADER, it is a requirement of bitstream conformance that SeenFrameHeader is equal to 1.");
+                    logger_.ErrorLog(MakeMsg("If obu_type is equal to OBU_REDUNDANT_FRAME_HEADER, it is a requirement of bitstream conformance that SeenFrameHeader is equal to 1."));
                     return PARSER_INVALID_ARG;
                 }
                 int bytes_parsed;
@@ -120,18 +120,18 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 if (obu_size_ > bytes_parsed) {
                     obu_size_ -= bytes_parsed;
                     if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
-                        ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                        logger_.ErrorLog(MakeMsg("Error occurred in ParseTileGroupObu(). Skip this OBU."));
                         break;
                     }
                 } else {
-                    ERR("Frame OBU size error.");
+                    logger_.ErrorLog(MakeMsg("Frame OBU size error."));
                     return PARSER_OUT_OF_RANGE;
                 }
                 break;
             }
             case kObuTileGroup: {
                 if (ParseTileGroupObu(pic_data_buffer_ptr_ + obu_byte_offset_, obu_size_) != PARSER_OK) {
-                    ERR("Error occurred in ParseTileGroupObu(). Skip this OBU.");
+                    logger_.ErrorLog(MakeMsg("Error occurred in ParseTileGroupObu(). Skip this OBU."));
                 }
                 break;
             }
@@ -151,7 +151,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
         if (frame_header_.show_existing_frame) {
             int disp_idx = dpb_buffer_.virtual_buffer_index[frame_header_.frame_to_show_map_idx];
             if (disp_idx == INVALID_INDEX) {
-                ERR("Invalid existing frame index to show.");
+                logger_.ErrorLog(MakeMsg("Invalid existing frame index to show."));
                 return PARSER_INVALID_ARG;
             }
             if (pfn_display_picture_cb_) {
@@ -164,7 +164,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 decode_buffer_pool_[disp_idx].pts = curr_pts_;
                 // Insert into output/display picture list
                 if (num_output_pics_ >= dec_buf_pool_size_) {
-                    ERR("Display list size larger than decode buffer pool size!");
+                    logger_.ErrorLog(MakeMsg("Display list size larger than decode buffer pool size!"));
                     return PARSER_OUT_OF_RANGE;
                 } else {
                     output_pic_list_[num_output_pics_] = disp_idx;
@@ -182,7 +182,7 @@ ParserResult Av1VideoParser::ParsePictureData(const uint8_t *p_stream, uint32_t 
                 return ret;
             }
             if ((ret = SendPicForDecode()) != PARSER_OK) {
-                ERR(STR("Failed to decode!"));
+                logger_.ErrorLog(MakeMsg(STR("Failed to decode!")));
                 return ret;
             }
             pic_count_++;
@@ -218,7 +218,7 @@ ParserResult Av1VideoParser::NotifyNewSequence(Av1SequenceHeader *p_seq_header, 
     } else if (p_seq_header->color_config.mono_chrome == 0 && p_seq_header->color_config.subsampling_x == 0 && p_seq_header->color_config.subsampling_y == 0) {
         video_format_params_.chroma_format = rocDecVideoChromaFormat_444;
     } else {
-        ERR("Incorrect chroma format.");
+        logger_.ErrorLog(MakeMsg("Incorrect chroma format."));
         return PARSER_INVALID_FORMAT;
     }
 
@@ -243,7 +243,7 @@ ParserResult Av1VideoParser::NotifyNewSequence(Av1SequenceHeader *p_seq_header, 
 
     // callback function with RocdecVideoFormat params filled out
     if (pfn_sequence_cb_(parser_params_.user_data, &video_format_params_) == 0) {
-        ERR("Sequence callback function failed.");
+        logger_.ErrorLog(MakeMsg("Sequence callback function failed."));
         return PARSER_FAIL;
     } else {
         return PARSER_OK;
@@ -479,7 +479,7 @@ ParserResult Av1VideoParser::SendPicForDecode() {
 #endif // DBGINFO
 
     if (pfn_decode_picture_cb_(parser_params_.user_data, &dec_pic_params_) == 0) {
-        ERR("Decode error occurred.");
+        logger_.ErrorLog(MakeMsg("Decode error occurred."));
         return PARSER_FAIL;
     } else {
         return PARSER_OK;
@@ -620,7 +620,7 @@ ParserResult Av1VideoParser::FindFreeInDecBufPool() {
         }
     }
     if (dec_buf_index == dec_buf_pool_size_) {
-        ERR("Could not find a free buffer in decode buffer pool for decoded image.");
+        logger_.ErrorLog(MakeMsg("Could not find a free buffer in decode buffer pool for decoded image."));
         return PARSER_NOT_FOUND;
     }
     curr_pic_.dec_buf_idx = dec_buf_index;
@@ -635,7 +635,7 @@ ParserResult Av1VideoParser::FindFreeInDecBufPool() {
             }
         }
         if (dec_buf_index == dec_buf_pool_size_) {
-            ERR("Could not find a free buffer in decode buffer pool for FG output.");
+            logger_.ErrorLog(MakeMsg("Could not find a free buffer in decode buffer pool for FG output."));
             return PARSER_NOT_FOUND;
         }
         curr_pic_.fg_buf_idx = dec_buf_index;
@@ -656,7 +656,7 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
         }
     }
     if (i == BUFFER_POOL_MAX_SIZE) {
-        ERR("DPB buffer overflow!");
+        logger_.ErrorLog(MakeMsg("DPB buffer overflow!"));
         return PARSER_NOT_FOUND;
     }
     curr_pic_.pic_idx = i;
@@ -675,7 +675,7 @@ ParserResult Av1VideoParser::FindFreeInDpbAndMark() {
         decode_buffer_pool_[disp_idx].pts = curr_pts_;
         // Insert into output/display picture list
         if (num_output_pics_ >= dec_buf_pool_size_) {
-            ERR("Display list size larger than decode buffer pool size!");
+            logger_.ErrorLog(MakeMsg("Display list size larger than decode buffer pool size!"));
             return PARSER_OUT_OF_RANGE;
         } else {
             output_pic_list_[num_output_pics_] = disp_idx;
@@ -699,18 +699,18 @@ ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
     size_t offset = 0;
     obu_header_.size = 1;
     if (Parser::GetBit(p_stream, offset) != 0) {
-        ERR("Syntax error: obu_forbidden_bit must be set to 0.");
+        logger_.ErrorLog(MakeMsg("Syntax error: obu_forbidden_bit must be set to 0."));
         return PARSER_INVALID_ARG;
     }
     obu_header_.obu_type = Parser::ReadBits(p_stream, offset, 4);
     obu_header_.obu_extension_flag = Parser::GetBit(p_stream, offset);
     obu_header_.obu_has_size_field = Parser::GetBit(p_stream, offset);
     if (!obu_header_.obu_has_size_field) {
-        ERR("Syntax error: Section 5.2: obu_has_size_field must be equal to 1.");
+        logger_.ErrorLog(MakeMsg("Syntax error: Section 5.2: obu_has_size_field must be equal to 1."));
         return PARSER_INVALID_ARG;
     }
     if (Parser::GetBit(p_stream, offset) != 0) {
-        ERR("Syntax error: obu_reserved_1bit must be set to 0.");
+        logger_.ErrorLog(MakeMsg("Syntax error: obu_reserved_1bit must be set to 0."));
         return PARSER_INVALID_ARG;
     }
     if (obu_header_.obu_extension_flag) {
@@ -718,7 +718,7 @@ ParserResult Av1VideoParser::ParseObuHeader(const uint8_t *p_stream) {
         obu_header_.temporal_id = Parser::ReadBits(p_stream, offset, 3);
         obu_header_.spatial_id = Parser::ReadBits(p_stream, offset, 2);
         if (Parser::ReadBits(p_stream, offset, 3) != 0) {
-            ERR("Syntax error: extension_header_reserved_3bits must be set to 0.");
+            logger_.ErrorLog(MakeMsg("Syntax error: extension_header_reserved_3bits must be set to 0."));
             return PARSER_INVALID_ARG;
         }
     }
@@ -731,7 +731,7 @@ ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     }
     uint8_t *p_stream = pic_data_buffer_ptr_ + curr_byte_offset_;
     if (ParseObuHeader(p_stream) != PARSER_OK) {
-        ERR("Syntax error(s) found in OBU header.")
+        logger_.ErrorLog(MakeMsg("Syntax error(s) found in OBU header."));
     }
     curr_byte_offset_ += obu_header_.size;
     p_stream += obu_header_.size;
@@ -741,7 +741,7 @@ ParserResult Av1VideoParser::ReadObuHeaderAndSize() {
     obu_byte_offset_ = curr_byte_offset_ + bytes_read;
     curr_byte_offset_ = obu_byte_offset_ + obu_size_;
     if (curr_byte_offset_ > pic_data_size_) {
-        ERR("Invalid obu_size value.");
+        logger_.ErrorLog(MakeMsg("Invalid obu_size value."));
         return PARSER_EOF;
     } else {
         return PARSER_OK;
@@ -758,7 +758,7 @@ ParserResult Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t si
     p_seq_header->still_picture = Parser::GetBit(p_stream, offset);
     p_seq_header->reduced_still_picture_header = Parser::GetBit(p_stream, offset);
     if (p_seq_header->reduced_still_picture_header == 1 && p_seq_header->still_picture != 1) {
-        ERR("If reduced_still_picture_header is 1, still_picture is required to be 1.");
+        logger_.ErrorLog(MakeMsg("If reduced_still_picture_header is 1, still_picture is required to be 1."));
         return PARSER_WRONG_STATE;
     }
 
@@ -778,12 +778,12 @@ ParserResult Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t si
             // timing_info()
             p_seq_header->timing_info.num_units_in_display_tick = Parser::ReadBits(p_stream, offset, 32);
             if (p_seq_header->timing_info.num_units_in_display_tick == 0) {
-                ERR("num_units_in_display_tick is 0.");
+                logger_.ErrorLog(MakeMsg("num_units_in_display_tick is 0."));
                 return PARSER_WRONG_STATE;
             }
             p_seq_header->timing_info.time_scale = Parser::ReadBits(p_stream, offset, 32);
             if (p_seq_header->timing_info.time_scale == 0) {
-                ERR("time_scale is 0.");
+                logger_.ErrorLog(MakeMsg("time_scale is 0."));
                 return PARSER_WRONG_STATE;
             }
             p_seq_header->timing_info.equal_picture_interval = Parser::GetBit(p_stream, offset);
@@ -809,13 +809,13 @@ ParserResult Av1VideoParser::ParseSequenceHeaderObu(uint8_t *p_stream, size_t si
             if (i > 0) {
                 for (int j = 0; j < i - 1; j++) {
                     if (p_seq_header->operating_point_idc[i] == p_seq_header->operating_point_idc[j]) {
-                        ERR("operating_point_idc[" + TOSTR(i) + "] is equal to operating_point_idc[" + TOSTR(j) + "]");
+                        logger_.ErrorLog(MakeMsg("operating_point_idc[" + TOSTR(i) + "] is equal to operating_point_idc[" + TOSTR(j) + "]"));
                         return PARSER_WRONG_STATE;
                     }
                 }
             }
             if (p_seq_header->operating_point_idc[i] && obu_header_.obu_extension_flag != 1) {
-                ERR("When operating_point_idc is not 0, obu_extension_flag is required to be 1.");
+                logger_.ErrorLog(MakeMsg("When operating_point_idc is not 0, obu_extension_flag is required to be 1."));
                 return PARSER_WRONG_STATE;
             }
             p_seq_header->seq_level_idx[i] = Parser::ReadBits(p_stream, offset, 5);
@@ -962,7 +962,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
 
     p_frame_header->is_received = 0;
     if (p_seq_header->is_received == 0) {
-        ERR("No valid sequence header received before frame header.");
+        logger_.ErrorLog(MakeMsg("No valid sequence header received before frame header."));
         return PARSER_WRONG_STATE;
     }
 
@@ -980,7 +980,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         p_frame_header->show_existing_frame = Parser::GetBit(p_stream, offset);
         if (p_frame_header->show_existing_frame == 1) {
             if (obu_header_.obu_type == kObuFrame) {
-                ERR("show_existing_frame is 1 when obu_type is equal to OBU_FRAME.");
+                logger_.ErrorLog(MakeMsg("show_existing_frame is 1 when obu_type is equal to OBU_FRAME."));
                 return PARSER_WRONG_STATE;
             }
             p_frame_header->frame_to_show_map_idx = Parser::ReadBits(p_stream, offset, 3);
@@ -1100,7 +1100,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
     } else {
         p_frame_header->refresh_frame_flags = Parser::ReadBits(p_stream, offset, 8);
         if (p_frame_header->frame_type == kIntraOnlyFrame && p_frame_header->refresh_frame_flags == 0xFF) {
-            ERR("When frame_type is equal to INTRA_ONLY_FRAME, it is a requirement of bitstream conformance that refresh_frame_flags is not equal to 0xff.");
+            logger_.ErrorLog(MakeMsg("When frame_type is equal to INTRA_ONLY_FRAME, it is a requirement of bitstream conformance that refresh_frame_flags is not equal to 0xff."));
             return PARSER_WRONG_STATE;
         }
     }
@@ -1145,7 +1145,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
                 uint32_t delta_frame_id = p_frame_header->delta_frame_id_minus_1 + 1;
                 p_frame_header->expected_frame_id[i] = ((p_frame_header->current_frame_id + (1 << frame_id_len) - delta_frame_id ) % (1 << frame_id_len));
                 if (p_frame_header->expected_frame_id[i] != dpb_buffer_.ref_frame_id[p_frame_header->ref_frame_idx[i]] || dpb_buffer_.ref_valid[p_frame_header->ref_frame_idx[i]] == 0) {
-                    ERR("Syntax Error: Reference buffer frame ID mismatch.\n");
+                    logger_.ErrorLog(MakeMsg("Syntax Error: Reference buffer frame ID mismatch.\n"));
                     return PARSER_INVALID_ARG;
                 }
             }
@@ -1255,7 +1255,7 @@ ParserResult Av1VideoParser::ParseUncompressedHeader(uint8_t *p_stream, size_t s
         }
     }
     if (p_frame_header->coded_lossless == 1 && p_frame_header->delta_q_params.delta_q_present == 1) {
-        ERR("It is a requirement of bitstream conformance that delta_q_present is equal to 0 when CodedLossless is equal to 1.");
+        logger_.ErrorLog(MakeMsg("It is a requirement of bitstream conformance that delta_q_present is equal to 0 when CodedLossless is equal to 1."));
         return PARSER_WRONG_STATE;
     }
 
@@ -1305,7 +1305,7 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     uint32_t tg_size = size;
 
     if (p_frame_header->is_received == 0) {
-        ERR("No valid frame header received before tile group.");
+        logger_.ErrorLog(MakeMsg("No valid frame header received before tile group."));
         return PARSER_WRONG_STATE;
     }
 
@@ -1318,7 +1318,7 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     if (p_tile_group->num_tiles > 1) {
         tile_start_and_end_present_flag = Parser::GetBit(p_stream, offset);
         if (obu_header_.obu_type == kObuFrame && tile_start_and_end_present_flag != 0) {
-            ERR("If obu_type is equal to OBU_FRAME, it is a requirement of bitstream conformance that the value of tile_start_and_end_present_flag is equal to 0.");
+            logger_.ErrorLog(MakeMsg("If obu_type is equal to OBU_FRAME, it is a requirement of bitstream conformance that the value of tile_start_and_end_present_flag is equal to 0."));
             return PARSER_WRONG_STATE;
         }
     }
@@ -1329,12 +1329,12 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
         uint32_t tile_bits = p_frame_header->tile_info.tile_cols_log2 + p_frame_header->tile_info.tile_rows_log2;
         p_tile_group->tg_start = Parser::ReadBits(p_stream, offset, tile_bits);
         if (p_tile_group->tg_start != p_tile_group->num_tiles_parsed) {
-            ERR("It is a requirement of bitstream conformance that the value of tg_start (" + TOSTR(p_tile_group->tg_start) + ") is equal to the value of TileNum (" + TOSTR(p_tile_group->num_tiles_parsed) + ") at the point that tile_group_obu is invoked.");
+            logger_.ErrorLog(MakeMsg("It is a requirement of bitstream conformance that the value of tg_start (" + TOSTR(p_tile_group->tg_start) + ") is equal to the value of TileNum (" + TOSTR(p_tile_group->num_tiles_parsed) + ") at the point that tile_group_obu is invoked."));
             return PARSER_WRONG_STATE;
         }
         p_tile_group->tg_end = Parser::ReadBits(p_stream, offset, tile_bits);
         if (p_tile_group->tg_end < p_tile_group->tg_start) {
-            ERR("It is a requirement of bitstream conformance that the value of tg_end (" + TOSTR(p_tile_group->tg_end) + ") is greater than or equal to tg_start (" + TOSTR(p_tile_group->tg_start) + ").");
+            logger_.ErrorLog(MakeMsg("It is a requirement of bitstream conformance that the value of tg_end (" + TOSTR(p_tile_group->tg_end) + ") is greater than or equal to tg_start (" + TOSTR(p_tile_group->tg_start) + ")."));
             return PARSER_WRONG_STATE;
         }
     }
@@ -1344,7 +1344,7 @@ ParserResult Av1VideoParser::ParseTileGroupObu(uint8_t *p_stream, size_t size) {
     tg_size -= header_bytes;
     for (int tile_num = p_tile_group->tg_start; tile_num <= p_tile_group->tg_end; tile_num++) {
         if (tile_cols == 0) {
-            ERR("Tile columns is 0.");
+            logger_.ErrorLog(MakeMsg("Tile columns is 0."));
             return PARSER_WRONG_STATE;
         }
         p_tile_group->tile_data_info[tile_num].tile_row = tile_num / tile_cols;
@@ -2442,7 +2442,7 @@ ParserResult Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &of
     for (i = 0; i < p_frame_header->film_grain_params.num_y_points; i++) {
         p_frame_header->film_grain_params.point_y_value[i] = Parser::ReadBits(p_stream, offset, 8);
         if (i > 0 && p_frame_header->film_grain_params.point_y_value[i] <= p_frame_header->film_grain_params.point_y_value[i - 1]) {
-            ERR("point_y_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i]) + ") should be greater than point_y_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i - 1]) + ")");
+            logger_.ErrorLog(MakeMsg("point_y_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i]) + ") should be greater than point_y_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_y_value[i - 1]) + ")"));
             return PARSER_INVALID_ARG;
         }
         p_frame_header->film_grain_params.point_y_scaling[i] = Parser::ReadBits(p_stream, offset, 8);
@@ -2463,7 +2463,7 @@ ParserResult Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &of
         for (i = 0; i < p_frame_header->film_grain_params.num_cb_points; i++) {
             p_frame_header->film_grain_params.point_cb_value[i] = Parser::ReadBits(p_stream, offset, 8);
             if (i > 0 && p_frame_header->film_grain_params.point_cb_value[i] <= p_frame_header->film_grain_params.point_cb_value[i - 1]) {
-                ERR("point_cb_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i]) + ") should be greater than point_cb_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i - 1]) + ")");
+                logger_.ErrorLog(MakeMsg("point_cb_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i]) + ") should be greater than point_cb_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cb_value[i - 1]) + ")"));
                 return PARSER_INVALID_ARG;
             }
             p_frame_header->film_grain_params.point_cb_scaling[i] = Parser::ReadBits(p_stream, offset, 8);
@@ -2472,11 +2472,11 @@ ParserResult Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &of
         CHECK_ALLOWED_MAX("num_cr_points", p_frame_header->film_grain_params.num_cr_points, 10);
         if (p_seq_header->color_config.subsampling_x == 1 && p_seq_header->color_config.subsampling_y == 1) {
             if (p_frame_header->film_grain_params.num_cb_points == 0 && p_frame_header->film_grain_params.num_cr_points != 0) {
-                ERR("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is equal to 0, it is a requirement of bitstream conformance that num_cr_points is equal to 0.");
+                logger_.ErrorLog(MakeMsg("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is equal to 0, it is a requirement of bitstream conformance that num_cr_points is equal to 0."));
                 return PARSER_WRONG_STATE;
             }
             if (p_frame_header->film_grain_params.num_cb_points != 0 && p_frame_header->film_grain_params.num_cr_points == 0) {
-                ERR("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is not equal to 0, it is a requirement of bitstream conformance that num_cr_points is not equal to 0.");
+                logger_.ErrorLog(MakeMsg("If subsampling_x is equal to 1 and subsampling_y is equal to 1 and num_cb_points is not equal to 0, it is a requirement of bitstream conformance that num_cr_points is not equal to 0."));
                 return PARSER_WRONG_STATE;
             }
         }
@@ -2484,7 +2484,7 @@ ParserResult Av1VideoParser::FilmGrainParams(const uint8_t *p_stream, size_t &of
         {
             p_frame_header->film_grain_params.point_cr_value[i] = Parser::ReadBits(p_stream, offset, 8);
             if (i > 0 && p_frame_header->film_grain_params.point_cr_value[i] <= p_frame_header->film_grain_params.point_cr_value[i - 1]) {
-                ERR("point_cr_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i]) + ") should be greater than point_cr_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i - 1]) + ")");
+                logger_.ErrorLog(MakeMsg("point_cr_value["+ TOSTR(i) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i]) + ") should be greater than point_cr_value[" + TOSTR(i - 1) + "] (" + TOSTR(p_frame_header->film_grain_params.point_cr_value[i - 1]) + ")"));
                 return PARSER_INVALID_ARG;
             }
             p_frame_header->film_grain_params.point_cr_scaling[i] = Parser::ReadBits(p_stream, offset, 8);

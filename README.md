@@ -122,28 +122,30 @@ system.
 
 * Runtime package - `rocdecode` only provides the rocdecode library `librocdecode.so`
 * Development package - `rocdecode-dev`/`rocdecode-devel` provides the library, header files, and samples
+* Host package - `rocdecode-host` provides rocdecode host decode
 * Test package - `rocdecode-test` provides CTest to verify installation
 
 #### Ubuntu
 
   ```shell
-  sudo apt install rocdecode rocdecode-dev rocdecode-test
+  sudo apt install rocdecode rocdecode-dev rocdecode-test rocdecode-host
   ```
 
 #### RHEL
 
   ```shell
-  sudo yum install rocdecode rocdecode-devel rocdecode-test
+  sudo yum install rocdecode rocdecode-devel rocdecode-test rocdecode-host
   ```
 
 #### SLES
 
   ```shell
-  sudo zypper install rocdecode rocdecode-devel rocdecode-test
+  sudo zypper install rocdecode rocdecode-devel rocdecode-test rocdecode-host
   ```
 
 >[!NOTE]
-> Package install auto installs all dependencies.
+> * Package install auto installs all dependencies.
+> * `rocdecode-host` package is optional package use in host video decode
 
 > [!IMPORTANT] 
 > `RHEL`/`SLES` package install requires manual `FFMPEG` dev install

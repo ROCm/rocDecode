@@ -30,6 +30,11 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+# Check if lib/rocm_sysdeps/lib exists in the ROCm path which indicates ROCm installation via TheRock
+set(USING_THE_ROCK OFF)
+if(EXISTS "${ROCM_PATH}/lib/rocm_sysdeps/lib")
+  set(USING_THE_ROCK ON)
+endif()
 # Set AMD Clang as default compiler
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
@@ -49,6 +54,7 @@ project(rocdecode-host VERSION ${VERSION} LANGUAGES CXX)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 
+set (HIP_PLATFORM amd CACHE STRING "HIP platform")
 find_package(HIP QUIET)
 find_package(Threads QUIET)
 find_package(rocprofiler-register QUIET)
@@ -67,9 +73,9 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   endif()
 
   # local include files
-  include_directories(api rocdecode-host ../src/rocdecode ../src/parser)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../api ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../rocdecode ${CMAKE_CURRENT_SOURCE_DIR}/../parser)
   # source files
-  file(GLOB_RECURSE SOURCES "./*.cpp")
+  file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
   # rocdecode-host.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
@@ -87,25 +93,31 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
   endif() #FFMpeg version >= 7.1
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+  if(USING_THE_ROCK)
+    set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN;$ORIGIN/rocm_sysdeps/lib" BUILD_WITH_INSTALL_RPATH TRUE)
+  endif()
+
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
   message("-- ${White}AMD ROCm ${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 
   # Generate BUILD_INFO
-  configure_file( ${CMAKE_SOURCE_DIR}/api/rocdecode-host_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode-host_version.h @ONLY )
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/../../api/rocdecode-host_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/rocdecode-host_version.h @ONLY )
 
   # install rocdecode-host libs -- {ROCM_PATH}/lib
   set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
-  install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}-targets LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
-  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT host NAMELINK_SKIP)
+  install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}-targets LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT host NAMELINK_ONLY)
+  install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT host)
   # install rocdecode include files -- {ROCM_PATH}/include/rocdecode
   install(FILES ${PROJECT_SOURCE_DIR}/../../api/rocdecode/rocdecode_host.h 
-      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT dev)
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT host)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_version.h
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT dev)
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rocdecode COMPONENT host)
+  # TBD: NOTE the host utils are temp delivered with dev package, need to update downstream apps to move to host package
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/../../utils/ffmpegvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/rocdecode/utils COMPONENT dev)
   
   # Cmake module config file configurations
-  set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" CACHE INTERNAL "Default module path.")
+  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake_modules/" CACHE INTERNAL "Default module path.")
 
   # Export the package for use from the build-tree
   ## (this registers the build-tree with a global CMake-registry)
@@ -139,7 +151,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
     "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-    COMPONENT dev
+    COMPONENT host
   )
 
   # Install the export set for use with the install-tree
@@ -147,7 +159,7 @@ if(HIP_FOUND AND Threads_FOUND AND FFMPEG_FOUND)
     FILE ${PROJECT_NAME}-targets.cmake
     NAMESPACE rocdecode::
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" 
-    COMPONENT dev
+    COMPONENT host
   )
 
 else()

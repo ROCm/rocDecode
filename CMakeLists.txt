@@ -30,6 +30,13 @@ elseif(ROCM_PATH)
 else()
   set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
+
+# Check if lib/rocm_sysdeps/lib exists in the ROCm path which indicates ROCm installation via TheRock
+set(USING_THE_ROCK OFF)
+if(EXISTS "${ROCM_PATH}/lib/rocm_sysdeps/lib")
+  set(USING_THE_ROCK ON)
+endif()
+
 # Set AMD Clang as default compiler
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
@@ -40,7 +47,7 @@ if (NOT DEFINED CMAKE_CXX_COMPILER)
 endif()
 
 # rocdecode Version
-set(VERSION "1.5.0")
+set(VERSION "1.7.0")
 
 # Set Project Version and Language
 project(rocdecode VERSION ${VERSION} LANGUAGES CXX)
@@ -106,18 +113,10 @@ option(ROCDECODE_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register suppor
 # Add an option for enabling FFMPEG avcodec host-based decoder
 option(ROCDECODE_ENABLE_HOST_DECODER "Enable rocdecode-host-based decoder support" ON)
 
+set (HIP_PLATFORM amd CACHE STRING "HIP platform")
 find_package(HIP QUIET)
 find_package(Libva QUIET)
 find_package(Libdrm_amdgpu QUIET)
-
-# Check if lib/rocm_sysdeps/lib exists in the libdrm_amdgpu library path which indicates ROCm installation via TheRock
-set(USING_THE_ROCK OFF)
-if(LIBDRM_AMDGPU_LIBRARY)
-  string(FIND "${LIBDRM_AMDGPU_LIBRARY}" "lib/rocm_sysdeps/lib" ROCM_SYSDEPS_FOUND)
-  if(NOT ROCM_SYSDEPS_FOUND EQUAL -1)
-    set(USING_THE_ROCK ON)
-  endif()
-endif()
 
 # Find Ubuntu 22.04
 file(READ "/etc/os-release" OS_RELEASE)
@@ -127,22 +126,23 @@ string(REGEX MATCH "22.04" UBUNTU_22_FOUND ${OS_RELEASE})
 # - Ubuntu 22.04 with standard ROCm installation: requires libva >= 1.16
 # - TheRock installation (any OS): libva >= 1.8 is sufficient
 # - Other OS versions with standard ROCm: libva >= 1.8 is sufficient
-if(UBUNTU_22_FOUND AND NOT USING_THE_ROCK)
-  if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 16))
-    message("-- ${White}\tLibva Version Supported${ColourReset}")
+if(Libva_FOUND)
+  if(UBUNTU_22_FOUND AND NOT USING_THE_ROCK)
+    if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 16))
+      message("-- ${White}\tLibva Version Supported${ColourReset}")
+    else()
+      set(Libva_FOUND FALSE)
+      message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+    endif()
   else()
-    set(Libva_FOUND FALSE)
-    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
-  endif()
-else()
-  if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 8))
-    message("-- ${White}\tLibva Version Supported${ColourReset}")
-  else()
-    set(Libva_FOUND FALSE)
-    message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+    if((${Libva_VERSION_MAJOR} GREATER_EQUAL 1) AND (${Libva_VERSION_MINOR} GREATER_EQUAL 8))
+      message("-- ${White}\tLibva Version Supported${ColourReset}")
+    else()
+      set(Libva_FOUND FALSE)
+      message("-- ${Yellow}\tLibva Version Not Supported${ColourReset}")
+    endif()
   endif()
 endif()
-
 
 if(ROCDECODE_ENABLE_ROCPROFILER_REGISTER)
   find_package(rocprofiler-register QUIET
@@ -172,10 +172,10 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   endif()
 
   # local include files
-  include_directories(api src/rocdecode src/parser src/rocdecode/vaapi)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/api ${CMAKE_CURRENT_SOURCE_DIR}/src/rocdecode ${CMAKE_CURRENT_SOURCE_DIR}/src/parser ${CMAKE_CURRENT_SOURCE_DIR}/src/rocdecode/vaapi)
   # source files
-  file(GLOB_RECURSE SOURCES "./src/*.cpp")
-  list(FILTER SOURCES EXCLUDE REGEX "./src/rocdecode-host/*.*")
+  file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+  list(FILTER SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_SOURCE_DIR}/src/rocdecode-host/*.*")
   # rocdecode.so
   add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
@@ -186,6 +186,10 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
   set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+
+  if(USING_THE_ROCK)
+    set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN;$ORIGIN/rocm_sysdeps/lib" BUILD_WITH_INSTALL_RPATH TRUE)
+  endif()
 
   # rocprofiler
   if (rocprofiler-register_FOUND)
@@ -227,13 +231,13 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   # install rocdecode samples -- {ROCM_PATH}/share/rocdecode
   install(DIRECTORY cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} COMPONENT dev)
   install(DIRECTORY utils/rocvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
-  install(DIRECTORY utils/ffmpegvideodecode DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES samples/videoDecode/CMakeLists.txt samples/videoDecode/README.md samples/videoDecode/videodecode.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecode COMPONENT dev)
   install(FILES samples/videoDecodeRaw/CMakeLists.txt samples/videoDecodeRaw/README.md samples/videoDecodeRaw/videodecoderaw.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeRaw COMPONENT dev)
   install(FILES samples/videoDecodeMem/CMakeLists.txt samples/videoDecodeMem/README.md samples/videoDecodeMem/videodecodemem.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeMem COMPONENT dev)
   install(FILES samples/videoDecodePerf/CMakeLists.txt samples/videoDecodePerf/README.md samples/videoDecodePerf/videodecodeperf.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodePerf COMPONENT dev)
   install(FILES samples/videoDecodeRGB/CMakeLists.txt samples/videoDecodeRGB/README.md samples/videoDecodeRGB/videodecrgb.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeRGB COMPONENT dev)
   install(FILES samples/videoDecodeBatch/CMakeLists.txt samples/videoDecodeBatch/README.md samples/videoDecodeBatch/videodecodebatch.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/videoDecodeBatch COMPONENT dev)
+  install(FILES samples/rocdecDecode/CMakeLists.txt samples/rocdecDecode/README.md samples/rocdecDecode/rocdecdecode.cpp DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples/rocdecDecode COMPONENT dev)
   install(FILES samples/common.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/samples COMPONENT dev)
   install(FILES utils/md5.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/video_demuxer.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
@@ -243,6 +247,7 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   install(FILES utils/resize_kernels.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES utils/video_post_process.h DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/utils COMPONENT dev)
   install(FILES data/videos/AMD_driving_virtual_20-H265.mp4 data/videos/AMD_driving_virtual_20-H265.265 data/videos/AMD_driving_virtual_20-H264.mp4 data/videos/AMD_driving_virtual_20-H264.264 data/videos/AMD_driving_virtual_20-AV1.mp4 data/videos/AMD_driving_virtual_20-AV1.ivf data/videos/AMD_driving_virtual_20-VP9.ivf DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/video COMPONENT dev)
+  install(DIRECTORY data/frames/ DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/frames COMPONENT dev)
   # install license information - {ROCM_PATH}/share/doc/rocdecode
   set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
   install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT runtime)
@@ -380,6 +385,9 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   # Debian package - Test
   set(CPACK_DEBIAN_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
   set(CPACK_DEBIAN_TEST_PACKAGE_DEPENDS "rocm-core, ${CPACK_DEBIAN_DEV_PACKAGE_NAME}" )
+  # Debian package - Host
+  set(CPACK_DEBIAN_HOST_PACKAGE_NAME "${PROJECT_NAME}-host" )
+  set(CPACK_DEBIAN_HOST_PACKAGE_DEPENDS "rocm-core, ${CPACK_DEBIAN_DEV_PACKAGE_NAME}" )
   # RPM package
   set(CPACK_RPM_COMPONENT_INSTALL ON)
   set(CPACK_RPM_RUNTIME_PACKAGE_NAME "${PROJECT_NAME}")
@@ -393,23 +401,28 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   # RPM package specific variable for Test
   set(CPACK_RPM_TEST_PACKAGE_NAME "${PROJECT_NAME}-test" )
   set(CPACK_RPM_TEST_PACKAGE_REQUIRES "rocm-core, ${CPACK_RPM_DEV_PACKAGE_NAME}" )
+  # RPM package specific variable for Host
+  set(CPACK_RPM_HOST_PACKAGE_NAME "${PROJECT_NAME}-host" )
+  set(CPACK_RPM_HOST_PACKAGE_REQUIRES "rocm-core, ${CPACK_RPM_DEV_PACKAGE_NAME}" )
 
   if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_RUNTIME_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_DEV_PACKAGE_REQUIRES ${CPACK_RPM_DEV_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_TEST_PACKAGE_REQUIRES ${CPACK_RPM_TEST_PACKAGE_REQUIRES})
+    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_RPM_HOST_PACKAGE_REQUIRES ${CPACK_RPM_TEST_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core-asan," "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_TEST_PACKAGE_DEPENDS ${CPACK_DEBIAN_TEST_PACKAGE_DEPENDS})
+    string(REGEX REPLACE ",? ?rocm-core," "" CPACK_DEBIAN_HOST_PACKAGE_DEPENDS ${CPACK_DEBIAN_TEST_PACKAGE_DEPENDS})
   endif()
 
   if(ENABLE_ASAN_PACKAGING)
     # ASAN Package requires asan component with only libraries and license file
     set(CPACK_COMPONENTS_ALL asan)
   else()
-    set(CPACK_COMPONENTS_ALL runtime dev test)
+    set(CPACK_COMPONENTS_ALL runtime dev test host)
   endif()
 
   set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
@@ -456,6 +469,13 @@ if(HIP_FOUND AND Libva_FOUND AND Libdrm_amdgpu_FOUND)
   cpack_add_component(test
                     DISPLAY_NAME "rocdecode Test Package"
                     DESCRIPTION "High perf video decode SDK for AMD GPUs. rocdecode test")
+  
+    # make rocdecode-host for decoding on HOST only if FFMPEG is available
+  if(ROCDECODE_ENABLE_HOST_DECODER AND FFMPEG_FOUND)
+    cpack_add_component(host
+                      DISPLAY_NAME "rocdecode host package"
+                      DESCRIPTION "High perf video decode host SDK for AMD GPUs")
+  endif()
 
 else()
   message("-- ${Red}AMD ROCm ${PROJECT_NAME} -- unmet dependencies${ColourReset}")

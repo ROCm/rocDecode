@@ -39,8 +39,10 @@ THE SOFTWARE.
 #include "video_demuxer.h"
 #include "rocdecode/roc_bitstream_reader.h"
 #include "roc_video_dec.h"
-#include "ffmpeg_video_dec.h"
 #include "common.h"
+#if ENABLE_HOST_DECODE
+    #include "ffmpeg_video_dec.h"
+#endif
 
 //hardcoding for host based decoder creation if demux is not available
 #define DEFAULT_WIDTH 2912
@@ -364,7 +366,7 @@ int main(int argc, char **argv) {
             }
             for (int i = 0; i < n_frame_returned; i++) {
                 pframe = viddec->GetFrame(&pts);
-                if (b_generate_md5) {
+                if (b_generate_md5 && pframe) {
                     md5_generator->UpdateMd5ForFrame(pframe, surf_info);
                 }
                 if (dump_output_frames && mem_type != OUT_SURFACE_MEM_NOT_MAPPED) {

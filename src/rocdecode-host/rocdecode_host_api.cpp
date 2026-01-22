@@ -37,7 +37,7 @@ rocDecCreateDecoderHost(rocDecDecoderHandle *decoder_handle, RocDecoderHostCreat
         handle = new DecHandleHost(*decoder_create_info);
     }
     catch(const std::exception& e) {
-        ERR( STR("Failed to init the rocDecode handle, ") + STR(e.what()))
+        RocDecLogger::AlwaysLog(STR("Error: Failed to init the rocDecode handle, ") + STR(e.what()));
         return ROCDEC_NOT_INITIALIZED;
     }
     *decoder_handle = handle;
@@ -92,7 +92,7 @@ rocDecDecodeFrameHost(rocDecDecoderHandle decoder_handle, _RocdecPicParamsHost *
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -116,7 +116,7 @@ rocDecGetDecodeStatusHost(rocDecDecoderHandle decoder_handle, int pic_idx, Rocde
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -139,7 +139,7 @@ rocDecReconfigureDecoderHost(rocDecDecoderHandle decoder_handle, RocdecReconfigu
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
@@ -165,7 +165,7 @@ rocDecGetVideoFrameHost(rocDecDecoderHandle decoder_handle, int pic_idx,
     }
     catch(const std::exception& e) {
         handle->CaptureError(e.what());
-        ERR(e.what())
+        RocDecLogger::AlwaysLog(e.what());
         return ROCDEC_RUNTIME_ERROR;
     }
     return ret;
