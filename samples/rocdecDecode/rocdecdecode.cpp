@@ -35,11 +35,6 @@ THE SOFTWARE.
 
 namespace fs = std::filesystem;
 
-
-static inline int align(int value, int alignment) {
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 __attribute__((visibility("hidden"))) inline bool is_error(rocDecStatus status)
 {
     return status != ROCDEC_SUCCESS;
