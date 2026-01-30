@@ -2,6 +2,9 @@
 
 <p align="center"><img width="70%" src="docs/data/AMD_rocDecode_Logo.png" /></p>
 
+> [!CAUTION]
+> The rocDecode repository is retired, please use the [ROCm/rocm-systems](https://github.com/ROCm/rocm-systems) repository
+
 rocDecode is a high-performance video decode SDK for AMD GPUs. Using the rocDecode API, you can
 access the video decoding features available on your GPU.
 
