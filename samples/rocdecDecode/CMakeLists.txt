@@ -22,25 +22,24 @@
 ################################################################################
 
 cmake_minimum_required (VERSION 3.10)
-project(rocdecdecode)
-
 # ROCM Path
 if(DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Default ROCm installation path")
 elseif(ROCM_PATH)
-  message("-- ${White}${PROJECT_NAME} :ROCM_PATH Set -- ${ROCM_PATH}${ColourReset}")
+  message("-- INFO:ROCM_PATH Set -- ${ROCM_PATH}")
 else()
-  set(ROCM_PATH /opt/rocm CACHE PATH "${White}${PROJECT_NAME}: Default ROCm installation path${ColourReset}")
+  set(ROCM_PATH /opt/rocm CACHE PATH "Default ROCm installation path")
 endif()
-
 # Set AMD Clang as default compiler
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_EXTENSIONS ON)
 if (NOT DEFINED CMAKE_CXX_COMPILER)
   set(CMAKE_C_COMPILER ${ROCM_PATH}/lib/llvm/bin/amdclang)
   set(CMAKE_CXX_COMPILER ${ROCM_PATH}/lib/llvm/bin/amdclang++)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
-
+project(rocdecdecode)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
 list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
 
@@ -82,6 +81,9 @@ if(HIP_FOUND AND rocdecode_FOUND)
       include_directories(${rocdecode-host_INCLUDE_DIR})
       set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocdecode::rocdecode-host)
     endif()
+
+    # STD Filesystem
+    set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} stdc++fs)
 
     # rocdecode and utils
     include_directories(${rocdecode_INCLUDE_DIR} ${ROCM_PATH}/lib)
