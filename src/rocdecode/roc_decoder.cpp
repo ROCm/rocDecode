@@ -28,12 +28,6 @@ RocDecoder::RocDecoder(RocDecoderCreateInfo& decoder_create_info): va_video_deco
  RocDecoder::~RocDecoder() {
     // clean up the VA-API/HIP interop memories
     for(auto i = 0; i < hip_interop_.size(); i++) {
-        if (hip_interop_[i].hip_mapped_device_mem != nullptr) {
-            hipError_t hip_status = hipFree(hip_interop_[i].hip_mapped_device_mem);
-            if (hip_status != hipSuccess) {
-                ERR("hipFree failed for picture idx = " + TOSTR(i));
-            }
-        }
         if (hip_interop_[i].hip_ext_mem != nullptr) {
             hipError_t hip_status = hipDestroyExternalMemory(hip_interop_[i].hip_ext_mem);
             if (hip_status != hipSuccess) {
@@ -175,8 +169,6 @@ rocDecStatus RocDecoder::FreeVideoFrame(int pic_idx) {
         return ROCDEC_INVALID_PARAMETER;
     }
 
-    if (hip_interop_[pic_idx].hip_mapped_device_mem != nullptr)
-        CHECK_HIP(hipFree(hip_interop_[pic_idx].hip_mapped_device_mem));
     if (hip_interop_[pic_idx].hip_ext_mem != nullptr)
         CHECK_HIP(hipDestroyExternalMemory(hip_interop_[pic_idx].hip_ext_mem));
 
